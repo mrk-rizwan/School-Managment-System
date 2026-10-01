@@ -1,0 +1,639 @@
+<title>ASMS for Schools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#E9EEEE; --card:#FFFFFF; --soft:#F2F6F6;
+  --ink:#101F2A; --ink-2:#41545D; --ink-3:#697C83;
+  --rule:#D2DBDB; --rule-2:#E6ECEC;
+  --accent:#0F5C63; --good:#2E7D5B; --warn:#9A6B14; --crit:#A33A2A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+.deck{max-width:1200px;margin:0 auto;padding:1.5rem clamp(.7rem,2.4vw,1.5rem) 3rem;
+  display:flex;flex-direction:column;gap:1.2rem}
+
+.slide{background:var(--card);border:1px solid var(--rule);
+  box-shadow:0 1px 2px rgba(16,31,42,.05),0 10px 26px -18px rgba(16,31,42,.3);
+  padding:clamp(1.3rem,2.8vw,2.2rem);display:flex;flex-direction:column;min-height:min(70vh,580px)}
+.snum{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 .7rem;
+  display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.snum span{color:var(--ink-3);font-weight:500}
+.slide h2{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:clamp(1.45rem,2.7vw,1.95rem);line-height:1.1;letter-spacing:-.022em;
+  margin:0 0 .55rem;text-wrap:balance}
+.slide h3{font-family:Archivo,sans-serif;font-weight:600;font-size:1.0625rem;
+  letter-spacing:-.01em;margin:1.15rem 0 .45rem}
+.slide p{margin:0 0 .75rem;max-width:74ch;font-size:1.0625rem;color:var(--ink-2)}
+.slide p.lead{font-size:1.125rem;color:var(--ink)}
+.slide strong{font-weight:600;color:var(--ink)}
+.foot{margin-top:auto;padding-top:1rem;border-top:1px solid var(--rule-2);
+  font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--ink-3);letter-spacing:.04em;line-height:1.6}
+
+.cover{background:var(--accent);border-color:var(--accent);justify-content:center}
+.cover h1{font-family:Archivo,sans-serif;font-weight:700;font-size:clamp(2.2rem,5.5vw,3.6rem);
+  line-height:1.02;letter-spacing:-.03em;margin:0 0 .9rem;color:#fff}
+.cover p{color:#C6E4E5;font-size:1.1875rem;max-width:58ch}
+.cover .snum{color:#8FC9CC}
+.cover .foot{border-top-color:rgba(255,255,255,.2);color:#9FD2D4;margin-top:2.2rem}
+
+.tw{overflow-x:auto;border:1px solid var(--rule);margin:.45rem 0 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9375rem;background:var(--card)}
+th,td{text-align:left;padding:.48rem .72rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3);font-weight:500;background:var(--soft);
+  border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-family:Archivo,sans-serif;font-weight:600;white-space:nowrap;color:var(--ink)}
+td.op{font-size:.875rem;color:var(--ink-3)}
+.yes{color:var(--good);font-weight:600} .no{color:var(--ink-3)} .part{color:var(--warn);font-weight:600}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin:.45rem 0 0}
+.grid > div{background:var(--card);padding:.8rem .95rem}
+.grid h4{font-family:Archivo,sans-serif;font-size:.9875rem;font-weight:600;margin:0 0 .22rem;letter-spacing:-.008em}
+.grid p{margin:0;font-size:.875rem;max-width:none;line-height:1.45}
+.grid .n{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.26rem;font-weight:600}
+
+.note{border-left:4px solid var(--accent);background:var(--soft);padding:.8rem 1rem;margin:.65rem 0 0}
+.note p{margin:0;max-width:none;font-size:.9375rem}
+.note b{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.28rem;font-weight:600}
+.note.warn{border-left-color:var(--warn);background:#FDF8EE} .note.warn b{color:var(--warn)}
+.note.good{border-left-color:var(--good);background:#F2F8F4} .note.good b{color:var(--good)}
+.note.crit{border-left-color:var(--crit);background:#FCF3F1} .note.crit b{color:var(--crit)}
+
+.flow{display:flex;align-items:stretch;gap:.45rem;flex-wrap:wrap;margin:.55rem 0 0}
+.step{flex:1 1 145px;border:1px solid var(--rule);background:var(--soft);padding:.5rem .65rem;
+  font-size:.8125rem;color:var(--ink-2);line-height:1.35}
+.step b{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:.2rem;font-weight:600}
+.step em{font-style:normal;font-family:Archivo,sans-serif;font-weight:600;color:var(--ink);
+  display:block;font-size:.875rem;margin-bottom:.12rem}
+.step.on{background:var(--accent);border-color:var(--accent)}
+.step.on b{color:#8FC9CC} .step.on em{color:#fff} .step.on{color:#C6E4E5}
+.step.g{background:#F2F8F4;border-color:var(--good)} .step.g b{color:var(--good)}
+.step.w{background:#FDF8EE;border-color:var(--warn)} .step.w b{color:var(--warn)}
+.step.r{background:#FCF3F1;border-color:var(--crit)} .step.r b{color:var(--crit)}
+
+ol.qs{list-style:none;counter-reset:q;margin:.45rem 0 0;padding:0;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.5rem}
+ol.qs li{counter-increment:q;position:relative;padding:.5rem .65rem .5rem 2.2rem;
+  border:1px solid var(--rule);background:var(--card);font-size:.875rem;color:var(--ink-2);line-height:1.4}
+ol.qs li::before{content:counter(q);position:absolute;left:.55rem;top:.5rem;width:1.2rem;height:1.2rem;
+  border-radius:2px;background:var(--accent);color:#fff;font-family:"IBM Plex Mono",monospace;
+  font-size:.62rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+ol.qs b{font-family:Archivo,sans-serif;font-weight:600;color:var(--ink);display:block;margin-bottom:.08rem;font-size:.9375rem}
+
+ul.tight{margin:.35rem 0 .7rem;padding-left:1.1rem;max-width:74ch;font-size:1rem;color:var(--ink-2)}
+ul.tight li{margin-bottom:.28rem}
+ul.tight b{color:var(--ink)}
+
+.printhint{text-align:center;font-family:"IBM Plex Mono",monospace;font-size:.7rem;
+  color:var(--ink-3);letter-spacing:.05em;padding:.4rem 0 0}
+
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:#fff}
+  .deck{max-width:none;padding:0;gap:0}
+  .slide{border:none;box-shadow:none;min-height:0;height:auto;
+    page-break-after:always;break-after:page;padding:0 0 6mm}
+  .slide:last-of-type{page-break-after:auto;break-after:auto}
+  .cover{background:#0F5C63 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:12mm}
+  .printhint{display:none}
+  .grid,.tw,ol.qs li,.step,.note{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="deck">
+
+<section class="slide cover">
+  <p class="snum">School Management System</p>
+  <h1>ASMS</h1>
+  <p>An integrated administrative and academic management platform for schools &mdash; covering student records, attendance, examinations, fee collection, financial accounting, staff administration and parent communication.</p>
+  <div class="foot">Prepared for school leadership &middot; 27 slides &middot; Confidential</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Executive summary <span>Slide 01</span></p>
+  <h2>Purpose of this presentation</h2>
+  <p class="lead">ASMS is a subscription-based school management platform. This document sets out the functional scope of the system, explains how each module operates, and identifies the decisions required from your institution before implementation.</p>
+  <div class="grid">
+    <div><span class="n">Scope</span><h4>Nine functional modules</h4><p>Student records, attendance, academics, examinations, fees, financial accounting, staff administration, communication and document management.</p></div>
+    <div><span class="n">Access</span><h4>Six categories of user</h4><p>Each with defined permissions. Access is granted by the Principal and is auditable.</p></div>
+    <div><span class="n">Delivery</span><h4>Web and mobile</h4><p>An administrative web application for office use, and a mobile application for staff and parents.</p></div>
+    <div><span class="n">Configuration</span><h4>Institution-specific</h4><p>Attendance method, fee structure, examination weighting and concession policy are configured per school.</p></div>
+    <div><span class="n">Commercial</span><h4>Monthly subscription</h4><p>No capital expenditure. No licence purchase. Institutional data remains the property of the school.</p></div>
+    <div><span class="n">Required</span><h4>Institutional decisions</h4><p>Eighteen policy questions are listed at slide 24. Six must be settled before configuration begins.</p></div>
+  </div>
+  <div class="foot">Slides 07 to 09 and 13 to 14 address the specific operational scenarios raised during initial discussions.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Context <span>Slide 02</span></p>
+  <h2>Current operational challenges</h2>
+  <p>The following constraints are typical of institutions operating without an integrated system. They are presented not as criticism but as the baseline against which ASMS should be evaluated.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Function</th><th>Present method</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Attendance</td><td class="op">Manual register per class</td><td>Attendance percentages cannot be produced without manual computation. Patterns of habitual absence are not visible.</td></tr>
+        <tr><td class="k">Fee collection</td><td class="op">Ledger and receipt book</td><td>Outstanding balances require reconciliation before they can be reported. Defaulter identification is retrospective.</td></tr>
+        <tr><td class="k">Parent communication</td><td class="op">Informal messaging groups</td><td>No record of what was sent or to whom. Message delivery is unverifiable. Contact lists degrade over time.</td></tr>
+        <tr><td class="k">Examination records</td><td class="op">Teacher diaries transcribed to spreadsheets</td><td>Marks are entered two or three times. Transcription errors surface at report card stage.</td></tr>
+        <tr><td class="k">Staff administration</td><td class="op">Personal files and recollection</td><td>Contract expiry, leave entitlement and attendance history are not systematically monitored.</td></tr>
+        <tr><td class="k">Financial position</td><td class="op">Separate records for income, salaries and expenditure</td><td>Consolidated profitability cannot be determined without a manual exercise at period end.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot">Each of these constraints is addressed by a specific module described in the following slides.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">System overview <span>Slide 03</span></p>
+  <h2>Architecture and access model</h2>
+  <p class="lead">ASMS operates as a single platform serving multiple institutions. Each school's records are held in complete isolation from every other institution on the platform.</p>
+  <div class="flow">
+    <div class="step on"><b>Platform</b><em>Service provider</em>Institution setup, subscription administration, technical support</div>
+    <div class="step"><b>Institution</b><em>Your school</em>Complete operational independence. No visibility of, or by, any other institution</div>
+    <div class="step"><b>Users</b><em>Six roles</em>Principal, office staff, class teacher, subject teacher, parent, student</div>
+  </div>
+  <h3>Governing principles</h3>
+  <div class="grid">
+    <div><span class="n">Principle 1</span><h4>Data isolation</h4><p>Institutional records are segregated at every level. No cross-institution access exists in any circumstance.</p></div>
+    <div><span class="n">Principle 2</span><h4>Records are permanent</h4><p>No record is ever deleted. Corrections are recorded as additional entries referencing the original, preserving a complete audit trail.</p></div>
+    <div><span class="n">Principle 3</span><h4>Authority is delegated, not assumed</h4><p>All administrative permissions derive from the Principal and may be withdrawn. Every permission change is logged.</p></div>
+    <div><span class="n">Principle 4</span><h4>Academic year scoping</h4><p>All academic and financial records are bound to an academic year, permitting accurate historical reporting across sessions.</p></div>
+  </div>
+  <div class="foot">Sensitive records &mdash; identity documents, family CNIC data and financial information &mdash; are held under restricted access.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Access control <span>Slide 04</span></p>
+  <h2>User roles and permissions</h2>
+  <p>Access is determined by role. Within a role, the Principal may grant or withhold individual capabilities.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Role</th><th>Scope of access</th><th>Principal capabilities</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Principal</td><td class="op">Entire institution</td><td>Full administrative authority. Approves results, concessions, leave and staff appointments. Grants permissions to all other staff.</td></tr>
+        <tr><td class="k">Office staff</td><td class="op">Administrative functions as granted</td><td>Fee receipt and verification, expenditure recording, admission processing, document verification. Each capability granted individually.</td></tr>
+        <tr><td class="k">Class teacher</td><td class="op">Assigned class and section</td><td>Daily register, class diary, marks entry, student remarks, class-level communication, assigned collections.</td></tr>
+        <tr><td class="k">Subject teacher</td><td class="op">Assigned subjects only</td><td>Period attendance, subject diary, subject assessments and marks, subject-specific remarks.</td></tr>
+        <tr><td class="k">Parent</td><td class="op">Own children only</td><td>Attendance, diary, assessment results, fee position, receipts, institutional notices. A single account covers all children.</td></tr>
+        <tr><td class="k">Student</td><td class="op">Own record only</td><td>Personal diary, assignments, assessment results and profile.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>Restriction</b><p>No teacher may access another teacher's class, amend their own attendance record, or issue institution-wide communication unless that capability has been expressly granted by the Principal.</p></div>
+  <div class="foot">Permission grants are recorded with the granting authority and date, and may be withdrawn at any time.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 1 <span>Slide 05</span></p>
+  <h2>Student information management</h2>
+  <p>The student record is the foundation of the system. All academic and financial records are associated with the student's enrolment in a given class and academic year.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Admission</td><td>Registration of a new student</td><td class="op">Application recorded, documents collected, class and section assigned, fee concession determined, admission invoice raised, enrolment confirmed.</td></tr>
+        <tr><td class="k">Student profile</td><td>Complete personal and academic record</td><td class="op">Admission number (permanent), roll number (per academic year), photograph, class, section, guardians and contact particulars.</td></tr>
+        <tr><td class="k">Guardian association</td><td>Family linkage</td><td class="op">Guardians are recorded once and linked to each child. Siblings share one guardian record. Relationship, primary contact and fee-paying party are recorded separately.</td></tr>
+        <tr><td class="k">Document repository</td><td>Statutory and institutional documents</td><td class="op">B-Form, guardian CNIC, previous school certificate and photograph, each carrying a verification status: uploaded, verified or rejected.</td></tr>
+        <tr><td class="k">Status management</td><td>Lifecycle transitions</td><td class="op">Applicant, admitted, active, promoted, transferred, withdrawn, suspended. Each transition records the authorising officer and effective date.</td></tr>
+        <tr><td class="k">Historical record</td><td>Permanent academic history</td><td class="op">Attendance, assessment results, fee transactions and remarks are retained for every academic year, irrespective of the student's current status.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Operational benefit</b><p>Where a guardian already has a child enrolled, a second admission is linked to the existing family record. One account, one set of contact details, and institutional notices are issued once rather than once per child.</p></div>
+  <div class="foot">A student who has left the institution retains a complete record from which certificates may be issued years later.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 2 <span>Slide 06</span></p>
+  <h2>Attendance management</h2>
+  <p>Attendance is recorded by teaching staff on a mobile device and is available institution-wide immediately upon entry.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Register marking</td><td>Daily or period attendance</td><td class="op">The teacher opens their class list and marks exceptions only. Entry is completed in under one minute and functions without an internet connection, synchronising when connectivity resumes.</td></tr>
+        <tr><td class="k">Status categories</td><td>Present, absent, late, on leave</td><td class="op">Recorded separately rather than as a single present-or-absent indicator, permitting analysis of habitual lateness.</td></tr>
+        <tr><td class="k">Guardian notification</td><td>Same-day absence advice</td><td class="op">Issued automatically to the guardian on their designated channel, at a time configured by the institution.</td></tr>
+        <tr><td class="k">Percentage computation</td><td>Automatic calculation</td><td class="op">Computed against teaching days as defined in the institutional calendar, excluding declared holidays. Available per student, section, class and institution.</td></tr>
+        <tr><td class="k">Correction procedure</td><td>Controlled amendment</td><td class="op">Amendments are permitted within a defined period and are recorded against the officer making them. Staff may not amend their own attendance.</td></tr>
+        <tr><td class="k">Staff attendance</td><td>Employee register</td><td class="op">Recorded by the office, feeding directly into payroll deduction where applicable. Biometric capture may be introduced at a later stage.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot">Attendance configuration differs materially between institutions. The following three slides address this in detail.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Attendance configuration <span>Slide 07</span></p>
+  <h2>Institutional variation in attendance practice</h2>
+  <p class="lead">Practice differs between institutions and frequently between sections of the same institution. ASMS accommodates all recognised methods within a single configuration.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Institutional practice</th><th>System configuration</th><th>Responsible officer</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Single daily register</td><td class="op">The class teacher records attendance in the first period. This constitutes the attendance record for the day.</td><td>Class teacher</td></tr>
+        <tr><td class="k">Period-wise register</td><td class="op">Each subject teacher records attendance for their own period. The daily position is derived automatically from the period records.</td><td>Each subject teacher</td></tr>
+        <tr><td class="k">Combined practice</td><td class="op">Daily register for junior sections; period-wise recording for senior sections. Configured per class.</td><td>Both, by class</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Method of accommodation</b><p>Attendance is stored at period level and presented at whichever level the institution requires. An institution recording attendance once daily is never presented with period data. An institution recording each period obtains both views. <strong>The configuration may be revised subsequently without loss of historical records</strong>, which would not be possible were the system built to daily recording alone.</p></div>
+  <div class="note warn"><b>Consideration</b><p>Period-wise recording requires eight entries per teaching day rather than one. It provides materially greater value in secondary sections and is frequently disproportionate in primary sections. We recommend evaluating this per class rather than institution-wide.</p></div>
+  <div class="foot">This configuration must be determined before implementation. It is question 1 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Attendance procedure <span>Slide 08</span></p>
+  <h2>Late arrival</h2>
+  <p class="lead">Attendance is recorded at 8:00 in the first period. A student arrives at 8:40. The following procedure applies.</p>
+  <div class="flow">
+    <div class="step"><b>Stage 1</b><em>Initial marking</em>Student recorded absent in the first period, in the ordinary course</div>
+    <div class="step w"><b>Stage 2</b><em>Arrival recorded</em>Gate, office or teacher records the arrival and time</div>
+    <div class="step g"><b>Stage 3</b><em>Status revised</em>Record amended to "late" &mdash; a distinct status, not "present"</div>
+    <div class="step on"><b>Stage 4</b><em>Guardian advised</em>Absence advice suppressed; late advice issued instead if configured</div>
+  </div>
+  <h3>Recommended configuration</h3>
+  <ul class="tight">
+    <li><b>Late is recorded as a distinct status.</b> A manual register cannot distinguish habitual lateness from occasional absence; this produces a reportable record of both.</li>
+    <li><b>Arrival may be recorded by the gate or the office.</b> The teacher is not required to reopen a closed register.</li>
+    <li><b>Absence advice is issued on a delay.</b> Issuing at approximately 9:30 rather than 8:05 avoids alarming guardians of students who were merely delayed.</li>
+    <li><b>Amendments are permitted until the close of the teaching day</b> and are recorded against the officer making them.</li>
+  </ul>
+  <div class="note warn"><b>Institutional decision required</b><p>For the purpose of monthly attendance percentage, is a late arrival treated as <strong>present</strong>, as a <strong>half day</strong>, or as <strong>absent</strong> beyond a specified time? Practice differs and the determination affects every attendance report the institution produces. The same determination is required for early departure.</p></div>
+  <div class="foot">Question 2 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Attendance procedure <span>Slide 09</span></p>
+  <h2>Absence of the responsible teacher</h2>
+  <p class="lead">Where attendance is recorded per period there is no single officer responsible for the day's register. Where the class teacher is absent, the register may go unrecorded. Both circumstances are addressed.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Circumstance</th><th>Difficulty</th><th>Procedure</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Period-wise recording</td><td class="op">Eight subject teachers, eight registers. No officer is responsible for the day as a whole.</td><td>Each teacher records only their own period. The daily position is derived by the system. No single officer is required to hold responsibility for the day.</td></tr>
+        <tr><td class="k">Class teacher on leave</td><td class="op">The register is not recorded because the responsible officer is absent.</td><td>On approval of leave, the Principal designates a covering officer who is granted access to that class for the specified dates only. Access lapses automatically.</td></tr>
+        <tr><td class="k">Register not recorded</td><td class="op">A period passes with no entry made by anyone.</td><td>Unrecorded periods appear on the Principal's console the same day. The Principal may record the register directly or assign an officer to do so.</td></tr>
+        <tr><td class="k">Conflicting entries</td><td class="op">A student is recorded present in one period and absent in another.</td><td>Both entries are retained and displayed. The system does not reconcile them silently; the discrepancy is reportable.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>Related requirement</b><p>Designation of a covering officer requires the leave module to be configured. Where the institution does not operate a formal leave process, cover may instead be assigned directly by the Principal.</p></div>
+  <div class="foot">Question 3 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 3 <span>Slide 10</span></p>
+  <h2>Academic structure and teaching assignment</h2>
+  <p class="lead">Subject teachers require system access in their own right. This is provided through the same application, with visibility restricted to their assigned subjects.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Function</th><th>Class teacher</th><th>Subject teacher</th></tr></thead>
+      <tbody>
+        <tr><td>Daily register for the class</td><td class="yes">Permitted</td><td class="no">Not permitted</td></tr>
+        <tr><td>Period attendance</td><td class="yes">Permitted</td><td class="yes">Own periods</td></tr>
+        <tr><td>Daily diary entry</td><td class="yes">All subjects</td><td class="yes">Own subject</td></tr>
+        <tr><td>Assessment creation and marks entry</td><td class="yes">Own subject</td><td class="yes">Own subject</td></tr>
+        <tr><td>Student remarks</td><td class="yes">General and academic</td><td class="yes">Subject-related</td></tr>
+        <tr><td>Communication to students</td><td class="yes">Class-wide</td><td class="yes">Own subject group</td></tr>
+        <tr><td>Consolidated class attendance</td><td class="yes">Permitted</td><td class="no">Not permitted</td></tr>
+        <tr><td>Consolidated class results</td><td class="yes">Permitted</td><td class="no">Not permitted</td></tr>
+        <tr><td>Fee or fine collection</td><td class="part">Where assigned</td><td class="part">Where assigned</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Rationale for a single application</b><p>A member of staff who serves as class teacher for one section while teaching a subject to two others obtains all three assignments within a single application, with the appropriate authority in each. This avoids multiple installations, multiple credentials and duplicated training.</p></div>
+  <div class="foot">Teaching assignments are established once per academic year by the Principal or office.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 4 <span>Slide 11</span></p>
+  <h2>Daily diary and assignments</h2>
+  <p>A structured record of instruction delivered and work assigned, replacing the handwritten diary.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Topic covered</td><td>Instruction delivered that day</td><td class="op">Entered by the teacher against subject, class and section. Visible to the student and guardian on the same day.</td></tr>
+        <tr><td class="k">Assignment</td><td>Work set, with due date</td><td class="op">Recorded with a submission date. Guardians are notified through their designated channel.</td></tr>
+        <tr><td class="k">Learning outcome</td><td>Expected competency</td><td class="op">A short statement of what the student is expected to have understood, providing the guardian with a measure of progress.</td></tr>
+        <tr><td class="k">Attachments</td><td>Supporting material</td><td class="op">Worksheets or photographs may be attached. Downloaded only when opened, to limit data consumption on the guardian's connection.</td></tr>
+        <tr><td class="k">Historical record</td><td>Retained by term</td><td class="op">The complete diary for the academic year remains available and searchable.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Institutional benefit</b><p>The diary provides the institution with a defensible record of instruction delivered, which is of value in addressing guardian queries regarding syllabus coverage and homework.</p></div>
+  <div class="foot">Where period-wise teaching applies, each subject teacher maintains the diary for their own subject.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 5 <span>Slide 12</span></p>
+  <h2>Assessment and examination</h2>
+  <p>Marks recorded during the term are used to compose the terminal result. No mark is entered more than once.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Assessment creation</td><td>Daily, weekly and monthly tests</td><td class="op">The teacher records assessment name, subject, class, section, total marks and date. Created from the mobile application.</td></tr>
+        <tr><td class="k">Marks entry</td><td>Recorded at source</td><td class="op">Entered by the teacher immediately following the assessment, eliminating subsequent transcription.</td></tr>
+        <tr><td class="k">Terminal composition</td><td>Quarterly and annual results</td><td class="op">Composed from term assessments according to a weighting defined by the institution. No manual computation is performed.</td></tr>
+        <tr><td class="k">Approval</td><td>Principal authorisation</td><td class="op">Terminal results are withheld from guardians until approved. Class assessment marks are released as recorded.</td></tr>
+        <tr><td class="k">Report cards</td><td>Generated from record</td><td class="op">Produced from stored marks, incorporating grade, percentage and attendance. Issued to guardians and available for printing.</td></tr>
+        <tr><td class="k">Correction</td><td>Post-publication amendment</td><td class="op">Recorded as a revised result referencing the original. The report card is reissued and the guardian notified.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn"><b>Institutional determination required</b><p>The weighting of term assessments against the terminal examination must be specified. Whether the terminal result is an average of assessments, a weighted composition, or determined by the final examination alone differs between institutions and <strong>cannot be assumed by the system</strong>. Grade boundaries, pass mark and the treatment of a student absent from an assessment are required at the same time.</p></div>
+  <div class="foot">Questions 4 and 5 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 6 <span>Slide 13</span></p>
+  <h2>Fee management</h2>
+  <p class="lead">All charges &mdash; admission, monthly tuition, examination, excursion, fines and late payment &mdash; are administered through a single procedure.</p>
+  <div class="flow">
+    <div class="step on"><b>Stage 1</b><em>Charge created</em>Description, amount, due date and category specified</div>
+    <div class="step"><b>Stage 2</b><em>Applicability</em>Institution, class, section or named students</div>
+    <div class="step"><b>Stage 3</b><em>Raised</em>One entry per student; concessions applied automatically</div>
+    <div class="step g"><b>Stage 4</b><em>Collection</em>Office counter, teacher collection or guardian transfer</div>
+    <div class="step w"><b>Stage 5</b><em>Recovery</em>Outstanding balances pursued automatically</div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Concession administration</td><td class="op">Full, partial or complete waiver recorded at admission against the student, with approving authority and reason. Applied automatically to every subsequent charge to which it extends.</td></tr>
+        <tr><td class="k">Balance position</td><td class="op">Each student's outstanding balance is current at all times. No reconciliation is required to produce it.</td></tr>
+        <tr><td class="k">Defaulter reporting</td><td class="op">Available at any moment by class, section, amount or period of default.</td></tr>
+        <tr><td class="k">Receipting</td><td class="op">Every payment produces a sequentially numbered receipt issued to the guardian and retained permanently.</td></tr>
+        <tr><td class="k">Recovery correspondence</td><td class="op">Issued automatically in advance of and following the due date, through the guardian's designated channel.</td></tr>
+        <tr><td class="k">Correction</td><td class="op">Erroneous entries are reversed by a further entry referencing the original, with reason and authorising officer. No entry is deleted or amended.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot">Fee structure is established per class and per academic year.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Fee procedure <span>Slide 14</span></p>
+  <h2>Payment by bank transfer or mobile wallet</h2>
+  <p class="lead">Guardians increasingly remit by bank transfer, Easypaisa or JazzCash. The following procedure records such payments to an auditable standard.</p>
+  <div class="flow">
+    <div class="step"><b>Stage 1</b><em>Remittance</em>Guardian transfers to the institution's account</div>
+    <div class="step"><b>Stage 2</b><em>Evidence</em>Confirmation submitted to the institution's WhatsApp number</div>
+    <div class="step w"><b>Stage 3</b><em>Pending</em>Recorded but not credited to the account</div>
+    <div class="step"><b>Stage 4</b><em>Verification</em>Office reconciles against the bank statement</div>
+    <div class="step g"><b>Stage 5</b><em>Credited</em>Balance updated, receipt issued</div>
+  </div>
+  <div class="note warn"><b>Rationale for the pending stage</b><p>A payment confirmation is a <strong>representation, not a receipt of funds</strong>. It may be a prior transaction, an incorrect amount, or a remittance to a different account. Until reconciled against the institution's statement, crediting the account would render the institution's records inaccurate. The procedure protects the institution, and equally protects the guardian, since rejected confirmations are recorded with a reason rather than disregarded.</p></div>
+  <div class="note good"><b>Recommendation</b><p>We recommend that each fee demand carry a <strong>unique reference number</strong> for the guardian to include in the transfer narration. Reconciliation then requires seconds rather than investigation &mdash; a material consideration given that the remitting account name seldom corresponds to the student's name.</p></div>
+  <div class="foot">Direct in-application payment may be introduced subsequently. It carries a transaction charge and requires a merchant facility.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Fee procedure <span>Slide 15</span></p>
+  <h2>Collection in class where payment methods differ</h2>
+  <p class="lead">A teacher is collecting Rs 2,000 from forty students for an excursion. One guardian intends to remit online instead. The following procedure applies to each student individually.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Teacher records</th><th>System action</th><th>Teacher accountable</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Collected in cash</td><td class="op">Recorded against the student. Funds are held by the teacher pending remittance to the office.</td><td class="part">Yes, until handed over</td></tr>
+        <tr><td class="k">To be remitted online</td><td class="op">Student remains outstanding. Guardian is issued the account particulars and reference number.</td><td class="no">No</td></tr>
+        <tr><td class="k">Not paid</td><td class="op">Remains outstanding. Recovery correspondence issued in the ordinary course.</td><td class="no">No</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Principle</b><p>The teacher's accountability extends <strong>only to funds physically received</strong>. Upon the guardian remitting online and the office verifying the transfer, that student is removed from the teacher's outstanding list automatically. At no point is a teacher required to account for funds that did not pass through their hands.</p></div>
+  <h3>Remittance to the office</h3>
+  <p>The office counts the funds received and confirms the amount against the teacher's recorded collections. Where a shortfall arises, <strong>students remain credited with the amounts they paid.</strong> The difference is recorded as a matter between the institution and the member of staff, and is reported to the Principal. A student's fee record is not adjusted to reconcile an administrative discrepancy.</p>
+  <div class="foot">Collection, remittance and confirmation are each recorded with the officer and time.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 7 <span>Slide 16</span></p>
+  <h2>Financial administration</h2>
+  <p>Income, expenditure and payroll are maintained within a single set of records, permitting a consolidated financial position without a period-end reconciliation exercise.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Component</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Fee income</td><td>All collections</td><td class="op">Recorded on receipt, categorised by charge type, class and period.</td></tr>
+        <tr><td class="k">Payroll</td><td>Staff remuneration</td><td class="op">Salary structure per employee with basic, allowances, deductions, advances and leave adjustment. Each month's payroll is retained; prior months are never overwritten.</td></tr>
+        <tr><td class="k">Operating expenditure</td><td>Recurring and incidental</td><td class="op">Rent, utilities, maintenance, stationery, transport and purchases. Each entry records category, amount, payee, supporting document and approving officer.</td></tr>
+        <tr><td class="k">Recurring items</td><td>Predictable expenditure</td><td class="op">Rent and salaries are generated monthly for confirmation rather than re-entered.</td></tr>
+        <tr><td class="k">Cash position</td><td>Location of funds</td><td class="op">Distinguishes funds held at the office, funds banked, and funds held by staff pending remittance.</td></tr>
+        <tr><td class="k">Financial statement</td><td>Income against expenditure</td><td class="op">Produced per month, term or academic year from the same records, ensuring reports reconcile to underlying transactions.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>Institutional determination required</b><p>Whether income is recognised when a fee <strong>becomes due</strong> or when it is <strong>received</strong> materially affects the reported position for any period. Both bases are supported. Institutions generally prefer recognition on receipt; the determination rests with the institution.</p></div>
+  <div class="foot">Institutional financial records are visible only to the institution. They are not accessible to the service provider or to any other institution.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 8 <span>Slide 17</span></p>
+  <h2>Staff administration</h2>
+  <p>All categories of employee are administered within one register &mdash; teaching staff, administrative staff, and support staff including drivers, security and cleaning personnel.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Appointment</td><td>Employee record</td><td class="op">Personal particulars, designation, category, qualifications, contact details and documents.</td></tr>
+        <tr><td class="k">Contract administration</td><td>Terms and duration</td><td class="op">Commencement and expiry dates recorded. Renewal creates a further contract; the previous term is retained. Expiry is notified thirty days in advance.</td></tr>
+        <tr><td class="k">Attendance</td><td>Employee register</td><td class="op">Recorded daily. Employees may view but not amend their own record. Feeds payroll deduction where applicable.</td></tr>
+        <tr><td class="k">Leave administration</td><td>Application and approval</td><td class="op">Employee applies specifying category and dates; the approving officer records the decision. Approved leave is reflected in the attendance record and, where unpaid, in payroll.</td></tr>
+        <tr><td class="k">Teaching assignment</td><td>Class and subject allocation</td><td class="op">Determines which classes and subjects the employee may access. Established per academic year.</td></tr>
+        <tr><td class="k">Separation</td><td>Resignation or termination</td><td class="op">Records the effective date and authorising officer. System access is withdrawn; the complete employment record is retained.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn"><b>Institutional determination required</b><p>Leave categories, annual entitlement, the approving authority, and whether unpaid leave attracts a salary deduction must be specified. The consequence of contract expiry &mdash; whether it withdraws system access and suspends payroll, or issues a warning only &mdash; is required at the same time.</p></div>
+  <div class="foot">Questions 12 and 13 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 9 <span>Slide 18</span></p>
+  <h2>Institutional communication</h2>
+  <p>All correspondence to guardians, students and staff is issued from a single facility with a permanent record of what was sent and to whom.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Notices</td><td>Institutional announcements</td><td class="op">Composed once and addressed to the institution, a class, a section or named individuals. Composed in English or Urdu at the author's discretion.</td></tr>
+        <tr><td class="k">Automatic advices</td><td>Event-driven correspondence</td><td class="op">Absence advice, fee reminders, receipt confirmations and result notifications are issued without administrative intervention.</td></tr>
+        <tr><td class="k">Parent-teacher meetings</td><td>Scheduling and invitation</td><td class="op">Scheduled with date, venue and participating sections. Invitations issued to the relevant guardians; attendance recorded.</td></tr>
+        <tr><td class="k">Institutional calendar</td><td>Holidays and events</td><td class="op">Declared holidays are recorded, published to all users and excluded from attendance computation.</td></tr>
+        <tr><td class="k">Rules and regulations</td><td>Institutional policy</td><td class="op">Maintained by the Principal and displayed within every user's application.</td></tr>
+        <tr><td class="k">Delivery record</td><td>Audit of correspondence</td><td class="op">Every message records the recipient, channel and delivery status, providing evidence that notice was given.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>Sender authority</b><p>Institution-wide correspondence is restricted to the Principal and to officers expressly authorised. Teaching staff may address their own classes only.</p></div>
+  <div class="foot">Delivery arrangements are addressed at the following slide.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Communication strategy <span>Slide 19</span></p>
+  <h2>Ensuring correspondence reaches every guardian</h2>
+  <p class="lead">This consideration determines whether an institutional communication system succeeds. An application-only system reaches solely those guardians holding a smartphone with an active data facility. A substantial proportion do not.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Guardian circumstance</th><th>Constraint</th><th>Channel employed</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Smartphone with data</td><td class="op">None</td><td>Application notification, supported by WhatsApp</td></tr>
+        <tr><td class="k">Social media package only</td><td class="op">Data package permits WhatsApp and social platforms but <strong>cannot access any application</strong></td><td>WhatsApp</td></tr>
+        <tr><td class="k">Feature telephone</td><td class="op">No application, no WhatsApp</td><td>SMS, with particulars set out in the message body</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note good"><b>Method of operation</b><p>The institution composes one message. The system determines the appropriate channel for each guardian according to their recorded circumstances. <strong>The application supplements the primary channels; it is never the sole means by which an institution reaches a guardian.</strong> Urgent notices &mdash; closure, emergency &mdash; are issued by WhatsApp and SMS without exception.</p></div>
+  <div class="note"><b>Limitation, stated plainly</b><p>The institution may always establish whether a message was <strong>delivered</strong>. Whether it was <strong>read</strong> is ascertainable within the application, and on WhatsApp where the recipient permits read confirmation. SMS provides no read confirmation whatsoever. No system can provide this; we state it rather than imply otherwise.</p></div>
+  <div class="foot">Guardians may submit fee confirmations through the same channel, requiring no application.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Module 10 <span>Slide 20</span></p>
+  <h2>Events and document administration</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>Function</th><th>Method of operation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Event creation</td><td>Excursions, functions, sports, meetings</td><td class="op">The Principal records the event with date, venue, participating sections and any associated charge.</td></tr>
+        <tr><td class="k">Staff assignment</td><td>Allocation of responsibility</td><td class="op">Named responsibilities are assigned to individual staff &mdash; registration, supervision, collection, transport. Each officer sees only their own assignment.</td></tr>
+        <tr><td class="k">Participation</td><td>Attendance at the event</td><td class="op">Recorded per student, permitting a participation report on conclusion.</td></tr>
+        <tr><td class="k">Event report</td><td>Conclusion record</td><td class="op">Participants, collections received and expenditure incurred, produced on completion.</td></tr>
+        <tr><td class="k">Document repository</td><td>Student and staff documents</td><td class="op">Held under restricted access. Not publicly accessible and not retrievable without authorisation.</td></tr>
+        <tr><td class="k">Verification</td><td>Documentary compliance</td><td class="op">Each required document carries a status. Incomplete admissions are reportable, permitting follow-up before the position is overlooked.</td></tr>
+        <tr><td class="k">Certification</td><td>Leaving, character, academic</td><td class="op">Issued from the stored record with a sequential certificate number, issue date, academic year and authorising officer. Reissues are recorded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><b>Institutional determination required</b><p>Whether outstanding dues preclude the issue of a school leaving certificate, and which officers are authorised to issue certificates, must be specified.</p></div>
+  <div class="foot">Question 11 at slide 24.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Governance <span>Slide 21</span></p>
+  <h2>Data security and institutional ownership</h2>
+  <div class="grid">
+    <div><span class="n">Ownership</span><h4>Records belong to the institution</h4><p>Institutional data remains the property of the school throughout and following the subscription period, and may be exported.</p></div>
+    <div><span class="n">Isolation</span><h4>No cross-institution access</h4><p>Records are segregated at every level. No institution can access, or become aware of, another institution's data.</p></div>
+    <div><span class="n">Sensitive data</span><h4>Restricted categories</h4><p>Identity documents, guardian CNIC records, student photographs and financial records are held under restricted access.</p></div>
+    <div><span class="n">Audit</span><h4>Attributable actions</h4><p>Every entry, amendment and approval records the officer and the time. Corrections supplement rather than replace.</p></div>
+    <div><span class="n">Continuity</span><h4>Backup and recovery</h4><p>Records are backed up daily to separate infrastructure, with restoration tested rather than assumed.</p></div>
+    <div><span class="n">Support access</span><h4>Governed and logged</h4><p>Where technical support requires access to institutional data, such access is governed by agreement and recorded.</p></div>
+  </div>
+  <div class="note good"><b>On termination</b><p>Should the institution discontinue the subscription, records are retained for an agreed period during which they may be exported in full. Records are not withheld as a condition of continued subscription.</p></div>
+  <div class="foot">Terms governing support access and retention are set out in the service agreement.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Implementation <span>Slide 22</span></p>
+  <h2>Risks and mitigation</h2>
+  <p>The following are the principal risks to a successful implementation. They are presented so that they may be planned for rather than encountered.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Risk</th><th>Nature</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Data migration</td><td class="op">Existing students, staff, guardians, fee structures and outstanding balances must be transferred. For five hundred students this represents substantial effort.</td><td>Undertaken by the service provider from records supplied in any format, including registers and photographed pages. A nominated officer from the institution is required for verification.</td></tr>
+        <tr><td class="k">Staff adoption</td><td class="op">If teaching staff do not record attendance daily, no dependent function operates correctly.</td><td>Recording is designed to take under one minute. Sustained adoption requires the Principal to enforce it during the first month.</td></tr>
+        <tr><td class="k">Connectivity</td><td class="op">Institutional internet provision may be intermittent.</td><td>Attendance recording, diary entry and expenditure capture operate without connectivity and synchronise subsequently. Financial verification requires connectivity by design.</td></tr>
+        <tr><td class="k">Communication cost</td><td class="op">SMS attracts a charge per message. Urdu messages cost approximately 2.3 times the equivalent in English.</td><td>Routine correspondence is issued by WhatsApp at negligible cost. SMS is reserved for urgent notices and for guardians without WhatsApp. A monthly allowance is agreed in advance.</td></tr>
+        <tr><td class="k">Cash accountability</td><td class="op">The system records precisely what each officer collected and remitted. This constitutes a change in practice.</td><td>Presented to staff as protection rather than surveillance: the record establishes what was handed over, and protects the officer equally.</td></tr>
+        <tr><td class="k">Policy determination</td><td class="op">Concessions, late fees, attendance treatment and result weighting cannot be inferred by the system.</td><td>Eighteen determinations are set out at slide 24. Six are required before configuration commences.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot">We prefer to identify these at the outset rather than in the third month of operation.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Implementation <span>Slide 23</span></p>
+  <h2>Requirements and phased delivery</h2>
+  <h3>Required from the institution</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Item</th><th>Particulars</th><th>Required by</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Student register</td><td class="op">Name, class, section, guardian, contact number, current fee, concession</td><td>Configuration</td></tr>
+        <tr><td class="k">Staff register</td><td class="op">Name, designation, subjects, classes, contact number, remuneration</td><td>Configuration</td></tr>
+        <tr><td class="k">Academic structure</td><td class="op">Classes, sections and subjects</td><td>Configuration</td></tr>
+        <tr><td class="k">Fee structure</td><td class="op">Admission and monthly fee by class, and all other charges</td><td>Configuration</td></tr>
+        <tr><td class="k">Outstanding balances</td><td class="op">Current position per student</td><td>Commencement</td></tr>
+        <tr><td class="k">Academic calendar</td><td class="op">Term dates, declared holidays, working days</td><td>Commencement</td></tr>
+        <tr><td class="k">Institutional WhatsApp number</td><td class="op">For correspondence and receipt of fee confirmations</td><td>Commencement</td></tr>
+        <tr><td class="k">Nominated officer</td><td class="op">A member of staff responsible for the implementation</td><td>Throughout</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Phased delivery</h3>
+  <div class="flow">
+    <div class="step on"><b>Phase 1</b><em>Foundation</em>Students, staff, classes, credentials and permissions</div>
+    <div class="step"><b>Phase 2</b><em>Daily operations</em>Attendance, diary, notices, WhatsApp and SMS</div>
+    <div class="step g"><b>Phase 3</b><em>Financial</em>Fees, collection, receipts, expenditure, payroll</div>
+    <div class="step"><b>Phase 4</b><em>Academic</em>Assessments, results, report cards, certificates</div>
+    <div class="step w"><b>Phase 5</b><em>Extended</em>Biometric attendance, advanced reporting, transport</div>
+  </div>
+  <div class="note"><b>Recommendation on timing</b><p>Commencement is best aligned to the start of an academic year or term. Mid-term commencement requires the entry of part-year history for reporting to be meaningful.</p></div>
+  <div class="foot">Training is provided at each phase to the staff concerned. Most institutions commence within two weeks of supplying the above.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Information required <span>Slide 24</span></p>
+  <h2>Determinations required from the institution</h2>
+  <p>The system is configured to institutional policy. The following determinations are required; the first six are necessary before configuration commences.</p>
+  <ol class="qs">
+    <li><b>Attendance method</b>Recorded once daily or per period? Uniform across the institution, or differing between junior and senior sections?</li>
+    <li><b>Late arrival</b>Treated as present, half day, or absent beyond a specified time?</li>
+    <li><b>Cover arrangement</b>Where the class teacher is on leave, which officer records the register?</li>
+    <li><b>Result composition</b>How are term assessments weighted against the terminal examination?</li>
+    <li><b>Concession scope</b>Does a concession student remain liable for examination fees, excursion charges and fines?</li>
+    <li><b>Mid-month admission</b>A student admitted on the eighteenth &mdash; full month, proportionate, or commencing the following month?</li>
+    <li><b>Late payment charge</b>Applied automatically after the due date, or at discretion? Amount, and which officer may waive it?</li>
+    <li><b>Part payment</b>Where a charge is Rs 2,000 and Rs 1,000 is tendered, is part payment accepted and recorded?</li>
+    <li><b>Sibling concession</b>Is a concession granted for a second or subsequent child?</li>
+    <li><b>Promotion</b>Is promotion automatic at year end or determined by result? What is the position where fees remain outstanding?</li>
+    <li><b>Leaving certificate</b>Do outstanding dues preclude issue?</li>
+    <li><b>Leave policy</b>Categories, annual entitlement, approving authority, and treatment of unpaid leave in payroll.</li>
+    <li><b>Contract expiry</b>Does expiry withdraw system access and suspend payroll, or issue a warning only?</li>
+    <li><b>Language</b>English, Urdu or both, and the preference of the majority of guardians.</li>
+    <li><b>Guardian connectivity</b>Approximate proportion holding a smartphone with an active data facility.</li>
+    <li><b>Institutional structure</b>A single institution, or multiple campuses under common management?</li>
+    <li><b>Banking</b>Is an institutional account available for guardian remittances?</li>
+    <li><b>Remarks</b>Are teacher remarks issued to guardians directly, or visible on enquiry only?</li>
+  </ol>
+  <div class="foot">Determinations 1 to 6 affect the underlying configuration and cannot be revised without rework.</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Summary <span>Slide 25</span></p>
+  <h2>Distinguishing characteristics</h2>
+  <div class="grid">
+    <div><span class="n">Design</span><h4>Developed for this market</h4><p>B-Form, CNIC, Urdu, rupee accounting, feature telephones, WhatsApp and in-class cash collection are addressed as primary requirements, not as adaptations.</p></div>
+    <div><span class="n">Reach</span><h4>Not application-dependent</h4><p>WhatsApp and SMS reach every guardian. Systems that assume smartphone access exclude a substantial proportion of the parent body.</p></div>
+    <div><span class="n">Configuration</span><h4>Adapted to the institution</h4><p>Attendance method, fee structure, result weighting and concession policy are configured to institutional practice rather than imposed.</p></div>
+    <div><span class="n">Financial integrity</span><h4>Verification before credit</h4><p>No payment is credited until verified by the institution. Funds held by staff remain visible until remitted.</p></div>
+    <div><span class="n">Record integrity</span><h4>Nothing is deleted</h4><p>Corrections supplement the record. The institution can establish what occurred and when, at any subsequent date.</p></div>
+    <div><span class="n">Commercial</span><h4>Monthly subscription</h4><p>No capital expenditure and no contractual lock-in. Institutional data remains exportable throughout.</p></div>
+  </div>
+  <div class="note good"><b>Next steps</b><p>Determinations 1 to 6 at slide 24 may be settled in a single meeting. On receipt of these, together with the student and staff registers in whatever form the institution holds them, configuration may commence and the institution can expect to be operational within a small number of weeks.</p></div>
+  <div class="foot">We would be glad to address any questions.</div>
+</section>
+
+<p class="printhint">To produce a PDF: press Ctrl&nbsp;+&nbsp;P (Cmd&nbsp;+&nbsp;P on Mac) and select &ldquo;Save as PDF&rdquo;. Landscape orientation is preset; enable &ldquo;Background graphics&rdquo; for the cover slide.</p>
+
+</div>

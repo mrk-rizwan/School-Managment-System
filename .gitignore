@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------- secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*-service-account.json
+credentials.json
+
+# ------------------------------------------------------------ dependencies
+node_modules/
+vendor/
+__pycache__/
+.venv/
+venv/
+
+# -------------------------------------------------------------- build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+*.tsbuildinfo
+
+# --------------------------------------------------------- tests & coverage
+coverage/
+.nyc_output/
+.pytest_cache/
+test-results/
+playwright-report/
+
+# ------------------------------------------------------- local data & logs
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.bak
+
+# ------------------------------- student & family personal data — never commit
+uploads/
+public/uploads/
+storage/app/
+student-documents/
+documents/students/
+
+# ------------------------------------------------------------ generated docs
+*.generated.*
+generated-reports/
+screenshots/
+
+# ------------------------------------------------------------------ editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ----------------------------------------------------------------------- OS
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "compliance-audit",
+  "owner": "nickcrew",
+  "repo": "claude-cortex",
+  "path": "skills/compliance-audit",
+  "branch": "main",
+  "sha": "7d935a7e5a8075bb9f11d93b01f7e034c3f09423",
+  "source": "manual"
+}

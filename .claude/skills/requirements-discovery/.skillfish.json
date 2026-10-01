@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "requirements-discovery",
+  "owner": "nickcrew",
+  "repo": "claude-cortex",
+  "path": "skills/requirements-discovery",
+  "branch": "main",
+  "sha": "eb97ced5eef2d02aa205e855db6200bc396530ec",
+  "source": "manual"
+}

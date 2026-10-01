@@ -1,0 +1,427 @@
+<title>ASMS Architecture Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#FBFCFC;
+  --surface:#FFFFFF;
+  --surface-2:#F2F6F6;
+  --ink:#101F2A;
+  --ink-2:#43565F;
+  --ink-3:#66797F;
+  --rule:#D3DCDC;
+  --rule-2:#E4EAEA;
+  --accent:#0F5C63;
+  --good:#2E7D5B;
+  --warn:#9A6B14;
+  --crit:#A33A2A;
+  --shadow:0 1px 2px rgba(18,34,46,.06), 0 8px 24px -12px rgba(18,34,46,.18);
+  --measure:70ch;
+}
+
+/* Single light theme on purpose: this is a review document read at length and
+   handed to a client. Every colour is painted explicitly. */
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+  font-size:1.125rem;line-height:1.62;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.5rem)}
+
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8125rem;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  font-weight:500;margin:0 0 1.1rem;
+}
+.mast{border-bottom:1px solid var(--rule);padding:clamp(3rem,8vw,5rem) 0 clamp(2rem,5vw,2.8rem)}
+h1{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:clamp(2.4rem,6vw,3.25rem);line-height:1.02;letter-spacing:-.028em;
+  text-wrap:balance;margin:0 0 1.1rem;
+}
+.standfirst{font-size:1.375rem;color:var(--ink-2);max-width:62ch;margin:0 0 2.2rem;line-height:1.5}
+
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:0}
+.tally div{background:var(--surface);padding:1.05rem 1.15rem}
+.tally dt{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.6875rem;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  margin:0 0 .4rem;font-weight:500;
+}
+.tally dd{
+  margin:0;font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-weight:700;font-size:1.75rem;line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
+}
+.tally dd small{display:block;font-size:.8125rem;font-weight:500;color:var(--ink-3);margin-top:.4rem;letter-spacing:0;font-family:"IBM Plex Mono",monospace}
+.tally .c-crit dd{color:var(--crit)}
+.tally .c-warn dd{color:var(--warn)}
+.tally .c-good dd{color:var(--good)}
+
+main{padding-bottom:5rem}
+section{padding:clamp(2.4rem,5vw,3.4rem) 0;border-bottom:1px solid var(--rule-2)}
+section:last-of-type{border-bottom:0}
+h2{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:1.8125rem;letter-spacing:-.022em;line-height:1.14;
+  margin:.3rem 0 .8rem;text-wrap:balance;
+}
+p{max-width:var(--measure);margin:0 0 1.05rem}
+.lede{font-size:1.1875rem;color:var(--ink-2)}
+strong{font-weight:600}
+em{font-style:italic}
+code{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.84em;
+  background:var(--surface-2);padding:.1em .38em;border-radius:3px;border:1px solid var(--rule-2);
+}
+
+/* findings */
+.finds{list-style:none;margin:1.8rem 0 0;padding:0;display:flex;flex-direction:column;gap:1rem}
+.find{
+  border:1px solid var(--rule);border-left:4px solid var(--ink-3);
+  background:var(--surface);box-shadow:var(--shadow);
+}
+.find.sev-crit{border-left-color:var(--crit)}
+.find.sev-warn{border-left-color:var(--warn)}
+.find.sev-note{border-left-color:var(--accent)}
+.find > header{
+  display:flex;gap:.75rem;align-items:baseline;flex-wrap:wrap;
+  padding:.85rem 1.1rem .1rem;
+}
+.fid{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.75rem;
+  color:var(--ink-3);font-variant-numeric:tabular-nums;letter-spacing:.06em;
+}
+.find h3{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;
+  font-size:1.1875rem;letter-spacing:-.014em;margin:0;flex:1 1 16rem;line-height:1.25;
+}
+.find .body{padding:.35rem 1.1rem 1.1rem}
+.find p{margin:0 0 .7rem}
+.find p:last-child{margin-bottom:0}
+.ref{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.75rem;
+  color:var(--ink-3);letter-spacing:.04em;
+}
+.fix{
+  border-top:1px solid var(--rule-2);background:var(--surface-2);
+  padding:.75rem 1.1rem;margin:.9rem -1.1rem -1.1rem;
+}
+.fix p{max-width:none}
+.fix b{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--good);
+  display:block;margin-bottom:.3rem;font-weight:600;
+}
+
+.pill{
+  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;font-weight:500;
+  padding:.2rem .5rem;border:1px solid currentColor;border-radius:2px;white-space:nowrap;
+}
+.pill.c{color:var(--crit)}
+.pill.w{color:var(--warn)}
+.pill.a{color:var(--accent)}
+.pill.g{color:var(--good)}
+
+.wins{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);margin:1.6rem 0 0;
+}
+.wins div{background:var(--surface);padding:.9rem 1.05rem}
+.wins h4{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-size:1rem;
+  font-weight:600;margin:0 0 .3rem;letter-spacing:-.01em;
+}
+.wins p{margin:0;font-size:.9375rem;color:var(--ink-2);max-width:none}
+
+.tw{overflow-x:auto;margin:1.6rem 0;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:1rem}
+th,td{text-align:left;padding:.6rem .85rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.68rem;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;background:var(--surface-2);border-bottom:1px solid var(--rule);
+}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;white-space:nowrap}
+
+ol.steps{max-width:var(--measure);padding-left:0;list-style:none;counter-reset:s;margin:1.5rem 0 0}
+ol.steps li{counter-increment:s;position:relative;padding-left:2.6rem;margin-bottom:1.1rem}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:0;top:.1rem;
+  width:1.75rem;height:1.75rem;border-radius:50%;background:var(--accent);color:#fff;
+  font-family:"IBM Plex Mono",monospace;font-size:.8rem;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+}
+ol.steps b{font-family:Archivo,sans-serif;font-weight:600}
+
+footer{
+  border-top:1px solid var(--rule);padding:2rem 0 3.5rem;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.72rem;color:var(--ink-3);letter-spacing:.05em;line-height:1.8;
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="wrap">
+<header class="mast">
+  <p class="eyebrow">Review of ASMS Updated Functional Architecture &middot; 35 sections</p>
+  <h1>ASMS Architecture Review</h1>
+  <p class="standfirst">The document is strong on breadth and unusually good on history preservation. What it needs now is fewer entities, not more features &mdash; four modelling decisions will otherwise cost you months.</p>
+  <dl class="tally">
+    <div class="c-crit"><dt>Modelling bugs</dt><dd>5<small>fix before schema</small></dd></div>
+    <div class="c-warn"><dt>Still undecided</dt><dd>4<small>blocks build</small></dd></div>
+    <div><dt>Missing</dt><dd>6<small>gaps in scope</small></dd></div>
+    <div class="c-good"><dt>Resolved by you</dt><dd>7<small>previously open</small></dd></div>
+  </dl>
+</header>
+
+<main>
+
+<section>
+  <p class="eyebrow">First, what you got right</p>
+  <h2>Seven things this document settles</h2>
+  <p class="lede">These were open questions before. You have closed them, and several are decisions most teams get wrong.</p>
+  <div class="wins">
+    <div><h4>Student lifecycle states</h4><p>Applicant → Admitted → Active → Promoted, plus Transferred / Withdrawn / Suspended. Explicit states beat a boolean <code>is_active</code> every time.</p></div>
+    <div><h4>Never hard-delete</h4><p>&sect;2 and &sect;35 both insist historical records survive departure. This is the single most valuable rule in the document.</p></div>
+    <div><h4>Tenant + year on everything</h4><p>&sect;34's closing line &mdash; every record ties to School ID and Academic Year &mdash; is exactly the isolation rule the system needs.</p></div>
+    <div><h4>Parent as its own profile</h4><p>&sect;31 correctly refuses to duplicate parent data per child. Most first drafts get this wrong.</p></div>
+    <div><h4>Payment verification states</h4><p>&sect;13 has Pending → Verified / Rejected with the screenshot kept as evidence. Correct, and matches how the money actually moves.</p></div>
+    <div><h4>Staff is broader than teachers</h4><p>&sect;1 lists guards, drivers, cleaners, accountants. Systems that assume staff = teachers break the moment payroll runs.</p></div>
+    <div><h4>Document verification states</h4><p>&sect;30 gives documents a real status rather than a file-exists check, so incomplete admissions are findable.</p></div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Part 1</p>
+  <h2>Modelling problems &mdash; fix these before any schema</h2>
+  <p class="lede">Each of these creates duplicate or contradictory records. They are cheap to fix now and expensive later, because data written under a wrong model has to be migrated, not just recoded.</p>
+
+  <ol class="finds">
+
+    <li class="find sev-crit">
+      <header><span class="fid">M1</span><h3>Teacher and Staff are modelled as two different things</h3><span class="pill c">Critical</span></header>
+      <div class="body">
+        <p class="ref">&sect;1 lists Teachers inside Staff. &sect;32 lists Staff and Teacher as separate core users. &sect;33 lists &ldquo;Teacher attendance&rdquo; and &ldquo;Staff attendance&rdquo; as separate features.</p>
+        <p>A teacher is a staff member who also teaches. If Teacher and Staff are separate entities, every teacher needs a row in both &mdash; and then their contract, salary, and attendance live in one place while their classes, diary, and tests live in another. Two sources of truth for the same human being.</p>
+        <p>You will hit this the first time a teacher is promoted to coordinator, or a coordinator picks up two classes.</p>
+        <div class="fix"><b>Fix</b><p>One <code>STAFF</code> record per person, carrying contract, salary and attendance. Teaching is an <em>assignment</em> on top: <code>STAFF_TEACHING_ASSIGNMENT</code> linking staff → class → section → subject → academic year. &ldquo;Teacher&rdquo; becomes a role someone holds, not a separate table.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-crit">
+      <header><span class="fid">M2</span><h3>Four fee types modelled as four modules</h3><span class="pill c">Critical</span></header>
+      <div class="body">
+        <p class="ref">&sect;9 Admission Fee, &sect;10 Monthly Fee, &sect;11 Event Fee, &sect;12 Test Fee &mdash; each a separate section with its own fields. &sect;33 then adds &ldquo;Other fees&rdquo;.</p>
+        <p>Structurally these are identical: a charge of some type, against some student, due on some date, with a payment status. Building them separately means four fee tables, four payment screens, four reports &mdash; and four places to fix every bug. The &ldquo;Other fees&rdquo; entry in your own module list proves the point: you already know a fifth type is coming.</p>
+        <div class="fix"><b>Fix</b><p>One <code>FEE_HEAD</code> table defining types (admission, monthly, exam, event, transport, fine, other) with their behaviour flags &mdash; recurring or one-off, concession-eligible or not. Then one <code>FEE_INVOICE</code> with <code>FEE_LINE</code> rows referencing a head. Adding a fee type becomes a row, not a release.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-crit">
+      <header><span class="fid">M3</span><h3>A student has one &ldquo;Parent ID&rdquo;</h3><span class="pill c">Critical</span></header>
+      <div class="body">
+        <p class="ref">&sect;29 lists <code>Parent ID</code> as a single field on the student profile, while &sect;31 correctly models the parent as its own profile with children.</p>
+        <p>The two sections contradict each other, and the single-field version cannot express what schools actually have: a father and a mother who both need logins, a guardian who is an uncle, a divorced parent who must not see the other's contact details, or a fee payer who is not the emergency contact.</p>
+        <div class="fix"><b>Fix</b><p>A <code>STUDENT_GUARDIAN</code> join table carrying <code>relationship</code> (father, mother, guardian), <code>is_primary_contact</code>, <code>is_fee_payer</code>, and <code>can_login</code>. A student can then have one guardian or four, and siblings share guardian records &mdash; which is also what makes sibling discounts possible later.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-crit">
+      <header><span class="fid">M4</span><h3>&ldquo;Principal / Administrator&rdquo; is one role doing two jobs</h3><span class="pill c">Critical</span></header>
+      <div class="body">
+        <p class="ref">&sect;1 treats them as a single unit &ldquo;according to assigned permissions&rdquo;, but that permission model is never defined. Meanwhile &sect;13 has &ldquo;the accountant/admin&rdquo; recording payments and &sect;30 has &ldquo;the administrator&rdquo; verifying documents.</p>
+        <p>So an accountant is performing administrator actions, but the accountant is listed as Staff. Either accountants are administrators (and then the principal's authority is diluted), or they are staff with granted permissions (and the permission model must exist). Right now the document assumes the second but only describes the first.</p>
+        <div class="fix"><b>Fix</b><p>Make <strong>Principal</strong> the single school-level authority, and define a real permission grant: <code>STAFF_PERMISSION</code> rows granting named capabilities (<code>verify_payment</code>, <code>record_expense</code>, <code>enter_marks</code>, <code>manage_event</code>). The accountant is staff holding <code>verify_payment</code>. This is also what &sect;23 already assumes when it says a teacher collects event fees &ldquo;according to the permissions given to them&rdquo;.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-crit">
+      <header><span class="fid">M5</span><h3>The subscription business is one sentence</h3><span class="pill c">Critical</span></header>
+      <div class="body">
+        <p class="ref">&sect;32: &ldquo;Platform &mdash; Manages schools, subscriptions, support and system-level operations.&rdquo; That is the entire treatment.</p>
+        <p>This is the part you actually get paid for, and it is the least specified thing in a 35-section document. There is no plan model, no billing cycle, no trial, no grace period, and &mdash; most importantly &mdash; no statement of what a school can still do when it has not paid you.</p>
+        <p>It also means the document never separates <em>your</em> revenue from the <em>school's</em> fee income. Those are two unrelated ledgers and must never share a table.</p>
+        <div class="fix"><b>Fix</b><p>Add a Platform section covering: plan definitions and pricing, billing cycle and invoice generation, subscription states (Trial → Active → Past Due → Suspended → Terminated), what suspension actually restricts, and the data retention window after termination. Keep platform billing in its own tables, never joined to school fees.</p></div>
+      </div>
+    </li>
+
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Part 2</p>
+  <h2>Still undecided &mdash; these block the build</h2>
+  <p class="lede">Not errors, but unanswered questions. Each one has to be settled before the tables that depend on it can be written.</p>
+
+  <ol class="finds">
+
+    <li class="find sev-warn">
+      <header><span class="fid">U1</span><h3>How do daily tests become a quarterly result?</h3><span class="pill w">Blocking</span></header>
+      <div class="body">
+        <p class="ref">&sect;15 lists daily, weekly, monthly, quarterly and annual results. &sect;26 has teachers entering test marks. &sect;17 has quarterly results. Nothing connects them.</p>
+        <p>&ldquo;The school can configure its own examination structure&rdquo; (&sect;15) is a settings screen, not an aggregation rule. Someone still has to decide whether the quarterly mark is a weighted average of the monthlies, a best-of-N, an exam score with tests as a participation component, or entirely teacher-entered. Until that is decided, no result can be computed.</p>
+        <div class="fix"><b>Fix</b><p>Define an <code>ASSESSMENT_WEIGHT</code> per exam period per class: which assessment types count, at what percentage, and whether the lowest score is dropped. Then a quarterly result is derived, not typed &mdash; and the report card can show the breakdown.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-warn">
+      <header><span class="fid">U2</span><h3>Concession, discount and scholarship are three different words for possibly the same thing</h3><span class="pill w">Blocking</span></header>
+      <div class="body">
+        <p class="ref">&sect;9 sets admission fee as Free / Partial / Full. &sect;10 separately lists &ldquo;Discount&rdquo; and &ldquo;Scholarship&rdquo; on the monthly fee.</p>
+        <p>Is a student admitted on a Partial admission fee also discounted monthly, or is that a separate decision? Is a scholarship a discount with a different name, or does it have its own approval and funding source? Is the value a percentage or a fixed amount? Does it expire at year end?</p>
+        <div class="fix"><b>Fix</b><p>One <code>FEE_CONCESSION</code> record per student per academic year, holding: which fee heads it applies to, percentage or fixed amount, reason, approving staff member, and validity dates. Free / Partial / Full then becomes a preset, not a separate mechanism.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-warn">
+      <header><span class="fid">U3</span><h3>Promotion is a state with no process</h3><span class="pill w">Blocking</span></header>
+      <div class="body">
+        <p class="ref">&sect;2 has &ldquo;Promoted&rdquo; in the lifecycle. &sect;35 gives the example 9-A → 10-A with history preserved. There is no promotion procedure anywhere.</p>
+        <p>Every school does this once a year for every student at once. Who triggers it? Does the annual result gate it? What happens to a student who repeats &mdash; same enrolment or a new one? What about a student with unpaid arrears? This is the single biggest annual operation in the system and it is undescribed.</p>
+        <div class="fix"><b>Fix</b><p>Treat <code>ENROLMENT</code> as student-in-a-class-in-a-year, and make promotion a bulk operation that closes the old enrolment and opens a new one. Decide the three rules: result-gated or manual, repeat handling, and whether arrears block promotion.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-warn">
+      <header><span class="fid">U4</span><h3>Attendance granularity is never stated</h3><span class="pill w">Blocking</span></header>
+      <div class="body">
+        <p class="ref">&sect;3 covers viewing and filtering attendance thoroughly but never says what a record represents. &sect;33 lists a Timetable, which implies periods.</p>
+        <p>One record per student per day is simple and enough for primary. One per student per period is what secondary schools with subject teachers actually need &mdash; and it is the difference between one row and eight rows per student per day, which changes storage, reporting and the teacher's daily workload.</p>
+        <div class="fix"><b>Fix</b><p>Decide per school, as a setting, but pick the storage model now: a period-level table can always roll up to daily, while a daily table can never be split into periods without a migration. Build period-level if any client school is secondary.</p></div>
+      </div>
+    </li>
+
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Part 3</p>
+  <h2>Missing from scope</h2>
+  <p class="lede">Real gaps. Some you may be deliberately deferring &mdash; if so, say so in the document, because silence reads as oversight to a client.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Gap</th><th>Why it matters</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k">Fee defaulters &amp; arrears</td>
+          <td>The document collects fees but never handles non-payment. No arrears report, no reminder schedule, no rule on what happens after three unpaid months. This is the feature school owners ask about first.</td>
+          <td><span class="pill c">Add</span></td>
+        </tr>
+        <tr>
+          <td class="k">Grading scale</td>
+          <td>&sect;26 captures obtained and total marks, &sect;16 generates report cards &mdash; but there are no grade boundaries, no pass mark, no position or rank. A report card cannot be printed without them.</td>
+          <td><span class="pill c">Add</span></td>
+        </tr>
+        <tr>
+          <td class="k">Login &amp; account model</td>
+          <td>&sect;33 lists &ldquo;Authentication&rdquo; and nothing more. Who creates a parent account? Does a parent with three children have one login? How does a seven-year-old log in? Phone number or email &mdash; and in Pakistan the answer is usually phone.</td>
+          <td><span class="pill c">Add</span></td>
+        </tr>
+        <tr>
+          <td class="k">Attendance correction</td>
+          <td>&sect;22 says teachers cannot modify their own attendance, and &sect;22 also says attendance comes from biometric devices. Devices fail and people forget to punch. There must be a correction request that someone approves.</td>
+          <td><span class="pill w">Add</span></td>
+        </tr>
+        <tr>
+          <td class="k">Transport</td>
+          <td>You list Drivers as staff (&sect;1) and Fuel and Transport as expenses (&sect;14), but there is no transport module &mdash; no routes, no vehicles, no student-to-route assignment, no transport fee. The pieces imply it; the scope omits it.</td>
+          <td><span class="pill a">Decide</span></td>
+        </tr>
+        <tr>
+          <td class="k">Notification delivery</td>
+          <td>Announcements are &ldquo;received through the Parent Application&rdquo;. In-app only means an absence alert reaches a parent whenever they next open the app &mdash; which may be never. SMS and WhatsApp cost real money per message and that cost has to sit somewhere in your pricing.</td>
+          <td><span class="pill w">Decide</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Part 4</p>
+  <h2>Smaller corrections</h2>
+  <p class="lede">Quick fixes. None of them will sink the project, but each is wrong as written.</p>
+
+  <ol class="finds">
+    <li class="find sev-note">
+      <header><span class="fid">S1</span><h3>&ldquo;Missing&rdquo; is not a document state</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">&sect;30: Uploaded / Verified / Rejected / Missing.</p>
+        <p>The first three are states of a document that exists. &ldquo;Missing&rdquo; is the absence of one &mdash; you cannot store a row for a file that was never provided without creating phantom records.</p>
+        <div class="fix"><b>Fix</b><p>A required-document checklist per admission. Each required item either has a document (Uploaded / Verified / Rejected) or does not. &ldquo;Missing&rdquo; is then a query, not a stored value &mdash; and it still gives you the incomplete-admissions report &sect;30 wants.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-note">
+      <header><span class="fid">S2</span><h3>Remarks have no visibility field</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">&sect;24 says &ldquo;parents should only see remarks the school has configured as visible&rdquo;, but the listed attributes are Student, Teacher, Class, Subject, Date. Visibility is not among them.</p>
+        <div class="fix"><b>Fix</b><p>Add <code>visibility</code> to the remark: internal, parent-visible, or student-visible. A behaviour note meant for the principal must not surface in the parent app by default.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-note">
+      <header><span class="fid">S3</span><h3>The hierarchy starts in the wrong place</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">&sect;34 opens with Principal → School → Academic Year → Class.</p>
+        <p>In a multi-tenant platform the school is the tenant and the principal is a user inside it. A principal can be replaced without the school changing; the school cannot be replaced under the principal.</p>
+        <div class="fix"><b>Fix</b><p>Platform → School → Academic Year → Class → Section → Enrolment. The principal hangs off School as a staff role, not above it.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-note">
+      <header><span class="fid">S4</span><h3>Three student identifiers, no stability rule</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">&sect;2 generates a Student ID; &sect;29 also lists Admission Number and Roll Number.</p>
+        <p>Roll numbers change every year and repeat across classes. Admission numbers should never change. Without stating which is permanent, reports and certificates will end up keyed on the wrong one.</p>
+        <div class="fix"><b>Fix</b><p>Internal <code>student_id</code> is the permanent key and never shown. Admission number is the permanent human-facing identifier. Roll number belongs on the enrolment, not the student, because it is per class per year.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-note">
+      <header><span class="fid">S5</span><h3>Office payments cannot be corrected</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">&sect;13 Method 1: the clerk records a cash payment and &ldquo;the system then marks the fee as paid.&rdquo;</p>
+        <p>Correct that cash needs no verification &mdash; the clerk is the verifier. But clerks mistype amounts and credit the wrong sibling, and there is no way described to undo it. Deleting the row destroys the audit trail that &sect;33 requires.</p>
+        <div class="fix"><b>Fix</b><p>Reversals are new rows, never deletions: a void or adjustment entry referencing the original, with a reason and the staff member who authorised it.</p></div>
+      </div>
+    </li>
+
+    <li class="find sev-note">
+      <header><span class="fid">S6</span><h3>Currency is assumed</h3><span class="pill a">Correction</span></header>
+      <div class="body">
+        <p class="ref">Rupee amounts appear throughout &sect;9 and &sect;23.</p>
+        <p>Fine as examples, but in a platform selling to many schools, currency and number formatting belong to the school's settings rather than being hard-coded &mdash; along with the academic year start month, which is not always the same.</p>
+        <div class="fix"><b>Fix</b><p>Put currency, locale, timezone and academic-year start month in per-school configuration from day one.</p></div>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">What to do next</p>
+  <h2>The order I would work in</h2>
+  <ol class="steps">
+    <li><b>Fix the five modelling problems in the document itself.</b> They are edits to your markdown, not code. An hour's work now, and the schema that follows will be sound.</li>
+    <li><b>Write the missing Platform section.</b> Plans, billing cycle, subscription states, what suspension restricts, retention after termination. It is your business model and it currently has one sentence.</li>
+    <li><b>Take the four undecided questions to your client.</b> Result weighting, concession scope, promotion rules, attendance granularity. Every one is a business decision only they can make, and all four block tables.</li>
+    <li><b>Add arrears, grading scale and the login model.</b> These three are missing rather than wrong, and all three are needed before a first release is usable.</li>
+    <li><b>Then freeze the schema and build.</b> Not before &mdash; the modelling issues above all involve data that is painful to migrate once written.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  ASMS Architecture Review &middot; against &ldquo;Updated Functional Architecture&rdquo;, 35 sections &middot; 21 findings<br>
+  5 modelling &middot; 4 undecided &middot; 6 missing &middot; 6 corrections
+</footer>
+</div>

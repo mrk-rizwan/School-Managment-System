@@ -1,0 +1,356 @@
+<title>Announcements Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#EDF1F1;
+  --card:#FFFFFF;
+  --soft:#F3F7F7;
+  --ink:#101F2A;
+  --ink-2:#43565F;
+  --ink-3:#6A7D84;
+  --rule:#D3DCDC;
+  --rule-2:#E6ECEC;
+  --accent:#0F5C63;
+  --good:#2E7D5B;
+  --warn:#9A6B14;
+  --crit:#A33A2A;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.deck{max-width:1180px;margin:0 auto;padding:2rem clamp(1rem,3vw,2rem) 4rem;display:flex;flex-direction:column;gap:1.6rem}
+
+.slide{
+  background:var(--card);border:1px solid var(--rule);
+  box-shadow:0 1px 2px rgba(16,31,42,.05),0 10px 28px -16px rgba(16,31,42,.28);
+  padding:clamp(1.6rem,3.4vw,2.6rem);
+  display:flex;flex-direction:column;
+  min-height:min(76vh,620px);
+}
+.snum{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  font-weight:600;margin:0 0 .9rem;
+}
+.slide h2{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:clamp(1.6rem,3.1vw,2.3rem);line-height:1.08;letter-spacing:-.024em;
+  margin:0 0 .7rem;text-wrap:balance;
+}
+.slide p{margin:0 0 .85rem;max-width:64ch;font-size:1.0625rem;color:var(--ink-2)}
+.slide p.big{font-size:1.25rem;color:var(--ink)}
+.slide strong{font-weight:600;color:var(--ink)}
+.grow{flex:1}
+
+/* cover */
+.cover{background:var(--accent);border-color:var(--accent);color:#fff;justify-content:center}
+.cover h1{
+  font-family:Archivo,sans-serif;font-weight:700;font-size:clamp(2.4rem,6vw,4rem);
+  line-height:1;letter-spacing:-.032em;margin:0 0 1rem;
+}
+.cover p{color:#C9E5E6;font-size:1.25rem;max-width:52ch}
+.cover .snum{color:#8FC9CC}
+.cover .meta{
+  margin-top:auto;padding-top:2rem;border-top:1px solid rgba(255,255,255,.22);
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:#9FD2D4;letter-spacing:.06em;
+}
+
+/* generic bits */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:.6rem}
+.cards > div{background:var(--card);padding:1rem 1.1rem}
+.cards h3{font-family:Archivo,sans-serif;font-size:1.0625rem;font-weight:600;margin:0 0 .3rem;letter-spacing:-.01em}
+.cards p{margin:0;font-size:.9375rem;max-width:none}
+
+.tw{overflow-x:auto;border:1px solid var(--rule);margin-top:.6rem}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.9375rem;background:var(--card)}
+th,td{text-align:left;padding:.55rem .8rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{
+  font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3);font-weight:500;background:var(--soft);
+  border-bottom:1px solid var(--rule);
+}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-family:Archivo,sans-serif;font-weight:600;white-space:nowrap}
+.yes{color:var(--good);font-weight:600}
+.no{color:var(--ink-3)}
+.part{color:var(--warn);font-weight:600}
+
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.55rem;margin-top:.6rem}
+.field{border:1px solid var(--rule);padding:.6rem .75rem;background:var(--soft)}
+.field b{
+  display:block;font-family:"IBM Plex Mono",monospace;font-size:.66rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem;
+}
+.field span{font-size:.9375rem;color:var(--ink-2);font-family:"Source Serif 4",serif}
+.field.req{background:#FFFFFF;border-color:var(--accent)}
+
+/* phone mock */
+.mockrow{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;margin-top:.6rem}
+.phone{
+  width:264px;flex:0 0 264px;border:2px solid var(--ink);border-radius:22px;
+  background:var(--card);padding:.5rem;box-shadow:0 12px 30px -18px rgba(16,31,42,.6);
+}
+.phone .screen{background:var(--soft);border-radius:14px;overflow:hidden}
+.phone .bar{
+  background:var(--accent);color:#fff;padding:.55rem .7rem;
+  font-family:Archivo,sans-serif;font-weight:600;font-size:.875rem;
+}
+.phone .list{padding:.45rem;display:flex;flex-direction:column;gap:.45rem}
+.note{background:var(--card);border:1px solid var(--rule);padding:.55rem .6rem}
+.note.urgent{border-left:3px solid var(--crit)}
+.note.norm{border-left:3px solid var(--accent)}
+.note.read{opacity:.62}
+.note .tag{
+  font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:.15rem;
+}
+.note .ttl{font-family:Archivo,sans-serif;font-weight:600;font-size:.8125rem;line-height:1.25;display:block}
+.note .snip{font-size:.72rem;color:var(--ink-3);line-height:1.35;display:block;margin-top:.15rem}
+.mocknote{flex:1 1 300px;min-width:260px}
+.mocknote ul{margin:.3rem 0 0;padding-left:1.1rem}
+.mocknote li{font-size:.9375rem;color:var(--ink-2);margin-bottom:.45rem}
+
+/* flow */
+.flow{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-top:.8rem}
+.step{border:1px solid var(--accent);background:var(--soft);padding:.55rem .8rem;font-family:Archivo,sans-serif;font-weight:600;font-size:.9375rem}
+.step.src{background:var(--accent);color:#fff}
+.arw{color:var(--ink-3);font-size:1.1rem}
+
+.callout{
+  border-left:4px solid var(--warn);background:#FDF7EC;
+  padding:.9rem 1.1rem;margin-top:.9rem;max-width:64ch;
+}
+.callout p{margin:0;color:var(--ink)}
+.callout b{
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--warn);display:block;margin-bottom:.3rem;
+}
+
+.qs{list-style:none;margin:.7rem 0 0;padding:0;display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.qs li{background:var(--card);padding:.85rem 1rem}
+.qs h3{font-family:Archivo,sans-serif;font-size:1.0625rem;font-weight:600;margin:0 0 .25rem}
+.qs p{margin:0;font-size:.9375rem;max-width:none}
+.pill{
+  display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.64rem;
+  letter-spacing:.09em;text-transform:uppercase;font-weight:500;
+  padding:.15rem .45rem;border:1px solid currentColor;margin-bottom:.35rem;
+}
+.pill.c{color:var(--crit)}
+.pill.w{color:var(--warn)}
+.pill.a{color:var(--accent)}
+
+.printhint{
+  text-align:center;font-family:"IBM Plex Mono",monospace;font-size:.72rem;
+  color:var(--ink-3);letter-spacing:.05em;padding:.5rem 0 0;
+}
+
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body{background:#fff}
+  .deck{max-width:none;padding:0;gap:0}
+  .slide{
+    border:none;box-shadow:none;min-height:0;height:auto;
+    page-break-after:always;break-after:page;padding:0 0 8mm;
+  }
+  .slide:last-of-type{page-break-after:auto;break-after:auto}
+  .cover{background:#0F5C63 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:14mm}
+  .phone{box-shadow:none}
+  .printhint{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="deck">
+
+<section class="slide cover">
+  <p class="snum">ASMS &middot; Feature Concept</p>
+  <h1>Announcements</h1>
+  <p>How the school reaches parents, students and teachers &mdash; one message, the right audience, on every device.</p>
+  <div class="meta">Prepared for client review &middot; Draft concept &middot; 9 slides</div>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 01 &mdash; The idea</p>
+  <h2>One place to say something, to exactly the right people</h2>
+  <p class="big">Today a school announces things by WhatsApp group, a note in the diary, or a paper on the notice board. Nobody knows who actually saw it.</p>
+  <p>Announcements gives the school one screen to write a message, choose who receives it, and see whether it was read. The message arrives in the parent's app, the student's app, or the teacher's app &mdash; without anyone being added to a group chat.</p>
+  <div class="cards">
+    <div><h3>Written once</h3><p>The Principal writes the message a single time, in one place.</p></div>
+    <div><h3>Targeted</h3><p>Everyone, one class, one section, or one family &mdash; chosen when sending.</p></div>
+    <div><h3>Tracked</h3><p>The school can see how many recipients have opened it.</p></div>
+    <div><h3>Kept</h3><p>Every announcement stays on record, searchable, tied to the academic year.</p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 02 &mdash; Who can announce</p>
+  <h2>Not everyone should be able to message the whole school</h2>
+  <p>A teacher reminding their own class about homework is routine. That same teacher messaging every parent in the school is not. Sending rights are scoped by role.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Sender</th><th>Whole school</th><th>Own class / section</th><th>Individual family</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Principal</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+        <tr><td class="k">Office staff</td><td class="part">If granted</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+        <tr><td class="k">Teacher</td><td class="no">No</td><td class="yes">Own classes only</td><td class="yes">Own students only</td></tr>
+        <tr><td class="k">Parent</td><td class="no">No</td><td class="no">No</td><td class="no">Receives only</td></tr>
+        <tr><td class="k">Student</td><td class="no">No</td><td class="no">No</td><td class="no">Receives only</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:.9rem">The Principal can grant whole-school rights to a specific staff member &mdash; an office administrator who handles fee reminders, for example &mdash; without making them a principal.</p>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 03 &mdash; What a message contains</p>
+  <h2>The announcement itself</h2>
+  <p>Deliberately small. A long form means nobody sends anything.</p>
+  <div class="fields">
+    <div class="field req"><b>Title</b><span>Short headline the parent sees in the list</span></div>
+    <div class="field req"><b>Message</b><span>The full text</span></div>
+    <div class="field req"><b>Audience</b><span>Who receives it</span></div>
+    <div class="field req"><b>Priority</b><span>Normal or Urgent</span></div>
+    <div class="field"><b>Attachment</b><span>A photo, notice or PDF</span></div>
+    <div class="field"><b>Send time</b><span>Now, or scheduled for later</span></div>
+    <div class="field"><b>Expires on</b><span>Drops off the list after this date</span></div>
+    <div class="field"><b>Category</b><span>Holiday, exam, fee, event, general</span></div>
+  </div>
+  <p style="margin-top:.9rem">Fields with a teal border are required. Everything else is optional, so a quick notice takes about fifteen seconds to send.</p>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 04 &mdash; Choosing the audience</p>
+  <h2>Audience is built from the school structure, not typed by hand</h2>
+  <p>The sender picks from what already exists in the system &mdash; classes, sections, and the families enrolled in them. Nobody maintains a contact list, and nobody is missed when a student joins mid-year.</p>
+  <div class="flow">
+    <span class="step src">Everyone</span><span class="arw">&rarr;</span>
+    <span class="step">By role</span><span class="arw">&rarr;</span>
+    <span class="step">By class</span><span class="arw">&rarr;</span>
+    <span class="step">By section</span><span class="arw">&rarr;</span>
+    <span class="step">One family</span>
+  </div>
+  <p style="margin-top:1rem">Each step narrows the group. "All parents of Class 9" is two clicks. "Parents of Class 9-B only" is three. A single family is a search.</p>
+  <div class="callout">
+    <p><b>One rule to agree</b>A parent with three children in different classes must receive a school-wide notice <strong>once</strong>, not three times. The system sends per person, not per student.</p>
+  </div>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 05 &mdash; What the parent sees</p>
+  <h2>In the parent's app</h2>
+  <div class="mockrow">
+    <div class="phone">
+      <div class="screen">
+        <div class="bar">Announcements</div>
+        <div class="list">
+          <div class="note urgent">
+            <span class="tag">Urgent &middot; Today</span>
+            <span class="ttl">School closed tomorrow</span>
+            <span class="snip">Due to heavy rain the school will remain closed on Tuesday&hellip;</span>
+          </div>
+          <div class="note norm">
+            <span class="tag">Exam &middot; Yesterday</span>
+            <span class="ttl">Quarterly exams begin 12 March</span>
+            <span class="snip">The datesheet is attached. Please ensure&hellip;</span>
+          </div>
+          <div class="note norm read">
+            <span class="tag">Fee &middot; 3 days ago</span>
+            <span class="ttl">March fee due on the 10th</span>
+            <span class="snip">Kindly deposit before the due date to avoid&hellip;</span>
+          </div>
+          <div class="note norm read">
+            <span class="tag">Holiday &middot; 1 week ago</span>
+            <span class="ttl">14 August &mdash; Independence Day</span>
+            <span class="snip">The school will be closed. Flag ceremony&hellip;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mocknote">
+      <p><strong>What the parent gets</strong></p>
+      <ul>
+        <li>A single list, newest first, with unread messages shown in full colour and read ones faded.</li>
+        <li><strong>Urgent</strong> messages carry a red edge and trigger a phone notification. Normal ones simply appear in the list.</li>
+        <li>Each message is tagged by category, so a parent looking for the fee notice can find it a week later.</li>
+        <li>Attachments &mdash; a datesheet, a fee voucher, a photo of a notice &mdash; open directly in the app.</li>
+        <li>If the parent has more than one child, messages for each child are labelled, but school-wide notices appear only once.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 06 &mdash; The important part</p>
+  <h2>Announcements is not one page. It is the school's voice.</h2>
+  <p class="big">Most messages a school sends are not typed by hand. They are produced by something else that happened.</p>
+  <p>When the Principal adds a public holiday, that <em>is</em> an announcement. When a Parent&ndash;Teacher Meeting is scheduled, that is an announcement. When quarterly results are published, or a fee falls due, or a teacher marks a child absent &mdash; each one has a message attached to it.</p>
+  <div class="flow">
+    <span class="step">Holidays</span>
+    <span class="step">Events &amp; PTM</span>
+    <span class="step">Results</span>
+    <span class="step">Fees</span>
+    <span class="step">Attendance</span>
+    <span class="arw">&rarr;</span>
+    <span class="step src">Announcements</span>
+    <span class="arw">&rarr;</span>
+    <span class="step">Parent &middot; Student &middot; Teacher</span>
+  </div>
+  <div class="callout">
+    <p><b>Why this matters for cost</b>If we build Announcements as a shared service now, every future module gets messaging for free. If we build it as a single page, we will rebuild the same notification code inside Holidays, Events, Results and Fees &mdash; four times over.</p>
+  </div>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 07 &mdash; How it is delivered</p>
+  <h2>Getting the message to actually arrive</h2>
+  <p>An announcement inside the app only reaches a parent when they open the app. For a fee reminder that is fine. For "school is closed tomorrow" it is not.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Channel</th><th>Reaches the parent</th><th>Cost to you</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td class="k">In-app</td><td>When they next open the app</td><td class="yes">Free</td><td>Fee notices, diary, results</td></tr>
+        <tr><td class="k">Push notification</td><td>Immediately, if the app is installed</td><td class="yes">Free</td><td>Most announcements</td></tr>
+        <tr><td class="k">SMS</td><td>Always, no app needed</td><td class="part">Per message</td><td>Urgent only &mdash; closures, emergencies</td></tr>
+        <tr><td class="k">WhatsApp</td><td>Always, very high open rate</td><td class="part">Per message</td><td>Urgent and fee reminders</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:.9rem"><strong>Our recommendation:</strong> in-app plus push for everything, and SMS or WhatsApp reserved for messages marked Urgent. That keeps the running cost near zero while making sure a genuine emergency actually lands.</p>
+</section>
+
+<section class="slide">
+  <p class="snum">Slide 08 &mdash; What we need from you</p>
+  <h2>Four decisions before we build</h2>
+  <ol class="qs">
+    <li>
+      <span class="pill c">Needed first</span>
+      <h3>Do parents get SMS or WhatsApp, or app only?</h3>
+      <p>This is the one decision with an ongoing cost. It also decides whether a parent without a smartphone can use the system at all.</p>
+    </li>
+    <li>
+      <span class="pill c">Needed first</span>
+      <h3>English, Urdu, or both?</h3>
+      <p>Supporting both from the start is straightforward. Adding Urdu after launch means revisiting every screen.</p>
+    </li>
+    <li>
+      <span class="pill w">Important</span>
+      <h3>Should parents be able to reply?</h3>
+      <p>One-way announcements are simple. Two-way turns this into a messaging system, with everything that implies &mdash; who answers, and how quickly.</p>
+    </li>
+    <li>
+      <span class="pill a">Worth confirming</span>
+      <h3>Does the school need read receipts?</h3>
+      <p>Knowing that 43 of 60 parents opened the fee notice is useful. Some schools want it; some find it creates pressure to chase people.</p>
+    </li>
+  </ol>
+</section>
+
+<p class="printhint">To save as PDF: press Ctrl&nbsp;+&nbsp;P (Cmd&nbsp;+&nbsp;P on Mac) and choose &ldquo;Save as PDF&rdquo;. Landscape is preset; enable &ldquo;Background graphics&rdquo; for the cover.</p>
+
+</div>

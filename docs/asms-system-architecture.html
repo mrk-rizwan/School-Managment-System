@@ -1,0 +1,634 @@
+<title>ASMS System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#FBFCFC; --surface:#FFFFFF; --surface-2:#F2F6F6;
+  --ink:#101F2A; --ink-2:#43565F; --ink-3:#66797F;
+  --rule:#D3DCDC; --rule-2:#E4EAEA;
+  --accent:#0F5C63; --good:#2E7D5B; --warn:#9A6B14; --crit:#A33A2A;
+  --shadow:0 1px 2px rgba(18,34,46,.06), 0 8px 24px -12px rgba(18,34,46,.18);
+  --measure:70ch;
+}
+/* Single light theme by design: a reference document read at length. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;font-size:1.125rem;line-height:1.6;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.5rem)}
+
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.8125rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);font-weight:500;margin:0 0 1.1rem}
+.mast{border-bottom:1px solid var(--rule);padding:clamp(3rem,8vw,5rem) 0 clamp(2rem,5vw,2.8rem)}
+h1{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:clamp(2.4rem,6vw,3.25rem);line-height:1.02;letter-spacing:-.028em;
+  text-wrap:balance;margin:0 0 1.1rem}
+.standfirst{font-size:1.375rem;color:var(--ink-2);max-width:62ch;margin:0 0 2.2rem;line-height:1.5}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin:0}
+.facts div{background:var(--surface);padding:1rem 1.15rem}
+.facts dt{font-family:"IBM Plex Mono",monospace;font-size:.6875rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 .4rem;font-weight:500}
+.facts dd{margin:0;font-family:Archivo,sans-serif;font-weight:600;font-size:1.0625rem;
+  line-height:1.3;letter-spacing:-.01em}
+
+main{padding-bottom:5rem}
+section{padding:clamp(2.4rem,5vw,3.4rem) 0;border-bottom:1px solid var(--rule-2)}
+section:last-of-type{border-bottom:0}
+h2{font-family:Archivo,sans-serif;font-weight:700;font-size:1.8125rem;letter-spacing:-.022em;
+  line-height:1.13;margin:.3rem 0 .8rem;text-wrap:balance}
+h3{font-family:Archivo,sans-serif;font-weight:600;font-size:1.3125rem;letter-spacing:-.014em;
+  margin:2.2rem 0 .6rem}
+p{max-width:var(--measure);margin:0 0 1.05rem}
+.lede{font-size:1.1875rem;color:var(--ink-2)}
+strong{font-weight:600}
+code{font-family:"IBM Plex Mono",monospace;font-size:.84em;background:var(--surface-2);
+  padding:.1em .38em;border-radius:3px;border:1px solid var(--rule-2)}
+
+.plate{margin:1.8rem 0 1.3rem;border:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+.plate-head{display:flex;align-items:baseline;gap:.85rem;flex-wrap:wrap;padding:.7rem 1rem;
+  border-bottom:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;font-size:.73rem;
+  letter-spacing:.12em;text-transform:uppercase}
+.plate-num{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.plate-title{color:var(--ink-2);font-weight:500;letter-spacing:.09em}
+.plate-body{overflow-x:auto;padding:1.4rem 1rem 1.6rem}
+.plate-note{padding:.7rem 1rem;border-top:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+  font-size:.8rem;color:var(--ink-2);line-height:1.65}
+
+/* hand-authored SVG: every colour explicit, no renderer theme involved */
+.fig{margin:0}
+.fig svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.bx{fill:#F1F6F6;stroke:#0F5C63;stroke-width:1.25}
+.bx-plat{fill:#0F5C63;stroke:#0F5C63;stroke-width:1.25}
+.bx-money{fill:#E4F0E9;stroke:#2E7D5B;stroke-width:1.25}
+.bx-gate{fill:#FBF1DF;stroke:#9A6B14;stroke-width:1.25}
+.bx-bad{fill:#FAE7E3;stroke:#A33A2A;stroke-width:1.25}
+.bx-ext{fill:#FFFFFF;stroke:#66797F;stroke-width:1.25}
+.bx-panel{fill:#FAFCFC;stroke:#CBD7D7;stroke-width:1;stroke-dasharray:5 4}
+.t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;fill:#101F2A}
+.t-inv{fill:#FFFFFF}
+.t-sm{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#43565F}
+.t-hd{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#0F5C63;letter-spacing:.09em;font-weight:600}
+.ln{stroke:#6E8288;stroke-width:1.35;fill:none}
+.ln-d{stroke:#6E8288;stroke-width:1.35;fill:none;stroke-dasharray:5 4}
+
+.mmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}
+.mcol{border:1px solid var(--rule);background:var(--surface);display:flex;flex-direction:column}
+.mcol > h4{margin:0;padding:.55rem .7rem;background:var(--surface-2);border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);font-weight:600}
+.mcol.is-plat > h4{background:var(--accent);color:#FFF;border-bottom-color:var(--accent)}
+.mcol ul{list-style:none;margin:0;padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
+.mcol li{border:1px solid var(--rule-2);padding:.45rem .55rem;line-height:1.3}
+.mcol li.is-money{border-color:var(--good);background:#F1F8F4}
+.mname{display:block;font-family:Archivo,sans-serif;font-weight:600;font-size:.9375rem;color:var(--ink)}
+.msub{display:block;font-family:"IBM Plex Mono",monospace;font-size:.6875rem;color:var(--ink-3);
+  line-height:1.45;margin-top:.15rem}
+
+.tw{overflow-x:auto;margin:1.5rem 0;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:1rem}
+th,td{text-align:left;padding:.6rem .85rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--surface-2);border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-family:Archivo,sans-serif;font-weight:600;white-space:nowrap}
+td.m{font-family:"IBM Plex Mono",monospace;font-size:.875rem}
+
+.call{border-left:4px solid var(--accent);background:var(--surface);padding:1rem 1.2rem;margin:1.5rem 0;
+  max-width:var(--measure);border-top:1px solid var(--rule-2);border-right:1px solid var(--rule-2);
+  border-bottom:1px solid var(--rule-2)}
+.call p:last-child{margin-bottom:0}
+.call .eyebrow{margin-bottom:.45rem}
+.call.warn{border-left-color:var(--warn)}
+.call.warn .eyebrow{color:var(--warn)}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.09em;
+  text-transform:uppercase;font-weight:500;padding:.18rem .48rem;border:1px solid currentColor;border-radius:2px}
+.pill.a{color:var(--accent)} .pill.w{color:var(--warn)} .pill.g{color:var(--good)} .pill.c{color:var(--crit)}
+ul.tight{max-width:var(--measure);padding-left:1.15rem;margin:0 0 1.1rem}
+ul.tight li{margin-bottom:.4rem}
+footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM Plex Mono",monospace;
+  font-size:.72rem;color:var(--ink-3);letter-spacing:.05em;line-height:1.8}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="wrap">
+<header class="mast">
+  <p class="eyebrow">ASMS &middot; v1.0 &middot; Architecture baseline</p>
+  <h1>ASMS System Architecture</h1>
+  <p class="standfirst">Three client surfaces, one Laravel backend, one Postgres database. Everything a parent must receive goes out over WhatsApp and SMS, because the app cannot be assumed to reach them.</p>
+  <dl class="facts">
+    <div><dt>Backend</dt><dd>Laravel + PostgreSQL</dd></div>
+    <div><dt>Mobile</dt><dd>Flutter, role-aware</dd></div>
+    <div><dt>Clients</dt><dd>2 codebases, 3 surfaces</dd></div>
+    <div><dt>Tenancy</dt><dd>Shared DB, school-scoped</dd></div>
+  </dl>
+</header>
+
+<main>
+
+<section>
+  <p class="eyebrow">Section 01</p>
+  <h2>The whole system on one page</h2>
+  <p class="lede">Three client surfaces &mdash; from two codebases &mdash; one backend, four external services. Nothing else.</p>
+  <p>The single most important line in this diagram is the dashed one on the right: WhatsApp is <strong>inbound as well as outbound</strong>. Parents send fee deposit screenshots to the school's WhatsApp number, and those arrive through a webhook, not through the app.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 01</span><span class="plate-title">System context</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 960 620" role="img" aria-label="Three clients — platform console, school web admin and the Flutter mobile app — talk to one Laravel backend over HTTPS. The backend holds four module groups, writes to PostgreSQL, Redis and object storage, and pushes work to queue workers and a scheduler which reach WAHA, an SMS gateway, Firebase push and SMTP. WAHA also sends messages back in through a webhook.">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-panel" x="20" y="16" width="680" height="96"></rect>
+          <text class="t-hd" x="34" y="36">CLIENTS</text>
+          <rect class="bx" x="40" y="46" width="180" height="52"></rect>
+          <text class="t" x="130" y="68" text-anchor="middle">Platform Console</text>
+          <text class="t-sm" x="130" y="85" text-anchor="middle">web &middot; vendor only</text>
+          <rect class="bx" x="248" y="46" width="200" height="52"></rect>
+          <text class="t" x="348" y="68" text-anchor="middle">School Web Admin</text>
+          <text class="t-sm" x="348" y="85" text-anchor="middle">Filament</text>
+          <rect class="bx-money" x="476" y="46" width="204" height="52"></rect>
+          <text class="t" x="578" y="68" text-anchor="middle">Mobile App</text>
+          <text class="t-sm" x="578" y="85" text-anchor="middle">Flutter &middot; role-aware</text>
+
+          <rect class="bx-panel" x="20" y="140" width="680" height="212"></rect>
+          <text class="t-hd" x="34" y="160">ASMS BACKEND &mdash; LARAVEL</text>
+          <rect class="bx-plat" x="40" y="172" width="640" height="46"></rect>
+          <text class="t t-inv" x="360" y="192" text-anchor="middle">HTTPS API</text>
+          <text class="t-sm" x="360" y="209" text-anchor="middle" fill="#BFE0E2">auth &middot; tenant scope &middot; validation &middot; rate limit</text>
+
+          <rect class="bx" x="40" y="252" width="152" height="56"></rect>
+          <text class="t" x="116" y="274" text-anchor="middle">Academics</text>
+          <text class="t-sm" x="116" y="291" text-anchor="middle">attendance, diary</text>
+          <rect class="bx-money" x="204" y="252" width="152" height="56"></rect>
+          <text class="t" x="280" y="274" text-anchor="middle">Finance</text>
+          <text class="t-sm" x="280" y="291" text-anchor="middle">charges, ledger</text>
+          <rect class="bx" x="368" y="252" width="152" height="56"></rect>
+          <text class="t" x="444" y="274" text-anchor="middle">Comms</text>
+          <text class="t-sm" x="444" y="291" text-anchor="middle">announcements</text>
+          <rect class="bx" x="532" y="252" width="148" height="56"></rect>
+          <text class="t" x="606" y="274" text-anchor="middle">Documents</text>
+          <text class="t-sm" x="606" y="291" text-anchor="middle">uploads, verify</text>
+
+          <rect class="bx-panel" x="20" y="380" width="680" height="84"></rect>
+          <text class="t-hd" x="34" y="400">ASYNC</text>
+          <rect class="bx-gate" x="60" y="406" width="256" height="46"></rect>
+          <text class="t" x="188" y="434" text-anchor="middle">Queue workers</text>
+          <rect class="bx-gate" x="360" y="406" width="256" height="46"></rect>
+          <text class="t" x="488" y="434" text-anchor="middle">Scheduler</text>
+
+          <rect class="bx-panel" x="20" y="492" width="680" height="96"></rect>
+          <text class="t-hd" x="34" y="512">DATA</text>
+          <rect class="bx" x="50" y="522" width="180" height="48"></rect>
+          <text class="t" x="140" y="551" text-anchor="middle">PostgreSQL</text>
+          <rect class="bx" x="258" y="522" width="150" height="48"></rect>
+          <text class="t" x="333" y="551" text-anchor="middle">Redis</text>
+          <rect class="bx" x="436" y="522" width="230" height="48"></rect>
+          <text class="t" x="551" y="545" text-anchor="middle">Object storage</text>
+          <text class="t-sm" x="551" y="562" text-anchor="middle">documents, photos</text>
+
+          <rect class="bx-panel" x="732" y="140" width="208" height="448"></rect>
+          <text class="t-hd" x="746" y="160">EXTERNAL</text>
+          <rect class="bx-ext" x="752" y="176" width="170" height="52"></rect>
+          <text class="t" x="837" y="198" text-anchor="middle">WAHA</text>
+          <text class="t-sm" x="837" y="215" text-anchor="middle">WhatsApp, self-host</text>
+          <rect class="bx-ext" x="752" y="252" width="170" height="52"></rect>
+          <text class="t" x="837" y="274" text-anchor="middle">SMS gateway</text>
+          <text class="t-sm" x="837" y="291" text-anchor="middle">PK aggregator</text>
+          <rect class="bx-ext" x="752" y="328" width="170" height="52"></rect>
+          <text class="t" x="837" y="350" text-anchor="middle">FCM</text>
+          <text class="t-sm" x="837" y="367" text-anchor="middle">push</text>
+          <rect class="bx-ext" x="752" y="404" width="170" height="52"></rect>
+          <text class="t" x="837" y="426" text-anchor="middle">SMTP</text>
+          <text class="t-sm" x="837" y="443" text-anchor="middle">Laravel Mail</text>
+          <rect class="bx-panel" x="752" y="486" width="170" height="66"></rect>
+          <text class="t-sm" x="837" y="512" text-anchor="middle">Biometric agent</text>
+          <text class="t-sm" x="837" y="529" text-anchor="middle">later phase</text>
+          <text class="t-sm" x="837" y="546" text-anchor="middle">teachers only</text>
+
+          <line class="ln" x1="130" y1="98" x2="130" y2="168" marker-end="url(#a1)"></line>
+          <line class="ln" x1="348" y1="98" x2="348" y2="168" marker-end="url(#a1)"></line>
+          <line class="ln" x1="578" y1="98" x2="578" y2="168" marker-end="url(#a1)"></line>
+
+          <line class="ln" x1="360" y1="218" x2="360" y2="246" marker-end="url(#a1)"></line>
+          <line class="ln" x1="360" y1="312" x2="360" y2="400" marker-end="url(#a1)"></line>
+          <text class="t-sm" x="370" y="360">dispatch</text>
+          <line class="ln" x1="360" y1="452" x2="360" y2="516" marker-end="url(#a1)"></line>
+
+          <path class="ln" d="M616,429 L700,429 L700,202 L748,202" marker-end="url(#a1)"></path>
+          <path class="ln" d="M700,300 L748,300" marker-end="url(#a1)"></path>
+          <path class="ln" d="M700,354 L748,354" marker-end="url(#a1)"></path>
+          <path class="ln" d="M700,430 L748,430" marker-end="url(#a1)"></path>
+
+          <path class="ln-d" d="M752,190 L720,190 L720,124 L400,124 L400,168" marker-end="url(#a1)"></path>
+          <text class="t-sm" x="560" y="118" text-anchor="middle">inbound webhook &mdash; fee screenshots</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Green marks anything touching school money. Teal is the API boundary &mdash; every request passes tenant scoping there, and nowhere else decides which school you are.</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Section 02</p>
+  <h2>Inside the backend</h2>
+  <p>Six module groups, one codebase. Not services &mdash; a monolith with clear internal boundaries, which is the right shape for a small team and stays right for years. Plate 01 draws only the four busiest groups to keep the context diagram readable; this is the full set.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 02</span><span class="plate-title">Module groups and what lives in each</span></div>
+    <div class="plate-body">
+      <div class="mmap">
+        <div class="mcol is-plat">
+          <h4>Platform</h4>
+          <ul>
+            <li><span class="mname">School Registry</span><span class="msub">onboard, provision, configure</span></li>
+            <li><span class="mname">Subscriptions</span><span class="msub">plans, invoices, status, suspension</span></li>
+            <li><span class="mname">Access Gate</span><span class="msub">reads billing status per session</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Academics</h4>
+          <ul>
+            <li><span class="mname">Enrolment</span><span class="msub">student in a class in a year &mdash; the hub</span></li>
+            <li><span class="mname">Subjects &amp; timetable</span><span class="msub">teaching assignments: staff &rarr; class &rarr; subject</span></li>
+            <li><span class="mname">Attendance</span><span class="msub">teacher marks own class; correction requests</span></li>
+            <li><span class="mname">Daily Diary</span><span class="msub">topic, assignment, outcome, per subject</span></li>
+            <li><span class="mname">Assessments</span><span class="msub">tests, marks, grading scale, term results</span></li>
+            <li><span class="mname">Remarks</span><span class="msub">with visibility: internal / parent / student</span></li>
+            <li><span class="mname">Certificates</span><span class="msub">numbered, printable, issued from history</span></li>
+            <li><span class="mname">Events &amp; calendar</span><span class="msub">PTM, trips, holidays, staff assignment</span></li>
+          </ul>
+        </div>
+
+        <div class="mcol">
+          <h4>People &amp; access</h4>
+          <ul>
+            <li><span class="mname">Accounts</span><span class="msub">phone-based login, OTP, one guardian many children</span></li>
+            <li><span class="mname">Roles &amp; permissions</span><span class="msub">grantable capabilities, audited</span></li>
+            <li><span class="mname">Staff</span><span class="msub">contracts, renewal, suspension, history</span></li>
+            <li><span class="mname">Staff leave</span><span class="msub">request, approval, cover, salary effect</span></li>
+            <li><span class="mname">Guardians</span><span class="msub">relationship, fee payer, contact capability</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Finance</h4>
+          <ul>
+            <li class="is-money"><span class="mname">Charges</span><span class="msub">campaigns: fees, fines, exam, trip</span></li>
+            <li class="is-money"><span class="mname">Collection</span><span class="msub">teacher collects, office confirms</span></li>
+            <li class="is-money"><span class="mname">Payments</span><span class="msub">claim &rarr; verified &rarr; ledger</span></li>
+            <li class="is-money"><span class="mname">Concessions</span><span class="msub">free, partial, full &mdash; with approver</span></li>
+            <li class="is-money"><span class="mname">Expenses</span><span class="msub">rent, salaries, purchases, P&amp;L</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Comms</h4>
+          <ul>
+            <li><span class="mname">Audience picker</span><span class="msub">school / class / section / individual</span></li>
+            <li><span class="mname">Announcements</span><span class="msub">as typed, any language</span></li>
+            <li><span class="mname">Notification service</span><span class="msub">one interface, four drivers</span></li>
+            <li><span class="mname">Delivery log</span><span class="msub">what was sent, on which channel</span></li>
+            <li><span class="mname">School Rules page</span><span class="msub">school-defined, shown in every app</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Documents</h4>
+          <ul>
+            <li><span class="mname">Upload</span><span class="msub">B-form, ID card, certificates, photos</span></li>
+            <li><span class="mname">Verification</span><span class="msub">uploaded &rarr; verified / rejected</span></li>
+            <li><span class="mname">Signed access</span><span class="msub">never publicly reachable</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="plate-note">The audience picker is shared by Announcements and Charges. It is the fiddliest UI in the system; building it twice is how the two silently drift apart.</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Section 03</p>
+  <h2>The mobile client</h2>
+  <p class="lede">One Flutter codebase. The role on the session decides what the shell renders.</p>
+  <p>There is no principal app, teacher app or parent app as separate builds. There is one app that fetches a capability set at login and composes its navigation from it. A person who is both a teacher and a coordinator sees both, from one install.</p>
+
+  <div class="call">
+    <p class="eyebrow">The rule that keeps it small</p>
+    <p><strong>If a task needs a keyboard, it belongs on the web.</strong> Admissions, salary structures, fee head configuration, report card layout and full reports are web-only. The app carries what someone does while standing up.</p>
+  </div>
+
+  <h3>The principal's inbox</h3>
+  <p>The principal's home screen is a queue of things awaiting a decision, not a dashboard of figures. Each row is one pending-work query, and each opens straight into the action.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Inbox item</th><th>Reads</th><th>Writes</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Fee proofs waiting</td><td class="m">payment claims WHERE pending</td><td class="m">verify / reject + reason</td><td>Image loads on tap, never in the list</td></tr>
+        <tr><td class="k">Teacher handovers</td><td class="m">open cash custody by staff</td><td class="m">confirm counted amount</td><td>Shortfall raises a receivable, not a rejection</td></tr>
+        <tr><td class="k">Leave requests</td><td class="m">leave WHERE pending</td><td class="m">approve / reject + cover</td><td>Must name the substitute for a class teacher</td></tr>
+        <tr><td class="k">Results awaiting approval</td><td class="m">term results WHERE submitted</td><td class="m">approve / return + reason</td><td>Approval unit still undecided</td></tr>
+        <tr><td class="k">Today's attendance</td><td class="m">nightly rollup + today's marks</td><td class="n">&mdash;</td><td>Reads the summary table, never raw rows</td></tr>
+        <tr><td class="k">Today's collections</td><td class="m">verified payments + open custody</td><td class="n">&mdash;</td><td>Separates banked from still-with-teacher</td></tr>
+        <tr><td class="k">Contract expiry</td><td class="m">contracts ending within 30 days</td><td class="n">&mdash;</td><td>Same source as the daily scheduled job</td></tr>
+        <tr><td class="k">New announcement</td><td class="m">audience tree</td><td class="m">announcement + recipients</td><td>Shared audience picker, dedupes per person</td></tr>
+        <tr><td class="k">New expense</td><td class="n">&mdash;</td><td class="m">expense + receipt image</td><td><strong>Queues offline</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Offline behaviour</h3>
+  <p>Three tiers, and only one of them is genuinely hard.</p>
+  <ul class="tight">
+    <li><strong>Read, cached.</strong> Last-known state renders instantly with no network. Attendance lists, diary, class rosters and inbox counts all come from the local store first, then refresh. A parent on a dying connection still sees yesterday's diary.</li>
+    <li><strong>Write, queued.</strong> Expense capture and attendance marking hold locally and sync when the connection returns, each carrying a client-generated idempotency key so a retry cannot double-post. Principals record expenses in storerooms; teachers mark registers in corridors.</li>
+    <li><strong>Write, online only.</strong> Anything that moves money or grants authority &mdash; verifying a payment, confirming a handover, approving a result. These need a server-side check against current state, so they fail closed with a clear message rather than queueing.</li>
+  </ul>
+
+  <div class="call warn">
+    <p class="eyebrow">Data cost is a design constraint, not an optimisation</p>
+    <p>A day's text sync is roughly 10&ndash;50&nbsp;KB. <strong>One uncompressed student photo is 2&ndash;4&nbsp;MB</strong> &mdash; more than a month of everything else. Images load on tap, thumbnails are generated server-side at around 20&nbsp;KB, and nothing prefetches media. The APK itself, at 15&ndash;25&nbsp;MB, costs a parent more data than six months of use, so installation happens over school WiFi at admission or a PTM.</p>
+  </div>
+
+  <h3>Push triggers</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Event</th><th>To</th><th>Also sent by</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Payment claim submitted</td><td>Principal, office staff with <code>verify_payment</code></td><td class="n">Push only &mdash; internal</td></tr>
+        <tr><td class="k">Payment verified or rejected</td><td>The paying guardian</td><td class="m">WhatsApp, SMS fallback</td></tr>
+        <tr><td class="k">Absence marked</td><td>Guardians of that student</td><td class="m">WhatsApp, SMS fallback</td></tr>
+        <tr><td class="k">Announcement published</td><td>Targeted audience</td><td class="m">WhatsApp; SMS if urgent</td></tr>
+        <tr><td class="k">Leave request raised</td><td>Approver</td><td class="n">Push only &mdash; internal</td></tr>
+        <tr><td class="k">Term result published</td><td>Guardians and student</td><td class="m">WhatsApp, SMS fallback</td></tr>
+        <tr><td class="k">Handover shortfall recorded</td><td>Principal, always</td><td class="n">Push only &mdash; internal</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Push is never the only delivery for anything a guardian must receive &mdash; it is an accelerator on top of the channel that actually reaches them. Internal staff notifications may be push-only, because staff have the app by definition.</p>
+</section>
+
+<section>
+  <p class="eyebrow">Section 04</p>
+  <h2>Notification delivery</h2>
+  <p class="lede">Everything that leaves the system to reach a person goes through one interface.</p>
+  <p>This is the layer that makes WAHA a safe choice. No module ever calls WAHA directly &mdash; they call <code>NotificationService</code>, which decides channels from message priority and what the recipient can actually receive. If a WhatsApp number is banned or a session dies, you change a driver and one config value. Nothing else moves.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 03</span><span class="plate-title">One interface, four drivers</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 900 470" role="img" aria-label="Finance, attendance, announcements and results all call one notification service, which routes by priority and recipient capability to four drivers: Firebase push, WAHA WhatsApp, SMS gateway and SMTP email. Every attempt is written to a delivery log.">
+          <defs>
+            <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <text class="t-hd" x="30" y="28">SENDERS</text>
+          <rect class="bx-money" x="30" y="40" width="160" height="42"></rect>
+          <text class="t" x="110" y="66" text-anchor="middle">Charges</text>
+          <rect class="bx" x="30" y="96" width="160" height="42"></rect>
+          <text class="t" x="110" y="122" text-anchor="middle">Attendance</text>
+          <rect class="bx" x="30" y="152" width="160" height="42"></rect>
+          <text class="t" x="110" y="178" text-anchor="middle">Announcements</text>
+          <rect class="bx" x="30" y="208" width="160" height="42"></rect>
+          <text class="t" x="110" y="234" text-anchor="middle">Results</text>
+          <rect class="bx-gate" x="30" y="264" width="160" height="42"></rect>
+          <text class="t" x="110" y="290" text-anchor="middle">Scheduler</text>
+
+          <rect class="bx-plat" x="272" y="96" width="196" height="146"></rect>
+          <text class="t t-inv" x="370" y="130" text-anchor="middle">Notification</text>
+          <text class="t t-inv" x="370" y="150" text-anchor="middle">Service</text>
+          <text class="t-sm" x="370" y="176" text-anchor="middle" fill="#BFE0E2">one interface</text>
+          <text class="t-sm" x="370" y="196" text-anchor="middle" fill="#BFE0E2">routes by priority</text>
+          <text class="t-sm" x="370" y="212" text-anchor="middle" fill="#BFE0E2">+ what recipient</text>
+          <text class="t-sm" x="370" y="228" text-anchor="middle" fill="#BFE0E2">can receive</text>
+
+          <line class="ln" x1="190" y1="61" x2="268" y2="112" marker-end="url(#a3)"></line>
+          <line class="ln" x1="190" y1="117" x2="268" y2="140" marker-end="url(#a3)"></line>
+          <line class="ln" x1="190" y1="173" x2="268" y2="170" marker-end="url(#a3)"></line>
+          <line class="ln" x1="190" y1="229" x2="268" y2="198" marker-end="url(#a3)"></line>
+          <line class="ln" x1="190" y1="285" x2="268" y2="228" marker-end="url(#a3)"></line>
+
+          <text class="t-hd" x="548" y="28">DRIVERS</text>
+          <rect class="bx" x="548" y="40" width="180" height="44"></rect>
+          <text class="t" x="638" y="67" text-anchor="middle">FCM push</text>
+          <rect class="bx" x="548" y="100" width="180" height="44"></rect>
+          <text class="t" x="638" y="127" text-anchor="middle">WAHA</text>
+          <rect class="bx" x="548" y="160" width="180" height="44"></rect>
+          <text class="t" x="638" y="187" text-anchor="middle">SMS gateway</text>
+          <rect class="bx" x="548" y="220" width="180" height="44"></rect>
+          <text class="t" x="638" y="247" text-anchor="middle">SMTP email</text>
+
+          <line class="ln" x1="468" y1="140" x2="544" y2="66" marker-end="url(#a3)"></line>
+          <line class="ln" x1="468" y1="158" x2="544" y2="124" marker-end="url(#a3)"></line>
+          <line class="ln" x1="468" y1="180" x2="544" y2="182" marker-end="url(#a3)"></line>
+          <line class="ln" x1="468" y1="200" x2="544" y2="240" marker-end="url(#a3)"></line>
+
+          <rect class="bx" x="782" y="100" width="96" height="104"></rect>
+          <text class="t-sm" x="830" y="140" text-anchor="middle">Parent</text>
+          <text class="t-sm" x="830" y="158" text-anchor="middle">Teacher</text>
+          <text class="t-sm" x="830" y="176" text-anchor="middle">Principal</text>
+
+          <line class="ln" x1="728" y1="62" x2="778" y2="120" marker-end="url(#a3)"></line>
+          <line class="ln" x1="728" y1="122" x2="778" y2="142" marker-end="url(#a3)"></line>
+          <line class="ln" x1="728" y1="182" x2="778" y2="164" marker-end="url(#a3)"></line>
+          <line class="ln" x1="728" y1="242" x2="778" y2="186" marker-end="url(#a3)"></line>
+
+          <rect class="bx-gate" x="272" y="336" width="196" height="46"></rect>
+          <text class="t" x="370" y="364" text-anchor="middle">Delivery log</text>
+          <line class="ln" x1="370" y1="242" x2="370" y2="332" marker-end="url(#a3)"></line>
+          <text class="t-sm" x="380" y="292">every attempt</text>
+
+          <rect class="bx-panel" x="548" y="316" width="330" height="120"></rect>
+          <text class="t-hd" x="562" y="338">ROUTING RULES</text>
+          <text class="t-sm" x="562" y="360">Urgent &mdash; WhatsApp + SMS, always</text>
+          <text class="t-sm" x="562" y="380">Normal &mdash; push if app installed, else WhatsApp</text>
+          <text class="t-sm" x="562" y="400">Keypad phone &mdash; SMS only, text carries the detail</text>
+          <text class="t-sm" x="562" y="420">Failure &mdash; retry, then fall to the next channel</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">The delivery log records <strong>sent, delivered and failed</strong> per channel &mdash; it is not a read log. Read status exists only in the app, and on WhatsApp when the recipient has receipts enabled; SMS reports delivery only. Never present delivered as read. The log is also what tells you a WAHA session has quietly died, before a school does.<br><br><strong>Two rules still to specify:</strong> which message types may reach SMS at all &mdash; applied literally, a daily diary would send one Urdu SMS per subject per day &mdash; and how the service knows what a given guardian can receive. That capability field does not exist yet on the guardian record, and every routing rule above depends on it.</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Section 05</p>
+  <h2>Charge campaigns</h2>
+  <p class="lede">One mechanism covers monthly fees, exam fees, fines, trips and event collections.</p>
+  <p>An admin creates a charge, targets an audience with the same picker announcements use, and the system generates one line per student. If a teacher is assigned to collect, it appears in their app with their class roster.</p>
+
+  <div class="call warn">
+    <p class="eyebrow">The part that must not be skipped</p>
+    <p>When a teacher collects cash, the money is in <em>their</em> hands, not the school's. Marking a student paid is a <strong>claim</strong>; the office confirming the handover is <strong>verification</strong>. Only verification credits the ledger. Without this split, the books show money the school does not yet have, and a shortfall is invisible.</p>
+  </div>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 04</span><span class="plate-title">Charge lifecycle, from creation to ledger</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 560" role="img" aria-label="An admin creates a charge and targets an audience; the system generates one charge line per student. Either a teacher collects cash in class and hands it to the office for confirmation, or a parent pays directly. Only office confirmation credits the ledger. Unpaid lines trigger scheduled reminders.">
+          <defs>
+            <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx" x="370" y="16" width="200" height="46"></rect>
+          <text class="t" x="470" y="44" text-anchor="middle">Admin creates charge</text>
+
+          <rect class="bx" x="350" y="94" width="240" height="56"></rect>
+          <text class="t" x="470" y="116" text-anchor="middle">Target audience</text>
+          <text class="t-sm" x="470" y="133" text-anchor="middle">school / class / section / students</text>
+
+          <rect class="bx-money" x="350" y="182" width="240" height="56"></rect>
+          <text class="t" x="470" y="204" text-anchor="middle">Charge lines generated</text>
+          <text class="t-sm" x="470" y="221" text-anchor="middle">one per student, concession applied</text>
+
+          <polygon class="bx-gate" points="470,268 600,308 470,348 340,308"></polygon>
+          <text class="t" x="470" y="304" text-anchor="middle">Who collects?</text>
+          <text class="t-sm" x="470" y="321" text-anchor="middle">teacher or parent</text>
+
+          <rect class="bx" x="40" y="282" width="230" height="52"></rect>
+          <text class="t" x="155" y="304" text-anchor="middle">Teacher collects in class</text>
+          <text class="t-sm" x="155" y="321" text-anchor="middle">marks who paid &mdash; a claim</text>
+
+          <rect class="bx-gate" x="40" y="376" width="230" height="52"></rect>
+          <text class="t" x="155" y="398" text-anchor="middle">COLLECTED</text>
+          <text class="t-sm" x="155" y="415" text-anchor="middle">teacher owes the school</text>
+
+          <rect class="bx" x="40" y="466" width="230" height="52"></rect>
+          <text class="t" x="155" y="488" text-anchor="middle">Office confirms handover</text>
+          <text class="t-sm" x="155" y="505" text-anchor="middle">amount reconciled</text>
+
+          <rect class="bx" x="670" y="282" width="230" height="52"></rect>
+          <text class="t" x="785" y="304" text-anchor="middle">Parent pays</text>
+          <text class="t-sm" x="785" y="321" text-anchor="middle">office cash, or WhatsApp proof</text>
+
+          <rect class="bx-gate" x="670" y="376" width="230" height="52"></rect>
+          <text class="t" x="785" y="398" text-anchor="middle">PENDING</text>
+          <text class="t-sm" x="785" y="415" text-anchor="middle">unless cash at office</text>
+
+          <rect class="bx-money" x="370" y="466" width="200" height="52"></rect>
+          <text class="t" x="470" y="488" text-anchor="middle">LEDGER CREDITED</text>
+          <text class="t-sm" x="470" y="505" text-anchor="middle">receipt issued</text>
+
+          <rect class="bx-bad" x="670" y="466" width="230" height="52"></rect>
+          <text class="t" x="785" y="488" text-anchor="middle">Unpaid &rarr; reminders</text>
+          <text class="t-sm" x="785" y="505" text-anchor="middle">scheduled, via Plate 03</text>
+
+          <line class="ln" x1="470" y1="62" x2="470" y2="90" marker-end="url(#a4)"></line>
+          <line class="ln" x1="470" y1="150" x2="470" y2="178" marker-end="url(#a4)"></line>
+          <line class="ln" x1="470" y1="238" x2="470" y2="264" marker-end="url(#a4)"></line>
+
+          <path class="ln" d="M340,308 L155,308" marker-end="url(#a4)"></path>
+          <text class="t-sm" x="248" y="298" text-anchor="middle">teacher</text>
+          <path class="ln" d="M600,308 L666,308" marker-end="url(#a4)"></path>
+          <text class="t-sm" x="633" y="298" text-anchor="middle">parent</text>
+
+          <line class="ln" x1="155" y1="334" x2="155" y2="372" marker-end="url(#a4)"></line>
+          <line class="ln" x1="155" y1="428" x2="155" y2="462" marker-end="url(#a4)"></line>
+          <path class="ln" d="M270,492 L366,492" marker-end="url(#a4)"></path>
+
+          <line class="ln" x1="785" y1="334" x2="785" y2="372" marker-end="url(#a4)"></line>
+          <path class="ln" d="M670,402 L610,402 L610,492 L574,492" marker-end="url(#a4)"></path>
+          <text class="t-sm" x="600" y="446" text-anchor="middle">verified</text>
+          <line class="ln" x1="785" y1="428" x2="785" y2="462" marker-end="url(#a4)"></line>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Both paths converge on one ledger. Cash handed to the office is verified on the spot; a teacher's collection and a parent's screenshot both wait for confirmation.</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Section 06</p>
+  <h2>What runs, and what runs on a schedule</h2>
+
+  <h3>Processes</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Process</th><th>What it does</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Web (PHP-FPM)</td><td>Serves the API and the Filament admin</td><td class="m">Scale horizontally when needed</td></tr>
+        <tr><td class="k">Queue worker</td><td>Sends messages, generates invoices, builds reports</td><td class="m">Separate queues: default, messages</td></tr>
+        <tr><td class="k">Scheduler</td><td>One cron entry, Laravel dispatches from there</td><td class="m">Single instance only</td></tr>
+        <tr><td class="k">WAHA</td><td>WhatsApp session per school number</td><td class="m">Own container; sessions need monitoring</td></tr>
+        <tr><td class="k">PostgreSQL</td><td>All tenant data</td><td class="m">Daily backup, restore tested</td></tr>
+        <tr><td class="k">Redis</td><td>Queues, cache, sessions</td><td class="m">Not a system of record</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Scheduled jobs</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>When</th><th>Job</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td class="m">1st of month</td><td class="k">Generate monthly fee invoices</td><td>Applies concessions; the biggest financial job of the month</td></tr>
+        <tr><td class="m">Daily</td><td class="k">Fee due &amp; overdue reminders</td><td>Routes through the notification service</td></tr>
+        <tr><td class="m">Daily</td><td class="k">Absence alerts</td><td>Sent the same morning, or the parent stops trusting them</td></tr>
+        <tr><td class="m">Daily</td><td class="k">Staff contract expiry warnings</td><td>Warn 30 days ahead</td></tr>
+        <tr><td class="m">Daily</td><td class="k">Platform subscription check</td><td>Moves schools between active, past due and suspended</td></tr>
+        <tr><td class="m">Every 5 min</td><td class="k">Retry failed messages</td><td>Falls to the next channel after N attempts</td></tr>
+        <tr><td class="m">Hourly</td><td class="k">WAHA session health check</td><td>Alerts you before the school notices</td></tr>
+        <tr><td class="m">Nightly</td><td class="k">Attendance summary rollup</td><td>Keeps dashboards fast as data grows</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Section 07</p>
+  <h2>Decisions on the record</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Decision</th><th>Choice</th><th>Because</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Client surfaces</td><td>Web admin + one role-aware Flutter app</td><td>Two codebases instead of five; one maintainer</td></tr>
+        <tr><td class="k">Backend</td><td>Laravel + PostgreSQL + Filament</td><td>Queues, scheduler and admin CRUD come in the box</td></tr>
+        <tr><td class="k">Mobile framework</td><td>Flutter</td><td>Native compilation; consistent on low-end Android</td></tr>
+        <tr><td class="k">Architecture</td><td>Monolith, one database</td><td>Services are a way for a small team to fail slowly</td></tr>
+        <tr><td class="k">Tenancy</td><td>Shared DB, <code>school_id</code> on every table</td><td>Enforced at the query layer, from the session</td></tr>
+        <tr><td class="k">Email</td><td>Laravel Mail</td><td>Nodemailer is Node-only; cannot be called from PHP</td></tr>
+        <tr><td class="k">WhatsApp</td><td>WAHA behind a driver interface</td><td>Cost saving now, swappable if a number is banned</td></tr>
+        <tr><td class="k">Attendance</td><td>Immediate on open, no websockets</td><td>Indistinguishable in use, far less to run</td></tr>
+        <tr><td class="k">Biometric</td><td>Deferred; teachers only when it lands</td><td>~160 punches a day needs no real-time path</td></tr>
+        <tr><td class="k">Language</td><td>English default, Urdu via selector</td><td>Content stored and shown exactly as typed</td></tr>
+        <tr><td class="k">Files</td><td>Object storage, signed URLs</td><td>Never in the database, never publicly guessable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Still open</h3>
+  <p>The canonical register lives in <code>CLAUDE.md</code>. This list mirrors the items that bear directly on the architecture; where the two disagree, <code>CLAUDE.md</code> wins.</p>
+  <ul class="tight">
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Attendance granularity</strong> &mdash; daily or per period. A period-level table rolls up to daily; a daily table can never be split without a migration.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Account model</strong> &mdash; who creates a guardian login, whether one covers several children, phone or email as identifier, and whether students log in at all. Phase 1 starts here.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Permission model</strong> &mdash; fixed roles, or roles plus grantable capabilities. Nothing in Plate 02 covers access control yet.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Multi-campus</strong> &mdash; one tenant with campuses, or one tenant per branch. Decides whether <code>school_id</code> is the tenant key.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Guardian contact capability</strong> &mdash; how the system knows a parent has a keypad phone, a social bundle, or full data. Plate 03 dereferences this field on every send.</li>
+    <li><span class="pill w">Assumed</span> &nbsp;<strong>Urdu mode mirrors the layout right-to-left.</strong> Assumed here because it is correct and expensive to retrofit. Say if you would rather keep left-to-right.</li>
+    <li><span class="pill w">Assumed</span> &nbsp;<strong>Class-test marks reach parents immediately; term and annual results wait for principal approval.</strong> Applied to resolve a contradiction in the design document.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Do concession students pay exam fees and fines?</strong> Charge campaigns must decide this at targeting time.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Result weighting</strong> &mdash; how daily, weekly and monthly tests roll into quarterly and annual.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Promotion rules</strong> at year rollover: repeats, and whether arrears block promotion.</li>
+    <li><span class="pill a">Decide</span> &nbsp;<strong>Partial payment</strong> on a charge line &mdash; allowed, or all-or-nothing?</li>
+    <li><span class="pill a">Decide</span> &nbsp;<strong>One WhatsApp number per school, or one for the platform?</strong> Per school is what schools expect and multiplies the sessions you monitor.</li>
+    <li><span class="pill a">Decide</span> &nbsp;<strong>Cash basis or accrual</strong> for the profit report.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  ASMS System Architecture &middot; v1.0 baseline &middot; 4 plates &middot; 11 decisions recorded<br>
+  Blocking items above must be settled before the schema is frozen.
+</footer>
+</div>

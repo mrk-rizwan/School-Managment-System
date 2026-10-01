@@ -1,0 +1,721 @@
+<title>ASMS System Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#FBFCFC; --surface:#FFFFFF; --surface-2:#F2F6F6;
+  --ink:#101F2A; --ink-2:#43565F; --ink-3:#66797F;
+  --rule:#D3DCDC; --rule-2:#E4EAEA;
+  --accent:#0F5C63; --good:#2E7D5B; --warn:#9A6B14; --crit:#A33A2A;
+  --shadow:0 1px 2px rgba(18,34,46,.06), 0 8px 24px -12px rgba(18,34,46,.18);
+  --measure:68ch;
+}
+/* Deliberately single light theme: a document printed, projected and read at length. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;font-size:1.125rem;line-height:1.62;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.5rem)}
+
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.8125rem;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);font-weight:500;margin:0 0 1.1rem}
+.mast{border-bottom:1px solid var(--rule);padding:clamp(3rem,8vw,5.5rem) 0 clamp(2rem,5vw,3rem)}
+h1{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:clamp(2.5rem,6.5vw,3.5rem);line-height:1.01;letter-spacing:-.03em;
+  text-wrap:balance;margin:0 0 1.15rem}
+.standfirst{font-size:1.4375rem;color:var(--ink-2);max-width:60ch;margin:0 0 2.3rem;line-height:1.45}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin:0}
+.facts div{background:var(--surface);padding:1.1rem 1.2rem}
+.facts dt{font-family:"IBM Plex Mono",monospace;font-size:.6875rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 .42rem;font-weight:500}
+.facts dd{margin:0;font-family:Archivo,sans-serif;font-weight:600;font-size:1.0625rem;
+  line-height:1.32;letter-spacing:-.01em}
+
+.cols{display:grid;grid-template-columns:1fr;gap:0}
+.rail{display:none}
+@media (min-width:1040px){
+  .cols{grid-template-columns:196px minmax(0,1fr);gap:3.4rem;align-items:start}
+  .rail{position:sticky;top:2rem;padding:3rem 0 0;display:block}
+}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.1rem}
+.rail a{display:flex;gap:.6rem;text-decoration:none;color:var(--ink-2);
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;padding:.4rem .5rem;
+  border-radius:3px;line-height:1.35}
+.rail a:hover{color:var(--accent);background:var(--surface)}
+.rail a span{color:var(--ink-3);font-variant-numeric:tabular-nums}
+.rail a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+main{padding-bottom:5rem;min-width:0}
+section{padding:clamp(2.6rem,5.5vw,3.8rem) 0;border-bottom:1px solid var(--rule-2)}
+section:last-of-type{border-bottom:0}
+h2{font-family:Archivo,sans-serif;font-weight:700;font-size:1.875rem;letter-spacing:-.024em;
+  line-height:1.12;margin:.3rem 0 .85rem;text-wrap:balance}
+h3{font-family:Archivo,sans-serif;font-weight:600;font-size:1.3125rem;letter-spacing:-.014em;
+  margin:2.3rem 0 .6rem}
+p{max-width:var(--measure);margin:0 0 1.08rem}
+.lede{font-size:1.1875rem;color:var(--ink-2)}
+strong{font-weight:600}
+em{font-style:italic}
+
+.plate{margin:1.9rem 0 1.4rem;border:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+.plate-head{display:flex;align-items:baseline;gap:.85rem;flex-wrap:wrap;padding:.72rem 1rem;
+  border-bottom:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;font-size:.73rem;
+  letter-spacing:.12em;text-transform:uppercase}
+.plate-num{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.plate-title{color:var(--ink-2);font-weight:500;letter-spacing:.09em}
+.plate-body{overflow-x:auto;padding:1.5rem 1rem 1.7rem}
+.plate-note{padding:.72rem 1rem;border-top:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+  font-size:.8rem;color:var(--ink-2);line-height:1.65}
+
+.fig{margin:0}
+.fig svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.bx{fill:#F1F6F6;stroke:#0F5C63;stroke-width:1.25}
+.bx-plat{fill:#0F5C63;stroke:#0F5C63;stroke-width:1.25}
+.bx-money{fill:#E4F0E9;stroke:#2E7D5B;stroke-width:1.25}
+.bx-gate{fill:#FBF1DF;stroke:#9A6B14;stroke-width:1.25}
+.bx-bad{fill:#FAE7E3;stroke:#A33A2A;stroke-width:1.25}
+.bx-panel{fill:#FAFCFC;stroke:#CBD7D7;stroke-width:1;stroke-dasharray:5 4}
+.t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;fill:#101F2A}
+.t-inv{fill:#FFFFFF}
+.t-sm{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#43565F}
+.t-hd{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:#0F5C63;letter-spacing:.09em;font-weight:600}
+.ln{stroke:#6E8288;stroke-width:1.35;fill:none}
+.ln-d{stroke:#6E8288;stroke-width:1.35;fill:none;stroke-dasharray:5 4}
+
+.mmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:1rem}
+.mcol{border:1px solid var(--rule);background:var(--surface);display:flex;flex-direction:column}
+.mcol > h4{margin:0;padding:.58rem .72rem;background:var(--surface-2);border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);font-weight:600}
+.mcol.is-plat > h4{background:var(--accent);color:#FFF;border-bottom-color:var(--accent)}
+.mcol ul{list-style:none;margin:0;padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
+.mcol li{border:1px solid var(--rule-2);padding:.46rem .56rem;line-height:1.3}
+.mcol li.is-money{border-color:var(--good);background:#F1F8F4}
+.mname{display:block;font-family:Archivo,sans-serif;font-weight:600;font-size:.9375rem;color:var(--ink)}
+.msub{display:block;font-family:"IBM Plex Mono",monospace;font-size:.6875rem;color:var(--ink-3);
+  line-height:1.45;margin-top:.15rem}
+
+.tw{overflow-x:auto;margin:1.6rem 0;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:1rem}
+th,td{text-align:left;padding:.62rem .85rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--surface-2);border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-family:Archivo,sans-serif;font-weight:600;white-space:nowrap}
+.y{color:var(--good);font-weight:600} .n{color:var(--ink-3)} .pt{color:var(--warn);font-weight:600}
+
+.call{border-left:4px solid var(--accent);background:var(--surface);padding:1.05rem 1.2rem;margin:1.6rem 0;
+  max-width:var(--measure);border-top:1px solid var(--rule-2);border-right:1px solid var(--rule-2);
+  border-bottom:1px solid var(--rule-2)}
+.call p:last-child{margin-bottom:0}
+.call .eyebrow{margin-bottom:.48rem}
+.call.warn{border-left-color:var(--warn)} .call.warn .eyebrow{color:var(--warn)}
+
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.09em;
+  text-transform:uppercase;font-weight:500;padding:.18rem .48rem;border:1px solid currentColor;border-radius:2px}
+.pill.a{color:var(--accent)} .pill.w{color:var(--warn)} .pill.g{color:var(--good)} .pill.c{color:var(--crit)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin:1.5rem 0}
+.cards > div{background:var(--surface);padding:1rem 1.1rem}
+.cards h4{font-family:Archivo,sans-serif;font-size:1.0625rem;font-weight:600;margin:0 0 .3rem;letter-spacing:-.012em}
+.cards p{margin:0;font-size:.9375rem;color:var(--ink-2);max-width:none}
+
+ol.steps{max-width:var(--measure);padding-left:0;list-style:none;counter-reset:s;margin:1.5rem 0 0}
+ol.steps li{counter-increment:s;position:relative;padding-left:2.7rem;margin-bottom:1.05rem}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:.12rem;width:1.8rem;height:1.8rem;
+  border-radius:50%;background:var(--accent);color:#fff;font-family:"IBM Plex Mono",monospace;
+  font-size:.8rem;font-weight:600;display:flex;align-items:center;justify-content:center}
+ol.steps b{font-family:Archivo,sans-serif;font-weight:600}
+ul.tight{max-width:var(--measure);padding-left:1.15rem;margin:0 0 1.15rem}
+ul.tight li{margin-bottom:.42rem}
+
+footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM Plex Mono",monospace;
+  font-size:.72rem;color:var(--ink-3);letter-spacing:.05em;line-height:1.8}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="wrap">
+<header class="mast">
+  <p class="eyebrow">ASMS &middot; System Design &middot; For client review</p>
+  <h1>ASMS System Design</h1>
+  <p class="standfirst">One platform. Many schools. Each school runs its own students, staff, fees and results &mdash; and every parent gets reached, whatever phone they carry.</p>
+  <dl class="facts">
+    <div><dt>What it is</dt><dd>School software, sold by subscription</dd></div>
+    <div><dt>Who uses it</dt><dd>6 roles, one system</dd></div>
+    <div><dt>Reaching parents</dt><dd>WhatsApp, SMS and app</dd></div>
+    <div><dt>Languages</dt><dd>English and Urdu</dd></div>
+  </dl>
+</header>
+
+<div class="cols">
+<nav class="rail" aria-label="Sections">
+  <ol>
+    <li><a href="#picture"><span>01</span> The whole picture</a></li>
+    <li><a href="#money"><span>02</span> How money works</a></li>
+    <li><a href="#roles"><span>03</span> Who does what</a></li>
+    <li><a href="#day"><span>04</span> A day in school</a></li>
+    <li><a href="#admission"><span>05</span> New student</a></li>
+    <li><a href="#fees"><span>06</span> Fees and charges</a></li>
+    <li><a href="#reach"><span>07</span> Reaching parents</a></li>
+    <li><a href="#results"><span>08</span> Results</a></li>
+    <li><a href="#build"><span>09</span> What we build</a></li>
+    <li><a href="#need"><span>10</span> What we need</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="picture">
+  <p class="eyebrow">Section 01</p>
+  <h2>The whole picture</h2>
+  <p class="lede">One system serves many schools. Each school is completely separate from every other.</p>
+  <p>You set a school up, and from that moment it has its own students, its own staff, its own money and its own records. No school can see another school's data &mdash; not by accident, and not on purpose. Each pays a monthly subscription to keep using the system.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 01</span><span class="plate-title">One platform, many separate schools</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 450" role="img" aria-label="The ASMS platform sits above several separate schools, each paying a monthly subscription. Inside any one school there are six kinds of user: principal, office staff, teacher, parent and student.">
+          <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+
+          <rect class="bx-plat" x="360" y="16" width="220" height="58"></rect>
+          <text class="t t-inv" x="470" y="40" text-anchor="middle">ASMS Platform</text>
+          <text class="t-sm" x="470" y="59" text-anchor="middle" fill="#BFE0E2">you &mdash; the provider</text>
+
+          <rect class="bx" x="60" y="150" width="200" height="52"></rect>
+          <text class="t" x="160" y="181" text-anchor="middle">City Grammar</text>
+          <rect class="bx-money" x="370" y="150" width="200" height="52"></rect>
+          <text class="t" x="470" y="174" text-anchor="middle">Al-Noor School</text>
+          <text class="t-sm" x="470" y="191" text-anchor="middle">shown below</text>
+          <rect class="bx" x="680" y="150" width="200" height="52"></rect>
+          <text class="t" x="780" y="181" text-anchor="middle">Beacon Academy</text>
+
+          <path class="ln" d="M400,74 L160,146" marker-end="url(#c1)"></path>
+          <line class="ln" x1="470" y1="74" x2="470" y2="146" marker-end="url(#c1)"></line>
+          <path class="ln" d="M540,74 L780,146" marker-end="url(#c1)"></path>
+          <text class="t-sm" x="470" y="112" text-anchor="middle">monthly subscription &mdash; each school pays separately</text>
+
+          <rect class="bx-panel" x="30" y="250" width="880" height="180"></rect>
+          <text class="t-hd" x="46" y="272">INSIDE ONE SCHOOL</text>
+
+          <rect class="bx" x="52" y="296" width="160" height="52"></rect>
+          <text class="t" x="132" y="318" text-anchor="middle">Principal</text>
+          <text class="t-sm" x="132" y="335" text-anchor="middle">full control</text>
+          <rect class="bx" x="228" y="296" width="160" height="52"></rect>
+          <text class="t" x="308" y="318" text-anchor="middle">Office staff</text>
+          <text class="t-sm" x="308" y="335" text-anchor="middle">fees, records</text>
+          <rect class="bx" x="404" y="296" width="160" height="52"></rect>
+          <text class="t" x="484" y="318" text-anchor="middle">Teacher</text>
+          <text class="t-sm" x="484" y="335" text-anchor="middle">own classes</text>
+          <rect class="bx" x="580" y="296" width="160" height="52"></rect>
+          <text class="t" x="660" y="318" text-anchor="middle">Parent</text>
+          <text class="t-sm" x="660" y="335" text-anchor="middle">own children</text>
+          <rect class="bx" x="756" y="296" width="132" height="52"></rect>
+          <text class="t" x="822" y="318" text-anchor="middle">Student</text>
+          <text class="t-sm" x="822" y="335" text-anchor="middle">own record</text>
+
+          <line class="ln" x1="470" y1="202" x2="470" y2="246" marker-end="url(#c1)"></line>
+
+          <text class="t-sm" x="470" y="386" text-anchor="middle">Everyone sees only what their role allows. A teacher cannot open another teacher's class.</text>
+          <text class="t-sm" x="470" y="406" text-anchor="middle">A parent sees only their own children. Nobody sees another school.</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Adding a school is a setup step, not a new system. The tenth school costs the same to run as the second.</div>
+  </div>
+</section>
+
+<section id="money">
+  <p class="eyebrow">Section 02</p>
+  <h2>How money works &mdash; two separate systems</h2>
+  <p class="lede">There are two kinds of money here, and they never mix.</p>
+  <p><strong>Schools pay you</strong> a monthly subscription to use the software. That is your income. <strong>Parents pay the school</strong> admission fees, monthly fees, exam fees and trip fees. That is the school's income &mdash; you only keep the records.</p>
+  <p>Keeping these apart matters more than it sounds. A school's fee income is its own business, must never appear in your accounts, and must never be visible to another school.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 02</span><span class="plate-title">Two money layers</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 660 400" role="img" aria-label="Parents pay the school fees; the school pays the platform a monthly subscription. Two separate flows of money that never mix.">
+          <defs><marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+          <rect class="bx-plat" x="210" y="20" width="200" height="60"></rect>
+          <text class="t t-inv" x="310" y="46" text-anchor="middle">ASMS Platform</text>
+          <text class="t-sm" x="310" y="64" text-anchor="middle" fill="#BFE0E2">you</text>
+          <rect class="bx-money" x="210" y="170" width="200" height="60"></rect>
+          <text class="t" x="310" y="196" text-anchor="middle">The School</text>
+          <text class="t-sm" x="310" y="214" text-anchor="middle">its own accounts</text>
+          <rect class="bx" x="210" y="320" width="200" height="60"></rect>
+          <text class="t" x="310" y="346" text-anchor="middle">Parents</text>
+          <text class="t-sm" x="310" y="364" text-anchor="middle">many per school</text>
+          <line class="ln" x1="310" y1="320" x2="310" y2="238" marker-end="url(#c2)"></line>
+          <line class="ln" x1="310" y1="170" x2="310" y2="88" marker-end="url(#c2)"></line>
+          <text class="t-hd" x="428" y="266" fill="#2E7D5B">SCHOOL'S INCOME</text>
+          <text class="t" x="428" y="286">Admission, monthly,</text>
+          <text class="t" x="428" y="304">exam, trip, fines</text>
+          <text class="t-sm" x="428" y="322">the school keeps all of it</text>
+          <text class="t-hd" x="428" y="116">YOUR INCOME</text>
+          <text class="t" x="428" y="136">Monthly subscription</text>
+          <text class="t-sm" x="428" y="154">per school</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">If a school stops paying its subscription, its workspace becomes read-only. Its fee records, results and student history are never deleted.</div>
+  </div>
+</section>
+
+<section id="roles">
+  <p class="eyebrow">Section 03</p>
+  <h2>Who does what</h2>
+  <p class="lede">Six roles. Each sees only their own part of the school.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 03</span><span class="plate-title">Every feature, grouped by who owns it</span></div>
+    <div class="plate-body">
+      <div class="mmap">
+        <div class="mcol is-plat">
+          <h4>Platform &mdash; you</h4>
+          <ul>
+            <li><span class="mname">Add a school</span><span class="msub">set up, configure, brand</span></li>
+            <li><span class="mname">Subscriptions</span><span class="msub">monthly billing, payment status</span></li>
+            <li><span class="mname">Support</span><span class="msub">across all schools</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Principal</h4>
+          <ul>
+            <li><span class="mname">Staff</span><span class="msub">hire, contracts, attendance, leave, terminate</span></li>
+            <li><span class="mname">Students</span><span class="msub">admit, assign class, withdraw</span></li>
+            <li class="is-money"><span class="mname">Finance</span><span class="msub">fees, salaries, expenses, profit</span></li>
+            <li><span class="mname">Events &amp; calendar</span><span class="msub">PTM, trips, public holidays</span></li>
+            <li><span class="mname">Announcements</span><span class="msub">to anyone in the school</span></li>
+            <li><span class="mname">Results</span><span class="msub">approve, publish, certificates</span></li>
+            <li><span class="mname">School rules</span><span class="msub">shown in everyone's app</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Office staff</h4>
+          <ul>
+            <li class="is-money"><span class="mname">Collect fees</span><span class="msub">cash at counter, issue receipt</span></li>
+            <li class="is-money"><span class="mname">Verify payments</span><span class="msub">check deposit proof against bank</span></li>
+            <li class="is-money"><span class="mname">Record expenses</span><span class="msub">rent, bills, purchases</span></li>
+            <li><span class="mname">Admission paperwork</span><span class="msub">documents, verification</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Teacher</h4>
+          <ul>
+            <li><span class="mname">Attendance</span><span class="msub">own class, from the phone</span></li>
+            <li><span class="mname">Daily diary</span><span class="msub">topic, homework, learning outcome</span></li>
+            <li><span class="mname">Tests &amp; marks</span><span class="msub">daily, weekly, monthly</span></li>
+            <li><span class="mname">Remarks</span><span class="msub">on individual students</span></li>
+            <li><span class="mname">Class notices</span><span class="msub">own students only</span></li>
+            <li class="is-money"><span class="mname">Collect charges</span><span class="msub">trip and exam fees, when assigned</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Parent</h4>
+          <ul>
+            <li class="is-money"><span class="mname">Pay fees</span><span class="msub">at office, or send deposit proof</span></li>
+            <li><span class="mname">Child's progress</span><span class="msub">attendance, marks, remarks</span></li>
+            <li><span class="mname">Diary &amp; homework</span><span class="msub">what was taught today</span></li>
+            <li><span class="mname">Notices &amp; PTM</span><span class="msub">announcements, meeting invites</span></li>
+            <li><span class="mname">All children</span><span class="msub">one login, every child</span></li>
+          </ul>
+        </div>
+        <div class="mcol">
+          <h4>Student</h4>
+          <ul>
+            <li><span class="mname">Own profile</span><span class="msub">photo, documents, class</span></li>
+            <li><span class="mname">Diary &amp; homework</span><span class="msub">what is due</span></li>
+            <li><span class="mname">Own results</span><span class="msub">tests and term reports</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="plate-note">Green marks anything that touches money. Office staff act on the principal's authority &mdash; the principal decides what each staff member is allowed to do.</div>
+  </div>
+</section>
+
+<section id="day">
+  <p class="eyebrow">Section 04</p>
+  <h2>A day in the school</h2>
+  <p class="lede">This is the rhythm that makes the system get used every day, not once a term.</p>
+  <p>Everything a teacher does in the morning reaches the parent the same day. That is the whole point &mdash; a parent should not learn in March that their child has been absent since January.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 04</span><span class="plate-title">From the teacher's phone to the parent, same day</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 330" role="img" aria-label="Through the day a teacher marks attendance, posts the daily diary, enters test marks and adds a remark. Each one reaches the parent the same day as an alert, the diary, marks and the remark.">
+          <defs><marker id="c4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+          <text class="t-hd" x="20" y="34">TEACHER DOES</text>
+          <rect class="bx" x="20" y="48" width="200" height="56"></rect>
+          <text class="t" x="120" y="70" text-anchor="middle">Marks attendance</text>
+          <text class="t-sm" x="120" y="88" text-anchor="middle">8:15 am, on the phone</text>
+          <rect class="bx" x="252" y="48" width="200" height="56"></rect>
+          <text class="t" x="352" y="70" text-anchor="middle">Posts daily diary</text>
+          <text class="t-sm" x="352" y="88" text-anchor="middle">topic and homework</text>
+          <rect class="bx" x="484" y="48" width="200" height="56"></rect>
+          <text class="t" x="584" y="70" text-anchor="middle">Enters test marks</text>
+          <text class="t-sm" x="584" y="88" text-anchor="middle">daily or weekly test</text>
+          <rect class="bx" x="716" y="48" width="200" height="56"></rect>
+          <text class="t" x="816" y="70" text-anchor="middle">Adds a remark</text>
+          <text class="t-sm" x="816" y="88" text-anchor="middle">good work, or concern</text>
+
+          <line class="ln" x1="120" y1="104" x2="120" y2="196" marker-end="url(#c4)"></line>
+          <line class="ln" x1="352" y1="104" x2="352" y2="196" marker-end="url(#c4)"></line>
+          <line class="ln" x1="584" y1="104" x2="584" y2="196" marker-end="url(#c4)"></line>
+          <line class="ln" x1="816" y1="104" x2="816" y2="196" marker-end="url(#c4)"></line>
+
+          <text class="t-hd" x="20" y="182">PARENT RECEIVES</text>
+          <rect class="bx-money" x="20" y="200" width="200" height="56"></rect>
+          <text class="t" x="120" y="222" text-anchor="middle">Absence alert</text>
+          <text class="t-sm" x="120" y="240" text-anchor="middle">same morning</text>
+          <rect class="bx-money" x="252" y="200" width="200" height="56"></rect>
+          <text class="t" x="352" y="222" text-anchor="middle">Today's homework</text>
+          <text class="t-sm" x="352" y="240" text-anchor="middle">what was taught</text>
+          <rect class="bx-money" x="484" y="200" width="200" height="56"></rect>
+          <text class="t" x="584" y="222" text-anchor="middle">Marks</text>
+          <text class="t-sm" x="584" y="240" text-anchor="middle">as they happen</text>
+          <rect class="bx-money" x="716" y="200" width="200" height="56"></rect>
+          <text class="t" x="816" y="222" text-anchor="middle">The remark</text>
+          <text class="t-sm" x="816" y="240" text-anchor="middle">if school allows</text>
+
+          <text class="t-sm" x="470" y="298" text-anchor="middle">Attendance saves instantly. The principal sees the whole school's attendance the moment it is marked.</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Teachers mark attendance on their phone, for their own class only. Attendance percentages are calculated by the system &mdash; nobody counts by hand.</div>
+  </div>
+</section>
+
+<section id="admission">
+  <p class="eyebrow">Section 05</p>
+  <h2>Admitting a new student</h2>
+  <p>The admission decides a student's whole financial profile, so it is recorded carefully. The fee decision made here quietly governs every invoice for years afterwards.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 05</span><span class="plate-title">From application to active student</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 420" role="img" aria-label="An application collects documents, a class is assigned, and the principal decides whether the admission fee is full, partial or free. The student is then enrolled, the parent account is created, and monthly billing begins.">
+          <defs><marker id="c5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+
+          <rect class="bx" x="20" y="40" width="190" height="60"></rect>
+          <text class="t" x="115" y="64" text-anchor="middle">Application</text>
+          <text class="t-sm" x="115" y="82" text-anchor="middle">parent applies</text>
+
+          <rect class="bx" x="250" y="40" width="220" height="60"></rect>
+          <text class="t" x="360" y="60" text-anchor="middle">Documents collected</text>
+          <text class="t-sm" x="360" y="77" text-anchor="middle">B-Form, parent ID card,</text>
+          <text class="t-sm" x="360" y="92" text-anchor="middle">old certificate, photo</text>
+
+          <rect class="bx" x="510" y="40" width="200" height="60"></rect>
+          <text class="t" x="610" y="64" text-anchor="middle">Class assigned</text>
+          <text class="t-sm" x="610" y="82" text-anchor="middle">class and section</text>
+
+          <rect class="bx-gate" x="750" y="40" width="170" height="60"></rect>
+          <text class="t" x="835" y="64" text-anchor="middle">Fee decision</text>
+          <text class="t-sm" x="835" y="82" text-anchor="middle">principal decides</text>
+
+          <line class="ln" x1="210" y1="70" x2="246" y2="70" marker-end="url(#c5)"></line>
+          <line class="ln" x1="470" y1="70" x2="506" y2="70" marker-end="url(#c5)"></line>
+          <line class="ln" x1="710" y1="70" x2="746" y2="70" marker-end="url(#c5)"></line>
+
+          <rect class="bx" x="600" y="170" width="150" height="54"></rect>
+          <text class="t" x="675" y="192" text-anchor="middle">Full fee</text>
+          <text class="t-sm" x="675" y="209" text-anchor="middle">Rs 10,000</text>
+          <rect class="bx" x="770" y="170" width="150" height="54"></rect>
+          <text class="t" x="845" y="192" text-anchor="middle">Partial</text>
+          <text class="t-sm" x="845" y="209" text-anchor="middle">Rs 5,000</text>
+          <rect class="bx-money" x="430" y="170" width="150" height="54"></rect>
+          <text class="t" x="505" y="192" text-anchor="middle">Free</text>
+          <text class="t-sm" x="505" y="209" text-anchor="middle">Rs 0</text>
+
+          <path class="ln" d="M820,100 L675,166" marker-end="url(#c5)"></path>
+          <path class="ln" d="M845,100 L845,166" marker-end="url(#c5)"></path>
+          <path class="ln" d="M790,100 L505,166" marker-end="url(#c5)"></path>
+
+          <rect class="bx" x="600" y="264" width="320" height="54"></rect>
+          <text class="t" x="760" y="286" text-anchor="middle">Admission invoice issued and paid</text>
+          <text class="t-sm" x="760" y="303" text-anchor="middle">free students skip this step</text>
+          <line class="ln" x1="675" y1="224" x2="700" y2="260" marker-end="url(#c5)"></line>
+          <line class="ln" x1="845" y1="224" x2="820" y2="260" marker-end="url(#c5)"></line>
+
+          <rect class="bx-money" x="250" y="264" width="280" height="54"></rect>
+          <text class="t" x="390" y="286" text-anchor="middle">Student enrolled</text>
+          <text class="t-sm" x="390" y="303" text-anchor="middle">student ID, roll number issued</text>
+          <path class="ln" d="M505,224 L440,260" marker-end="url(#c5)"></path>
+          <line class="ln" x1="596" y1="291" x2="534" y2="291" marker-end="url(#c5)"></line>
+
+          <rect class="bx-money" x="250" y="348" width="280" height="52"></rect>
+          <text class="t" x="390" y="370" text-anchor="middle">Parent account created</text>
+          <text class="t-sm" x="390" y="387" text-anchor="middle">monthly billing begins</text>
+          <line class="ln" x1="390" y1="318" x2="390" y2="344" marker-end="url(#c5)"></line>
+
+          <text class="t-sm" x="70" y="290">Every fee decision</text>
+          <text class="t-sm" x="70" y="308">records who approved</text>
+          <text class="t-sm" x="70" y="326">it and why.</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">If a parent already has a child in the school, the new student joins the same family record &mdash; one login, both children, no duplicate parent details.</div>
+  </div>
+</section>
+
+<section id="fees">
+  <p class="eyebrow">Section 06</p>
+  <h2>Fees, fines and charges</h2>
+  <p class="lede">One system handles every kind of charge: monthly fees, exam fees, trip fees and fines.</p>
+  <p>The principal creates a charge, chooses who it applies to &mdash; the whole school, one class, one section, or named students &mdash; and the system creates one entry per student. If a teacher is asked to collect it, it appears in their app with their class list.</p>
+
+  <div class="call warn">
+    <p class="eyebrow">One rule that protects everyone</p>
+    <p>When a teacher collects cash in class, that money is in the teacher's hands, not the school's. Marking a student paid records the collection; the ledger is only credited when the teacher hands the cash to the office and the office confirms the amount. This protects the teacher as much as the school &mdash; the record shows exactly what was collected and what was handed over.</p>
+  </div>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 06</span><span class="plate-title">Every way a fee gets paid</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 580" role="img" aria-label="The principal creates a charge and chooses who it applies to; the system creates one entry per student. Payment arrives one of three ways: a teacher collects in class and hands cash to the office, a parent pays at the office counter, or a parent sends a bank deposit screenshot which the office verifies. All three end at the school ledger and a receipt. Unpaid entries trigger automatic reminders.">
+          <defs><marker id="c6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+
+          <rect class="bx" x="350" y="16" width="240" height="52"></rect>
+          <text class="t" x="470" y="38" text-anchor="middle">Principal creates a charge</text>
+          <text class="t-sm" x="470" y="55" text-anchor="middle">fee, exam fee, trip, fine</text>
+
+          <rect class="bx" x="330" y="96" width="280" height="52"></rect>
+          <text class="t" x="470" y="118" text-anchor="middle">Chooses who it applies to</text>
+          <text class="t-sm" x="470" y="135" text-anchor="middle">whole school / class / section / students</text>
+
+          <rect class="bx-money" x="330" y="176" width="280" height="52"></rect>
+          <text class="t" x="470" y="198" text-anchor="middle">One entry per student</text>
+          <text class="t-sm" x="470" y="215" text-anchor="middle">discounts applied automatically</text>
+
+          <line class="ln" x1="470" y1="68" x2="470" y2="92" marker-end="url(#c6)"></line>
+          <line class="ln" x1="470" y1="148" x2="470" y2="172" marker-end="url(#c6)"></line>
+
+          <text class="t-hd" x="30" y="268">THREE WAYS TO PAY</text>
+
+          <rect class="bx" x="20" y="284" width="270" height="56"></rect>
+          <text class="t" x="155" y="306" text-anchor="middle">Teacher collects in class</text>
+          <text class="t-sm" x="155" y="323" text-anchor="middle">marks who paid, reports total</text>
+
+          <rect class="bx" x="335" y="284" width="270" height="56"></rect>
+          <text class="t" x="470" y="306" text-anchor="middle">Parent pays at the office</text>
+          <text class="t-sm" x="470" y="323" text-anchor="middle">cash, receipt issued at once</text>
+
+          <rect class="bx" x="650" y="284" width="270" height="56"></rect>
+          <text class="t" x="785" y="306" text-anchor="middle">Parent sends deposit proof</text>
+          <text class="t-sm" x="785" y="323" text-anchor="middle">bank screenshot on WhatsApp</text>
+
+          <path class="ln" d="M400,228 L155,280" marker-end="url(#c6)"></path>
+          <line class="ln" x1="470" y1="228" x2="470" y2="280" marker-end="url(#c6)"></line>
+          <path class="ln" d="M540,228 L785,280" marker-end="url(#c6)"></path>
+
+          <rect class="bx-gate" x="20" y="378" width="270" height="52"></rect>
+          <text class="t" x="155" y="400" text-anchor="middle">Cash handed to office</text>
+          <text class="t-sm" x="155" y="417" text-anchor="middle">amount checked against list</text>
+
+          <rect class="bx-gate" x="650" y="378" width="270" height="52"></rect>
+          <text class="t" x="785" y="400" text-anchor="middle">Office checks the bank</text>
+          <text class="t-sm" x="785" y="417" text-anchor="middle">confirms or rejects</text>
+
+          <line class="ln" x1="155" y1="340" x2="155" y2="374" marker-end="url(#c6)"></line>
+          <line class="ln" x1="785" y1="340" x2="785" y2="374" marker-end="url(#c6)"></line>
+
+          <rect class="bx-money" x="330" y="466" width="280" height="54"></rect>
+          <text class="t" x="470" y="488" text-anchor="middle">Recorded in school accounts</text>
+          <text class="t-sm" x="470" y="505" text-anchor="middle">receipt sent to parent</text>
+
+          <path class="ln" d="M155,430 L155,492 L326,492" marker-end="url(#c6)"></path>
+          <line class="ln" x1="470" y1="340" x2="470" y2="462" marker-end="url(#c6)"></line>
+          <path class="ln" d="M785,430 L785,492 L614,492" marker-end="url(#c6)"></path>
+
+          <text class="t-sm" x="470" y="552" text-anchor="middle">Anyone who has not paid is reminded automatically, on WhatsApp or SMS.</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Nothing is ever deleted. A rejected deposit keeps the original screenshot and the reason &mdash; which is what settles a disagreement with a parent months later.</div>
+  </div>
+
+  <h3>The school's own accounts</h3>
+  <p>Beyond fees, the school records what it spends: salaries, building rent, electricity, purchases and daily expenses. Money in minus money out gives the profit report the owner actually wants.</p>
+  <div class="cards">
+    <div><h4>Money in</h4><p>Admission, monthly and exam fees, trips, fines &mdash; all recorded as they are collected.</p></div>
+    <div><h4>Money out</h4><p>Staff salaries, rent, utilities, repairs, purchases and daily expenses, each with who approved it.</p></div>
+    <div><h4>Profit report</h4><p>Per month, per term or per year. Built from the same records, so it always matches.</p></div>
+  </div>
+</section>
+
+<section id="reach">
+  <p class="eyebrow">Section 07</p>
+  <h2>Reaching every parent</h2>
+  <p class="lede">This is the part most school software gets wrong, and it is the reason ASMS will work here.</p>
+  <p>Many parents do not have a smartphone. Many who do buy only a social bundle &mdash; WhatsApp, Facebook and YouTube &mdash; which cannot open a school app at all. Some have a keypad phone and nothing else.</p>
+  <p><strong>So the app is never the only way a parent hears from the school.</strong> Every message goes out on the channel that actually reaches that parent.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Figure 07</span><span class="plate-title">One message, three kinds of parent</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 900 420" role="img" aria-label="A single school message is sent through the system, which routes it by what each parent can receive: the app and WhatsApp for parents with data, WhatsApp for parents on social bundles, and SMS for parents with keypad phones.">
+          <defs><marker id="c7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path></marker></defs>
+
+          <rect class="bx" x="330" y="20" width="240" height="52"></rect>
+          <text class="t" x="450" y="42" text-anchor="middle">School sends one message</text>
+          <text class="t-sm" x="450" y="59" text-anchor="middle">written once</text>
+
+          <rect class="bx-plat" x="330" y="106" width="240" height="52"></rect>
+          <text class="t t-inv" x="450" y="128" text-anchor="middle">System chooses the channel</text>
+          <text class="t-sm" x="450" y="145" text-anchor="middle" fill="#BFE0E2">by what each parent can receive</text>
+
+          <line class="ln" x1="450" y1="72" x2="450" y2="102" marker-end="url(#c7)"></line>
+
+          <rect class="bx-money" x="20" y="232" width="260" height="76"></rect>
+          <text class="t" x="150" y="256" text-anchor="middle">Smartphone + data</text>
+          <text class="t-sm" x="150" y="276" text-anchor="middle">App notification,</text>
+          <text class="t-sm" x="150" y="292" text-anchor="middle">plus WhatsApp</text>
+
+          <rect class="bx-money" x="320" y="232" width="260" height="76"></rect>
+          <text class="t" x="450" y="256" text-anchor="middle">Social bundle only</text>
+          <text class="t-sm" x="450" y="276" text-anchor="middle">WhatsApp &mdash; already</text>
+          <text class="t-sm" x="450" y="292" text-anchor="middle">inside their package</text>
+
+          <rect class="bx-money" x="620" y="232" width="260" height="76"></rect>
+          <text class="t" x="750" y="256" text-anchor="middle">Keypad phone</text>
+          <text class="t-sm" x="750" y="276" text-anchor="middle">SMS, with the detail</text>
+          <text class="t-sm" x="750" y="292" text-anchor="middle">written in the message</text>
+
+          <path class="ln" d="M390,158 L150,228" marker-end="url(#c7)"></path>
+          <line class="ln" x1="450" y1="158" x2="450" y2="228" marker-end="url(#c7)"></line>
+          <path class="ln" d="M510,158 L750,228" marker-end="url(#c7)"></path>
+
+          <rect class="bx-panel" x="20" y="344" width="860" height="60"></rect>
+          <text class="t" x="450" y="370" text-anchor="middle">Every parent receives it. The school sees who has read it.</text>
+          <text class="t-sm" x="450" y="390" text-anchor="middle">Urgent messages &mdash; school closed, emergency &mdash; always go by WhatsApp and SMS, never app only.</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Parents can also send fee deposit screenshots back over WhatsApp, so a parent with no app can still pay and be recorded properly.</div>
+  </div>
+</section>
+
+<section id="results">
+  <p class="eyebrow">Section 08</p>
+  <h2>Tests, results and certificates</h2>
+  <p>Small tests through the term build into the term result. Nothing is entered twice.</p>
+  <ol class="steps">
+    <li><b>Teachers hold daily, weekly and monthly tests</b> and enter marks from their phone as they go.</li>
+    <li><b>The system combines them into the term result</b> using the rule the school sets, so nobody adds up marks by hand.</li>
+    <li><b>The principal reviews and approves</b> before anything is published. Marks are never visible to parents until approved.</li>
+    <li><b>Report cards are generated</b> and become available to parents and students in the app.</li>
+    <li><b>Certificates are issued</b> from the same records &mdash; school leaving, character, academic &mdash; each numbered and printable.</li>
+  </ol>
+  <p style="margin-top:1.3rem">Every past year stays on record. A student who left three years ago can still have a leaving certificate printed with their real marks.</p>
+</section>
+
+<section id="build">
+  <p class="eyebrow">Section 09</p>
+  <h2>What gets built</h2>
+  <p class="lede">Two applications, not five. This is a deliberate decision that keeps the cost down and the quality up.</p>
+
+  <div class="cards">
+    <div><h4>Web system</h4><p>For the office and the principal. Admissions, fees, salaries, expenses, results, reports, configuration &mdash; everything that needs a keyboard and a big screen.</p></div>
+    <div><h4>Mobile app</h4><p>One app for everyone. It shows the principal their approvals, the teacher their classes, the parent their children. Same app, different screens by role.</p></div>
+    <div><h4>WhatsApp &amp; SMS</h4><p>Not an app at all &mdash; the channel that reaches every parent regardless of phone or data package.</p></div>
+  </div>
+
+  <p>One mobile app instead of four means one thing to install, one thing to update, and one thing to support. A parent who becomes a teacher's assistant does not install a second app.</p>
+
+  <h3>Suggested order of building</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Phase</th><th>What is delivered</th><th>Why this order</th></tr></thead>
+      <tbody>
+        <tr><td class="k">1 &mdash; Foundation</td><td>School setup, staff, students, classes, logins, roles</td><td>Everything else needs these records to exist</td></tr>
+        <tr><td class="k">2 &mdash; Daily use</td><td>Attendance, daily diary, announcements, WhatsApp and SMS</td><td>The first thing a school feels every day</td></tr>
+        <tr><td class="k">3 &mdash; Money</td><td>Fees, charges, collection, receipts, expenses, salaries</td><td>The reason a school owner pays for software</td></tr>
+        <tr><td class="k">4 &mdash; Academics</td><td>Tests, marks, term results, report cards, certificates</td><td>Needs a full term of data to be worth anything</td></tr>
+        <tr><td class="k">5 &mdash; Extras</td><td>Biometric staff attendance, deeper reports, transport</td><td>Valuable, but nothing depends on them</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Each phase is usable on its own. A school can start using phase 2 while phase 3 is still being built.</p>
+</section>
+
+<section id="need">
+  <p class="eyebrow">Section 10</p>
+  <h2>What we need from you</h2>
+  <p class="lede">Everything above is agreed. These few decisions are yours, and each one changes how the system behaves.</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Decision</th><th>What we need to know</th><th>When</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k">Discounted students</td>
+          <td>A student on free or half fees &mdash; do they still pay exam fees, trip fees and fines? Or are those waived too?</td>
+          <td><span class="pill c">Before build</span></td>
+        </tr>
+        <tr>
+          <td class="k">How results are combined</td>
+          <td>Daily, weekly and monthly tests all exist. How much does each count towards the term result? The system cannot calculate a result until this is fixed.</td>
+          <td><span class="pill c">Before build</span></td>
+        </tr>
+        <tr>
+          <td class="k">Moving up a year</td>
+          <td>At year end, is every student promoted automatically, or does the result decide? What happens to a student who repeats, or who still owes fees?</td>
+          <td><span class="pill c">Before build</span></td>
+        </tr>
+        <tr>
+          <td class="k">Part payments</td>
+          <td>If a trip costs Rs 2,000 and a parent pays Rs 1,000, is that accepted and recorded as partly paid, or refused?</td>
+          <td><span class="pill w">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td class="k">WhatsApp number</td>
+          <td>Does each school use its own WhatsApp number, or does everything come from one number for all schools?</td>
+          <td><span class="pill w">Phase 2</span></td>
+        </tr>
+        <tr>
+          <td class="k">Profit reporting</td>
+          <td>Should income count when a fee is <em>due</em>, or when it is actually <em>received</em>? These give different profit figures.</td>
+          <td><span class="pill w">Phase 3</span></td>
+        </tr>
+        <tr>
+          <td class="k">Urdu layout</td>
+          <td>When a user switches to Urdu, should the screen mirror right-to-left, or keep the same layout with Urdu text?</td>
+          <td><span class="pill a">Before screens</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Already decided and agreed</h3>
+  <ul class="tight">
+    <li>One platform serving many schools, each fully separate, on a monthly subscription</li>
+    <li>Two money systems &mdash; your subscription income and the school's fee income &mdash; kept completely apart</li>
+    <li>Six roles, each seeing only what their role allows</li>
+    <li>Teachers mark attendance on their phone, for their own classes</li>
+    <li>One charge system for fees, exam fees, trips and fines, targeted like an announcement</li>
+    <li>Teacher collections confirmed by the office before they count as received</li>
+    <li>WhatsApp and SMS reach every parent; the app is a bonus for those who can use it</li>
+    <li>English by default, Urdu available; announcements written in whichever language the school prefers</li>
+    <li>Nothing is ever deleted &mdash; every student, payment and result keeps its history</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<footer>
+  ASMS System Design &middot; for client review &middot; 7 figures &middot; 7 decisions outstanding<br>
+  Everything else in this document is agreed and ready to build.
+</footer>
+</div>

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "mermaid-diagramming",
+  "owner": "nickcrew",
+  "repo": "claude-cortex",
+  "path": "skills/mermaid-diagramming",
+  "branch": "main",
+  "sha": "ea4da93975bc4a69a95205e64b6d6370070a55c3",
+  "source": "manual"
+}

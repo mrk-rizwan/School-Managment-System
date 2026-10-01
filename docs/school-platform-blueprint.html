@@ -1,0 +1,1163 @@
+<title>School Platform Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root{
+  --paper:#FBFCFC;
+  --surface:#FFFFFF;
+  --surface-2:#F2F6F6;
+  --ink:#101F2A;
+  --ink-2:#43565F;
+  --ink-3:#66797F;
+  --rule:#D3DCDC;
+  --rule-2:#E4EAEA;
+  --accent:#0F5C63;
+  --good:#2E7D5B;
+  --warn:#9A6B14;
+  --crit:#A33A2A;
+  --shadow:0 1px 2px rgba(18,34,46,.06), 0 8px 24px -12px rgba(18,34,46,.18);
+
+  --measure:68ch;
+  --step--1:.8125rem;
+  --step-0:1.125rem;
+  --step-1:1.375rem;
+  --step-2:1.8125rem;
+  --step-4:3.25rem;
+}
+
+/* This document deliberately commits to a single light theme. It is a reference
+   read at length and shared with a client, so it renders white for every viewer
+   regardless of their system or app theme. Every colour is painted explicitly,
+   so the page never borrows the host's ground. */
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+  font-size:var(--step-0);
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.5rem)}
+
+/* ---------- masthead ---------- */
+.mast{border-bottom:1px solid var(--rule);padding:clamp(3rem,8vw,5.5rem) 0 clamp(2rem,5vw,3rem)}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:var(--step--1);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-weight:500;margin:0 0 1.1rem;
+}
+h1{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:var(--step-4);line-height:1.02;letter-spacing:-.028em;
+  text-wrap:balance;margin:0 0 1.1rem;
+}
+.standfirst{font-size:var(--step-1);color:var(--ink-2);max-width:60ch;margin:0 0 2.4rem;line-height:1.5}
+.facts{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);margin:0;
+}
+.fact{background:var(--surface);padding:1.15rem 1.25rem}
+.fact dt{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.6875rem;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  margin:0 0 .45rem;font-weight:500;
+}
+.fact dd{
+  margin:0;font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;
+  font-size:1.125rem;line-height:1.35;letter-spacing:-.01em;
+}
+
+/* ---------- layout ---------- */
+.cols{display:grid;grid-template-columns:1fr;gap:0}
+.rail{display:none}
+@media (min-width:1020px){
+  .cols{grid-template-columns:200px minmax(0,1fr);gap:3.5rem;align-items:start}
+  .rail{position:sticky;top:2rem;padding:3rem 0 0;display:block}
+}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.1rem}
+.rail a{
+  display:flex;gap:.6rem;text-decoration:none;color:var(--ink-2);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.78rem;
+  padding:.4rem .5rem;border-radius:3px;line-height:1.35;
+}
+.rail a:hover{color:var(--accent);background:var(--surface)}
+.rail a span{color:var(--ink-3);font-variant-numeric:tabular-nums}
+.rail a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+main{padding-bottom:5rem;min-width:0}
+section{padding:clamp(2.6rem,6vw,4rem) 0;border-bottom:1px solid var(--rule-2)}
+section:last-of-type{border-bottom:0}
+h2{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:700;
+  font-size:var(--step-2);letter-spacing:-.022em;line-height:1.12;
+  margin:.3rem 0 .9rem;text-wrap:balance;
+}
+h3{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;
+  font-size:var(--step-1);letter-spacing:-.014em;margin:2.4rem 0 .7rem;
+}
+p{max-width:var(--measure);margin:0 0 1.1rem}
+.lede{font-size:1.1875rem;color:var(--ink-2)}
+strong{font-weight:600;color:var(--ink)}
+em{font-style:italic}
+code{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;
+  background:var(--surface-2);padding:.1em .38em;border-radius:3px;
+  border:1px solid var(--rule-2);
+}
+
+/* ---------- plates ---------- */
+.plate{margin:1.9rem 0 1.4rem;border:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+.plate-head{
+  display:flex;align-items:baseline;gap:.85rem;flex-wrap:wrap;
+  padding:.7rem 1rem;border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.73rem;letter-spacing:.12em;text-transform:uppercase;
+}
+.plate-num{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.plate-title{color:var(--ink-2);font-weight:500;letter-spacing:.09em}
+.plate-body{overflow-x:auto;padding:1.5rem 1rem 1.7rem}
+.plate-note{
+  padding:.7rem 1rem;border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8rem;
+  color:var(--ink-2);line-height:1.65;
+}
+
+/* ---------- hand-authored SVG figures ----------
+   Every shape and label carries its colour explicitly, so nothing depends on a
+   renderer theme. Shared classes below; ids inside each <svg> are unique. */
+.fig{margin:0}
+.fig svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.bx{fill:#F1F6F6;stroke:#0F5C63;stroke-width:1.25}
+.bx-plat{fill:#0F5C63;stroke:#0F5C63;stroke-width:1.25}
+.bx-money{fill:#E4F0E9;stroke:#2E7D5B;stroke-width:1.25}
+.bx-gate{fill:#FBF1DF;stroke:#9A6B14;stroke-width:1.25}
+.bx-bad{fill:#FAE7E3;stroke:#A33A2A;stroke-width:1.25}
+.bx-panel{fill:#FAFCFC;stroke:#CBD7D7;stroke-width:1;stroke-dasharray:5 4}
+.t{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;fill:#101F2A}
+.t-inv{fill:#FFFFFF}
+.t-sm{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;fill:#43565F}
+.t-hd{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;fill:#0F5C63;letter-spacing:.09em;font-weight:600}
+.t-num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;fill:#FFFFFF}
+.ln{stroke:#6E8288;stroke-width:1.35;fill:none}
+.ln-d{stroke:#6E8288;stroke-width:1.35;fill:none;stroke-dasharray:5 4}
+
+/* ---------- module map (Plate 03, built in HTML for legibility) ---------- */
+.mmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:1rem}
+.mcol{border:1px solid var(--rule);background:var(--surface);display:flex;flex-direction:column}
+.mcol > h4{
+  margin:0;padding:.55rem .7rem;background:var(--surface-2);
+  border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600;
+}
+.mcol.is-plat > h4{background:var(--accent);color:#FFFFFF;border-bottom-color:var(--accent)}
+.mcol ul{list-style:none;margin:0;padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
+.mcol li{border:1px solid var(--rule-2);background:var(--surface);padding:.45rem .55rem;line-height:1.35}
+.mcol li.is-money{border-color:var(--good);background:#F1F8F4}
+.mname{
+  display:block;font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  font-weight:600;font-size:.9375rem;letter-spacing:-.008em;color:var(--ink);
+}
+.msub{
+  display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.6875rem;color:var(--ink-3);line-height:1.5;margin-top:.15rem;
+}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:1.6rem 0;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:1rem}
+th,td{text-align:left;padding:.62rem .85rem;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.68rem;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;background:var(--surface-2);border-bottom:1px solid var(--rule);
+}
+tbody tr:last-child td{border-bottom:0}
+td.role{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-weight:600;white-space:nowrap}
+.y{color:var(--good);font-weight:600}
+.n{color:var(--ink-3)}
+.pt{color:var(--warn);font-weight:600}
+
+/* ---------- pills / callouts ---------- */
+.pill{
+  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;font-weight:500;
+  padding:.2rem .5rem;border:1px solid currentColor;border-radius:2px;
+}
+.pill.a{color:var(--accent)}
+.pill.g{color:var(--good)}
+.pill.w{color:var(--warn)}
+.pill.c{color:var(--crit)}
+
+.call{
+  border-left:3px solid var(--accent);background:var(--surface);
+  padding:1.05rem 1.2rem;margin:1.6rem 0;max-width:var(--measure);
+  border-top:1px solid var(--rule-2);border-right:1px solid var(--rule-2);
+  border-bottom:1px solid var(--rule-2);
+}
+.call p:last-child{margin-bottom:0}
+.call .eyebrow{margin-bottom:.5rem}
+.call.crit{border-left-color:var(--crit)}
+.call.crit .eyebrow{color:var(--crit)}
+
+.qs{list-style:none;margin:1.6rem 0 0;padding:0;display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.qs li{background:var(--surface);padding:1rem 1.15rem}
+.qs h4{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;font-size:1rem;
+  font-weight:600;margin:.5rem 0 .35rem;letter-spacing:-.01em;
+}
+.qs p{margin:0;font-size:1rem;color:var(--ink-2);max-width:62ch}
+
+ul.tight{max-width:var(--measure);padding-left:1.15rem;margin:0 0 1.2rem}
+ul.tight li{margin-bottom:.4rem}
+
+footer{
+  border-top:1px solid var(--rule);padding:2rem 0 3.5rem;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.72rem;color:var(--ink-3);letter-spacing:.05em;line-height:1.8;
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+
+<div class="wrap">
+<div style="border:1px solid #A33A2A;border-left:5px solid #A33A2A;background:#FDF2EF;padding:1rem 1.2rem;margin:1.5rem 0 0;font-family:'Source Serif 4',Georgia,serif;color:#101F2A;line-height:1.55">
+  <p style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#A33A2A;font-weight:600;margin:0 0 .5rem">Superseded &mdash; kept for reference</p>
+  <p style="margin:0 0 .6rem;max-width:70ch">This was the first structural pass. The current documents are <strong>asms-system-architecture.html</strong> (technical) and <strong>asms-system-design.html</strong> (client-facing), with open decisions tracked in <strong>CLAUDE.md</strong>.</p>
+  <p style="margin:0;max-width:70ch"><strong>Do not build the data model from Plates 08&ndash;10.</strong> They predate later decisions and contain a separate <code>EVENT_FEE</code> table, which contradicts the settled rule that fee types are rows in one <code>FEE_HEAD</code> table. They are also missing announcements, the delivery log, permissions, grading scale, certificates, staff leave and the charge campaign &mdash; and payment is modelled one-to-one with a fee line, which cannot express partial payments, sibling payments or corrections.</p>
+</div>
+<header class="mast">
+  <p class="eyebrow">System Blueprint &middot; v0.4 &middot; Draft for client review</p>
+  <h1>School Platform Blueprint</h1>
+  <p class="standfirst">A multi-tenant subscription platform: one system, many schools, billed monthly. This maps the full structure &mdash; tenancy, modules, roles, money, and data.</p>
+  <dl class="facts">
+    <div class="fact"><dt>Model</dt><dd>Multi-tenant SaaS</dd></div>
+    <div class="fact"><dt>Tenant</dt><dd>One school = one tenant</dd></div>
+    <div class="fact"><dt>Money layers</dt><dd>Two, kept separate</dd></div>
+    <div class="fact"><dt>Roles</dt><dd>6 distinct actors</dd></div>
+  </dl>
+</header>
+
+<div class="cols">
+<nav class="rail" aria-label="Sections">
+  <ol>
+    <li><a href="#money"><span>01</span> Two money layers</a></li>
+    <li><a href="#tenancy"><span>02</span> Tenancy &amp; gate</a></li>
+    <li><a href="#modules"><span>03</span> Master module map</a></li>
+    <li><a href="#roles"><span>04</span> Role matrix</a></li>
+    <li><a href="#lifecycle"><span>05</span> Subscription states</a></li>
+    <li><a href="#admission"><span>06</span> Admission</a></li>
+    <li><a href="#fees"><span>07</span> Fee collection</a></li>
+    <li><a href="#daily"><span>08</span> Daily loop</a></li>
+    <li><a href="#data"><span>09</span> Data model</a></li>
+    <li><a href="#open"><span>10</span> Decisions needed</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="money">
+  <p class="eyebrow">Section 01</p>
+  <h2>Two money layers, never one ledger</h2>
+  <p class="lede">This is the single most important structural decision in the system, and it is easy to get wrong.</p>
+  <p>Money moves in two unrelated directions. <strong>You charge schools</strong> a monthly subscription &mdash; that is your revenue. <strong>Schools charge parents</strong> admission, monthly, exam and event fees &mdash; that is the school's revenue, which you merely host. A school's fee income is not yours, is not visible to other schools, and must never appear in the same ledger, report, or table as your subscription income.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 01</span><span class="plate-title">Money flow &mdash; the separation</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 640 400" role="img" aria-label="Money flows upward in two separate layers: parents pay the school in fees, and the school pays the platform vendor a monthly subscription.">
+          <defs>
+            <marker id="p1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-plat" x="210" y="20" width="200" height="60" rx="2"></rect>
+          <text class="t t-inv" x="310" y="46" text-anchor="middle">Platform / Vendor</text>
+          <text class="t-sm t-inv" x="310" y="64" text-anchor="middle" fill="#CDE7E8">you</text>
+
+          <rect class="bx-money" x="210" y="170" width="200" height="60" rx="2"></rect>
+          <text class="t" x="310" y="196" text-anchor="middle">School</text>
+          <text class="t-sm" x="310" y="214" text-anchor="middle">one tenant</text>
+
+          <rect class="bx" x="210" y="320" width="200" height="60" rx="2"></rect>
+          <text class="t" x="310" y="346" text-anchor="middle">Parents</text>
+          <text class="t-sm" x="310" y="364" text-anchor="middle">many per school</text>
+
+          <line class="ln" x1="310" y1="320" x2="310" y2="238" marker-end="url(#p1a)"></line>
+          <line class="ln" x1="310" y1="170" x2="310" y2="88" marker-end="url(#p1a)"></line>
+
+          <text class="t-hd" x="424" y="266" fill="#2E7D5B">LAYER 2</text>
+          <text class="t" x="424" y="284">School revenue</text>
+          <text class="t-sm" x="424" y="300">admission, monthly,</text>
+          <text class="t-sm" x="424" y="314">exam, event fee</text>
+
+          <text class="t-hd" x="424" y="116">LAYER 1</text>
+          <text class="t" x="424" y="134">Your revenue</text>
+          <text class="t-sm" x="424" y="150">monthly subscription</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Layer 1 is billed by you and gates access. Layer 2 is bookkeeping you host on the school's behalf. Separate tables, separate reports, separate permissions.</div>
+  </div>
+
+  <div class="call crit">
+    <p class="eyebrow">Consequence</p>
+    <p>A school falling behind on <em>your</em> subscription must never destroy or hide the school's own financial history. Suspension restricts the workspace; the records survive.</p>
+  </div>
+</section>
+
+<section id="tenancy">
+  <p class="eyebrow">Section 02</p>
+  <h2>Tenancy and the access gate</h2>
+  <p>Every school is an isolated tenant. Every row in every table carries a <code>school_id</code>, and every query filters on it &mdash; no exceptions. Subscription status is checked at the gate on each session, never cached in the client.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 02</span><span class="plate-title">Platform layer over tenant workspaces</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 680 540" role="img" aria-label="The platform admin manages a school registry and billing; both feed an access gate that either opens the tenant workspace or drops it to a read-only lock, while tenant data is preserved either way.">
+          <defs>
+            <marker id="p2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-panel" x="20" y="14" width="560" height="172" rx="2"></rect>
+          <text class="t-hd" x="34" y="34">PLATFORM &mdash; VENDOR SIDE</text>
+
+          <rect class="bx-plat" x="200" y="46" width="190" height="48" rx="2"></rect>
+          <text class="t t-inv" x="295" y="75" text-anchor="middle">Platform Admin</text>
+
+          <rect class="bx" x="44" y="122" width="210" height="48" rx="2"></rect>
+          <text class="t" x="149" y="143" text-anchor="middle">School Registry</text>
+          <text class="t-sm" x="149" y="159" text-anchor="middle">onboard, configure</text>
+
+          <rect class="bx" x="286" y="122" width="250" height="48" rx="2"></rect>
+          <text class="t" x="411" y="143" text-anchor="middle">Subscription &amp; Billing</text>
+          <text class="t-sm" x="411" y="159" text-anchor="middle">plans, invoices, status</text>
+
+          <line class="ln" x1="252" y1="94" x2="168" y2="118" marker-end="url(#p2a)"></line>
+          <line class="ln" x1="338" y1="94" x2="400" y2="118" marker-end="url(#p2a)"></line>
+
+          <polygon class="bx-gate" points="295,208 432,252 295,296 158,252"></polygon>
+          <text class="t" x="295" y="248" text-anchor="middle">Access Gate</text>
+          <text class="t-sm" x="295" y="266" text-anchor="middle">subscription status?</text>
+
+          <line class="ln" x1="149" y1="170" x2="222" y2="230" marker-end="url(#p2a)"></line>
+          <line class="ln" x1="411" y1="170" x2="366" y2="230" marker-end="url(#p2a)"></line>
+
+          <rect class="bx-panel" x="352" y="326" width="272" height="196" rx="2"></rect>
+          <text class="t-hd" x="366" y="346">SCHOOL TENANT &mdash; PER SCHOOL</text>
+
+          <rect class="bx-money" x="376" y="360" width="224" height="52" rx="2"></rect>
+          <text class="t" x="488" y="382" text-anchor="middle">School Workspace</text>
+          <text class="t-sm" x="488" y="399" text-anchor="middle">all modules</text>
+
+          <rect class="bx" x="392" y="448" width="192" height="52" rx="2"></rect>
+          <text class="t" x="488" y="470" text-anchor="middle">Tenant data</text>
+          <text class="t-sm" x="488" y="487" text-anchor="middle">scoped by school_id</text>
+
+          <rect class="bx-bad" x="30" y="360" width="216" height="52" rx="2"></rect>
+          <text class="t" x="138" y="382" text-anchor="middle">Read-only lock</text>
+          <text class="t-sm" x="138" y="399" text-anchor="middle">plus payment notice</text>
+
+          <path class="ln" d="M400,268 L466,356" marker-end="url(#p2a)"></path>
+          <text class="t-sm" x="452" y="316">active or grace</text>
+
+          <path class="ln" d="M190,268 L146,356" marker-end="url(#p2a)"></path>
+          <text class="t-sm" x="46" y="316">suspended</text>
+
+          <line class="ln" x1="488" y1="412" x2="488" y2="444" marker-end="url(#p2a)"></line>
+
+          <path class="ln-d" d="M138,412 L138,474 L388,474" marker-end="url(#p2a)"></path>
+          <text class="t-sm" x="200" y="466">records preserved</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">The gate is the only thing standing between a school and its workspace. It reads billing status; it does not read fee data.</div>
+  </div>
+</section>
+
+<section id="modules">
+  <p class="eyebrow">Section 03</p>
+  <h2>Master module map</h2>
+  <p class="lede">The full structure your client asked for &mdash; every module, grouped by who owns it.</p>
+  <p>This is laid out as columns rather than a flowchart on purpose. Twenty-three modules with cross-links drawn between them is unreadable at any size; the structure is what matters here, and the hand-offs are listed underneath where they can actually be read.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 03</span><span class="plate-title">Every module, by owning role</span></div>
+    <div class="plate-body">
+      <div class="mmap">
+        <div class="mcol is-plat">
+          <h4>Platform Admin</h4>
+          <ul>
+            <li><span class="mname">School Registry</span><span class="msub">onboard, provision, brand, configure</span></li>
+            <li><span class="mname">Subscriptions</span><span class="msub">plans, monthly invoices, status, suspension</span></li>
+            <li><span class="mname">Platform Reporting</span><span class="msub">across all schools</span></li>
+          </ul>
+        </div>
+
+        <div class="mcol">
+          <h4>Principal</h4>
+          <ul>
+            <li><span class="mname">Staff</span><span class="msub">attendance, contract validity, hire, terminate</span></li>
+            <li><span class="mname">Students</span><span class="msub">admit, withdraw, view attendance</span></li>
+            <li class="is-money"><span class="mname">Finance</span><span class="msub">salaries, fees, expenses, concessions</span></li>
+            <li><span class="mname">Calendar</span><span class="msub">events, PTM, public holidays</span></li>
+            <li><span class="mname">Announcements</span><span class="msub">to all parents</span></li>
+            <li><span class="mname">Results</span><span class="msub">quarterly, annual, certificates</span></li>
+          </ul>
+        </div>
+
+        <div class="mcol">
+          <h4>Teacher</h4>
+          <ul>
+            <li><span class="mname">Student Attendance</span><span class="msub">daily, own class</span></li>
+            <li><span class="mname">Daily Diary</span><span class="msub">topic, assignment, learning outcome</span></li>
+            <li><span class="mname">Tests &amp; Marks</span><span class="msub">daily, weekly, monthly</span></li>
+            <li><span class="mname">Remarks</span><span class="msub">per student</span></li>
+            <li><span class="mname">Class Announcements</span><span class="msub">to own students</span></li>
+            <li class="is-money"><span class="mname">Event Collection</span><span class="msub">event fees from students</span></li>
+          </ul>
+        </div>
+
+        <div class="mcol">
+          <h4>Parent</h4>
+          <ul>
+            <li class="is-money"><span class="mname">Fee Payment</span><span class="msub">bank deposit proof, in-office cash</span></li>
+            <li><span class="mname">Child Progress</span><span class="msub">attendance, marks, remarks</span></li>
+            <li><span class="mname">Notices &amp; PTM</span><span class="msub">announcements, meeting invites</span></li>
+          </ul>
+        </div>
+
+        <div class="mcol">
+          <h4>Student</h4>
+          <ul>
+            <li><span class="mname">Profile &amp; Documents</span><span class="msub">photo, B-form, parent ID, prior certificate</span></li>
+            <li><span class="mname">Diary &amp; Assignments</span><span class="msub">what was taught, what is due</span></li>
+            <li><span class="mname">Results</span><span class="msub">test, quarterly, annual</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="plate-note">Green-edged modules touch school money. The Office Clerk introduced in Section 04 works inside the Principal's Finance and Students modules rather than owning a column of its own.</div>
+  </div>
+
+  <h3>Hand-offs between roles</h3>
+  <p>These are the cross-role flows. Each one is a place where two modules must agree on a shape of data, and where most integration bugs will come from.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>What moves</th></tr></thead>
+      <tbody>
+        <tr><td class="role">Platform</td><td class="role">Principal</td><td>Subscription status, which opens or locks the workspace</td></tr>
+        <tr><td class="role">Teacher</td><td class="role">Principal</td><td>Attendance and test marks, which aggregate into published results</td></tr>
+        <tr><td class="role">Principal</td><td class="role">Teacher</td><td>Events to manage, public holidays, calendar</td></tr>
+        <tr><td class="role">Teacher</td><td class="role">Student</td><td>Daily diary, assignments, class announcements</td></tr>
+        <tr><td class="role">Teacher</td><td class="role">Parent</td><td>Remarks and same-day absence alerts</td></tr>
+        <tr><td class="role">Principal</td><td class="role">Parent</td><td>School-wide announcements, PTM invitations, fee invoices</td></tr>
+        <tr><td class="role">Parent</td><td class="role">Finance</td><td>Fee payment plus deposit proof &mdash; the verification loop in Plate 06</td></tr>
+        <tr><td class="role">Principal</td><td class="role">Student</td><td>Published results and certificates</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="roles">
+  <p class="eyebrow">Section 04</p>
+  <h2>Role matrix</h2>
+  <p>Your brief lists "Administrator" and "Principal" together. I have split them: <strong>Platform Admin</strong> is you, the vendor. <strong>Principal</strong> runs one school. I have also added an <strong>Office Clerk</strong> &mdash; someone must verify fee deposits, and it should not be the principal doing it by hand.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Capability</th><th>Platform Admin</th><th>Principal</th><th>Office Clerk</th><th>Teacher</th><th>Parent</th><th>Student</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Create / suspend a school</td><td class="y">Full</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>See subscription invoices</td><td class="y">All schools</td><td class="pt">Own school</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Hire / terminate staff</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Mark staff attendance</td><td class="n">&mdash;</td><td class="y">Full</td><td class="pt">Record</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Admit / withdraw student</td><td class="n">&mdash;</td><td class="y">Full</td><td class="pt">Prepare</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Set fee concession</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Verify fee deposit</td><td class="n">&mdash;</td><td class="pt">Override</td><td class="y">Full</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Record daily expense</td><td class="n">&mdash;</td><td class="y">Full</td><td class="pt">Enter</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+        <tr><td>Mark student attendance</td><td class="n">&mdash;</td><td class="pt">View</td><td class="n">&mdash;</td><td class="y">Own class</td><td class="pt">Own child</td><td class="pt">Own</td></tr>
+        <tr><td>Write daily diary</td><td class="n">&mdash;</td><td class="pt">View</td><td class="n">&mdash;</td><td class="y">Own class</td><td class="pt">View</td><td class="pt">View</td></tr>
+        <tr><td>Enter test marks</td><td class="n">&mdash;</td><td class="pt">View</td><td class="n">&mdash;</td><td class="y">Own class</td><td class="pt">View</td><td class="pt">View</td></tr>
+        <tr><td>Publish quarterly result</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="pt">Submit</td><td class="pt">View</td><td class="pt">View</td></tr>
+        <tr><td>Announce to all parents</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="pt">Receive</td><td class="n">&mdash;</td></tr>
+        <tr><td>Announce to class</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="y">Own class</td><td class="n">&mdash;</td><td class="pt">Receive</td></tr>
+        <tr><td>Create event / PTM</td><td class="n">&mdash;</td><td class="y">Full</td><td class="n">&mdash;</td><td class="pt">Manage</td><td class="pt">Attend</td><td class="pt">Attend</td></tr>
+        <tr><td>Upload student documents</td><td class="n">&mdash;</td><td class="y">Full</td><td class="y">Full</td><td class="n">&mdash;</td><td class="pt">Own child</td><td class="n">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><span class="pill g">Full</span> &nbsp; <span class="pill w">Partial or scoped</span> &nbsp; <span class="pill a">&mdash; no access</span></p>
+</section>
+
+<section id="lifecycle">
+  <p class="eyebrow">Section 05</p>
+  <h2>Subscription lifecycle</h2>
+  <p>What happens when a school stops paying is a product decision, not a technical one. Cutting access instantly loses you the customer; never cutting it loses you the revenue. A grace period followed by read-only is the standard middle path.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 04</span><span class="plate-title">Subscription states and transitions</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 940 360" role="img" aria-label="A school moves from trial to active, then to past-due when an invoice is overdue, to suspended when the grace period ends, and finally to terminated when the retention window ends. Payment returns it to active from either state.">
+          <defs>
+            <marker id="p4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <circle cx="26" cy="120" r="7" fill="#0F5C63"></circle>
+          <line class="ln" x1="34" y1="120" x2="66" y2="120" marker-end="url(#p4a)"></line>
+
+          <rect class="bx" x="70" y="96" width="124" height="48" rx="2"></rect>
+          <text class="t" x="132" y="126" text-anchor="middle">Trial</text>
+
+          <rect class="bx-money" x="284" y="96" width="132" height="48" rx="2"></rect>
+          <text class="t" x="350" y="126" text-anchor="middle">Active</text>
+
+          <rect class="bx-gate" x="500" y="96" width="140" height="48" rx="2"></rect>
+          <text class="t" x="570" y="126" text-anchor="middle">Past due</text>
+
+          <rect class="bx-bad" x="500" y="210" width="140" height="48" rx="2"></rect>
+          <text class="t" x="570" y="240" text-anchor="middle">Suspended</text>
+
+          <rect class="bx" x="70" y="210" width="124" height="48" rx="2"></rect>
+          <text class="t" x="132" y="240" text-anchor="middle">Expired</text>
+
+          <rect class="bx" x="746" y="152" width="140" height="48" rx="2"></rect>
+          <text class="t" x="816" y="182" text-anchor="middle">Terminated</text>
+
+          <circle cx="912" cy="176" r="9" fill="none" stroke="#0F5C63" stroke-width="1.5"></circle>
+          <circle cx="912" cy="176" r="5" fill="#0F5C63"></circle>
+          <line class="ln" x1="886" y1="176" x2="900" y2="176" marker-end="url(#p4a)"></line>
+
+          <line class="ln" x1="194" y1="120" x2="280" y2="120" marker-end="url(#p4a)"></line>
+          <text class="t-sm" x="237" y="110" text-anchor="middle">first payment</text>
+
+          <line class="ln" x1="132" y1="144" x2="132" y2="206" marker-end="url(#p4a)"></line>
+          <text class="t-sm" x="142" y="180">trial ends unpaid</text>
+
+          <line class="ln" x1="416" y1="110" x2="496" y2="110" marker-end="url(#p4a)"></line>
+          <text class="t-sm" x="456" y="100" text-anchor="middle">invoice overdue</text>
+
+          <line class="ln" x1="500" y1="132" x2="420" y2="132" marker-end="url(#p4a)"></line>
+          <text class="t-sm" x="460" y="150" text-anchor="middle">payment received</text>
+
+          <line class="ln" x1="570" y1="144" x2="570" y2="206" marker-end="url(#p4a)"></line>
+          <text class="t-sm" x="580" y="180">grace period ends</text>
+
+          <path class="ln" d="M500,240 L232,240 L232,168 L280,168" marker-end="url(#p4a)"></path>
+          <text class="t-sm" x="366" y="232" text-anchor="middle">arrears cleared</text>
+
+          <path class="ln" d="M132,258 L132,312 L816,312 L816,204" marker-end="url(#p4a)"></path>
+          <text class="t-sm" x="420" y="304" text-anchor="middle">no conversion</text>
+
+          <path class="ln" d="M640,234 L742,192" marker-end="url(#p4a)"></path>
+          <text class="t-sm" x="694" y="212" text-anchor="middle">retention ends</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Past due keeps full access with a payment banner. Suspended drops to read-only with all data preserved. Grace period length and retention window are client decisions &mdash; see Section 10.</div>
+  </div>
+</section>
+
+<section id="admission">
+  <p class="eyebrow">Section 06</p>
+  <h2>Admission and fee concessions</h2>
+  <p>Your brief specifies a per-student concession set at admission: <strong>free, partial, or full</strong> fee. This is where a student's whole financial profile is established, so it needs care &mdash; a concession decided here quietly governs every invoice generated for years afterwards.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 05</span><span class="plate-title">Admission flow with concession assignment</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 780 880" role="img" aria-label="An application collects documents, which are checked for completeness, then a class is assigned and a concession decided as full fee, partial or free. Full and partial generate an admission invoice; free enrols directly. Payment completes enrolment, non-payment leaves the student provisional.">
+          <defs>
+            <marker id="p5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx" x="310" y="16" width="200" height="44" rx="22"></rect>
+          <text class="t" x="410" y="44" text-anchor="middle">Application received</text>
+
+          <rect class="bx" x="290" y="96" width="240" height="64" rx="2"></rect>
+          <text class="t" x="410" y="118" text-anchor="middle">Collect documents</text>
+          <text class="t-sm" x="410" y="134" text-anchor="middle">B-form, parent ID card,</text>
+          <text class="t-sm" x="410" y="149" text-anchor="middle">prior certificate, photo</text>
+
+          <polygon class="bx-gate" points="410,186 520,226 410,266 300,226"></polygon>
+          <text class="t" x="410" y="222" text-anchor="middle">Documents</text>
+          <text class="t-sm" x="410" y="239" text-anchor="middle">complete?</text>
+
+          <rect class="bx-bad" x="560" y="200" width="200" height="52" rx="2"></rect>
+          <text class="t" x="660" y="222" text-anchor="middle">Hold</text>
+          <text class="t-sm" x="660" y="239" text-anchor="middle">request missing items</text>
+
+          <rect class="bx" x="300" y="300" width="220" height="48" rx="2"></rect>
+          <text class="t" x="410" y="329" text-anchor="middle">Assign class &amp; section</text>
+
+          <polygon class="bx-gate" points="410,368 530,410 410,452 290,410"></polygon>
+          <text class="t" x="410" y="406" text-anchor="middle">Concession</text>
+          <text class="t-sm" x="410" y="423" text-anchor="middle">decision</text>
+
+          <rect class="bx" x="40" y="500" width="170" height="52" rx="2"></rect>
+          <text class="t" x="125" y="522" text-anchor="middle">Full fee</text>
+          <text class="t-sm" x="125" y="539" text-anchor="middle">100% payable</text>
+
+          <rect class="bx" x="250" y="500" width="210" height="64" rx="2"></rect>
+          <text class="t" x="355" y="522" text-anchor="middle">Partial</text>
+          <text class="t-sm" x="355" y="538" text-anchor="middle">discount % recorded</text>
+          <text class="t-sm" x="355" y="553" text-anchor="middle">plus reason</text>
+
+          <rect class="bx-money" x="500" y="500" width="210" height="64" rx="2"></rect>
+          <text class="t" x="605" y="522" text-anchor="middle">Free</text>
+          <text class="t-sm" x="605" y="538" text-anchor="middle">waived, plus</text>
+          <text class="t-sm" x="605" y="553" text-anchor="middle">approving authority</text>
+
+          <rect class="bx-money" x="180" y="610" width="220" height="48" rx="2"></rect>
+          <text class="t" x="290" y="639" text-anchor="middle">Admission invoice</text>
+
+          <polygon class="bx-gate" points="290,682 400,720 290,758 180,720"></polygon>
+          <text class="t" x="290" y="716" text-anchor="middle">Admission</text>
+          <text class="t-sm" x="290" y="733" text-anchor="middle">fee paid?</text>
+
+          <rect class="bx" x="470" y="696" width="180" height="48" rx="2"></rect>
+          <text class="t" x="560" y="725" text-anchor="middle">Enrol student</text>
+
+          <rect class="bx-bad" x="40" y="790" width="220" height="52" rx="2"></rect>
+          <text class="t" x="150" y="812" text-anchor="middle">Provisional</text>
+          <text class="t-sm" x="150" y="829" text-anchor="middle">access limited</text>
+
+          <rect class="bx-money" x="460" y="800" width="230" height="56" rx="28"></rect>
+          <text class="t" x="575" y="822" text-anchor="middle">Active student</text>
+          <text class="t-sm" x="575" y="839" text-anchor="middle">monthly billing begins</text>
+
+          <line class="ln" x1="410" y1="60" x2="410" y2="92" marker-end="url(#p5a)"></line>
+          <line class="ln" x1="410" y1="160" x2="410" y2="182" marker-end="url(#p5a)"></line>
+
+          <line class="ln" x1="520" y1="226" x2="556" y2="226" marker-end="url(#p5a)"></line>
+          <text class="t-sm" x="538" y="216" text-anchor="middle">No</text>
+
+          <path class="ln" d="M660,200 L660,128 L534,128" marker-end="url(#p5a)"></path>
+
+          <line class="ln" x1="410" y1="266" x2="410" y2="296" marker-end="url(#p5a)"></line>
+          <text class="t-sm" x="420" y="288">Yes</text>
+
+          <line class="ln" x1="410" y1="348" x2="410" y2="364" marker-end="url(#p5a)"></line>
+
+          <path class="ln" d="M290,410 L125,410 L125,496" marker-end="url(#p5a)"></path>
+          <text class="t-sm" x="200" y="400" text-anchor="middle">Full fee</text>
+
+          <path class="ln" d="M410,452 L410,476 L355,476 L355,496" marker-end="url(#p5a)"></path>
+          <text class="t-sm" x="424" y="472">Partial</text>
+
+          <path class="ln" d="M530,410 L605,410 L605,496" marker-end="url(#p5a)"></path>
+          <text class="t-sm" x="560" y="400" text-anchor="middle">Free</text>
+
+          <path class="ln" d="M125,552 L125,586 L286,586 L290,606" marker-end="url(#p5a)"></path>
+          <path class="ln" d="M355,564 L355,586 L296,586" marker-end="url(#p5a)"></path>
+          <path class="ln" d="M605,564 L605,660 L560,660 L560,692" marker-end="url(#p5a)"></path>
+          <text class="t-sm" x="616" y="620">no invoice</text>
+
+          <line class="ln" x1="290" y1="658" x2="290" y2="678" marker-end="url(#p5a)"></line>
+
+          <line class="ln" x1="400" y1="720" x2="466" y2="720" marker-end="url(#p5a)"></line>
+          <text class="t-sm" x="433" y="710" text-anchor="middle">Yes</text>
+
+          <path class="ln" d="M180,720 L150,720 L150,786" marker-end="url(#p5a)"></path>
+          <text class="t-sm" x="158" y="756">No</text>
+
+          <path class="ln" d="M560,744 L560,776 L575,776 L575,796" marker-end="url(#p5a)"></path>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Record who approved a concession and why. Without that, waivers become unauditable within one academic year.</div>
+  </div>
+</section>
+
+<section id="fees">
+  <p class="eyebrow">Section 07</p>
+  <h2>Fee collection and verification</h2>
+  <p>Your brief has parents attaching a deposit screenshot. That is a <em>claim</em>, not a payment &mdash; the money sits in a bank account the system cannot see. So a payment has two states that must never be confused: <strong>claimed</strong> by the parent, and <strong>verified</strong> by the office. Only verification credits the ledger.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 06</span><span class="plate-title">Both payment paths into one ledger</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 780 810" role="img" aria-label="An invoice routes to either a parent-uploaded bank deposit screenshot, which stays pending until a clerk verifies it against the bank statement, or to cash at the office which the clerk records directly. Only verified payments credit the school fee ledger and issue a receipt.">
+          <defs>
+            <marker id="p6a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx" x="270" y="16" width="220" height="52" rx="2"></rect>
+          <text class="t" x="380" y="38" text-anchor="middle">Monthly invoice issued</text>
+          <text class="t-sm" x="380" y="55" text-anchor="middle">to parent</text>
+
+          <polygon class="bx-gate" points="380,92 490,130 380,168 270,130"></polygon>
+          <text class="t" x="380" y="126" text-anchor="middle">Payment</text>
+          <text class="t-sm" x="380" y="143" text-anchor="middle">method</text>
+
+          <rect class="bx" x="40" y="210" width="220" height="56" rx="2"></rect>
+          <text class="t" x="150" y="234" text-anchor="middle">Parent uploads</text>
+          <text class="t-sm" x="150" y="251" text-anchor="middle">deposit screenshot</text>
+
+          <rect class="bx" x="500" y="210" width="220" height="56" rx="2"></rect>
+          <text class="t" x="610" y="234" text-anchor="middle">Clerk records</text>
+          <text class="t-sm" x="610" y="251" text-anchor="middle">cash received</text>
+
+          <rect class="bx-gate" x="40" y="316" width="220" height="60" rx="2"></rect>
+          <text class="t" x="150" y="340" text-anchor="middle">PENDING</text>
+          <text class="t-sm" x="150" y="357" text-anchor="middle">ledger NOT credited</text>
+
+          <polygon class="bx-gate" points="150,410 270,452 150,494 30,452"></polygon>
+          <text class="t" x="150" y="448" text-anchor="middle">Clerk checks</text>
+          <text class="t-sm" x="150" y="465" text-anchor="middle">bank statement</text>
+
+          <rect class="bx-bad" x="330" y="424" width="230" height="56" rx="2"></rect>
+          <text class="t" x="445" y="448" text-anchor="middle">REJECTED</text>
+          <text class="t-sm" x="445" y="465" text-anchor="middle">reason sent to parent</text>
+
+          <rect class="bx-money" x="480" y="560" width="210" height="48" rx="2"></rect>
+          <text class="t" x="585" y="589" text-anchor="middle">VERIFIED</text>
+
+          <rect class="bx-money" x="465" y="656" width="240" height="56" rx="2"></rect>
+          <text class="t" x="585" y="680" text-anchor="middle">School fee ledger</text>
+          <text class="t-sm" x="585" y="697" text-anchor="middle">credited</text>
+
+          <rect class="bx" x="465" y="752" width="240" height="46" rx="2"></rect>
+          <text class="t" x="585" y="780" text-anchor="middle">Receipt issued</text>
+
+          <line class="ln" x1="380" y1="68" x2="380" y2="88" marker-end="url(#p6a)"></line>
+
+          <path class="ln" d="M270,130 L150,130 L150,206" marker-end="url(#p6a)"></path>
+          <text class="t-sm" x="196" y="120" text-anchor="middle">bank deposit</text>
+
+          <path class="ln" d="M490,130 L610,130 L610,206" marker-end="url(#p6a)"></path>
+          <text class="t-sm" x="558" y="120" text-anchor="middle">cash at office</text>
+
+          <line class="ln" x1="150" y1="266" x2="150" y2="312" marker-end="url(#p6a)"></line>
+          <line class="ln" x1="150" y1="376" x2="150" y2="406" marker-end="url(#p6a)"></line>
+
+          <line class="ln" x1="270" y1="452" x2="326" y2="452" marker-end="url(#p6a)"></line>
+          <text class="t-sm" x="298" y="442" text-anchor="middle">mismatch</text>
+
+          <path class="ln" d="M445,424 L445,238 L264,238" marker-end="url(#p6a)"></path>
+          <text class="t-sm" x="330" y="230" text-anchor="middle">resubmit</text>
+
+          <path class="ln" d="M150,494 L150,584 L476,584" marker-end="url(#p6a)"></path>
+          <text class="t-sm" x="166" y="540">matches</text>
+
+          <path class="ln" d="M610,266 L610,556" marker-end="url(#p6a)"></path>
+          <text class="t-sm" x="620" y="410">clerk is the verifier</text>
+
+          <line class="ln" x1="585" y1="608" x2="585" y2="652" marker-end="url(#p6a)"></line>
+          <line class="ln" x1="585" y1="712" x2="585" y2="748" marker-end="url(#p6a)"></line>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Cash at the office skips the pending state because the clerk is already the verifier. Bank deposits cannot skip it.</div>
+  </div>
+
+  <div class="call">
+    <p class="eyebrow">Design note</p>
+    <p>Never delete a rejected payment claim. Keep it with its reason and the original screenshot &mdash; fee disputes with parents are common, and the audit trail is the only thing that settles them.</p>
+  </div>
+
+  <h3>Fee heads to support</h3>
+  <ul class="tight">
+    <li><strong>Admission fee</strong> &mdash; one-time, at enrolment, subject to concession</li>
+    <li><strong>Monthly tuition</strong> &mdash; recurring, subject to concession</li>
+    <li><strong>Exam or test fee</strong> &mdash; per assessment cycle</li>
+    <li><strong>Event fee</strong> &mdash; ad hoc, collected by teachers per your brief</li>
+    <li><strong>Other charges</strong> &mdash; transport, uniform, fines; keep this extensible rather than hard-coded</li>
+  </ul>
+</section>
+
+<section id="daily">
+  <p class="eyebrow">Section 08</p>
+  <h2>The daily academic loop</h2>
+  <p>This is the rhythm that makes the system used every day rather than once a term. Everything a teacher does in the morning reaches a parent the same day.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 07</span><span class="plate-title">One school day, end to end</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 800 500" role="img" aria-label="Across one school day the teacher marks attendance, posts the daily diary, enters test marks and adds remarks; the system pushes each to the parent, aggregates marks into the term total, and the principal publishes the quarterly result.">
+          <defs>
+            <marker id="p7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx" x="34" y="16" width="130" height="42" rx="2"></rect>
+          <text class="t" x="99" y="42" text-anchor="middle">Teacher</text>
+          <rect class="bx-plat" x="256" y="16" width="130" height="42" rx="2"></rect>
+          <text class="t t-inv" x="321" y="42" text-anchor="middle">System</text>
+          <rect class="bx" x="478" y="16" width="130" height="42" rx="2"></rect>
+          <text class="t" x="543" y="42" text-anchor="middle">Parent</text>
+          <rect class="bx" x="660" y="16" width="130" height="42" rx="2"></rect>
+          <text class="t" x="725" y="42" text-anchor="middle">Principal</text>
+
+          <line class="ln-d" x1="99" y1="58" x2="99" y2="470"></line>
+          <line class="ln-d" x1="321" y1="58" x2="321" y2="470"></line>
+          <line class="ln-d" x1="543" y1="58" x2="543" y2="470"></line>
+          <line class="ln-d" x1="725" y1="58" x2="725" y2="470"></line>
+
+          <circle cx="20" cy="100" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="104" text-anchor="middle">1</text>
+          <line class="ln" x1="99" y1="100" x2="317" y2="100" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="210" y="92" text-anchor="middle">Mark class attendance</text>
+
+          <circle cx="20" cy="146" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="150" text-anchor="middle">2</text>
+          <line class="ln-d" x1="321" y1="146" x2="539" y2="146" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="430" y="138" text-anchor="middle">Absence alert, same morning</text>
+
+          <circle cx="20" cy="192" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="196" text-anchor="middle">3</text>
+          <line class="ln" x1="99" y1="192" x2="317" y2="192" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="210" y="184" text-anchor="middle">Post daily diary</text>
+
+          <circle cx="20" cy="238" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="242" text-anchor="middle">4</text>
+          <line class="ln-d" x1="321" y1="238" x2="539" y2="238" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="430" y="230" text-anchor="middle">Topic, assignment, outcome</text>
+
+          <circle cx="20" cy="284" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="288" text-anchor="middle">5</text>
+          <line class="ln" x1="99" y1="284" x2="317" y2="284" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="210" y="276" text-anchor="middle">Enter test marks</text>
+
+          <circle cx="20" cy="330" r="9" fill="#9A6B14"></circle><text class="t-num" x="20" y="334" text-anchor="middle">6</text>
+          <path class="ln" d="M321,322 L378,322 L378,344 L325,344" marker-end="url(#p7a)"></path>
+          <text class="t-sm" x="388" y="338">Roll into term aggregate</text>
+
+          <circle cx="20" cy="376" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="380" text-anchor="middle">7</text>
+          <line class="ln" x1="99" y1="376" x2="317" y2="376" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="210" y="368" text-anchor="middle">Add remark on student</text>
+
+          <circle cx="20" cy="412" r="9" fill="#0F5C63"></circle><text class="t-num" x="20" y="416" text-anchor="middle">8</text>
+          <line class="ln" x1="725" y1="412" x2="325" y2="412" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="530" y="404" text-anchor="middle">Publish quarterly result</text>
+
+          <circle cx="20" cy="452" r="9" fill="#2E7D5B"></circle><text class="t-num" x="20" y="456" text-anchor="middle">9</text>
+          <line class="ln-d" x1="321" y1="452" x2="539" y2="452" marker-end="url(#p7a)"></line>
+          <text class="t-sm" x="430" y="444" text-anchor="middle">Result card available</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">Solid arrows are actions a person takes; dashed arrows are what the system pushes out. Step 6 is where daily, weekly and monthly tests aggregate into the quarterly result &mdash; the weighting rule is still undecided, see Section 10.</div>
+  </div>
+</section>
+
+<section id="data">
+  <p class="eyebrow">Section 09</p>
+  <h2>Data model</h2>
+  <p>Split into three views for legibility. The governing rule across all of them: <strong>every table carries <code>school_id</code></strong>, and tenant isolation is enforced at the query layer, not left to application code to remember.</p>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 08</span><span class="plate-title">Tenancy and people</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 900 470" role="img" aria-label="School owns a subscription, user accounts and academic years. A user account may be a staff member, guardian or student. Staff hold contracts and attendance and teach class sections; students hold documents and enrol into class sections.">
+          <defs>
+            <marker id="p8a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-plat" x="368" y="20" width="164" height="44" rx="2"></rect>
+          <text class="t t-inv" x="450" y="48" text-anchor="middle">SCHOOL</text>
+
+          <rect class="bx" x="118" y="110" width="184" height="42" rx="2"></rect>
+          <text class="t" x="210" y="137" text-anchor="middle">SUBSCRIPTION</text>
+
+          <rect class="bx" x="358" y="110" width="184" height="42" rx="2"></rect>
+          <text class="t" x="450" y="137" text-anchor="middle">USER_ACCOUNT</text>
+
+          <rect class="bx" x="598" y="110" width="184" height="42" rx="2"></rect>
+          <text class="t" x="690" y="137" text-anchor="middle">ACADEMIC_YEAR</text>
+
+          <rect class="bx" x="58" y="210" width="144" height="42" rx="2"></rect>
+          <text class="t" x="130" y="237" text-anchor="middle">STAFF</text>
+
+          <rect class="bx" x="240" y="210" width="152" height="42" rx="2"></rect>
+          <text class="t" x="316" y="237" text-anchor="middle">GUARDIAN</text>
+
+          <rect class="bx" x="430" y="210" width="144" height="42" rx="2"></rect>
+          <text class="t" x="502" y="237" text-anchor="middle">STUDENT</text>
+
+          <rect class="bx" x="612" y="210" width="172" height="42" rx="2"></rect>
+          <text class="t" x="698" y="237" text-anchor="middle">CLASS_SECTION</text>
+
+          <rect class="bx" x="20" y="320" width="184" height="42" rx="2"></rect>
+          <text class="t" x="112" y="347" text-anchor="middle">STAFF_CONTRACT</text>
+
+          <rect class="bx" x="20" y="394" width="196" height="42" rx="2"></rect>
+          <text class="t" x="118" y="421" text-anchor="middle">STAFF_ATTENDANCE</text>
+
+          <rect class="bx" x="378" y="320" width="204" height="42" rx="2"></rect>
+          <text class="t" x="480" y="347" text-anchor="middle">STUDENT_DOCUMENT</text>
+
+          <rect class="bx-money" x="620" y="320" width="164" height="42" rx="2"></rect>
+          <text class="t" x="702" y="347" text-anchor="middle">ENROLMENT</text>
+
+          <line class="ln" x1="410" y1="64" x2="238" y2="106" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="290" y="80" text-anchor="middle">1:1</text>
+
+          <line class="ln" x1="450" y1="64" x2="450" y2="106" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="460" y="90">1:N</text>
+
+          <line class="ln" x1="492" y1="64" x2="662" y2="106" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="610" y="80" text-anchor="middle">1:N</text>
+
+          <line class="ln" x1="410" y1="152" x2="160" y2="206" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="268" y="172" text-anchor="middle">0:1</text>
+
+          <line class="ln" x1="432" y1="152" x2="330" y2="206" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="360" y="188" text-anchor="middle">0:1</text>
+
+          <line class="ln" x1="474" y1="152" x2="498" y2="206" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="500" y="180">0:1</text>
+
+          <line class="ln" x1="690" y1="152" x2="696" y2="206" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="706" y="182">1:N</text>
+
+          <path class="ln" d="M180,210 L180,180 L700,180 L700,206" marker-end="url(#p8a)"></path>
+          <text class="t-sm" x="440" y="174" text-anchor="middle">teaches &mdash; N:M</text>
+
+          <line class="ln" x1="120" y1="252" x2="112" y2="316" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="128" y="286">1:N</text>
+
+          <path class="ln" d="M92,252 L44,252 L44,390" marker-end="url(#p8a)"></path>
+          <text class="t-sm" x="52" y="330">1:N</text>
+
+          <line class="ln" x1="490" y1="252" x2="480" y2="316" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="496" y="286">1:N</text>
+
+          <line class="ln" x1="392" y1="231" x2="426" y2="231" marker-end="url(#p8a)"></line>
+          <text class="t-sm" x="409" y="270" text-anchor="middle">N:M</text>
+
+          <path class="ln" d="M560,252 L616,330" marker-end="url(#p8a)"></path>
+          <text class="t-sm" x="566" y="296">1:N</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">STUDENT_DOCUMENT covers B-form, parent ID card, previous school certificate and profile photo as typed rows rather than fixed columns, so a new document type needs no migration.</div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 09</span><span class="plate-title">Fees, payments and school expenses</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 740 480" role="img" aria-label="An enrolment may carry a fee concession and is billed fee invoices, each made of fee lines typed by a fee head. Invoices are settled by payment claims, each optionally evidenced by a payment proof. Separately the school incurs expenses and pays salaries, and events may charge event fees.">
+          <defs>
+            <marker id="p9a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-money" x="40" y="30" width="168" height="42" rx="2"></rect>
+          <text class="t" x="124" y="57" text-anchor="middle">ENROLMENT</text>
+
+          <rect class="bx" x="272" y="30" width="196" height="42" rx="2"></rect>
+          <text class="t" x="370" y="57" text-anchor="middle">FEE_CONCESSION</text>
+
+          <rect class="bx-money" x="40" y="132" width="176" height="42" rx="2"></rect>
+          <text class="t" x="128" y="159" text-anchor="middle">FEE_INVOICE</text>
+
+          <rect class="bx" x="288" y="132" width="152" height="42" rx="2"></rect>
+          <text class="t" x="364" y="159" text-anchor="middle">FEE_LINE</text>
+
+          <rect class="bx" x="512" y="132" width="152" height="42" rx="2"></rect>
+          <text class="t" x="588" y="159" text-anchor="middle">FEE_HEAD</text>
+
+          <rect class="bx-gate" x="40" y="242" width="196" height="42" rx="2"></rect>
+          <text class="t" x="138" y="269" text-anchor="middle">PAYMENT_CLAIM</text>
+
+          <rect class="bx" x="308" y="242" width="196" height="42" rx="2"></rect>
+          <text class="t" x="406" y="269" text-anchor="middle">PAYMENT_PROOF</text>
+
+          <rect class="bx" x="40" y="342" width="184" height="42" rx="2"></rect>
+          <text class="t" x="132" y="369" text-anchor="middle">SCHOOL_EVENT</text>
+
+          <rect class="bx-money" x="40" y="416" width="164" height="42" rx="2"></rect>
+          <text class="t" x="122" y="443" text-anchor="middle">EVENT_FEE</text>
+
+          <rect class="bx-plat" x="520" y="342" width="144" height="42" rx="2"></rect>
+          <text class="t t-inv" x="592" y="369" text-anchor="middle">SCHOOL</text>
+
+          <rect class="bx" x="300" y="416" width="156" height="42" rx="2"></rect>
+          <text class="t" x="378" y="443" text-anchor="middle">EXPENSE</text>
+
+          <rect class="bx" x="504" y="416" width="196" height="42" rx="2"></rect>
+          <text class="t" x="602" y="443" text-anchor="middle">SALARY_PAYMENT</text>
+
+          <line class="ln" x1="208" y1="51" x2="268" y2="51" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="238" y="42" text-anchor="middle">0:1</text>
+
+          <line class="ln" x1="124" y1="72" x2="128" y2="128" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="136" y="104">1:N</text>
+
+          <line class="ln" x1="216" y1="153" x2="284" y2="153" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="250" y="144" text-anchor="middle">1:N</text>
+
+          <line class="ln" x1="440" y1="153" x2="508" y2="153" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="474" y="144" text-anchor="middle">N:1</text>
+
+          <line class="ln" x1="128" y1="174" x2="138" y2="238" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="146" y="210">1:N</text>
+
+          <line class="ln" x1="236" y1="263" x2="304" y2="263" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="270" y="254" text-anchor="middle">0:1</text>
+
+          <line class="ln" x1="128" y1="384" x2="122" y2="412" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="136" y="404">0:N</text>
+
+          <path class="ln" d="M540,384 L452,414" marker-end="url(#p9a)"></path>
+          <text class="t-sm" x="486" y="392" text-anchor="middle">1:N</text>
+
+          <line class="ln" x1="600" y1="384" x2="602" y2="412" marker-end="url(#p9a)"></line>
+          <text class="t-sm" x="612" y="404">1:N</text>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">PAYMENT_CLAIM carries the pending, verified and rejected states from Plate 06. PAYMENT_PROOF holds the parent's screenshot. Neither is ever hard-deleted.</div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-head"><span class="plate-num">Plate 10</span><span class="plate-title">Academic records</span></div>
+    <div class="plate-body">
+      <figure class="fig">
+        <svg viewBox="0 0 740 500" role="img" aria-label="A class section holds enrolments, diary entries and assessments. Assessments produce marks, which enrolments earn. Each enrolment also accumulates attendance, term results and remarks.">
+          <defs>
+            <marker id="p10a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
+            </marker>
+          </defs>
+
+          <rect class="bx-plat" x="280" y="26" width="184" height="44" rx="2"></rect>
+          <text class="t t-inv" x="372" y="54" text-anchor="middle">CLASS_SECTION</text>
+
+          <rect class="bx-money" x="60" y="152" width="164" height="42" rx="2"></rect>
+          <text class="t" x="142" y="179" text-anchor="middle">ENROLMENT</text>
+
+          <rect class="bx" x="524" y="112" width="176" height="42" rx="2"></rect>
+          <text class="t" x="612" y="139" text-anchor="middle">DIARY_ENTRY</text>
+
+          <rect class="bx" x="300" y="152" width="168" height="42" rx="2"></rect>
+          <text class="t" x="384" y="179" text-anchor="middle">ASSESSMENT</text>
+
+          <rect class="bx" x="304" y="266" width="144" height="42" rx="2"></rect>
+          <text class="t" x="376" y="293" text-anchor="middle">MARK</text>
+
+          <rect class="bx" x="60" y="266" width="164" height="42" rx="2"></rect>
+          <text class="t" x="142" y="293" text-anchor="middle">ATTENDANCE</text>
+
+          <rect class="bx" x="60" y="348" width="176" height="42" rx="2"></rect>
+          <text class="t" x="148" y="375" text-anchor="middle">TERM_RESULT</text>
+
+          <rect class="bx" x="60" y="430" width="144" height="42" rx="2"></rect>
+          <text class="t" x="132" y="457" text-anchor="middle">REMARK</text>
+
+          <path class="ln" d="M464,58 L524,124" marker-end="url(#p10a)"></path>
+          <text class="t-sm" x="502" y="82" text-anchor="middle">1:N</text>
+
+          <line class="ln" x1="384" y1="70" x2="384" y2="148" marker-end="url(#p10a)"></line>
+          <text class="t-sm" x="394" y="114">1:N</text>
+
+          <path class="ln" d="M288,62 L212,150" marker-end="url(#p10a)"></path>
+          <text class="t-sm" x="228" y="104" text-anchor="middle">1:N</text>
+
+          <line class="ln" x1="380" y1="194" x2="376" y2="262" marker-end="url(#p10a)"></line>
+          <text class="t-sm" x="388" y="232">1:N</text>
+
+          <path class="ln" d="M224,182 L300,278" marker-end="url(#p10a)"></path>
+          <text class="t-sm" x="238" y="228">1:N</text>
+
+          <line class="ln" x1="142" y1="194" x2="142" y2="262" marker-end="url(#p10a)"></line>
+          <text class="t-sm" x="152" y="232">1:N</text>
+
+          <path class="ln" d="M76,194 L30,194 L30,369 L56,369" marker-end="url(#p10a)"></path>
+          <text class="t-sm" x="14" y="300" transform="rotate(-90 14 300)" text-anchor="middle">1:N</text>
+
+          <path class="ln" d="M92,194 L16,194 L16,451 L56,451" marker-end="url(#p10a)"></path>
+        </svg>
+      </figure>
+    </div>
+    <div class="plate-note">ENROLMENT is the hub: it is the student-in-a-class-in-a-year, and almost every academic and financial record hangs off it rather than off the student directly. That is what makes year rollover tractable &mdash; see Section 10.</div>
+  </div>
+</section>
+
+<section id="open">
+  <p class="eyebrow">Section 10</p>
+  <h2>Decisions needed from the client</h2>
+  <p class="lede">These are genuine gaps in the brief. Each one changes the schema, so they are far cheaper to settle now than after build.</p>
+
+  <ol class="qs">
+    <li>
+      <span class="pill c">Blocking</span>
+      <h4>Academic year rollover</h4>
+      <p>The brief has no promotion mechanism. What happens each year &mdash; are students promoted in bulk, do results gate promotion, and does a repeating student keep the same record? This shapes the enrolment table more than any other single answer.</p>
+    </li>
+    <li>
+      <span class="pill c">Blocking</span>
+      <h4>Result weighting</h4>
+      <p>Daily, weekly and monthly tests exist, and so do quarterly and annual results. How do the former roll into the latter &mdash; fixed weights, best-of-N, teacher discretion? Undefined aggregation means results cannot be computed at all.</p>
+    </li>
+    <li>
+      <span class="pill c">Blocking</span>
+      <h4>Concession scope</h4>
+      <p>Does a partial or full waiver apply to admission fee only, or to monthly tuition, exam and event fees too? Each is a different billing rule and the brief does not say.</p>
+    </li>
+    <li>
+      <span class="pill w">Important</span>
+      <h4>Multi-campus schools</h4>
+      <p>If a school group has three branches, is that one tenant with three campuses, or three tenants on three subscriptions? This decides your pricing model as much as your schema.</p>
+    </li>
+    <li>
+      <span class="pill w">Important</span>
+      <h4>Grace and retention windows</h4>
+      <p>How many days past due before a school goes read-only, and how long is data kept after termination? Both need explicit numbers before Plate 04 can be implemented.</p>
+    </li>
+    <li>
+      <span class="pill w">Important</span>
+      <h4>Attendance granularity</h4>
+      <p>Once per day, or per period? Per-period is considerably more work for teachers and considerably more useful for secondary schools.</p>
+    </li>
+    <li>
+      <span class="pill a">Worth asking</span>
+      <h4>Sibling discounts</h4>
+      <p>Common in the region and absent from the brief. If wanted, concessions attach to a family rather than a student &mdash; a different relationship entirely.</p>
+    </li>
+    <li>
+      <span class="pill a">Worth asking</span>
+      <h4>Notification channel</h4>
+      <p>Absence alerts and announcements are only useful if they arrive. In-app only, or SMS and WhatsApp? SMS carries a real per-message cost that has to sit somewhere in your pricing.</p>
+    </li>
+    <li>
+      <span class="pill a">Worth asking</span>
+      <h4>Interface language</h4>
+      <p>Urdu, English, or both? Retrofitting localisation is far more expensive than building for it from the first screen.</p>
+    </li>
+  </ol>
+</section>
+
+</main>
+</div>
+
+<footer>
+  School Platform Blueprint &middot; v0.4 draft &middot; 10 plates &middot; Prepared for client review<br>
+  Open items in Section 10 should be resolved before schema freeze.
+</footer>
+</div>
