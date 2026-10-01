@@ -3,19 +3,24 @@
 # Blocks secrets, generated junk, student personal data and oversized files.
 # Enable once per clone:  git config core.hooksPath .githooks
 # Emergency bypass:       git commit --no-verify   (then rotate anything exposed)
+#
+# Paths are read one per line with quoting disabled, so names containing spaces
+# or non-ASCII characters are scanned like any other. Line-separated paths are
+# the only format POSIX sh can iterate safely; a file name containing a newline
+# is not supported and would be skipped.
 
 fail=0
 note() { printf '  %s\n' "$1"; }
 block() { fail=1; printf '\n[BLOCKED] %s\n' "$1"; }
 
-staged=$(git diff --cached --name-only --diff-filter=ACM)
+staged=$(git -c core.quotepath=false diff --cached --name-only --diff-filter=ACM)
 [ -z "$staged" ] && exit 0
 
 # ---------------------------------------------------------------- 1. env files
 envs=$(printf '%s\n' "$staged" | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.(example|sample|template)$' || true)
 if [ -n "$envs" ]; then
   block "Environment files must never be committed."
-  printf '%s\n' "$envs" | while read -r f; do note "$f"; done
+  printf '%s\n' "$envs" | while IFS= read -r f; do note "$f"; done
   note "Fix: git rm --cached <file>  and add it to .gitignore"
 fi
 
@@ -23,7 +28,7 @@ fi
 junk=$(printf '%s\n' "$staged" | grep -E '(^|/)(node_modules|vendor|dist|build|out|\.next|coverage|__pycache__)/' || true)
 if [ -n "$junk" ]; then
   block "Generated or vendored directories are staged."
-  printf '%s\n' "$junk" | head -10 | while read -r f; do note "$f"; done
+  printf '%s\n' "$junk" | head -10 | while IFS= read -r f; do note "$f"; done
   note "Fix: add to .gitignore, then git rm -r --cached <dir>"
 fi
 
@@ -31,49 +36,66 @@ fi
 locals=$(printf '%s\n' "$staged" | grep -E '\.(log|sqlite3?|db|dump|bak|swp)$|(^|/)(\.DS_Store|Thumbs\.db)$' || true)
 if [ -n "$locals" ]; then
   block "Local or generated files are staged."
-  printf '%s\n' "$locals" | while read -r f; do note "$f"; done
+  printf '%s\n' "$locals" | while IFS= read -r f; do note "$f"; done
 fi
 
 # ------------------------------------------ 4. student / family personal data
 uploads=$(printf '%s\n' "$staged" | grep -E '(^|/)(uploads|storage/app|public/uploads|student-documents|documents/students)/' || true)
 if [ -n "$uploads" ]; then
   block "Uploaded documents must never be committed - these are children's personal data."
-  printf '%s\n' "$uploads" | head -10 | while read -r f; do note "$f"; done
+  printf '%s\n' "$uploads" | head -10 | while IFS= read -r f; do note "$f"; done
 fi
 
 # ----------------------------------------------------- 5. secrets in content
 # Scans only added lines. Skips lockfiles and this hook.
-scan=$(printf '%s\n' "$staged" | grep -vE '(package-lock\.json|yarn\.lock|composer\.lock|pnpm-lock\.yaml|\.githooks/|\.env\.(example|sample|template)$)' || true)
-for f in $scan; do
-  [ -f "$f" ] || continue
-  git diff --cached --diff-filter=ACM -U0 -- "$f" 2>/dev/null | grep '^+' | grep -v '^+++' > /tmp/asms_added.$$ || true
-  [ -s /tmp/asms_added.$$ ] || { rm -f /tmp/asms_added.$$; continue; }
+# Runs in a subshell because the while loop reads from a pipe; the verdict
+# comes back through the exit status.
+tmp=$(mktemp 2>/dev/null || printf '/tmp/asms_added.%s' "$$")
+printf '%s\n' "$staged" \
+  | grep -vE '(package-lock\.json|yarn\.lock|composer\.lock|pnpm-lock\.yaml|\.githooks/|\.env\.(example|sample|template)$)' \
+  | (
+    subfail=0
+    while IFS= read -r f; do
+      [ -f "$f" ] || continue
+      git -c core.quotepath=false diff --cached --diff-filter=ACM -U0 -- "$f" 2>/dev/null \
+        | grep '^+' | grep -v '^+++' > "$tmp" || true
+      [ -s "$tmp" ] || continue
 
-  hit=""
-  grep -qE 'BEGIN [A-Z ]*PRIVATE KEY' /tmp/asms_added.$$ && hit="private key"
-  grep -qE 'AKIA[0-9A-Z]{16}' /tmp/asms_added.$$ && hit="AWS access key"
-  grep -qE '"type"[[:space:]]*:[[:space:]]*"service_account"' /tmp/asms_added.$$ && hit="service-account credentials"
-  grep -qE '(postgres|postgresql|mysql|mongodb)(\+srv)?://[^:/@]+:[^@[:space:]]+@' /tmp/asms_added.$$ && hit="database URL with password"
-  grep -qE 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}' /tmp/asms_added.$$ && hit="JWT"
-  grep -qiE '(api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|client[_-]?secret|password)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' /tmp/asms_added.$$ && hit="hardcoded credential"
+      hit=""
+      grep -qE 'BEGIN [A-Z ]*PRIVATE KEY' "$tmp" && hit="private key"
+      grep -qE 'AKIA[0-9A-Z]{16}' "$tmp" && hit="AWS access key"
+      grep -qE '"type"[[:space:]]*:[[:space:]]*"service_account"' "$tmp" && hit="service-account credentials"
+      grep -qE '(postgres|postgresql|mysql|mongodb)(\+srv)?://[^:/@]+:[^@[:space:]]+@' "$tmp" && hit="database URL with password"
+      grep -qE 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}' "$tmp" && hit="JWT"
+      grep -qiE '(api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|client[_-]?secret|password)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' "$tmp" && hit="hardcoded credential"
 
-  if [ -n "$hit" ]; then
-    block "Possible $hit in $f"
-    note "Review: git diff --cached -- $f"
-    note "If real: remove it, rotate the credential, then recommit."
-  fi
-  rm -f /tmp/asms_added.$$
-done
+      if [ -n "$hit" ]; then
+        subfail=1
+        printf '\n[BLOCKED] Possible %s in %s\n' "$hit" "$f"
+        printf '  Review: git diff --cached -- "%s"\n' "$f"
+        printf '  If real: remove it, rotate the credential, then recommit.\n'
+      fi
+    done
+    exit $subfail
+  )
+[ $? -ne 0 ] && fail=1
+rm -f "$tmp"
 
 # --------------------------------------------------------------- 6. big files
-for f in $staged; do
-  [ -f "$f" ] || continue
-  size=$(git cat-file -s "$(git rev-parse ":$f" 2>/dev/null)" 2>/dev/null || echo 0)
-  if [ "$size" -gt 1048576 ]; then
-    block "Large file staged: $f ($((size / 1024)) KB)"
-    note "Does this belong in the repository? Consider object storage instead."
-  fi
-done
+printf '%s\n' "$staged" | (
+  subfail=0
+  while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+    if [ "$size" -gt 1048576 ]; then
+      subfail=1
+      printf '\n[BLOCKED] Large file staged: %s (%s KB)\n' "$f" "$((size / 1024))"
+      printf '  Does this belong in the repository? Consider object storage instead.\n'
+    fi
+  done
+  exit $subfail
+)
+[ $? -ne 0 ] && fail=1
 
 if [ "$fail" -ne 0 ]; then
   printf '\nCommit refused. Bypass with --no-verify only if you are certain.\n\n'

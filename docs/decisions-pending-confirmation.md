@@ -64,7 +64,7 @@ as a historied attribute; and above all **whether guardians were deduplicated at
 ### D2. Permission model
 
 **Recommendation: role defaults + per-user grant/revoke deltas + school-defined custom roles.
-38 capabilities, staff only. Reject full per-row ABAC.**
+Around fifty capabilities, staff only. Reject full per-row ABAC.**
 
 **Guardian and student roles are fixed and closed** — not grantable. This halves the surface and
 removes an entire escalation family.
@@ -76,6 +76,9 @@ employee.
 
 Capability groups: Setup (7) · Access (2) · Students (5) · Guardians (1) · Documents (3) ·
 Staff (6) · Payroll (2) · Attendance (3) · Academics (9) · Finance (11) · Comms (2).
+These sum to 51; an earlier figure of 38 in this file was wrong. **The named capability list
+itself has not been written yet.** It is a deliverable of decision 2 and must exist before the
+first grant row is stored, because capability names are not cheaply reversible.
 
 Notable defaults: office staff receive `payment.record` but **not** `payment.verify`, **not**
 `concession.grant`, and **not** `finance.report.view` — a fee clerk should not see the owner's

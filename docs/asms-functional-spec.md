@@ -18,7 +18,7 @@ This version keeps the existing ASMS architecture and adds the new requirements 
 > | §1, §32, §33 | Teacher and Staff are separate core users, with separate attendance features | **One `STAFF` record per employed person**, carrying contract, salary and attendance. `TEACHER` extends it with academic assignments and does not restate employment facts. A guard has staff only; a teacher has both. |
 > | §9, §10, §11, §12, §33 | Admission fee, monthly fee, event fee and test fee as four separate modules | **One `FEE_HEAD` table.** Fee types are rows, not modules. Adding transport or a fine is a row, not a release. |
 > | §29, §31 | A single `Parent ID` field on the student profile | **`STUDENT_GUARDIAN` join table** carrying relationship, `is_primary_contact`, `is_fee_payer`, `can_login`. A student may have several guardians; siblings share guardian records. §31's own reasoning is correct — §29's field contradicts it. |
-> | §29 | CNIC used as a key | CNIC is a **unique, indexed, nullable attribute** — never a primary key. It gets mistyped, reissued and merged. |
+> | (review finding, not a numbered section — the body never mentions CNIC) | CNIC assumed usable as a key | CNIC is a **unique, indexed, nullable attribute** — never a primary key. It gets mistyped, reissued and merged. |
 > | §30 | Document states: Uploaded / Verified / Rejected / **Missing** | **"Missing" is not a state.** A required-document checklist per admission; each item either has a document (Uploaded / Verified / Rejected) or does not. Missing becomes a query. |
 > | §34 | Hierarchy opens **Principal → School** | **Platform → School → Academic Year → Class → Section → Enrolment.** The school is the tenant; the principal is a role inside it. |
 > | §29, §2 | Student ID, Admission Number and Roll Number, no stability rule | Internal `student_id` is the permanent key and never shown. **Admission number** is the permanent human-facing identifier. **Roll number belongs to the enrolment**, not the student — it changes every year. |
@@ -26,6 +26,9 @@ This version keeps the existing ASMS architecture and adds the new requirements 
 > | §10 | "Late fee" as a field on the monthly fee | A late fee is a **new fee line** under a penalty head, never a mutation of the original amount. |
 > | §13 | Office cash payment marked paid, no correction path | Correct that cash needs no verification — the clerk is the verifier. But **reversals are new rows**: a void or adjustment referencing the original, with reason and approver. Never an edit or a delete. |
 > | §23, §25 | "According to the permissions given to them" — never defined | A permission model is required and **is not yet specified**. See open decision 2 in `CLAUDE.md`. |
+> | §4, §13, §21, §25 | Separate Parent, Student and Teacher applications | **One role-aware Flutter app.** The role on the session decides what the shell renders. There is no separate principal, teacher or parent build. |
+> | §3, §22, §33 | Biometric staff attendance as a launch feature | **Deferred.** When it lands it is for staff only. Launch attendance is marked in the app; biometric corrections go through a request someone else approves. |
+> | §33 | "OCR imports" | Appears in no other document and is **not planned**. Treat as struck. |
 >
 > **Also added since this document was written**, and not reflected below: the platform
 > subscription layer, the charge-campaign mechanism, teacher cash custody with office
@@ -33,7 +36,8 @@ This version keeps the existing ASMS architecture and adds the new requirements 
 > SMS are primary channels while the parent app is secondary.
 >
 > Current documents: `docs/asms-system-architecture.html` (technical) and
-> `docs/asms-system-design.html` (client-facing). Open decisions: `CLAUDE.md`.
+> `docs/asms-system-design.html` (client-facing). Open decisions: `CLAUDE.md`. Provisional
+> recommendations: `docs/decisions-pending-confirmation.md`. Session handover: `docs/WORKLOG.md`.
 
 ---
 

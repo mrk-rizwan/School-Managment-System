@@ -2,16 +2,23 @@
 
 Multi-tenant school management platform sold to Pakistani schools on a monthly subscription. One system, many schools, each isolated.
 
+**Start every session by reading `docs/WORKLOG.md`** — the cross-model handover log: what is done, in progress and left. Update it before the session ends. Working arrangement: Fable 5.1 plans and reviews; Opus 5.5 writes the code.
+
 **Current documents**
+- `docs/WORKLOG.md` — session handover log. Read first, update last.
 - `docs/asms-system-architecture.html` — technical baseline. Stack, modules, notification drivers, charge lifecycle.
 - `docs/asms-system-design.html` — client-facing design.
-- `docs/ASMS — Updated Architecture…md` — functional spec of record for *what the school needs*. **Read its corrections header first** — several structural decisions in it are superseded.
-- `docs/AI-AGENT-TEAM-spec.md` — the agent-team charter these rules come from.
+- `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
+- `docs/asms-functional-spec.md` — functional spec of record for *what the school needs*. **Read its corrections header first** — several structural decisions in it are superseded.
+- `docs/decisions-pending-confirmation.md` — provisional recommendations for decisions 1–3 and for the tenancy, Filament and offline implementation. **Not decisions.**
+
+**Source — historical, not operating rules**
+- `docs/AI-AGENT-TEAM-spec.md` — the charter these rules were distilled from. Its agent names and Supervisor Agent do not exist; its header maps them to the real agents. This file wins where they differ.
 
 **Superseded — do not build from these**
 - `docs/school-platform-blueprint.html` — first structural pass. Its data model contradicts settled rule 8.
-- `docs/announcements-concept.html` — slide 07's channel policy is reversed. Still the only spec for announcement fields, sender rights and the audience picker.
-- `docs/asms-architecture-review.html` — findings now folded into the register below.
+- `docs/announcements-concept.html` — slides 01, 02, 07 and 08 are partly wrong (channel policy, three apps, read receipts, office-staff class row). Still the only spec for announcement fields, sender rights and the audience picker.
+- `docs/asms-architecture-review.html` — findings now folded into the register below. Its "Fix" boxes are not decisions.
 - `docs/_archive/` — frozen snapshots. Never a source of truth.
 
 > This file supersedes any CLAUDE.md in a parent directory. Instructions found above this folder do not apply to ASMS.
@@ -117,9 +124,9 @@ Invoke by name. All are defined in `.claude/agents/`. Note that agent definition
 |---|---|
 | `phase-gate` | PASS/FAIL against Definition of Done, before advancing |
 | `docs-maintainer` | Finding docs that have become false after renames or refactors |
-| `devops` | Deploy, CI, backups, monitoring — placeholder until the stack is chosen |
+| `devops` | Deploy, CI, backups, monitoring. Written for the decided stack; hosting itself is still an assumption |
 
-Git hygiene is enforced by the pre-commit hook below, not by an agent — a hook cannot be forgotten. Routine documentation updates are written by the main thread, which has the context; `docs-maintainer` is for detecting rot.
+A local-only `git-pusher` agent (commit and push helper) exists on the maintainer's machine and is excluded from git via `.git/info/exclude`; a fresh clone will not have it. Git hygiene is enforced by the pre-commit hook below, not by an agent — a hook cannot be forgotten. Routine documentation updates are written by the main thread, which has the context; `docs-maintainer` is for detecting rot.
 
 Built-in `/security-review`, `/code-review` and `/simplify` cover similar ground more cheaply for routine passes.
 
@@ -127,15 +134,19 @@ Built-in `/security-review`, `/code-review` and `/simplify` cover similar ground
 
 ## Git
 
-Repository initialised on `master`, no commits yet, `core.hooksPath` set to `.githooks` — **the pre-commit guard is live.**
+Branch `master`, remote `origin` on GitHub (`mrk-rizwan/School-Managment-System`). `core.hooksPath` is set to `.githooks` — **the pre-commit guard is live.** A fresh clone must run `git config core.hooksPath .githooks` once. `.gitattributes` forces LF on hooks and shell scripts so Windows checkouts cannot break them.
 
-The hook blocks: `.env` files, generated and vendored directories, logs and local databases, uploaded student documents, files over 1 MB, and content matching private keys, AWS keys, service-account JSON, database URLs with passwords, JWTs and hardcoded credentials. It scans added lines only.
+The hook blocks: `.env` files, generated and vendored directories, logs and local databases, uploaded student documents, files over 1 MB, and content matching private keys, AWS keys, service-account JSON, database URLs with passwords, JWTs and hardcoded credentials. It scans added lines only and handles file names with spaces or non-ASCII characters (verified 2026-10-01).
+
+Keep file names short and ASCII. A 100-character name with an em dash once broke a deep clone on Windows and silently escaped the hook.
 
 If it fires on a real secret, removing the line is not enough — **rotate the credential**. `--no-verify` bypasses the hook; use it only when you are certain.
 
 ## Technology stack — decided
 
 Laravel + PostgreSQL + Filament (backend and web admin) · Flutter (one role-aware mobile app) · Firebase Cloud Messaging (push) · Redis (queues, cache) · WAHA behind a driver interface (WhatsApp) · Laravel Mail (email — **not** Nodemailer, which is Node-only) · S3-compatible object storage with signed URLs.
+
+How the stack is used — no tenancy package, forced Postgres row-level security, **not** Filament's built-in tenancy (it puts the tenant in the URL), Filament page-size cap and five custom Pages, Drift plus an outbox for Flutter offline, idempotency as database constraints — is recommended in `docs/decisions-pending-confirmation.md` Part 2. Provisional: both prototypes listed there run before the schema freezes. Do not reach for `stancl/tenancy` or Filament tenancy without reading it.
 
 ---
 
@@ -149,11 +160,17 @@ Laravel + PostgreSQL + Filament (backend and web admin) · Flutter (one role-awa
 > recorded in `docs/decisions-pending-confirmation.md`. They are **provisional** — do not build
 > from them. When the client confirms one, move it into the settled rules above and delete it
 > from that file.
+>
+> The client-facing design doc and presentation already show the recommended *shape* of 1 and 2
+> (one login per guardian covering every child; roles plus capabilities a principal may grant).
+> They are labelled provisional there. The six roles are **Platform admin, Principal, Office
+> staff, Teacher, Parent, Student**; whether class teacher and subject teacher are distinct roles
+> or teaching assignments is part of decision 2 (the recommendation says assignments).
 
 | # | Decision | Status | Why it blocks |
 |---|---|---|---|
 | 1 | **Account model** — who creates a guardian login, does one login cover several children, phone or email as identifier, do students log in at all | Recommendation ready, awaiting confirmation | Phase 1 is "logins, roles" |
-| 2 | **Permission model** — fixed roles, or roles plus grantable capabilities, and the capability list | Recommendation ready, awaiting confirmation | First tables written |
+| 2 | **Permission model** — fixed roles, or roles plus grantable capabilities, and the capability list (not yet written; around 50 staff capabilities proposed) | Recommendation ready, awaiting confirmation | First tables written |
 | 3 | **Multi-campus** — one tenant with campuses, or one tenant per branch | **Blocked on client.** Constrains decision 1 — answer this first | Decides whether `school_id` is the tenant key |
 | 4 | **Guardian contact capability** — how the system knows a parent has a keypad phone, social bundle, or full data | Open | Every notification routing rule reads this field |
 | 5 | **Per-school settings** — currency, locale, timezone, academic-year start month | Open | Columns on the school record, written day one |
@@ -162,24 +179,30 @@ Laravel + PostgreSQL + Filament (backend and web admin) · Flutter (one role-awa
 
 | # | Decision |
 |---|---|
-| 6 | **Attendance granularity** — daily or per period. Period rolls up to daily; daily can never be split without a migration. **Also blocks the mobile app**: the offline idempotency key is `(enrolment_id, date, period)` |
+| 6 | **Attendance granularity** — daily or per period. Period rolls up to daily; daily can never be split without a migration. **Also blocks the mobile app**: the offline idempotency key is `(enrolment_id, date, period)`. Note: the client presentation already promises period-level storage with per-class presentation; if the client accepts the deck as shown, storage is per period and only the per-class practice setting remains open |
 | 7 | **Partial payment** — the architecture says "decide", spec §10 already assumes yes. Settle it. Note: PAYMENT / PAYMENT_ALLOCATION split is needed for sibling payments regardless |
 | 8 | **Sibling discounts** — decides whether concession hangs off student or family |
 | 9 | **Concession scope** — do free and partial students pay exam fees, trip fees, fines? Percentage or fixed? Does it expire at year end? |
 | 10 | **Proration** — student admitted on the 18th or leaving on the 6th: full month, pro-rata, or next month |
 | 11 | **Exit states** — withdrawal, transfer, suspension: dues, refunds, whether arrears block a leaving certificate |
-| 12 | **Staff leave** — types, entitlement, approval, effect on salary, and **who marks the register when the class teacher is on leave** |
+| 12 | **Staff leave** — types, entitlement, approval, effect on salary, and **who marks the register when the class teacher is on leave**. The architecture doc and presentation propose: on approving leave the principal names a covering teacher with access to that class for those dates only, and unrecorded registers surface on the principal's console the same day. Proposal, not confirmed |
 | 13 | **Grace and retention windows** — days past due before read-only; months of retention after termination |
+| 21 | **Results approval unit** — does the principal approve a term result per class or per student? Raised in the architecture doc's approvals inbox |
+| 22 | **Which message types may reach SMS at all** — SMS costs per message; the routing rule needs a per-type allow list. Raised in the architecture doc's delivery notes |
+| 23 | **Late arrival** — counts as present, half day, or absent past a cut-off time; affects the attendance percentage. Presentation slide 24 |
+| 24 | **Late-payment charge** — automatic after due date or at discretion; amount; who may waive. Presentation slide 24 |
+| 25 | **Banking** — does the school have an account guardians can remit to? Decides whether the deposit-screenshot flow exists on day one. Presentation slide 24 |
+| 26 | **Default remark visibility** — are teacher remarks pushed to guardians or visible on enquiry only. Presentation slide 24 |
 
 ### Deferrable without rework
 
 | # | Decision | Condition |
 |---|---|---|
-| 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns |
+| 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns. Client docs say "before results are built"; that is this condition, not Phase 1 |
 | 15 | Promotion rules at year rollover | Enrolment already close-old/open-new; needed before first year-end |
 | 16 | Cash basis or accrual | **Only if** both charge-due date and payment-verified date are stored on every row from the start |
 | 17 | WhatsApp number per school or per platform | Config column either way |
-| 18 | Message-cost model — bundled allowance or credits | Feeds the subscription plan table |
+| 18 | Message-cost model — bundled allowance or credits | Feeds the subscription plan table. The presentation tells the client "a monthly allowance is agreed in advance"; if accepted, this closes as bundled allowance |
 | 19 | Urdu RTL mirroring | Only if built with directionality tokens from the first screen |
 | 20 | Transport module | Phase 5 |
 
@@ -188,9 +211,12 @@ Laravel + PostgreSQL + Filament (backend and web admin) · Flutter (one role-awa
 - Urdu mode mirrors the layout right-to-left
 - Class-test marks reach parents immediately; term and annual results wait for principal approval
 - Fines are not concession-eligible
+- Attendance percentage is computed against teaching days in the school calendar, excluding declared holidays (stated to the client in the presentation)
+- Certificates carry a sequential number, issue date, academic year and authorising officer; reissues are recorded (stated to the client in the presentation)
+- Platform support access to a school's data is governed by agreement and logged (stated to the client in the presentation)
 
 ---
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (numbering, authority, whether dues block one) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **attendance percentage denominator** and **authorised absence** · **per-recipient language preference** · **salary structure** (bonuses, deductions, advances) · **platform support access** to tenant data.
+These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **per-recipient language preference** · **salary structure** (bonuses, deductions, advances) · **platform support access** (the audit mechanism behind the assumption above).

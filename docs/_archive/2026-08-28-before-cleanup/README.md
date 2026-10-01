@@ -10,7 +10,7 @@ read it as a source of truth — the live documents are one level up in `docs/`.
 
 | File | What it was |
 |---|---|
-| `ASMS — Updated Architecture…md` | The functional spec, written on paper first then typed up. 35 sections. |
+| `asms-functional-spec.md` (was `ASMS — Updated Architecture…md`; renamed 2026-10-01 because the long non-ASCII name broke deep clones on Windows) | The functional spec, written on paper first then typed up. 35 sections. |
 | `school-platform-blueprint.html` | First structural pass — tenancy, module map, role matrix, the original data model. |
 | `asms-architecture-review.html` | Review of the functional spec: 5 modelling bugs, 4 undecided, 6 gaps, 6 corrections. |
 | `announcements-concept.html` | Client concept deck for announcements. Written **before** the connectivity discussion. |

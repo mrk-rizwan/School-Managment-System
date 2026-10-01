@@ -269,8 +269,8 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
         <div class="mcol">
           <h4>People &amp; access</h4>
           <ul>
-            <li><span class="mname">Accounts</span><span class="msub">phone-based login, OTP, one guardian many children</span></li>
-            <li><span class="mname">Roles &amp; permissions</span><span class="msub">grantable capabilities, audited</span></li>
+            <li><span class="mname">Accounts</span><span class="msub">phone-based login, OTP, one guardian many children (provisional &mdash; decision 1)</span></li>
+            <li><span class="mname">Roles &amp; permissions</span><span class="msub">grantable capabilities, audited (provisional &mdash; decision 2)</span></li>
             <li><span class="mname">Staff</span><span class="msub">contracts, renewal, suspension, history</span></li>
             <li><span class="mname">Staff leave</span><span class="msub">request, approval, cover, salary effect</span></li>
             <li><span class="mname">Guardians</span><span class="msub">relationship, fee payer, contact capability</span></li>
@@ -330,8 +330,8 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
       <tbody>
         <tr><td class="k">Fee proofs waiting</td><td class="m">payment claims WHERE pending</td><td class="m">verify / reject + reason</td><td>Image loads on tap, never in the list</td></tr>
         <tr><td class="k">Teacher handovers</td><td class="m">open cash custody by staff</td><td class="m">confirm counted amount</td><td>Shortfall raises a receivable, not a rejection</td></tr>
-        <tr><td class="k">Leave requests</td><td class="m">leave WHERE pending</td><td class="m">approve / reject + cover</td><td>Must name the substitute for a class teacher</td></tr>
-        <tr><td class="k">Results awaiting approval</td><td class="m">term results WHERE submitted</td><td class="m">approve / return + reason</td><td>Approval unit still undecided</td></tr>
+        <tr><td class="k">Leave requests</td><td class="m">leave WHERE pending</td><td class="m">approve / reject + cover</td><td>Proposal: must name the substitute for a class teacher. Open decision 12 in CLAUDE.md</td></tr>
+        <tr><td class="k">Results awaiting approval</td><td class="m">term results WHERE submitted</td><td class="m">approve / return + reason</td><td>Approval unit (per class or per student) still undecided &mdash; open decision 21 in CLAUDE.md</td></tr>
         <tr><td class="k">Today's attendance</td><td class="m">nightly rollup + today's marks</td><td class="n">&mdash;</td><td>Reads the summary table, never raw rows</td></tr>
         <tr><td class="k">Today's collections</td><td class="m">verified payments + open custody</td><td class="n">&mdash;</td><td>Separates banked from still-with-teacher</td></tr>
         <tr><td class="k">Contract expiry</td><td class="m">contracts ending within 30 days</td><td class="n">&mdash;</td><td>Same source as the daily scheduled job</td></tr>
@@ -448,7 +448,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
           <rect class="bx-panel" x="548" y="316" width="330" height="120"></rect>
           <text class="t-hd" x="562" y="338">ROUTING RULES</text>
           <text class="t-sm" x="562" y="360">Urgent &mdash; WhatsApp + SMS, always</text>
-          <text class="t-sm" x="562" y="380">Normal &mdash; push if app installed, else WhatsApp</text>
+          <text class="t-sm" x="562" y="380">Normal &mdash; WhatsApp, plus push if app installed</text>
           <text class="t-sm" x="562" y="400">Keypad phone &mdash; SMS only, text carries the detail</text>
           <text class="t-sm" x="562" y="420">Failure &mdash; retry, then fall to the next channel</text>
         </svg>
@@ -611,14 +611,14 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
   <ul class="tight">
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Attendance granularity</strong> &mdash; daily or per period. A period-level table rolls up to daily; a daily table can never be split without a migration.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Account model</strong> &mdash; who creates a guardian login, whether one covers several children, phone or email as identifier, and whether students log in at all. Phase 1 starts here.</li>
-    <li><span class="pill c">Blocking</span> &nbsp;<strong>Permission model</strong> &mdash; fixed roles, or roles plus grantable capabilities. Nothing in Plate 02 covers access control yet.</li>
+    <li><span class="pill c">Blocking</span> &nbsp;<strong>Permission model</strong> &mdash; fixed roles, or roles plus grantable capabilities. Plate 02 shows the recommended shape (roles plus grantable capabilities); it is provisional until the client confirms decision 2.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Multi-campus</strong> &mdash; one tenant with campuses, or one tenant per branch. Decides whether <code>school_id</code> is the tenant key.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Guardian contact capability</strong> &mdash; how the system knows a parent has a keypad phone, a social bundle, or full data. Plate 03 dereferences this field on every send.</li>
     <li><span class="pill w">Assumed</span> &nbsp;<strong>Urdu mode mirrors the layout right-to-left.</strong> Assumed here because it is correct and expensive to retrofit. Say if you would rather keep left-to-right.</li>
     <li><span class="pill w">Assumed</span> &nbsp;<strong>Class-test marks reach parents immediately; term and annual results wait for principal approval.</strong> Applied to resolve a contradiction in the design document.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Do concession students pay exam fees and fines?</strong> Charge campaigns must decide this at targeting time.</li>
-    <li><span class="pill c">Blocking</span> &nbsp;<strong>Result weighting</strong> &mdash; how daily, weekly and monthly tests roll into quarterly and annual.</li>
-    <li><span class="pill c">Blocking</span> &nbsp;<strong>Promotion rules</strong> at year rollover: repeats, and whether arrears block promotion.</li>
+    <li><span class="pill w">Deferrable</span> &nbsp;<strong>Result weighting</strong> (open decision 14; deferrable only if <code>ASSESSMENT_WEIGHT</code> is its own table) &mdash; how daily, weekly and monthly tests roll into quarterly and annual.</li>
+    <li><span class="pill w">Deferrable</span> &nbsp;<strong>Promotion rules</strong> (open decision 15; needed before the first year-end) at year rollover: repeats, and whether arrears block promotion.</li>
     <li><span class="pill a">Decide</span> &nbsp;<strong>Partial payment</strong> on a charge line &mdash; allowed, or all-or-nothing?</li>
     <li><span class="pill a">Decide</span> &nbsp;<strong>One WhatsApp number per school, or one for the platform?</strong> Per school is what schools expect and multiplies the sessions you monitor.</li>
     <li><span class="pill a">Decide</span> &nbsp;<strong>Cash basis or accrual</strong> for the profit report.</li>

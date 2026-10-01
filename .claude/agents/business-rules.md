@@ -26,7 +26,7 @@ Normal case · invalid input · missing data · the same action submitted twice 
 
 ## Still undecided — flag these, do not invent an answer
 
-Result weighting: how daily, weekly and monthly tests roll into quarterly and annual results · whether a concession covers monthly tuition as well as admission fee · promotion rules at year rollover, including repeats and outstanding arrears · attendance granularity, once per day or per period
+The open-decisions register in `CLAUDE.md` is the only list; read it before ruling on anything. Everything under "Blocks the schema freeze" (partial payment, sibling discounts, concession scope, proration, exit states, staff leave, grace windows, attendance granularity) and "Deferrable" (result weighting, promotion rules) is undecided. The "Assumed unless corrected" items there (Urdu RTL, class-test marks immediate, fines not concession-eligible) may be relied on but must be cited as assumptions. Provisional recommendations in `docs/decisions-pending-confirmation.md` are not decisions.
 
 ## Output
 

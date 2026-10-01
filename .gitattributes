@@ -1,0 +1,19 @@
+# Normalise line endings in the repository to LF. Windows clones with
+# core.autocrlf=true still get CRLF in the working tree for text files,
+# except where eol=lf is forced below.
+* text=auto
+
+# Shell scripts and git hooks break with CRLF: `#!/bin/sh\r` is not an interpreter.
+.githooks/*  text eol=lf
+*.sh         text eol=lf
+
+# Binary assets
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary

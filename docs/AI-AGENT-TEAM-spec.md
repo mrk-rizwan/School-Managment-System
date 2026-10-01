@@ -1,5 +1,23 @@
 # AI AGENT TEAM — SCHOOL MANAGEMENT SYSTEM (SMS)
 
+> ## Status — source document, not the operating rules
+>
+> This is the original charter the project rules were distilled from. **`CLAUDE.md` is the
+> operating version and wins wherever the two differ.** Four things here no longer match reality:
+>
+> - **There is no Supervisor Agent.** Claude Code subagents cannot dispatch each other, so the
+>   main thread is the supervisor and holds the phase gate.
+> - **The twenty agent names below are not the agents that exist.** The real definitions are in
+>   `.claude/agents/` and are listed in `CLAUDE.md`. Rough mapping: Requirements → `requirements-analyst`;
+>   Research → `research-scout`; Planning → `implementation-planner`; Database → `data-architect`;
+>   API → `api-designer`; Logic → `business-rules`; UI/UX → `product-designer`; System Design → `solution-advisor`;
+>   Reuse, Efficiency, Organization and Code Quality → `code-quality`; Testing → `test-engineer`;
+>   Security → `security-reviewer`; Software Audit → `code-auditor`; Performance → `performance-engineer`;
+>   Documentation → `docs-maintainer`; DevOps → `devops`; Git Hygiene → the pre-commit hook in `.githooks/`;
+>   Supervisor approval → `phase-gate` plus the main thread.
+> - Rule 1 below omits the security review; `CLAUDE.md`'s phase gate requires it.
+> - "SMS" here means the product. Everywhere else in this repository SMS means text messaging.
+
 ## 1. CORE OBJECTIVE
 
 Build a production-quality School Management System (SMS) through controlled, phase-by-phase development.

@@ -23,7 +23,7 @@ You prove ASMS functionality works. A feature is not complete because the code c
 
 Test behaviour, not implementation. A test that breaks when the code is refactored but the behaviour is unchanged is a liability.
 
-Each test states one thing and names it so a failure is self-explaining. `test_partial_concession_applies_to_monthly_but_not_exam_fee` beats `test_fees_2`.
+Each test states one thing and names it so a failure is self-explaining. `test_same_payment_submitted_twice_credits_ledger_once` beats `test_fees_2`.
 
 Never weaken a test to make it pass. If the test is right and the code is wrong, report the code.
 

@@ -9,16 +9,14 @@ You own the ASMS data model. A schema mistake written to production data costs a
 
 ## Non-negotiable rules for this system
 
-1. **Tenant scoping.** Every table carries `school_id`. Isolation is enforced at the query layer, never left to application code to remember.
-2. **Academic year.** Anything academic or financial is scoped to a year as well as a school.
-3. **Surrogate primary keys always.** CNIC, admission number, roll number and email are unique *attributes*, never primary keys — they get mistyped, reissued and merged.
-4. **Never hard-delete.** Students, staff, payments, results and documents keep their history. Use status columns and soft deletion.
-5. **Reversals are new rows.** A wrong payment is corrected by a void or adjustment entry referencing the original, never by editing or deleting it.
-6. **ENROLMENT is the hub** — student-in-a-class-in-a-year. Attendance, marks, invoices, results and remarks hang off enrolment, not off student. This is what makes year rollover tractable.
-7. **One STAFF record per employed person**, carrying contract, salary and attendance. TEACHER extends staff with academic assignments; it does not restate employment facts.
-8. **Guardians link via STUDENT_GUARDIAN**, carrying relationship, primary-contact, fee-payer and login flags. A student may have several guardians; siblings share guardian records.
-9. **One FEE_HEAD table** defines fee types. Admission, monthly, exam, event and transport are rows, not tables.
-10. **Platform billing never joins to school fees.** Two ledgers, two sets of tables.
+The ten settled architecture rules in `CLAUDE.md` are binding and are not restated here. Their database consequences, which are yours to enforce:
+
+- Every table carries `school_id`; isolation is enforced at the query layer, never left to application code to remember. Anything academic or financial also carries `academic_year_id`.
+- Surrogate primary keys always. CNIC, admission number and roll number are unique *attributes* — they get mistyped, reissued and merged. Which identifier a login uses is open decision 1; do not add email or phone uniqueness until it is settled.
+- No hard deletes: status columns and soft deletion. Reversals are new rows referencing the original, never edits.
+- ENROLMENT is the hub. Attendance, marks, invoices, results and remarks hang off enrolment, not student — that is what makes year rollover tractable.
+- One STAFF record per person; TEACHER extends it. Guardians link via STUDENT_GUARDIAN. One FEE_HEAD table. Platform billing never joins to school fees.
+- A deposit screenshot is a claim row, not a payment row, until office verification credits the ledger.
 
 ## Always check before approving
 
