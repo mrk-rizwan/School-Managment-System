@@ -13,22 +13,51 @@ writes the production code.** Do not start application code in a planning sessio
 
 - **Phase:** Pre-build. No application code exists. Repository holds planning docs, agent
   definitions, hooks and git hygiene only.
-- **Development is on hold** until the client confirms decisions 1–3 in the `CLAUDE.md`
-  register (account model, permission model, multi-campus). Recommendations are recorded in
-  `docs/decisions-pending-confirmation.md` and are provisional.
+- **Phase 1 is unblocked** (2026-10-01). The product owner confirmed one campus per school,
+  CNIC-digit login with a default password, roles plus grantable capabilities, per-period
+  attendance storage, per-class sessions, PKR whole rupees, English only. These are settled
+  rules 11–16 in `CLAUDE.md`.
 - **Next milestone:** a go-to build plan for Phase 1, produced by Fable, executable by Opus.
-  It cannot be finalised until decision 3 (multi-campus) is answered, because it constrains
-  decision 1.
+  Three small auth questions (register items 27–29) are open; the plan can carry defaults.
 
 ## Left to do (ordered)
 
-1. Get client answers to the two blocking questions in `docs/decisions-pending-confirmation.md`
-   Part 3: campus structure, and attendance granularity.
-2. Run the two prototypes listed there before schema freeze: Urdu/RTL in Filament (~2 h) and
-   forced Postgres RLS under a Filament panel (~1 day).
-3. Produce the Phase 1 build plan (`implementation-planner`), then hand to Opus.
+1. Product owner answers register items 27–29 (student username, password reset path, forced
+   change on first login) and 4 (guardian contact capability). Defaults are recorded in the register.
+2. Product owner supplies: dev-machine facts (PHP, Composer, PostgreSQL, Redis, Flutter installed,
+   or start from Docker), CI target, staging host; sample seed data from presentation slide 23;
+   keep-or-delete decision on the five generic skills in `.claude/skills/`.
+3. Produce the Phase 1 build plan (`implementation-planner`), then hand to Opus. Phase 0 of that
+   plan is the forced-RLS-under-Filament prototype (~1 day).
+4. Schema-freeze items 7–13 and 23–26 answered before the end of Phase 1.
 
 ---
+
+## 2026-10-01 — Decisions 1, 2, 3, 5, 6 confirmed by the product owner (Fable 5.1) — DONE
+
+**Answers given:** one campus per school; login username and default password are the CNIC digits
+without dashes, password changeable by the user; permission model and attendance granularity as
+recommended; principal defines academic sessions per class; due date 10th (changeable); English
+only, no Urdu; PKR, whole rupees only.
+
+**Applied**
+- `CLAUDE.md`: settled rules 11–16 written; rule 3 amended for per-class sessions; register rows
+  1, 2, 3, 5, 6, 19 closed (numbers retired, listed under "Closed"); new rows 27–29 for the auth
+  details the answer left open; Urdu removed from assumptions and market constraints; capability
+  list moved to "Not yet specified".
+- `docs/decisions-pending-confirmation.md`: Part 1 deleted, replaced by a note on what survived
+  and what changed (CNIC + password instead of phone + OTP); RTL prototype dropped.
+- Client docs: every Urdu / language-choice line replaced with English only; architecture
+  "Assumed: RTL" item closed.
+- Agents `product-designer` and `research-scout`: Urdu guidance removed.
+
+**Flagged to the product owner**
+- CNIC digits as the default password is weak: the number appears on many documents. Rule 12
+  therefore makes encrypted storage, hashed lookup, no logging, rate limiting, lockout and a
+  "still on default password" view mandatory, and item 29 asks whether to force a change on
+  first login (recommended: yes).
+- "notl" in the answer was read as "no decimals"; whole-rupee amounts are now rule 15. Correct
+  it if that reading is wrong.
 
 ## 2026-10-01 — Pre-build review of the whole repository (Fable 5.1) — DONE
 

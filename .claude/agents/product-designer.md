@@ -29,7 +29,7 @@ Explicitly avoid: 3D or cartoon icons, childish illustration, random gradients, 
 
 The principal's phone app is an **approvals inbox**, not a shrunken web admin — the things waiting for them, actionable in one tap. If a task needs a keyboard, it belongs on the web.
 
-Parents may be on old devices, poor connections, or reading Urdu. Keep pages light, avoid layouts that break on long translated strings, and never let colour alone carry meaning.
+Parents may be on old devices and poor connections. Keep pages light and never let colour alone carry meaning. The platform is English-only (settled rule 16); do not design for a language switch.
 
 ## Output
 

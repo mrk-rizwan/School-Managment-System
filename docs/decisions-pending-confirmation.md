@@ -1,132 +1,17 @@
 # Decisions pending client confirmation
 
-**Status: PROVISIONAL — not settled, not approved, do not build from these.**
+**Status: PROVISIONAL implementation recommendations — not settled, prototype before relying on them.**
 
 Produced by Wave 0 of the development planning (`solution-advisor` and `research-scout`).
-Development is on hold until the client confirms. When a decision here is confirmed, move it
-into the settled-rules section of `CLAUDE.md` and delete it from this file.
+Date recorded: 2026-09-01.
 
-Date recorded: 2026-09-01
-
----
-
-## Part 1 — Foundation decisions awaiting confirmation
-
-Ranked by cost of getting wrong.
-
-### D1. Account and identity model — HIGHEST COST IF WRONG
-
-**Recommendation: person-first, phone + OTP, no passwords.**
-
-`guardians`, `staff` and `students` are domain tables. `users` is a thin credential row with
-nullable links to each. A person the school holds contact details for but who never logs in
-does not require a half-empty account, and a teacher whose own child attends the school gets
-**one login carrying both capability sets**.
-
-- The office creates the guardian record at admission and never sets a password. The system
-  sends an activation message; the guardian's **first OTP creates the credential**.
-- **Guardians never self-register.** There is no way to verify that a self-registrant is that
-  child's parent.
-- Identifier is the mobile number. `UNIQUE(school_id, phone)` on `users`, but **no uniqueness
-  on the guardian's phone** — two guardians may share a handset while one holds the login.
-- Guardian phone is **nullable**. The gap becomes a worklist: "14 students have no reachable
-  guardian."
-- Students: build the role, gate it behind a per-school minimum-class setting, default off.
-  Credential issued by the guardian, not the student. A student session must never resolve a
-  finance capability.
-
-**The deliverable is not the login screen — it is the guardian match step at admission.**
-"One login, every child" fails because the office creates a *second* guardian record when the
-sibling is admitted. The admission wizard must search by CNIC then phone and offer
-*"Ahmed Khan — father of Ali, Class 5 — link to this record?"*, non-skippable. Add
-`merged_into_id` to the guardian table in the first migration even though the merge UI comes
-later.
-
-**Two risks that must be designed for:**
-
-1. **Pakistani telcos recycle dormant numbers.** A number change must be a first-class event:
-   revoke every session, notify the old number, and mark the released number historic so it can
-   never reclaim the identity. Without this, number recycling is complete account takeover of a
-   child's record.
-2. **OTP over WAHA is exactly the traffic pattern that gets a WhatsApp number banned.** OTP must
-   default to SMS — so every guardian login costs a message. That, not convenience, is the real
-   argument for long sessions (90 days) plus a device PIN.
-
-**Enforce in Postgres from day one:** a partial unique index giving exactly one
-`is_primary_contact` per student.
-
-**Reversible:** OTP length and expiry, session lengths, whether students log in, adding email later.
-**Not cheaply reversible:** users separate from persons; tenant-scoped versus global users; phone
-as a historied attribute; and above all **whether guardians were deduplicated at admission**.
-
----
-
-### D2. Permission model
-
-**Recommendation: role defaults + per-user grant/revoke deltas + school-defined custom roles.
-Around fifty capabilities, staff only. Reject full per-row ABAC.**
-
-**Guardian and student roles are fixed and closed** — not grantable. This halves the surface and
-removes an entire escalation family.
-
-**The distinction that keeps it from sprawling:** capability is *which verb*; scope is *which rows*
-— and **scope comes from assignment data, not checkboxes**. A teacher marks their class because
-they are assigned to it. Conflating the two is how permission systems arrive at forty switches per
-employee.
-
-Capability groups: Setup (7) · Access (2) · Students (5) · Guardians (1) · Documents (3) ·
-Staff (6) · Payroll (2) · Attendance (3) · Academics (9) · Finance (11) · Comms (2).
-These sum to 51; an earlier figure of 38 in this file was wrong. **The named capability list
-itself has not been written yet.** It is a deliverable of decision 2 and must exist before the
-first grant row is stored, because capability names are not cheaply reversible.
-
-Notable defaults: office staff receive `payment.record` but **not** `payment.verify`, **not**
-`concession.grant`, and **not** `finance.report.view` — a fee clerk should not see the owner's
-profit. `announcement.send.school` is off by default and grantable.
-
-**Four rules that matter more than the list:**
-
-1. `role.manage` is **not itself grantable**. No capability may be used to acquire capabilities.
-2. **Nobody grants what they do not hold.** One line of code; closes a whole escalation family.
-3. **Scope is not a grant.** Write the check as `can($capability, $subject)` from the first call
-   site even while scope is always school-wide — free forward compatibility.
-4. **The capability split does not prevent fraud.** Even with `payment.record` and
-   `payment.verify` separated, *"an actor may not verify a claim they submitted"* and *"a
-   collector may not confirm their own handover"* are **domain invariants, not permissions**.
-   Every model that tries to express separation of duties as a checkbox gets this wrong.
-
-Build the **effective-permissions view** for a staff member in Phase 1, alongside the grant screen
-— otherwise "why can Ayesha do this?" becomes archaeology across role, custom role and personal grant.
-
-**Reversible:** default sets, custom roles, adding capabilities, expiry, the UI.
-**Not cheaply reversible:** capability naming and granularity once they exist in grant rows and code.
-
----
-
-### D3. Multi-campus — BLOCKED ON CLIENT
-
-**Recommendation: `school_id` remains both tenant and campus. Add one nullable
-`school_group_id` on the school record now, and nothing else.**
-
-Branches become separate tenants on separate subscriptions, preserving both the per-school
-revenue model already promised to clients and clean isolation. The group exists as a row, so a
-group-owner read-only cross-school report can be added later without a campus dimension on
-every table.
-
-The two features people adopt a campus dimension for are cheaper by other means: an intra-group
-student transfer is already close-old-enrolment / open-new-enrolment under settled rule 6, and a
-consolidated P&L is a reporting concern. **Shared staff across campuses is the only genuine loss**
-— a shared teacher becomes two staff records, two contracts, two salaries, and payroll
-double-counts.
-
-**This is structurally the least reversible of the three, in either direction.** Adding
-`campus_id` later is not hard to backfill — it is hard because every query in the system must be
-audited for a scope it never had, which is the same work and the same failure mode as an
-isolation audit.
-
-**Coupling that must not be missed: D3 constrains D1.** If branches become separate tenants
-**and** head-office staff must span them, then tenant-scoped users is wrong and global identity
-with membership rows is right. **Answer D3 before freezing D1.**
+**Part 1 (account model, permission model, multi-campus) was confirmed by the product owner on
+2026-10-01 and deleted from this file.** The outcome, including the parts of the original
+recommendation that survived (office-created accounts, guardian dedup by CNIC at admission,
+`merged_into_id`, capability-versus-scope, `role.manage` not grantable, one tenant per campus), is
+settled rules 11–16 in `CLAUDE.md`. The one material change from the recommendation: login is
+CNIC digits plus a password, not phone plus OTP, so the phone-recycling and OTP-over-WhatsApp risks
+no longer apply to login (they still apply if SMS OTP is later used for password reset).
 
 ---
 
@@ -177,8 +62,7 @@ database size.**
 3. **Bulk actions are a queued job over a filter, never over a selection.** Selection state
    round-trips through the browser.
 
-**Urdu:** Filament ships a first-party `ur` locale carrying `'direction' => 'rtl'`. However user
-reports on whether RTL actually renders are contradictory, with no maintainer statement.
+**Urdu:** no longer relevant — the platform is English-only (settled rule 16).
 
 ### Flutter offline: Drift + own outbox, idempotency in the database
 
@@ -217,25 +101,20 @@ app is closed.
 
 ### Questions for the client
 
-1. **Campus structure** — *"Does the school operate more than one campus, and do any teachers work
-   at two campuses in the same month?"* Blocks D3, which blocks D1.
-2. **Attendance granularity** — daily or per period. Now blocks the schema **and** the mobile app,
-   because the offline idempotency key is `(enrolment_id, date, period)`. If daily-only, `period`
-   disappears and the offline contract changes.
-3. The remaining items in the `CLAUDE.md` register and slide 24 of the school presentation.
+Campus structure and attendance granularity were answered on 2026-10-01. The remaining items are
+the `CLAUDE.md` register and slide 24 of the school presentation.
 
-### Two prototypes, before schema freeze
+### One prototype, before schema freeze
 
-Both can invalidate an expensive choice while it is still free to change.
+It can invalidate an expensive choice while it is still free to change. (The Urdu/RTL prototype
+was dropped on 2026-10-01: English only.)
 
 | Prototype | Effort | What it settles |
 |---|---|---|
-| **Urdu / RTL in Filament** — one throwaway resource with a table, a form with a `Select`, and a modal; set `APP_LOCALE=ur` | ~2 hours | Closes open decision 19 for the web admin, or invalidates the Filament choice |
 | **Forced RLS under a Filament panel** with a `Select` relationship field | ~1 day | Confirms or breaks the entire tenancy recommendation |
 
 ### Unconfirmed by research
 
 The stancl v4 release date · whether Laravel's connection hooks give a clean place to set the GUC
-in a long-lived queue worker (needs a one-day spike) · RLS performance at ASMS scale · whether the
-`ur` locale is identical on Filament's 5.x branch · Drift's behaviour under aggressive Android
+in a long-lived queue worker (needs a one-day spike) · RLS performance at ASMS scale · Drift's behaviour under aggressive Android
 background-process killing on low-end devices.

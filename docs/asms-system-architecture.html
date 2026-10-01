@@ -454,7 +454,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
         </svg>
       </figure>
     </div>
-    <div class="plate-note">The delivery log records <strong>sent, delivered and failed</strong> per channel &mdash; it is not a read log. Read status exists only in the app, and on WhatsApp when the recipient has receipts enabled; SMS reports delivery only. Never present delivered as read. The log is also what tells you a WAHA session has quietly died, before a school does.<br><br><strong>Two rules still to specify:</strong> which message types may reach SMS at all &mdash; applied literally, a daily diary would send one Urdu SMS per subject per day &mdash; and how the service knows what a given guardian can receive. That capability field does not exist yet on the guardian record, and every routing rule above depends on it.</div>
+    <div class="plate-note">The delivery log records <strong>sent, delivered and failed</strong> per channel &mdash; it is not a read log. Read status exists only in the app, and on WhatsApp when the recipient has receipts enabled; SMS reports delivery only. Never present delivered as read. The log is also what tells you a WAHA session has quietly died, before a school does.<br><br><strong>Two rules still to specify:</strong> which message types may reach SMS at all &mdash; applied literally, a daily diary would send one SMS per subject per day &mdash; and how the service knows what a given guardian can receive. That capability field does not exist yet on the guardian record, and every routing rule above depends on it.</div>
   </div>
 </section>
 
@@ -600,7 +600,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
         <tr><td class="k">WhatsApp</td><td>WAHA behind a driver interface</td><td>Cost saving now, swappable if a number is banned</td></tr>
         <tr><td class="k">Attendance</td><td>Immediate on open, no websockets</td><td>Indistinguishable in use, far less to run</td></tr>
         <tr><td class="k">Biometric</td><td>Deferred; teachers only when it lands</td><td>~160 punches a day needs no real-time path</td></tr>
-        <tr><td class="k">Language</td><td>English default, Urdu via selector</td><td>Content stored and shown exactly as typed</td></tr>
+        <tr><td class="k">Language</td><td>English only (confirmed 2026-10-01)</td><td>Content stored and shown exactly as typed</td></tr>
         <tr><td class="k">Files</td><td>Object storage, signed URLs</td><td>Never in the database, never publicly guessable</td></tr>
       </tbody>
     </table>
@@ -614,7 +614,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Permission model</strong> &mdash; fixed roles, or roles plus grantable capabilities. Plate 02 shows the recommended shape (roles plus grantable capabilities); it is provisional until the client confirms decision 2.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Multi-campus</strong> &mdash; one tenant with campuses, or one tenant per branch. Decides whether <code>school_id</code> is the tenant key.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Guardian contact capability</strong> &mdash; how the system knows a parent has a keypad phone, a social bundle, or full data. Plate 03 dereferences this field on every send.</li>
-    <li><span class="pill w">Assumed</span> &nbsp;<strong>Urdu mode mirrors the layout right-to-left.</strong> Assumed here because it is correct and expensive to retrofit. Say if you would rather keep left-to-right.</li>
+    <li><span class="pill w">Closed</span> &nbsp;<strong>English only.</strong> Confirmed 2026-10-01; no Urdu interface and no right-to-left layout.</li>
     <li><span class="pill w">Assumed</span> &nbsp;<strong>Class-test marks reach parents immediately; term and annual results wait for principal approval.</strong> Applied to resolve a contradiction in the design document.</li>
     <li><span class="pill c">Blocking</span> &nbsp;<strong>Do concession students pay exam fees and fines?</strong> Charge campaigns must decide this at targeting time.</li>
     <li><span class="pill w">Deferrable</span> &nbsp;<strong>Result weighting</strong> (open decision 14; deferrable only if <code>ASSESSMENT_WEIGHT</code> is its own table) &mdash; how daily, weekly and monthly tests roll into quarterly and annual.</li>
