@@ -62,3 +62,8 @@ screenshots/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# auto-sync runtime log
+scripts/sync.log
+scripts/git-auto-sync.ps1
+scripts/README-auto-sync.md
