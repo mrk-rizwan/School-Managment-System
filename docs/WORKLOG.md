@@ -17,19 +17,60 @@ writes the production code.** Do not start application code in a planning sessio
   CNIC-digit login with a default password, roles plus grantable capabilities, per-period
   attendance storage, per-class sessions, PKR whole rupees, English only. These are settled
   rules 11–16 in `CLAUDE.md`.
-- **Next milestone:** a go-to build plan for Phase 1, produced by Fable, executable by Opus.
-  Nothing in the "Blocks Phase 1" tier is open any more (items 4, 27–29 closed 2026-10-01).
+- **Phase 1 build plan is written and reviewed:** `docs/plans/phase-1-foundation.md`. It is
+  what the Opus session executes, slice by slice, starting with slice 0 (Docker scaffold, CI,
+  the forced-RLS spike). Nothing in the "Blocks Phase 1" tier is open.
 
 ## Left to do (ordered)
 
-1. Product owner supplies: dev-machine facts (PHP, Composer, PostgreSQL, Redis, Flutter installed,
-   or start from Docker), CI target, staging host; sample seed data from presentation slide 23;
-   keep-or-delete decision on the five generic skills in `.claude/skills/`.
-2. Produce the Phase 1 build plan (`implementation-planner`), then hand to Opus. Phase 0 of that
-   plan is the forced-RLS-under-Filament prototype (~1 day).
-3. Schema-freeze items 7–13 and 23–26 answered before the end of Phase 1.
+1. **Opus session: execute `docs/plans/phase-1-foundation.md` slice 0.** Record the RLS spike
+   verdict and the pinned Laravel/Filament versions here.
+2. Slices 1–8 in order, each gated (tests, security-reviewer, code-auditor, phase-gate), each a
+   commit, each logged here.
+3. Product owner: schema-freeze items 7–13 and 23–26 answered before the end of Phase 1; the
+   CNIC-correction-after-login question raised by the plan (slice 4); whether a numeric reset
+   code is required instead of the built-in reset link (slice 2).
+4. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
 
 ---
+
+## 2026-10-01 — Phase 1 build plan written and reviewed (Fable 5.1) — DONE
+
+**Decisions taken by Fable (owner said "go as you make sense"):** Docker-first dev environment,
+nothing on the host but Docker Desktop; GitHub Actions CI; Flutter deferred to Phase 2; the five
+generic MCPmarket skills kept at the owner's request; seed data invented in Pakistani-school shape
+until the owner supplies samples.
+
+**Plan:** `docs/plans/phase-1-foundation.md` — nine slices from scaffold to phase close, the 51
+capability keys with role defaults, 60 numbered rules that are test names, schema conventions.
+
+**Reviewed before approval** by `data-architect`, `business-rules` and `security-reviewer`
+(design reviews, no code exists). Findings adopted, the important ones:
+- Username was going to be the CNIC in plaintext — now stored only as an HMAC hash
+  (`IDENTITY_HASH_KEY`, separate from `APP_KEY`). `CLAUDE.md` rule 12 amended.
+- Login had no tenant: same digits in two schools would resolve to the first match, and under
+  RLS the user lookup itself had no tenant. Now the login and forgot-password forms take a school
+  code written to the session before authentication. `CLAUDE.md` rule 2 amended with this single
+  exception.
+- A mutable "current session" pointer on classes would lie about history; class rows are now per
+  academic year and immutable, with composite FKs `(class_id, academic_year_id)`.
+- Composite tenant foreign keys `(school_id, parent_id)` everywhere; the isolation test enumerates
+  every table against an allowlist, not only tables that happen to have `school_id`.
+- One lifecycle mechanism per table: status on people/record tables, soft delete only on config
+  tables, so unique indexes stay meaningful.
+- Office staff could have become principal via reset + role assignment; rules R12–R14 close it.
+- Documents: private disk for Livewire temp uploads too, sniffed types, re-encoded images, signed
+  5-minute URLs behind a capability check.
+- Phones normalised to E.164; no unique on email; teacher assignments date-bounded; admission
+  number from a locked counter; readmission path; status transition table; idempotency token on
+  the admission wizard; rate limiting via `RateLimiter` not columns; capabilities as a PHP enum;
+  document verification screen and grant expiry dropped from Phase 1.
+
+**Flagged to the product owner, not decided**
+- CNIC correction once a login exists conflicts with "username does not change"; Phase 1 refuses
+  the edit.
+- Password reset uses Laravel's built-in emailed link rather than a numeric code; a code is a
+  small change if insisted on.
 
 ## 2026-10-01 — Auth details and contact capability confirmed (Fable 5.1) — DONE
 
