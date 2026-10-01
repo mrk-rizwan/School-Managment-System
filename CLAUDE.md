@@ -77,11 +77,12 @@ No agent silently overrides another's critical decision. Surface the conflict an
 Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3, 5, 6, 19):
 
 11. **One campus per school.** The school is the tenant and `school_id` is the tenant key. There is no campus dimension on any table. A group of schools under one owner is separate tenants; a nullable `school_group_id` on the school record is the only trace of it.
-12. **Login identity is the CNIC.** Username is the person's CNIC digits with dashes removed, for guardians and staff. The **default password is the same digits**; the user may change the password at any time. The username does not change. The office creates every account at admission or hiring; **nobody self-registers.** A person who is both staff and guardian has one login carrying both capability sets. At admission the office must search existing guardians by CNIC and link, never create a duplicate; `merged_into_id` exists on the guardian table from the first migration. Security conditions that come with this choice and are not optional: the CNIC is stored encrypted and looked up through an indexed hash; it is never written to a log line or a URL; login is rate-limited and locks after repeated failures; the office can see which accounts still use the default password. Still open: the student identifier, the reset path, and whether the first login forces a change (items 27–29).
+12. **Login identity is the CNIC.** Username is the person's CNIC digits with dashes removed, for guardians and staff. The **default password is the same digits**; the user may change the password at any time. The username does not change. The office creates every account at admission or hiring; **nobody self-registers.** A person who is both staff and guardian has one login carrying both capability sets. At admission the office must search existing guardians by CNIC and link, never create a duplicate; `merged_into_id` exists on the guardian table from the first migration. Security conditions that come with this choice and are not optional: the CNIC is stored encrypted and looked up through an indexed hash; it is never written to a log line or a URL; login is rate-limited and locks after repeated failures; the office can see which accounts still use the default password. **Students** log in with their own national identity number (the 13-digit B-Form / CRC number) with dashes removed, same default-password rule; a student with no number recorded has no login until the office enters one. **First login prompts a password change but does not force it.** **Password reset** is by a code sent to the account's email address; the user must enter an email before they can change their password, so every changed password has a reset path. Users with no email (keypad-phone guardians) are reset by the office to the default, which is the stated fallback. The office can see which accounts have no email and which still use the default password.
 13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can($capability, $subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list itself is still to be written.
 14. **Attendance is stored per period.** Each class carries a setting for whether staff record it daily or per period; a daily mark is stored as the day's single period. The offline idempotency key is `UNIQUE (school_id, enrolment_id, date, period)`.
 15. **Sessions and money settings.** The principal defines academic years (sessions) and assigns each class to one, so a school may run, for example, an April session and a September session side by side. Fee due day defaults to the 10th of the month and is changeable per school. Currency is PKR. **Amounts are whole rupees**: stored as integers, no paisa, displayed without decimals.
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
+17. **Guardian contact capability is a three-value field on the guardian** — WhatsApp, smartphone with data, or keypad phone — asked by the office at admission and editable later. Every notification routing rule reads it. Unknown is not a value; the office must pick one.
 
 ## Market constraints that change design decisions
 
@@ -163,20 +164,12 @@ How the stack is used — no tenancy package, forced Postgres row-level security
 
 **This is the only list.** Other documents may mirror it; where they disagree, this wins.
 
-### Blocks Phase 1
+### Blocks Phase 1 — nothing left open
 
-> **Phase 1 was unblocked on 2026-10-01.** Decisions 1, 2, 3, 5 and 6 were confirmed and are now
-> settled rules 11–16. Numbers are never reused; closed items are listed at the end of this section.
+> **Phase 1 was unblocked on 2026-10-01.** Numbers are never reused.
 > `docs/decisions-pending-confirmation.md` keeps only the implementation recommendations (Part 2).
 
-| # | Decision | Status | Why it blocks |
-|---|---|---|---|
-| 4 | **Guardian contact capability** — how the system knows a parent has a keypad phone, social bundle, or full data | Open. Default: three-value field on the guardian, asked at admission | Every notification routing rule reads this field |
-| 27 | **Student login identifier** — students have no CNIC. B-Form number, or admission number? | Open. Recommended: admission number (always exists, never changes, not a sensitive document) | The student username column |
-| 28 | **Password reset path** — no email exists. Office resets to the default, or SMS OTP to the guardian's phone? | Open. Recommended: office reset in Phase 1, SMS OTP later | Phase 1 auth flow |
-| 29 | **Forced password change on first login** — the default password is the CNIC, which appears on many documents. Force a change, or only prompt? | Open. Recommended: force | Phase 1 auth flow |
-
-Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 19 Urdu RTL → rule 16.
+Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 
 ### Blocks the schema freeze — feature is later, the shape is now
 

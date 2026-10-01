@@ -18,20 +18,32 @@ writes the production code.** Do not start application code in a planning sessio
   attendance storage, per-class sessions, PKR whole rupees, English only. These are settled
   rules 11–16 in `CLAUDE.md`.
 - **Next milestone:** a go-to build plan for Phase 1, produced by Fable, executable by Opus.
-  Three small auth questions (register items 27–29) are open; the plan can carry defaults.
+  Nothing in the "Blocks Phase 1" tier is open any more (items 4, 27–29 closed 2026-10-01).
 
 ## Left to do (ordered)
 
-1. Product owner answers register items 27–29 (student username, password reset path, forced
-   change on first login) and 4 (guardian contact capability). Defaults are recorded in the register.
-2. Product owner supplies: dev-machine facts (PHP, Composer, PostgreSQL, Redis, Flutter installed,
+1. Product owner supplies: dev-machine facts (PHP, Composer, PostgreSQL, Redis, Flutter installed,
    or start from Docker), CI target, staging host; sample seed data from presentation slide 23;
    keep-or-delete decision on the five generic skills in `.claude/skills/`.
-3. Produce the Phase 1 build plan (`implementation-planner`), then hand to Opus. Phase 0 of that
+2. Produce the Phase 1 build plan (`implementation-planner`), then hand to Opus. Phase 0 of that
    plan is the forced-RLS-under-Filament prototype (~1 day).
-4. Schema-freeze items 7–13 and 23–26 answered before the end of Phase 1.
+3. Schema-freeze items 7–13 and 23–26 answered before the end of Phase 1.
 
 ---
+
+## 2026-10-01 — Auth details and contact capability confirmed (Fable 5.1) — DONE
+
+**Answers given:** students log in with their national ID number (B-Form / CRC, read from
+"use id card"); password reset by a code to an email the user must enter before changing their
+password; first login prompts but does not force a change; guardian contact capability is the
+three-value field asked at admission.
+
+**Applied:** rule 12 extended, rule 17 added, register items 4, 27, 28, 29 closed; the
+"Blocks Phase 1" tier is now empty.
+
+**Flagged to the product owner:** email reset assumes an email; keypad-phone guardians have none,
+so rule 12 states office reset-to-default as the fallback. "Use id card" for students was read as
+the B-Form / CRC number, not a school-issued card; correct it if wrong.
 
 ## 2026-10-01 — Decisions 1, 2, 3, 5, 6 confirmed by the product owner (Fable 5.1) — DONE
 
