@@ -12,25 +12,34 @@ writes the production code.** Do not start application code in a planning sessio
 ## Current state (keep this section accurate)
 
 - **Phase:** Pre-build. No application code exists. Repository holds planning docs, agent
-  definitions, hooks and git hygiene only.
-- **Phase 1 is unblocked** (2026-10-01). The product owner confirmed one campus per school,
-  CNIC-digit login with a default password, roles plus grantable capabilities, per-period
-  attendance storage, per-class sessions, PKR whole rupees, English only. These are settled
-  rules 11–16 in `CLAUDE.md`.
-- **Phase 1 build plan is written and reviewed:** `docs/plans/phase-1-foundation.md`. It is
-  what the Opus session executes, slice by slice, starting with slice 0 (Docker scaffold, CI,
-  the forced-RLS spike). Nothing in the "Blocks Phase 1" tier is open.
+  definitions, hooks and git hygiene only. The Laravel skeleton scaffolded on 2026-10-01 was
+  never committed and was deleted on 2026-10-02.
+- **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
+  2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
+- **Phase 1 is unblocked** on decisions; nothing in the "Blocks Phase 1" tier is open.
+- **`docs/plans/phase-1-foundation.md` is SUPERSEDED.** Its requirements, slice order and R1–R60
+  rule list are stack-independent and carry over; everything below them must be rewritten.
+- Tenant isolation: see the 2026-10-02 (final) entry — application-layer scoping, RLS dropped.
 
 ## Left to do (ordered)
 
-1. **Opus session: execute `docs/plans/phase-1-foundation.md` slice 0.** Record the RLS spike
-   verdict and the pinned Laravel/Filament versions here.
-2. Slices 1–8 in order, each gated (tests, security-reviewer, code-auditor, phase-gate), each a
-   commit, each logged here.
-3. Product owner: schema-freeze items 7–13 and 23–26 answered before the end of Phase 1; the
-   CNIC-correction-after-login question raised by the plan (slice 4); whether a numeric reset
-   code is required instead of the built-in reset link (slice 2).
+1. **Re-plan Phase 1 for the new stack** (Fable). Carry over requirements, slice order and
+   R1–R60; rewrite stack, schema conventions and per-slice tasks. `data-architect`,
+   `business-rules` and `security-reviewer` review before approval.
+2. Opus executes the new plan slice by slice, each gated and logged here.
+3. Product owner: schema-freeze items 7–13 and 23–26 before the end of Phase 1; CNIC correction
+   after a login exists; numeric reset code or emailed link.
 4. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+
+---
+
+## 2026-10-02 — Laravel leftovers removed (Opus 5.5) — DONE
+
+Deleted the untracked Laravel 13 skeleton from the 2026-10-01 slice-0 start: `app`, `bootstrap`,
+`config`, `database`, `docker`, `public`, `resources`, `routes`, `storage`, `tests`, `vendor`. None
+was ever committed. Two local Docker images (`asms-app:dev`, `composer:latest`) remain on the
+maintainer's machine; remove with `docker rmi` when Docker Desktop is running. Current state and
+left-to-do above corrected: they still pointed at the superseded Laravel plan.
 
 ---
 
