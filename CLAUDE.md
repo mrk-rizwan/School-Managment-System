@@ -119,7 +119,13 @@ signature but never the query itself:
    transactions is verified in slice 0; the stated fallback is a mandatory `tenantWhere()` helper.
 6. **Writes use scalar foreign keys, never `connect`**, so the composite foreign key rejects
    another school's id in the database. Raw-unsafe queries, `as SchoolId` and `any` are banned by
-   lint.
+   lint. Since slice 0 the API's lint is **type-aware**: an untyped value (`req.body`) cannot flow
+   into a `SchoolId`; type assertions are refused except in the two mint files; inline
+   `eslint-disable` comments have no effect; `src/tenancy` and `src/repositories` may not
+   re-export; `nestjs-cls`, `TransactionHost` and `new PrismaClient` are confined to tenancy and
+   repositories; the tenant is written into the request context only through
+   `RequestContextService.establishSession(SchoolId)`. The `school_id` of a row can never change:
+   the query guard refuses it and a database trigger rejects it.
 7. **Row scope is a required, branded argument** on every student-linked repository method. Only
    the permission service can construct it; an empty list means no rows, never no filter.
 8. **A schema guard test reads the migrated database** and fails on a table without `school_id`,
@@ -301,6 +307,7 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 | API | REST under `/api/v1`, JSON, one error envelope with a stable machine code, cursor-free page/limit pagination capped at 50, OpenAPI generated from the controllers. **No HTTP `DELETE` anywhere** (rule 4): rows are ended, archived or status-changed by `POST /x/:id/<verb>` with a reason. A row in another school, or outside the caller's scope, is `404`, never `403` |
 | Secrets in links | Reset and verification tokens travel in the URL **fragment** and are POSTed in a body, never in a path or query string, so they reach no access log. Verification happens on a button press, never on page load |
 | Passwords and identity numbers | `argon2id` over an HMAC with a server-side pepper; CNIC and B-Form encrypted with AES-256-GCM bound to school, table and column; three separate keys (pepper, encryption keyring, lookup-hash key) |
+| Client IP behind the proxy | The Next.js rewrite forwards a client-sent `X-Forwarded-For` **unchanged** and adds nothing, so on its own any client can spoof its IP and defeat per-IP throttling and login lockout. **Production must run an edge reverse proxy (nginx or Caddy) in front of Next that overwrites `X-Forwarded-For` with the connecting address**; the API trusts exactly one hop. Found by the slice-0 security review, 2026-10-02 |
 
 ---
 

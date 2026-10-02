@@ -11,9 +11,11 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Pre-build. No application code exists. Repository holds planning docs, agent
-  definitions, hooks and git hygiene only. The Laravel skeleton scaffolded on 2026-10-01 was
-  never committed and was deleted on 2026-10-02.
+- **Phase:** Phase 1, **slice 0 done** (2026-10-02): pnpm monorepo, NestJS API skeleton,
+  Next.js web shell, dev services, CI workflow, and the tenant-isolation guardrails, all tested.
+  No school feature exists yet. **Next: slice 1** (platform and the school record).
+- **CI has never run on GitHub** — nothing has been pushed. Slice 0's gate is conditional on the
+  first push producing a green Actions run.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
 - **Phase 1 is unblocked** on decisions. One question is open and does not block: register
@@ -26,16 +28,103 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Left to do (ordered)
 
-1. **Opus session: execute `docs/plans/phase-1-foundation.md` slice 0.** Record here the exact
-   pinned versions and whether the query guard passed its transaction-atomicity check or the
-   `tenantWhere()` fallback was used.
-2. Slices 1–8 in order, each gated (tests, `security-reviewer`, `code-auditor`, `phase-gate`),
-   each a commit, each logged here.
-3. Product owner: register item 30 (privileged capabilities on a default password); schema-freeze
+1. **Push and confirm the first GitHub Actions run is green** (closes slice 0's last condition).
+2. **Slice 1**, starting with the carry-overs listed under the slice-0 entry below (Prisma
+   foreign-key drift check first).
+3. Slices 2–8 in order, each gated (tests, `security-reviewer`, `code-auditor`, `phase-gate`),
+   each a commit, each logged here. **Before the first slice where a request handler consumes a
+   `Scope`** (slice 4 or 6), the type-aware lint rule in the slice-0 residual-risk statement must
+   exist.
+4. Product owner: register item 30 (privileged capabilities on a default password); schema-freeze
    items 7–13 and 23–26 before the end of Phase 1; whether a guardian whose children have all left
    keeps a login (part of item 11); CNIC correction after a login exists; numeric reset code or
    emailed link.
-4. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+5. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+
+---
+
+## 2026-10-02 — Slice 0: scaffold and guardrails (Opus 5.5) — DONE, CI pending
+
+**Built** by four parallel agents with disjoint file ownership (API core, tenancy guardrails, web
+shell, CI), then integrated and gated by the main thread.
+
+**Pinned versions.** Node 24.18, pnpm 12.3.4. API: @nestjs/core 12.1.2, Prisma 7.10.0 (client,
+CLI, adapter-pg), nestjs-cls 7.0.1, @nestjs-cls/transactional 4.0.1, @nestjs/swagger 12.0.2,
+@nestjs/throttler 6.7.1, @node-rs/argon2 2.2.1, zod 4.6.5, TypeScript 5.9.3, Jest 30.5.2,
+ESLint 9.39.5, typescript-eslint 8.71.0. Web: Next 16.3.8, React 19.2.8, Tailwind 4.3.3,
+TanStack Query 5.104.0, openapi-fetch 0.17.0, Playwright 1.63.0. Services: postgres:16-alpine,
+redis:7-alpine, mailpit v1.31.3, minio RELEASE.2025-09-07T16-13-09Z.
+
+**Deviations from plan §2, each justified:**
+- `@node-rs/argon2` instead of `argon2`: the latter compiles a native module on Windows and needs
+  a C++ toolset; the former ships prebuilt binaries. Same algorithm (argon2id).
+- TypeScript 5.9, not 7.x: NestJS needs decorator-metadata emit, which ts-jest gets from 5.x.
+- PHP-free Docker: Node runs on the host; Docker only for services.
+- Extra packages: `zod` (env validation at boot), `ioredis` + `@nest-lab/throttler-storage-redis`
+  (throttler on Redis), `dotenv` (tests and `dotenv run` in the dev script).
+- Jest runs with `--experimental-vm-modules`: NestJS 12 ships as ESM.
+- The web CSP is set per request with a nonce in `proxy.ts`, not as a static header: a static
+  header would need `script-src 'unsafe-inline'` for the App Router's inline scripts.
+- `PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD` are not validated at boot yet; slice 1 adds
+  them with the seed that uses them.
+
+**Query guard atomicity (plan §3.2): PASS, guard kept, no `tenantWhere()` fallback.**
+`transaction-atomicity.spec.ts` holds a `FOR UPDATE` row lock inside an interactive transaction
+opened through the guarded client and probes it from a separate connection with `NOWAIT`: locked
+throughout, released on commit, with a control case proving the probe detects an escaped
+statement. Prisma's `strictUndefinedChecks` preview is enabled: optional fields must be omitted or
+`Prisma.skip`, never `undefined`.
+
+**Final results:** lint and typecheck clean in all three packages; API 11 suites / 161 tests;
+web build; Playwright 6/6; OpenAPI regeneration byte-identical; pre-commit hook passes over all
+committed files; `pnpm dev` serves `/api/v1/health` through the web origin.
+
+**Gate history.** code-quality and code-auditor findings fixed. `security-reviewer` failed the
+slice three times before passing: (1) lint let `req.body` become a SchoolId, client IP spoofable
+through the Next rewrite, guard did not inspect update data, platform models were a route into
+tenant data; (2) six further brand-forgery routes (alias assertions, type-level `import()`,
+inferred generic helpers, `eslint-disable` comments, re-export barrels, ClsService poisoning);
+(3) bracket access to a TS-private field and a computed key reaching the session setter — fixed
+with a runtime-private `#cls` and a separate `SessionEstablisher` importable only in
+`src/tenancy`. `phase-gate` failed once (an embedded credential URL in a test, the missing route
+snapshot, no migration review, this log) and those are closed. `data-architect` approved the two
+migrations.
+
+**Accepted residual risk (security-reviewer's wording, recorded verbatim):** "Slice 0 accepts the
+following residual risk on the SchoolId and Scope brands. The name-based lint bans do not see a
+brand reached through an indirect type expression (for example `Parameters<typeof f>[0]`). Such a
+type can still appear in a type predicate, an overload signature, a class field or a
+request-decorated parameter, and a third-party generic whose type parameter is inferred only from
+its return type can produce a brand without a cast. Each of these needs deliberate, visible code;
+none comes from an accidental `any`, which the type-aware no-unsafe rules refuse. Three things
+contain the risk. First, the runtime query guard refuses any tenant-table operation without an
+own-property bigint schoolId. Second, the per-table isolation tests run School A's session against
+School B's rows. Third, the security reviewer reviews every slice and treats any type predicate,
+overload or decorated parameter mentioning a tenant type as a finding. The guard does not detect a
+wrong but well-formed schoolId, and nothing checks a forged Scope at runtime. This acceptance
+therefore expires before the first slice that consumes Scope from a request-handling path. By then
+a type-aware lint rule must reject request-decorated parameters that are not classes, and any
+decorated parameter or class field whose resolved type contains the SchoolId or Scope brand
+symbol."
+
+**Deployment requirement found here:** the Next.js rewrite forwards a client-sent
+`X-Forwarded-For` unchanged, so production needs an edge proxy that overwrites it (recorded in
+`CLAUDE.md` and the `devops` agent). Slice 2's login lockout must not reach an internet-facing
+environment until staging proves a forged header is ignored.
+
+**Carry-overs into slice 1** (from `data-architect` and the gate):
+1. **First:** run a throwaway `prisma migrate diff` once a tenant table exists, to see whether
+   Prisma emits `DROP CONSTRAINT` for the hand-written `school_id → schools(id)` foreign key. If it
+   does, removing those lines becomes a routine step of SQL review, like partial indexes.
+2. `schools.short_code` format CHECK `^[a-z0-9]{3,12}$` and an immutability trigger (SQL is in the
+   data-architect review; test short codes already match the format).
+3. Replace the school-id trigger function with `CREATE OR REPLACE` so it raises with a constraint
+   name (the error mapper keys on constraint names).
+4. `updated_at` gets `@default(now())` alongside `@updatedAt`.
+5. `school_groups` FK with explicit names, `Restrict` actions and an explicit index.
+6. Timezone validated in the DTO with `Intl.supportedValuesOf('timeZone')`.
+7. Validate `PLATFORM_ADMIN_*` at boot.
+8. Delete the throwaway `/demo` page and its nav entry once real screens use the shared components.
 
 ---
 

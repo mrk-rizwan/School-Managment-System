@@ -1,0 +1,47 @@
+// Conventions: docs/plans/phase-1-foundation.md §3.8. Models PascalCase, tables and columns
+// snake_case, every index and constraint named explicitly (Prisma 7's P2002 reports only the
+// constraint name). The `partialIndexes` preview feature stays OFF: with it on, the next
+// migration drops every hand-written partial index.
+//
+// Tenant models declare NO Prisma relation to School: Prisma would add a back-relation on School,
+// a route from platform code into tenant rows. Their FK (school_id) REFERENCES schools (id) and
+// the BEFORE UPDATE trigger calling asms_forbid_school_id_change() are written in migration SQL.
+// The schema guard checks both; test/guardrails/prisma-relations.spec.ts checks this file.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/repositories/generated/prisma"
+  moduleFormat    = "cjs"
+  // An `undefined` in a query argument becomes an error instead of silently dropping the filter.
+  previewFeatures = ["strictUndefinedChecks"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SchoolStatus {
+  trial
+  active
+  suspended
+  terminated
+
+  @@map("school_status")
+}
+
+/// Non-tenant: the tenant itself. School-owned settings live in tenant tables, not here.
+model School {
+  id            BigInt       @id(map: "schools_pkey") @default(autoincrement())
+  name          String       @db.VarChar(200)
+  /// 3-12 lower-case ASCII letters/digits, immutable after creation (CHECK and trigger: slice 1).
+  shortCode     String       @map("short_code") @db.VarChar(12)
+  status        SchoolStatus @default(trial)
+  /// FK to school_groups arrives with that table in slice 1.
+  schoolGroupId BigInt?      @map("school_group_id")
+  timezone      String       @default("Asia/Karachi") @db.VarChar(64)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([shortCode], map: "schools_short_code_key")
+  @@map("schools")
+}

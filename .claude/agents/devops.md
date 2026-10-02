@@ -66,6 +66,8 @@ It holds a logged-in WhatsApp session that drops. One number per school means on
 
 ## Before the first school goes live
 
+**Client IP is a deployment requirement, not a code one.** The Next.js rewrite passes a client-sent `X-Forwarded-For` through unchanged. The edge proxy in front of Next must overwrite it (`proxy_set_header X-Forwarded-For $remote_addr;` in nginx), and the API keeps `trust proxy` at 1. Without that, per-IP rate limits and login lockout can be bypassed by sending a fake header. Verify it on staging by sending a forged header and checking the logged IP.
+
 Health check endpoint · structured JSON logging with a request id, and **no CNIC, token or password in any log line** · error tracking · uptime monitoring that alerts a human · database backups verified by restore · HTTPS enforced · rate limiting on login and OTP endpoints · queue depth and failed-job alerting · a written rollback procedure
 
 ## CI

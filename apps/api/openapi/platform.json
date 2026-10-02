@@ -1,0 +1,13 @@
+{
+  "components": {},
+  "info": {
+    "contact": {},
+    "description": "",
+    "title": "ASMS platform API",
+    "version": "1"
+  },
+  "openapi": "3.0.0",
+  "paths": {},
+  "servers": [],
+  "tags": []
+}

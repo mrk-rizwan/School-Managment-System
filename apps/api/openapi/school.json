@@ -1,0 +1,124 @@
+{
+  "components": {
+    "schemas": {
+      "ApiErrorBodyDto": {
+        "properties": {
+          "code": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              }
+            ]
+          },
+          "details": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "details",
+          "requestId"
+        ],
+        "type": "object"
+      },
+      "ApiErrorDto": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiErrorBodyDto"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "MALFORMED_REQUEST",
+          "AUTH_REQUIRED",
+          "AUTH_FAILED",
+          "PERMISSION_DENIED",
+          "SCHOOL_SUSPENDED",
+          "ORIGIN_REJECTED",
+          "NOT_FOUND",
+          "VALIDATION_FAILED",
+          "REFERENCE_NOT_FOUND",
+          "UNKNOWN_FIELD",
+          "INVALID_VALUE",
+          "PAYLOAD_TOO_LARGE",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "RATE_LIMITED",
+          "SERVICE_UNAVAILABLE",
+          "INTERNAL_ERROR",
+          "UNEXPECTED_RESPONSE"
+        ],
+        "type": "string"
+      },
+      "HealthDto": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "",
+    "title": "ASMS school API",
+    "version": "1"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    }
+  },
+  "servers": [],
+  "tags": []
+}

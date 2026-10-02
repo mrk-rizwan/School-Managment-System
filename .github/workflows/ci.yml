@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Throwaway values for the CI service containers only. They protect nothing:
+# the database lives for one job and is reachable only from the runner.
+env:
+  PG_USER: asms_ci
+  PG_PASS: ci_only
+  PG_DB: asms
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ${{ env.PG_USER }}
+          POSTGRES_PASSWORD: ${{ env.PG_PASS }}
+          POSTGRES_DB: ${{ env.PG_DB }}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U asms_ci -d asms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from "packageManager" in the root package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Create test database
+        run: docker exec "${{ job.services.postgres.id }}" psql -U "$PG_USER" -d "$PG_DB" -c "CREATE DATABASE asms_test;"
+
+      # Every key from .env.example. The three secrets are generated per run.
+      # The URLs are assembled from parts so no credentialed URL sits in the repo.
+      - name: Write CI .env
+        run: |
+          db_auth="${PG_USER}:${PG_PASS}"
+          cat > .env <<ENVFILE
+          POSTGRES_USER=${PG_USER}
+          POSTGRES_PASSWORD=${PG_PASS}
+          POSTGRES_DB=${PG_DB}
+          REDIS_PASSWORD=unused-in-ci
+          NODE_ENV=development
+          API_PORT=3001
+          APP_URL=http://localhost:3000
+          DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/${PG_DB}
+          TEST_DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/asms_test
+          REDIS_URL=redis://127.0.0.1:6379
+          IDENTITY_HASH_KEY=$(openssl rand -base64 32)
+          FIELD_ENCRYPTION_KEYS=k1:$(openssl rand -base64 32)
+          PASSWORD_PEPPER=$(openssl rand -base64 32)
+          S3_ENDPOINT=http://127.0.0.1:9000
+          S3_REGION=us-east-1
+          S3_BUCKET=asms-documents
+          S3_ACCESS_KEY_ID=ci-access
+          S3_SECRET_ACCESS_KEY=ci-$(openssl rand -hex 16)
+          SMTP_HOST=127.0.0.1
+          SMTP_PORT=1025
+          SMTP_FROM="ASMS <no-reply@localhost>"
+          PLATFORM_ADMIN_EMAIL=admin@ci.invalid
+          PLATFORM_ADMIN_PASSWORD=Ci-$(openssl rand -hex 12)
+          ENVFILE
+
+      - name: Build shared package
+        run: pnpm --filter @asms/shared build
+
+      # Explicit: prisma migrate does not generate the client.
+      - name: Generate Prisma client
+        run: |
+          set -a; . ./.env; set +a
+          pnpm --filter @asms/api exec prisma generate
+
+      - name: Lint
+        run: pnpm -r lint
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Migrate database
+        run: pnpm --filter @asms/api db:deploy
+
+      - name: Migrate test database
+        run: pnpm --filter @asms/api db:test:deploy
+
+      - name: API tests
+        run: pnpm --filter @asms/api test
+
+      # Regenerates the OpenAPI document and the web client; fails if the
+      # committed copies differ or new files appear.
+      - name: OpenAPI staleness check
+        run: |
+          set -a; . ./.env; set +a
+          pnpm --filter @asms/api build
+          pnpm --filter @asms/api openapi
+          pnpm --filter @asms/web api:generate
+          git diff --exit-code -- apps/api/openapi apps/web/lib/api
+          untracked=$(git status --porcelain --untracked-files=all -- apps/api/openapi apps/web/lib/api)
+          if [ -n "$untracked" ]; then
+            echo "Generated files are not committed:"; echo "$untracked"; exit 1
+          fi
+
+      - name: Web build
+        run: pnpm --filter @asms/web build
+
+      - name: Install Playwright browser
+        run: pnpm --filter @asms/web exec playwright install --with-deps chromium
+
+      - name: Web end-to-end tests
+        run: pnpm --filter @asms/web test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
