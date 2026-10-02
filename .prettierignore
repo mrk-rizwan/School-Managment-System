@@ -1,0 +1,6 @@
+docs/
+pnpm-lock.yaml
+**/generated/
+.next/
+dist/
+coverage/

@@ -70,3 +70,10 @@ scripts/README-auto-sync.md
 scripts/sync-hidden.vbs
 scripts/sync-on.cmd
 scripts/sync-off.cmd
+
+# ------------------------------------------------------------------ node
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.turbo/
+.pnpm-store/

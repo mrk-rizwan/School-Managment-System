@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts. Everything else is refused.
+# @scarf/scarf is install telemetry: explicitly denied.
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+  sharp: true
+  '@scarf/scarf': false
+  '@parcel/watcher': false
+  esbuild: true
+  unrs-resolver: true
