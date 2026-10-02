@@ -15,6 +15,24 @@ no longer apply to login (they still apply if SMS OTP is later used for password
 
 ---
 
+> ## SUPERSEDED IN PART — stack changed 2026-10-02
+>
+> **Tenancy is resolved and is no longer provisional here.** Scoping is enforced in the
+> repository layer; the database does not enforce it. Row-level security was considered and
+> rejected as unproven under Prisma 7. See `CLAUDE.md`, "How tenant isolation is
+> implemented".
+>
+> The stack is now **NestJS (Node + TypeScript) · PostgreSQL + Prisma · Next.js · React Native**.
+> It was Laravel + Filament + Flutter when this document was written.
+>
+> **Void:** every reference to Laravel, Filament, Eloquent, Artisan, Blade, Livewire, Flutter,
+> Drift and the PHP package pins.
+> **Still valid:** the requirements, the slice ordering, the numbered rules, the Postgres
+> reasoning, forced row-level security, and idempotency enforced as database constraints.
+>
+> `CLAUDE.md` is the authority. Where this file disagrees with it, this file is wrong.
+
+
 ## Part 2 — Stack findings
 
 ### Multi-tenancy: no package, own trait + forced Postgres RLS

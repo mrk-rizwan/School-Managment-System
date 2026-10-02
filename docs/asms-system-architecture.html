@@ -117,10 +117,10 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
 <header class="mast">
   <p class="eyebrow">ASMS &middot; v1.0 &middot; Architecture baseline</p>
   <h1>ASMS System Architecture</h1>
-  <p class="standfirst">Three client surfaces, one Laravel backend, one Postgres database. Everything a parent must receive goes out over WhatsApp and SMS, because the app cannot be assumed to reach them.</p>
+  <p class="standfirst">Three client surfaces, one NestJS backend, one Postgres database. Everything a parent must receive goes out over WhatsApp and SMS, because the app cannot be assumed to reach them.</p>
   <dl class="facts">
-    <div><dt>Backend</dt><dd>Laravel + PostgreSQL</dd></div>
-    <div><dt>Mobile</dt><dd>Flutter, role-aware</dd></div>
+    <div><dt>Backend</dt><dd>NestJS + PostgreSQL</dd></div>
+    <div><dt>Mobile</dt><dd>React Native, role-aware</dd></div>
     <div><dt>Clients</dt><dd>2 codebases, 3 surfaces</dd></div>
     <div><dt>Tenancy</dt><dd>Shared DB, school-scoped</dd></div>
   </dl>
@@ -138,7 +138,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
     <div class="plate-head"><span class="plate-num">Plate 01</span><span class="plate-title">System context</span></div>
     <div class="plate-body">
       <figure class="fig">
-        <svg viewBox="0 0 960 620" role="img" aria-label="Three clients — platform console, school web admin and the Flutter mobile app — talk to one Laravel backend over HTTPS. The backend holds four module groups, writes to PostgreSQL, Redis and object storage, and pushes work to queue workers and a scheduler which reach WAHA, an SMS gateway, Firebase push and SMTP. WAHA also sends messages back in through a webhook.">
+        <svg viewBox="0 0 960 620" role="img" aria-label="Three clients — platform console, school web admin and the React Native mobile app — talk to one NestJS backend over HTTPS. The backend holds four module groups, writes to PostgreSQL, Redis and object storage, and pushes work to queue workers and a scheduler which reach WAHA, an SMS gateway, Firebase push and SMTP. WAHA also sends messages back in through a webhook.">
           <defs>
             <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="#6E8288"></path>
@@ -152,13 +152,13 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
           <text class="t-sm" x="130" y="85" text-anchor="middle">web &middot; vendor only</text>
           <rect class="bx" x="248" y="46" width="200" height="52"></rect>
           <text class="t" x="348" y="68" text-anchor="middle">School Web Admin</text>
-          <text class="t-sm" x="348" y="85" text-anchor="middle">Filament</text>
+          <text class="t-sm" x="348" y="85" text-anchor="middle">Next.js</text>
           <rect class="bx-money" x="476" y="46" width="204" height="52"></rect>
           <text class="t" x="578" y="68" text-anchor="middle">Mobile App</text>
-          <text class="t-sm" x="578" y="85" text-anchor="middle">Flutter &middot; role-aware</text>
+          <text class="t-sm" x="578" y="85" text-anchor="middle">React Native &middot; role-aware</text>
 
           <rect class="bx-panel" x="20" y="140" width="680" height="212"></rect>
-          <text class="t-hd" x="34" y="160">ASMS BACKEND &mdash; LARAVEL</text>
+          <text class="t-hd" x="34" y="160">ASMS BACKEND &mdash; NESTJS</text>
           <rect class="bx-plat" x="40" y="172" width="640" height="46"></rect>
           <text class="t t-inv" x="360" y="192" text-anchor="middle">HTTPS API</text>
           <text class="t-sm" x="360" y="209" text-anchor="middle" fill="#BFE0E2">auth &middot; tenant scope &middot; validation &middot; rate limit</text>
@@ -206,7 +206,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
           <text class="t-sm" x="837" y="367" text-anchor="middle">push</text>
           <rect class="bx-ext" x="752" y="404" width="170" height="52"></rect>
           <text class="t" x="837" y="426" text-anchor="middle">SMTP</text>
-          <text class="t-sm" x="837" y="443" text-anchor="middle">Laravel Mail</text>
+          <text class="t-sm" x="837" y="443" text-anchor="middle">SMTP mailer</text>
           <rect class="bx-panel" x="752" y="486" width="170" height="66"></rect>
           <text class="t-sm" x="837" y="512" text-anchor="middle">Biometric agent</text>
           <text class="t-sm" x="837" y="529" text-anchor="middle">later phase</text>
@@ -313,7 +313,7 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
 <section>
   <p class="eyebrow">Section 03</p>
   <h2>The mobile client</h2>
-  <p class="lede">One Flutter codebase. The role on the session decides what the shell renders.</p>
+  <p class="lede">One React Native codebase. The role on the session decides what the shell renders.</p>
   <p>There is no principal app, teacher app or parent app as separate builds. There is one app that fetches a capability set at login and composes its navigation from it. A person who is both a teacher and a coordinator sees both, from one install.</p>
 
   <div class="call">
@@ -556,9 +556,9 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
     <table>
       <thead><tr><th>Process</th><th>What it does</th><th>Notes</th></tr></thead>
       <tbody>
-        <tr><td class="k">Web (PHP-FPM)</td><td>Serves the API and the Filament admin</td><td class="m">Scale horizontally when needed</td></tr>
+        <tr><td class="k">API (NestJS)</td><td>Serves the API; the Next.js admin runs separately</td><td class="m">Stateless; scale horizontally</td></tr>
         <tr><td class="k">Queue worker</td><td>Sends messages, generates invoices, builds reports</td><td class="m">Separate queues: default, messages</td></tr>
-        <tr><td class="k">Scheduler</td><td>One cron entry, Laravel dispatches from there</td><td class="m">Single instance only</td></tr>
+        <tr><td class="k">Scheduler</td><td>Produces repeatable jobs onto the queue</td><td class="m">Exactly one instance</td></tr>
         <tr><td class="k">WAHA</td><td>WhatsApp session per school number</td><td class="m">Own container; sessions need monitoring</td></tr>
         <tr><td class="k">PostgreSQL</td><td>All tenant data</td><td class="m">Daily backup, restore tested</td></tr>
         <tr><td class="k">Redis</td><td>Queues, cache, sessions</td><td class="m">Not a system of record</td></tr>
@@ -591,12 +591,12 @@ footer{border-top:1px solid var(--rule);padding:2rem 0 3.5rem;font-family:"IBM P
     <table>
       <thead><tr><th>Decision</th><th>Choice</th><th>Because</th></tr></thead>
       <tbody>
-        <tr><td class="k">Client surfaces</td><td>Web admin + one role-aware Flutter app</td><td>Two codebases instead of five; one maintainer</td></tr>
-        <tr><td class="k">Backend</td><td>Laravel + PostgreSQL + Filament</td><td>Queues, scheduler and admin CRUD come in the box</td></tr>
-        <tr><td class="k">Mobile framework</td><td>Flutter</td><td>Native compilation; consistent on low-end Android</td></tr>
+        <tr><td class="k">Client surfaces</td><td>Next.js web admin + one role-aware React Native app</td><td>Two codebases instead of five; one maintainer</td></tr>
+        <tr><td class="k">Backend</td><td>NestJS + PostgreSQL + Prisma</td><td>TypeScript end to end; the reviewer reads it fluently</td></tr>
+        <tr><td class="k">Mobile framework</td><td>React Native</td><td>Shared language and types with the backend and web admin</td></tr>
         <tr><td class="k">Architecture</td><td>Monolith, one database</td><td>Services are a way for a small team to fail slowly</td></tr>
         <tr><td class="k">Tenancy</td><td>Shared DB, <code>school_id</code> on every table</td><td>Enforced at the query layer, from the session</td></tr>
-        <tr><td class="k">Email</td><td>Laravel Mail</td><td>Nodemailer is Node-only; cannot be called from PHP</td></tr>
+        <tr><td class="k">Email</td><td>Node SMTP mailer</td><td>Backend is Node, so Nodemailer is now a valid choice</td></tr>
         <tr><td class="k">WhatsApp</td><td>WAHA behind a driver interface</td><td>Cost saving now, swappable if a number is banned</td></tr>
         <tr><td class="k">Attendance</td><td>Immediate on open, no websockets</td><td>Indistinguishable in use, far less to run</td></tr>
         <tr><td class="k">Biometric</td><td>Deferred; teachers only when it lands</td><td>~160 punches a day needs no real-time path</td></tr>

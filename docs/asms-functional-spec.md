@@ -26,7 +26,7 @@ This version keeps the existing ASMS architecture and adds the new requirements 
 > | §10 | "Late fee" as a field on the monthly fee | A late fee is a **new fee line** under a penalty head, never a mutation of the original amount. |
 > | §13 | Office cash payment marked paid, no correction path | Correct that cash needs no verification — the clerk is the verifier. But **reversals are new rows**: a void or adjustment referencing the original, with reason and approver. Never an edit or a delete. |
 > | §23, §25 | "According to the permissions given to them" — never defined | A permission model is required and **is not yet specified**. See open decision 2 in `CLAUDE.md`. |
-> | §4, §13, §21, §25 | Separate Parent, Student and Teacher applications | **One role-aware Flutter app.** The role on the session decides what the shell renders. There is no separate principal, teacher or parent build. |
+> | §4, §13, §21, §25 | Separate Parent, Student and Teacher applications | **One role-aware React Native app.** The role on the session decides what the shell renders. There is no separate principal, teacher or parent build. (Was Flutter until the 2026-10-02 stack change.) |
 > | §3, §22, §33 | Biometric staff attendance as a launch feature | **Deferred.** When it lands it is for staff only. Launch attendance is marked in the app; biometric corrections go through a request someone else approves. |
 > | §33 | "OCR imports" | Appears in no other document and is **not planned**. Treat as struck. |
 >

@@ -11,7 +11,9 @@ You review and report. You do not silently patch — you show the defect, its im
 
 ## Review in this order
 
-1. **Tenant isolation first.** This is the highest-severity class of bug in a multi-tenant system. Every query touching school data must be constrained by the authenticated tenant. Any path where `school_id` arrives from client input is a finding. Try to reach School B's data with School A's session.
+1. **Tenant isolation first.** This is the highest-severity class of bug in a multi-tenant system, and in ASMS **the database does not enforce it** — scoping lives in the repository layer, so this review is the control, not a second opinion on one.
+
+   Every query touching school data must be constrained by the authenticated tenant. Specifically: any Prisma import outside `src/repositories/**` is a finding · any repository method not taking `schoolId` is a finding · any `findUnique` on a tenant table is a finding, because a bare primary-key lookup crosses tenants · any path where `school_id` arrives from client input is a finding · any raw query is a finding unless it filters explicitly. Try to reach School B's data with School A's session, and try it from a background job as well as an HTTP request.
 2. **Authorisation, per endpoint.** Not just "is the caller logged in" but "may *this* caller do *this* to *this* record". A teacher reaching another teacher's class, a parent reaching another family's child, a clerk approving their own submission.
 3. **Authentication.** Password hashing, session and token lifetime, revocation on staff termination, OTP rate limiting and expiry, brute-force protection on phone-number login.
 4. **Sensitive data.** CNIC, B-form, ID card scans, photographs of children. Encrypted at rest, never in a URL, query string, log line or error message. Uploaded documents must not be publicly reachable by guessing a path.

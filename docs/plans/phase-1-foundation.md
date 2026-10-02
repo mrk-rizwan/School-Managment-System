@@ -1,5 +1,16 @@
 # Phase 1 — Foundation: build plan
 
+> ## SUPERSEDED — DO NOT EXECUTE
+>
+> Written against Laravel and Filament. The stack changed to NestJS, Prisma, Next.js
+> and React Native on 2026-10-02. This plan is **structurally invalid**, not merely out
+> of date — its package pins, Filament resources and Eloquent patterns have no
+> equivalent to swap in. It must be re-planned, not edited.
+>
+> **Worth carrying over:** the requirements, the slice ordering, and the R1–R60 rule
+> list, which are stack-independent and were reviewed and approved.
+
+
 **Audience:** the Opus 5.5 session that writes the code. Self-contained; read `CLAUDE.md` and
 `docs/WORKLOG.md` first, then this file top to bottom before touching anything.
 **Author:** Fable 5.1, 2026-10-01. Reviewed by `data-architect`, `business-rules` and

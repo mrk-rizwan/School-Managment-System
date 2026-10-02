@@ -6,12 +6,13 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. `phase-1-foundation.md` is the one Opus executes; it is self-contained.
-- `docs/asms-system-architecture.html` — technical baseline. Stack, modules, notification drivers, charge lifecycle.
+- `docs/plans/` — build plans per phase. **Nothing in here is currently executable** — see the superseded list below.
+- `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
 - `docs/asms-functional-spec.md` — functional spec of record for *what the school needs*. **Read its corrections header first** — several structural decisions in it are superseded.
-- `docs/decisions-pending-confirmation.md` — provisional implementation recommendations (tenancy, Filament, Flutter offline). **Not decisions.** Decisions 1–3 were confirmed on 2026-10-01 and moved to settled rules 11–16.
+- `docs/decisions-pending-confirmation.md` — provisional implementation recommendations. **Not decisions.** Decisions 1–3 were confirmed on 2026-10-01 and moved to settled rules 11–16. **Its Laravel, Filament and Flutter sections are void after the 2026-10-02 stack change**; the Postgres and idempotency reasoning stands.
+- `docs/plans/phase-1-foundation.md` — **SUPERSEDED 2026-10-02.** Written against Laravel and Filament. Structurally invalid, not merely out of date. Must be re-planned before execution. Its requirements, slice ordering and the R1–R60 rule list remain correct and are worth carrying over.
 
 **Source — historical, not operating rules**
 - `docs/AI-AGENT-TEAM-spec.md` — the charter these rules were distilled from. Its agent names and Supervisor Agent do not exist; its header maps them to the real agents. This file wins where they differ.
@@ -85,6 +86,56 @@ Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3,
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
 17. **Guardian contact capability is a three-value field on the guardian** — WhatsApp, smartphone with data, or keypad phone — asked by the office at admission and editable later. Every notification routing rule reads it. Unknown is not a value; the office must pick one.
 
+## How tenant isolation is implemented — the mechanism behind rule 2
+
+Decided 2026-10-02. **Scoping is enforced in the application, in a repository layer. The database
+does not enforce it.** This is the ordinary way multi-tenant applications are built, it is fully
+supported by Prisma, and it carries no unproven machinery.
+
+Row-level security was considered and rejected — not because it is wrong, but because driving it
+from Prisma 7 has no credible production precedent and Prisma's own example is labelled
+not-for-production. The reasoning is in `docs/WORKLOG.md` under 2026-10-02. The door is kept open:
+see "Leaving room" below.
+
+### The four things that make a forgotten filter impossible
+
+1. **Nothing outside `src/repositories/**` may import the Prisma client.** Enforced by an ESLint
+   `no-restricted-imports` rule and a test. Services, controllers and jobs call repositories.
+2. **Every repository method takes `schoolId` as a required first argument**, typed as a branded
+   `SchoolId` that can only be constructed inside the tenancy module — so it cannot be minted from
+   `req.body`. Omitting it is a **compile error**, not a runtime leak.
+3. **Every tenant query filters on `school_id`.** No exceptions, including `findUnique` — which
+   becomes `findFirst` with both the id and the tenant, because a bare primary-key lookup is the
+   classic cross-tenant read.
+4. **One isolation test per table:** create a row as School A, query as School B, assert nothing
+   comes back. Mechanical, fast, and it is what actually catches a mistake.
+
+`schoolId` comes from the session — never from a request body, query string or route parameter.
+The single exception is the pre-auth school-code lookup at login, which rule 2 already names.
+DTOs must not declare a `schoolId` field, and the global `ValidationPipe` runs with
+`whitelist: true, forbidNonWhitelisted: true`, so a client that sends one is rejected rather than
+trusted.
+
+### Honest statement of the risk
+
+Without database-level enforcement, **a query that forgets its filter leaks another school's
+data.** The four measures above make that unlikely; they do not make it impossible. That is the
+accepted trade, made deliberately in exchange for building on proven ground. It is recorded here
+so nobody later assumes a safety net exists that does not.
+
+### Leaving room to add the safety net later
+
+These cost nothing now and are what make row-level security addable afterwards **without a
+migration of existing data**. They are not optional:
+
+- `school_id NOT NULL` on **every** tenant table, from the first migration
+- Composite foreign keys `(school_id, parent_id)` on child rows, so a row cannot reference a parent
+  belonging to another school
+- No cross-tenant foreign keys anywhere
+
+If the system later grows past what review can police, row-level security becomes an additive
+change rather than a rebuild.
+
 ## Market constraints that change design decisions
 
 Many parents have keypad phones, or smartphones on social-only data bundles where a custom app cannot reach them at all. **WhatsApp and SMS are primary channels; the parent app is secondary.** Any feature that assumes a working smartphone app is incomplete until its fallback is stated. The platform is English-only (rule 16), so the Urdu SMS cost penalty does not apply.
@@ -155,9 +206,39 @@ If it fires on a real secret, removing the line is not enough — **rotate the c
 
 ## Technology stack — decided
 
-Laravel + PostgreSQL + Filament (backend and web admin) · Flutter (one role-aware mobile app) · Firebase Cloud Messaging (push) · Redis (queues, cache) · WAHA behind a driver interface (WhatsApp) · Laravel Mail (email — **not** Nodemailer, which is Node-only) · S3-compatible object storage with signed URLs.
+**Changed 2026-10-02.** The stack was Laravel + Filament + Flutter until this date. It is now
+TypeScript end to end. Reason: the team is two people reviewing AI-written code, and the
+maintainer has shipped Node, Express, React, Next.js and React Native for four years and has
+never shipped PHP. **Review capacity is the binding constraint on this project**, and a stack the
+reviewer reads fluently beats a stack that generates less code. Anything written before this date
+that names Laravel, Filament, Eloquent, Artisan or Flutter is superseded.
 
-How the stack is used — no tenancy package, forced Postgres row-level security, **not** Filament's built-in tenancy (it puts the tenant in the URL), Filament page-size cap and five custom Pages, Drift plus an outbox for Flutter offline, idempotency as database constraints — is recommended in `docs/decisions-pending-confirmation.md` Part 2. Provisional: the forced-RLS prototype listed there runs before the schema freezes. Do not reach for `stancl/tenancy` or Filament tenancy without reading it.
+| Layer | Choice |
+|---|---|
+| Backend API | **NestJS** (Node + TypeScript) |
+| Database | **PostgreSQL** with **Prisma** |
+| Web admin | **Next.js** (React + TypeScript) |
+| Mobile app | **React Native** — one role-aware build |
+| Queues, cache | **Redis** |
+| Push | **Firebase Cloud Messaging** |
+| WhatsApp | **WAHA** behind a driver interface |
+| Email | Node mailer library of choice (Nodemailer is now valid — the backend is Node) |
+| Files | S3-compatible object storage with signed URLs |
+
+Why each, briefly: **NestJS** because its modules, guards and pipes map onto what ASMS needs
+(permissions are guards, validation is pipes) and that structure makes AI output predictable and
+therefore reviewable. **PostgreSQL** because the data model is deeply relational, because money and
+audit trails need real transactions and constraints, and because its constraint enforcement is the
+strongest of the realistic options. It also keeps row-level security available if the system later
+outgrows application-layer scoping — see "How tenant isolation is implemented". **Prisma** because it generates
+types from the schema, so a wrong field name is a compile error rather than a review burden.
+**React Native** because the maintainer ships it.
+
+Still true from the earlier research, and still provisional: **no tenancy package, forced Postgres
+row-level security, idempotency enforced as database constraints** (a device can be offline for
+days; a cache TTL cannot survive that). The forced-RLS prototype runs before the schema freezes.
+Those parts of `docs/decisions-pending-confirmation.md` Part 2 that concern Laravel, Filament and
+Flutter are void; the Postgres and idempotency reasoning stands.
 
 ---
 

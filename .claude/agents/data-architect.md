@@ -22,6 +22,32 @@ The ten settled architecture rules in `CLAUDE.md` are binding and are not restat
 
 Duplicate data · missing or invalid relationships · missing indexes on foreign keys and filtered columns · N+1 query shapes · nullable columns that should not be · money stored as float — use integer minor units or decimal · CNIC and other sensitive fields left unencrypted · unbounded text columns
 
+## Tooling
+
+**PostgreSQL with Prisma.** The schema lives in `schema.prisma`; migrations are generated from it, reviewed as SQL, and committed. Never edit a generated migration after it has been applied anywhere — write a new one.
+
+Prisma does not express everything Postgres can. **Partial unique indexes, `CHECK` constraints and triggers go in raw SQL inside the migration**, not in the Prisma schema. Two settled rules depend on exactly those: the partial unique index giving one primary contact per student, and the `UNIQUE (school_id, enrolment_id, date, period)` attendance key. If a constraint only exists in application code, it does not exist.
+
+## Every tenant table, without exception
+
+`CLAUDE.md`'s "How tenant isolation is implemented" is binding. Scoping is enforced in the
+**repository layer**, not by the database. Your job is to make the schema support that, and to keep
+the option of adding database enforcement later without a data migration:
+
+- **`school_id NOT NULL` on every tenant table.** No nullable tenant columns, ever.
+- **Composite foreign keys `(school_id, parent_id)`** on child rows, so a row cannot reference a
+  parent belonging to another school. The database refuses it even though it does not filter reads.
+- **Index `(school_id, ...)` leading**, because every query filters on it.
+- **No cross-tenant foreign keys** anywhere.
+
+Those four cost nothing now and are what make row-level security an additive change later rather
+than a rebuild. Treat them as non-negotiable.
+
+Prisma can express all four. Where it cannot — partial unique indexes such as the one primary
+contact per student, `CHECK` constraints, and the `UNIQUE (school_id, enrolment_id, date, period)`
+attendance key — generate the migration with `prisma migrate dev --create-only` and hand-write the
+SQL into it. If a constraint exists only in application code, it does not exist.
+
 ## Output
 
-The DDL or migration, the reasoning behind each non-obvious choice, and an explicit note of what existing data would need migrating.
+The Prisma schema change plus the raw SQL for anything Prisma cannot express, the reasoning behind each non-obvious choice, and an explicit note of what existing data would need migrating.

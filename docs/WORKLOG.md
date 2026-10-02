@@ -181,3 +181,167 @@ file against `CLAUDE.md`; 25 findings, all applied or recorded)
 - Product decisions surfaced by the sweep were **recorded, not made**: see register items
   21–26 and the annotations on 1, 2, 6, 12, 18. The client deck already commits to
   period-level attendance storage and a monthly message allowance; confirm or withdraw.
+
+---
+
+## 2026-10-02 — Stack changed: Laravel/Filament/Flutter → NestJS/Prisma/Next.js/React Native
+
+**Decided by the product owner.** Trigger: the manager challenged PHP as dated; the discussion
+surfaced something not previously on record — the maintainer has shipped Node, Express, MongoDB,
+React, Next.js and React Native for four years (Shopify apps, recurring billing with dunning,
+RBAC, JWT auth, webhook pipelines) and has never shipped PHP.
+
+**Reasoning.** The team is two humans and two AI sessions. AI writes; humans review. **Review
+capacity is the binding constraint.** The earlier recommendation rested on Filament generating the
+CRUD screens — less code to review — and on PHP's hiring pool in Pakistan. There is no hiring, so
+that argument was void, and "less code to review" loses to "code the reviewer can actually read".
+The maintainer has already built ASMS's hardest modules in Node in another domain.
+
+**New stack.** NestJS (Node + TypeScript) · PostgreSQL + Prisma · Next.js web admin · React
+Native mobile · Redis · WAHA · FCM · S3. PostgreSQL unchanged and reaffirmed: the model is
+relational, money needs real transactions and constraints, and **forced row-level security is the
+tenant-isolation strategy** — no MySQL or MongoDB equivalent.
+
+**Done this session**
+- `CLAUDE.md` — stack section rewritten with the reasoning; document list annotated
+- `.claude/agents/api-designer.md` — NestJS contracts, Next.js and React Native clients
+- `.claude/agents/data-architect.md` — Prisma tooling; RLS, partial indexes and CHECK constraints
+  go in raw SQL inside migrations, since Prisma cannot express them
+- `.claude/agents/devops.md` — rewritten for the Node runtime (separate worker process, single
+  scheduler, `prisma migrate deploy`, typecheck in CI)
+- `docs/asms-functional-spec.md` — Flutter → React Native in the corrections header
+- `docs/asms-system-architecture.html` — stack table, process table, decisions table and Plate 01
+  diagram updated
+- `docs/plans/phase-1-foundation.md` — **marked SUPERSEDED, do not execute**
+- `docs/decisions-pending-confirmation.md` — Laravel/Filament/Flutter parts marked void
+
+**Unchanged and still valid:** all 17 settled rules · the module boundaries · the charge lifecycle
+· the notification driver design · forced RLS · idempotency as database constraints (a device can
+be offline for days; a cache TTL cannot survive that) · the open-decisions register.
+
+**Next session must do first:** re-plan Phase 1 against the new stack. The requirements, slice
+ordering and R1–R60 rule list in the old plan are stack-independent and were reviewed and
+approved — carry them over, rewrite everything below them. `data-architect`, `business-rules` and
+`security-reviewer` review again before approval.
+
+**Still open:** the forced-RLS prototype before schema freeze — now against Prisma and NestJS
+rather than Filament, which removes the "unproven under Filament" caveat but replaces it with
+"unproven under Prisma". Verify Prisma's connection handling sets the tenant GUC per request and
+per queued job, since there is no HTTP request in a worker.
+
+---
+
+## 2026-10-02 (later) — Tenant isolation mechanism decided
+
+Ran `solution-advisor` (design) and `research-scout` (verification against sources) on how RLS is
+driven under NestJS + Prisma. **The pattern this session originally proposed is confirmed broken.**
+
+**What was rejected, and why it matters.** The proposal was a Prisma client extension on
+`$allOperations` wrapping every operation in its own transaction to set the tenant GUC. Evidence:
+
+- Prisma's own `prisma-client-extensions` RLS example carries *"not intended to be used in
+  production environments"* and warns that explicit `$transaction()` "may not work as intended".
+  Last meaningful update December 2022.
+- **Issue #23583** (Prisma 5.11, closed **not planned**): the extension executes parts of an
+  interactive transaction in *separate* transactions. `FOR UPDATE SKIP LOCKED` row locks were not
+  visible to the following `UPDATE`. A no-op extension did not reproduce it. **This is a loss of
+  atomicity, not a performance issue**, and it lands on payment, allocation and ledger writes.
+- **Issue #20016 / #25034**: an extension cannot detect that it is inside a transaction except via
+  private internals; the best community workaround's own author no longer vouches for it.
+- Pool arithmetic: the inner wrapper needs a second connection while the outer transaction holds
+  the first, so concurrency deadlocks at pool size. It surfaces as `P2028` after ~5 s, pointing at
+  the wrong thing. **A two-person team testing one request at a time will never see this.**
+
+**Decided.** One **interactive** transaction per unit of work via `@nestjs-cls/transactional` +
+`transactional-adapter-prisma`, GUC as its first statement. Never batch `$transaction` (issue
+#30206: intermittently never settles on driver adapters). Full mechanism in `CLAUDE.md`.
+
+**One factual correction to earlier reasoning.** `current_setting('app.school_id', true)` does
+**not** return NULL once a transaction-local GUC has been used on that connection — it returns the
+empty string, and `''::uuid` raises. Prisma issue #20407, confirmed, unfixed. Policies must read
+`NULLIF(current_setting('app.school_id', true), '')::uuid`. Still fails closed, but without the
+`NULLIF` isolation tests pass on a cold pool and fail on a warm one.
+
+**Agent disagreement, resolved explicitly** (per the conflict rule). `solution-advisor` argued
+against a repository-level `school_id` filter: a redundant read filter masks an RLS regression,
+because behavioural isolation tests would still pass with the policies dropped. `research-scout`
+argued for it: honest query plans, debuggable errors, defence in depth. **Resolution: keep the
+filter, and make the *metadata* test — not the behavioural test — the thing that proves RLS
+exists.** Both tests mandatory. Recorded in `CLAUDE.md` item 9 with the reasoning, so it is not
+re-litigated.
+
+**Also settled:** tenant set in **middleware**, not an interceptor (NestJS runs middleware → guards
+→ interceptors, and the auth guard queries the DB under RLS) · the scheduler fans out one job per
+school and never queries tenant data, removing an entry point rather than guarding it · three
+Postgres roles with a boot-time assertion that the runtime role lacks `BYPASSRLS` · no
+`Promise.all` inside a transaction.
+
+**Files updated:** `CLAUDE.md` (new "How tenant isolation is implemented" section, ten numbered
+items plus six prototype acceptance criteria) · `.claude/agents/data-architect.md` (the exact
+policy DDL, composite tenant FKs, and the backfill trap where an owner-run `UPDATE` affects zero
+rows) · `.claude/agents/devops.md` (three roles, boot assertion, hosting constraint, pin Prisma) ·
+`docs/decisions-pending-confirmation.md` (tenancy no longer provisional there).
+
+**Open and genuinely unknown.** `research-scout` found **no first-hand production report** of this
+pattern under NestJS + Prisma 7 — only Prisma's disclaimed example, a May 2023 article written
+against internals that no longer exist, and a one-star pre-1.0 package. *The absence of a credible
+"we run this at scale" account is itself the finding.* Prisma 7 requires driver adapters and
+removed the Rust query engine, so most public writing on this topic reasons about internals that
+are gone. **The six-point prototype in `CLAUDE.md` is not optional** — it is roughly a day, and it
+runs before the schema freezes.
+
+Also unverified: whether `nestjs-cls` propagates reliably through BullMQ processors. The author
+declines to guarantee non-HTTP transports and no public test exists. Prototype criterion 4 covers it.
+
+**Hosting is now an open dependency** of this design: fine on plain Postgres and PgBouncer
+transaction mode, **incompatible with Prisma Accelerate / Data Proxy**. Re-check when hosting closes.
+
+---
+
+## 2026-10-02 (final) — Row-level security dropped. Application-layer scoping instead.
+
+**Product owner's call: take the path with no unproven machinery.** This reverses the decision
+recorded two entries above, deliberately and with the reasoning intact above it.
+
+**What changed.** Tenant scoping is enforced in a **repository layer in the application**. The
+database does not enforce it. No session GUC, no `set_config`, no forced RLS, no three Postgres
+roles, no boot assertion, and **no prototype day** — nothing here is novel, so there is nothing to
+prove before building.
+
+**Why.** The RLS design was sound but had no credible production precedent under Prisma 7: Prisma's
+own example is labelled not-for-production, the one good article predates the engine rewrite, and
+`research-scout` found no first-hand "we run this at scale" account. Building a school's fee
+records on a pattern nobody has shipped is a risk the owner declined. Correct call for a two-person
+team with no appetite for debugging someone else's unsolved problem.
+
+**The four controls that replace it** (all in `CLAUDE.md`):
+
+1. Nothing outside `src/repositories/**` may import the Prisma client — ESLint rule plus a test
+2. Every repository method takes `schoolId` as a required branded argument; omitting it is a
+   **compile error**
+3. Every tenant query filters on `school_id`, including `findUnique` → `findFirst`, because a bare
+   primary-key lookup is the classic cross-tenant read
+4. One isolation test per table: write as School A, read as School B, assert nothing
+
+**The risk, stated plainly and on the record.** Without database enforcement, a query that forgets
+its filter **leaks another school's data**. The four controls make that unlikely, not impossible.
+Accepted knowingly in exchange for building on proven ground. `security-reviewer` has been updated
+to say it is now **the control rather than a second opinion on one** — tenant isolation review is
+no longer a backstop check.
+
+**Kept so the safety net can be added later without migrating data** — non-negotiable, in
+`data-architect`: `school_id NOT NULL` on every tenant table · composite FKs `(school_id,
+parent_id)` on child rows · indexes leading with `school_id` · no cross-tenant foreign keys. If the
+system outgrows what review can police, RLS becomes additive rather than a rebuild.
+
+**Files updated:** `CLAUDE.md` (tenancy section rewritten; Postgres rationale no longer cites RLS)
+· `.claude/agents/data-architect.md` · `.claude/agents/devops.md` (one app role; three-role split
+and boot assertion removed) · `.claude/agents/security-reviewer.md` (tenant isolation is now the
+control) · `docs/decisions-pending-confirmation.md`.
+
+**Unchanged:** the stack (NestJS · PostgreSQL · Prisma · Next.js · React Native), all 17 settled
+rules, the open-decisions register, and the superseded status of `docs/plans/phase-1-foundation.md`.
+
+**Next session:** re-plan Phase 1 against this stack. Carry over the old plan's requirements, slice
+ordering and R1–R60 rule list — stack-independent and already reviewed. There is no prototype
+blocking the schema freeze any more.

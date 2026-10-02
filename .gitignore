@@ -67,3 +67,6 @@ desktop.ini
 scripts/sync.log
 scripts/git-auto-sync.ps1
 scripts/README-auto-sync.md
+scripts/sync-hidden.vbs
+scripts/sync-on.cmd
+scripts/sync-off.cmd
