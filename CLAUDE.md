@@ -96,7 +96,7 @@ from Prisma 7 has no credible production precedent and Prisma's own example is l
 not-for-production. The reasoning is in `docs/WORKLOG.md` under 2026-10-02. The door is kept open:
 see "Leaving room" below.
 
-### The four things that make a forgotten filter impossible
+### The controls against a forgotten filter
 
 1. **Nothing outside `src/repositories/**` may import the Prisma client.** Enforced by an ESLint
    `no-restricted-imports` rule and a test. Services, controllers and jobs call repositories.
@@ -108,6 +108,22 @@ see "Leaving room" below.
    classic cross-tenant read.
 4. **One isolation test per table:** create a row as School A, query as School B, assert nothing
    comes back. Mechanical, fast, and it is what actually catches a mistake.
+
+Added 2026-10-02 after the security review found that the four above check the import and the
+signature but never the query itself:
+
+5. **A query guard on the Prisma client** (an inspect-only client extension inside
+   `src/repositories/`) throws if a tenant-model operation has no defined `schoolId` in its
+   `where` or `data`, if any `where` value is `undefined` (Prisma drops it silently and returns
+   the school's first row), or if `findUnique` is used. Its compatibility with interactive
+   transactions is verified in slice 0; the stated fallback is a mandatory `tenantWhere()` helper.
+6. **Writes use scalar foreign keys, never `connect`**, so the composite foreign key rejects
+   another school's id in the database. Raw-unsafe queries, `as SchoolId` and `any` are banned by
+   lint.
+7. **Row scope is a required, branded argument** on every student-linked repository method. Only
+   the permission service can construct it; an empty list means no rows, never no filter.
+8. **A schema guard test reads the migrated database** and fails on a table without `school_id`,
+   a foreign key between tenant tables that omits it, a missing index, or a cascade.
 
 `schoolId` comes from the session — never from a request body, query string or route parameter.
 The single exception is the pre-auth school-code lookup at login, which rule 2 already names.
@@ -123,7 +139,14 @@ decision recorded here, not a convenience.
 1. **The platform module** (platform admins managing schools). Its repositories live in
    `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
    `platform_users`, `platform_sessions`, `platform_audit_log`), and may be imported only from
-   `src/modules/platform/**`. Enforced by the same ESLint rule.
+   `src/modules/platform/**`. Enforced by the same ESLint rule. **The platform acts inside a
+   school for exactly one operation: issuing a principal's login.** It does so through
+   `SchoolId.fromPlatformSchool`, importable only in the platform module, refused while the school
+   already has an active principal unless a reason is given, and written to both audit logs.
+   Platform login requires a second factor: one platform password would otherwise open every
+   school. Tenant code that reads its own school row uses `OwnSchoolRepository`, whose only
+   predicate is `id = schoolId`; school-owned settings and counters live in tenant tables, not on
+   `schools`.
 2. **The pre-auth school lookup** at login and forgot-password: one method,
    `SchoolLookupRepository.findByCode(code)`, returning `id`, `shortCode`, `status` and nothing else.
 3. **The scheduler fan-out**: one method listing active school ids, used only to enqueue one job
@@ -145,7 +168,7 @@ commit.
 ### Honest statement of the risk
 
 Without database-level enforcement, **a query that forgets its filter leaks another school's
-data.** The four measures above make that unlikely; they do not make it impossible. That is the
+data.** The measures above make that unlikely; they do not make it impossible. That is the
 accepted trade, made deliberately in exchange for building on proven ground. It is recorded here
 so nobody later assumes a safety net exists that does not.
 
@@ -271,11 +294,13 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 | Convention | Decision |
 |---|---|
 | Repository layout | One monorepo, pnpm workspaces: `apps/api` (NestJS), `apps/web` (Next.js), later `apps/mobile` (React Native), `packages/shared` (the capability enum, system-role defaults, error codes). Request and response types reach the web app through an OpenAPI-generated client, so a contract is declared once, on the server |
-| Primary keys | `bigint` identity. Serialised to clients as strings, because a JavaScript number cannot hold a 64-bit integer safely |
+| Primary keys | `bigint` auto-increment (Prisma emits `BIGSERIAL`). Serialised to clients as strings, because a JavaScript number cannot hold a 64-bit integer safely |
 | Login sessions | **Server-side, revocable sessions** stored in Postgres: an opaque random token, stored hashed. The web admin carries it in an `httpOnly`, `Secure`, `SameSite=Lax` cookie; the mobile app sends it as a bearer token. **Not stateless JWT** — disabling a user, an office reset and a staff member leaving must kill access immediately |
 | Roles | The five school roles (principal, office staff, teacher, parent, student) and the capability list are **defined in code**, not rows. Only school-defined custom roles are stored, so every stored row has a `school_id` |
 | Web admin UI | Tailwind + shadcn/ui components, TanStack Query and TanStack Table, react-hook-form with zod |
-| API | REST under `/api/v1`, JSON, one error envelope with a stable machine code, cursor-free page/limit pagination capped at 50, OpenAPI generated from the controllers |
+| API | REST under `/api/v1`, JSON, one error envelope with a stable machine code, cursor-free page/limit pagination capped at 50, OpenAPI generated from the controllers. **No HTTP `DELETE` anywhere** (rule 4): rows are ended, archived or status-changed by `POST /x/:id/<verb>` with a reason. A row in another school, or outside the caller's scope, is `404`, never `403` |
+| Secrets in links | Reset and verification tokens travel in the URL **fragment** and are POSTed in a body, never in a path or query string, so they reach no access log. Verification happens on a button press, never on page load |
+| Passwords and identity numbers | `argon2id` over an HMAC with a server-side pepper; CNIC and B-Form encrypted with AES-256-GCM bound to school, table and column; three separate keys (pepper, encryption keyring, lookup-hash key) |
 
 ---
 
@@ -283,10 +308,14 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 
 **This is the only list.** Other documents may mirror it; where they disagree, this wins.
 
-### Blocks Phase 1 — nothing left open
+### Blocks Phase 1 — nothing blocks; one question is open
 
 > **Phase 1 was unblocked on 2026-10-01.** Numbers are never reused.
 > `docs/decisions-pending-confirmation.md` keeps only the implementation recommendations (Part 2).
+
+| # | Decision | Status |
+|---|---|---|
+| 30 | **Privileged capabilities on a default password.** A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Open, raised by the security review 2026-10-02. Recommended: yes. Not built; it is a one-line check in the capability guard, so it does not block Phase 1 |
 
 Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 

@@ -16,20 +16,75 @@ writes the production code.** Do not start application code in a planning sessio
   never committed and was deleted on 2026-10-02.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
-- **Phase 1 is unblocked** on decisions; nothing in the "Blocks Phase 1" tier is open.
-- **`docs/plans/phase-1-foundation.md` is SUPERSEDED.** Its requirements, slice order and R1–R60
-  rule list are stack-independent and carry over; everything below them must be rewritten.
-- Tenant isolation: see the 2026-10-02 (final) entry — application-layer scoping, RLS dropped.
+- **Phase 1 is unblocked** on decisions. One question is open and does not block: register
+  item 30.
+- **`docs/plans/phase-1-foundation.md` is the approved plan for the TypeScript stack**
+  (rewritten and reviewed 2026-10-02). About 30 working days, nine slices, rules R1–R104. It is
+  what the Opus session executes, starting at slice 0.
+- Tenant isolation: application-layer scoping, RLS dropped (2026-10-02 final entry), now with
+  eight controls in `CLAUDE.md` including a query guard and a schema guard.
 
 ## Left to do (ordered)
 
-1. **Re-plan Phase 1 for the new stack** (Fable). Carry over requirements, slice order and
-   R1–R60; rewrite stack, schema conventions and per-slice tasks. `data-architect`,
-   `business-rules` and `security-reviewer` review before approval.
-2. Opus executes the new plan slice by slice, each gated and logged here.
-3. Product owner: schema-freeze items 7–13 and 23–26 before the end of Phase 1; CNIC correction
-   after a login exists; numeric reset code or emailed link.
+1. **Opus session: execute `docs/plans/phase-1-foundation.md` slice 0.** Record here the exact
+   pinned versions and whether the query guard passed its transaction-atomicity check or the
+   `tenantWhere()` fallback was used.
+2. Slices 1–8 in order, each gated (tests, `security-reviewer`, `code-auditor`, `phase-gate`),
+   each a commit, each logged here.
+3. Product owner: register item 30 (privileged capabilities on a default password); schema-freeze
+   items 7–13 and 23–26 before the end of Phase 1; whether a guardian whose children have all left
+   keeps a login (part of item 11); CNIC correction after a login exists; numeric reset code or
+   emailed link.
 4. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+
+---
+
+## 2026-10-02 — Phase 1 plan rewritten for the TypeScript stack and reviewed (Fable 5.1) — DONE
+
+**Six conventions decided with the product owner** ("go with recommendations"), now in the
+`CLAUDE.md` conventions table: pnpm monorepo (`apps/api`, `apps/web`, `packages/shared`);
+`bigint` keys serialised as strings; server-side revocable sessions, not JWT; school roles and
+capabilities defined in code, only custom roles stored; shadcn/ui + TanStack + react-hook-form;
+REST `/api/v1` with one error envelope.
+
+**`CLAUDE.md` fixed:** the stack section still said forced RLS and a prototype, contradicting the
+tenancy section — removed. Added the named cross-tenant exceptions (platform, pre-auth school
+lookup, scheduler fan-out, session resolution), the transaction convention, and controls 5–8.
+
+**Four design reviews, all findings adopted.** The ones that changed the design:
+- `security-reviewer` returned **"not approvable as written"** on the first draft. Three blockers:
+  nothing checked that a query actually carried its `schoolId` (now a query guard on the Prisma
+  client, scalar-FK-only writes, a required branded `Scope`); the platform module could issue a
+  principal login in any school through an unlisted path (now a named constructor, TOTP on
+  platform login, refused while a principal exists unless a reason is given, double audit); and
+  most endpoints had no stated permission (now an authorisation table per slice, binding).
+  Also adopted: password pepper, AAD-bound field encryption, reset and verify tokens in the URL
+  fragment, clerk must choose keep-or-clear email on office reset, `trust proxy` one hop.
+- `data-architect` **ran Prisma 7.10.0 against PostgreSQL 16** rather than reasoning. Verified:
+  the schema guard cannot read Prisma metadata in v7 (now reads `pg_constraint`); the
+  `partialIndexes` preview flag drops hand-written partial indexes (keep it off); `P2002` no
+  longer names the fields (map errors by constraint name); a caught unique violation aborts the
+  transaction (handle conflicts outside it). Design changes: section tied to its class by a
+  three-column FK; school settings and counters moved off the platform's `schools` table;
+  `user_roles` rows are ended not deleted and hold only staff roles; one class teacher per section
+  by exclusion constraint; uploads are stored once and never moved.
+- `business-rules` found three defects: the sweep could delete a committed document after a
+  failed move (now nothing moves); a password change could overwrite a racing office reset (now
+  the user row is locked, R99); office staff could disable a principal (R12 and R14 widened).
+  Also: last-principal invariant across all three removal paths (R72); `users.status` written
+  only by the disable endpoint (R71); system-role assignment moved from slice 7 to slice 4.
+- `api-designer`: one naming convention, the full status map, idempotency semantics, about
+  fifteen endpoints the screens needed but the draft lacked, the OpenAPI pitfalls with bigint
+  ids, and no HTTP `DELETE` anywhere.
+
+**Decided by Fable within the brief:** platform admin login uses TOTP; no queue in Phase 1 (mail
+is sent in-process after commit, three attempts); staff photos dropped from Phase 1; a student's
+photo is their latest `photo` document; idempotency keys are not purged in Phase 1.
+
+**Raised to the product owner:** register item 30. Recommended yes.
+
+**Also this session:** two agent lines that still described closed decisions were corrected
+(`data-architect` on login identity and money; `api-designer` on money and string ids).
 
 ---
 
