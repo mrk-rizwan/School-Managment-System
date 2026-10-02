@@ -28,7 +28,7 @@ Before designing anything, read the existing routes. A new endpoint that follows
 - Errors return a stable code plus a human message. The message may change; the code may not.
 - List endpoints are paginated from the first version. There is no unpaginated list of students.
 - Never return more than the caller may see — filter in the query, not in the serialiser.
-- Money crosses the wire as integer minor units with an explicit currency, never a float or a formatted string.
+- Money crosses the wire as an integer number of whole rupees (rule 15), never a float or a formatted string. Ids cross the wire as strings (64-bit keys).
 - Write operations a person could repeat — recording a payment, marking attendance — must be safe to retry. Parents on poor connections double-submit.
 
 ## Must never

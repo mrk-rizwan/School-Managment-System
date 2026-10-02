@@ -6,13 +6,12 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. **Nothing in here is currently executable** — see the superseded list below.
+- `docs/plans/` — build plans per phase. `phase-1-foundation.md` (rewritten 2026-10-02 for the TypeScript stack) is the one Opus executes; it is self-contained.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
 - `docs/asms-functional-spec.md` — functional spec of record for *what the school needs*. **Read its corrections header first** — several structural decisions in it are superseded.
 - `docs/decisions-pending-confirmation.md` — provisional implementation recommendations. **Not decisions.** Decisions 1–3 were confirmed on 2026-10-01 and moved to settled rules 11–16. **Its Laravel, Filament and Flutter sections are void after the 2026-10-02 stack change**; the Postgres and idempotency reasoning stands.
-- `docs/plans/phase-1-foundation.md` — **SUPERSEDED 2026-10-02.** Written against Laravel and Filament. Structurally invalid, not merely out of date. Must be re-planned before execution. Its requirements, slice ordering and the R1–R60 rule list remain correct and are worth carrying over.
 
 **Source — historical, not operating rules**
 - `docs/AI-AGENT-TEAM-spec.md` — the charter these rules were distilled from. Its agent names and Supervisor Agent do not exist; its header maps them to the real agents. This file wins where they differ.
@@ -80,7 +79,7 @@ Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3,
 
 11. **One campus per school.** The school is the tenant and `school_id` is the tenant key. There is no campus dimension on any table. A group of schools under one owner is separate tenants; a nullable `school_group_id` on the school record is the only trace of it.
 12. **Login identity is the CNIC.** Username is the person's CNIC digits with dashes removed, for guardians and staff. The **default password is the same digits**; the user may change the password at any time. The username does not change. The office creates every account at admission or hiring; **nobody self-registers.** A person who is both staff and guardian has one login carrying both capability sets. At admission the office must search existing guardians by CNIC and link, never create a duplicate; `merged_into_id` exists on the guardian table from the first migration. Security conditions that come with this choice and are not optional: the CNIC is stored encrypted and looked up through an indexed hash, and **the username is stored only as that hash, never in clear**; it is never written to a log line or a URL; login is rate-limited and locks after repeated failures; the office can see which accounts still use the default password. **Students** log in with their own national identity number (the 13-digit B-Form / CRC number) with dashes removed, same default-password rule; a student with no number recorded has no login until the office enters one. **First login prompts a password change but does not force it.** **Password reset** is by a code sent to the account's email address; the user must enter an email before they can change their password, so every changed password has a reset path. Users with no email (keypad-phone guardians) are reset by the office to the default, which is the stated fallback. The office can see which accounts have no email and which still use the default password.
-13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can($capability, $subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list itself is still to be written.
+13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can($capability, $subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list (51 keys) and the system-role defaults are in `docs/plans/phase-1-foundation.md` §6 and live in code.
 14. **Attendance is stored per period.** Each class carries a setting for whether staff record it daily or per period; a daily mark is stored as the day's single period. The offline idempotency key is `UNIQUE (school_id, enrolment_id, date, period)`.
 15. **Sessions and money settings.** The principal defines academic years (sessions) and assigns each class to one, so a school may run, for example, an April session and a September session side by side. Fee due day defaults to the 10th of the month and is changeable per school. Currency is PKR. **Amounts are whole rupees**: stored as integers, no paisa, displayed without decimals.
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
@@ -115,6 +114,33 @@ The single exception is the pre-auth school-code lookup at login, which rule 2 a
 DTOs must not declare a `schoolId` field, and the global `ValidationPipe` runs with
 `whitelist: true, forbidNonWhitelisted: true`, so a client that sends one is rejected rather than
 trusted.
+
+### The named exceptions — code that legitimately runs without a school
+
+Four things must query without a `SchoolId`. They are the whole list; adding a fourth is a
+decision recorded here, not a convenience.
+
+1. **The platform module** (platform admins managing schools). Its repositories live in
+   `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
+   `platform_users`, `platform_sessions`, `platform_audit_log`), and may be imported only from
+   `src/modules/platform/**`. Enforced by the same ESLint rule.
+2. **The pre-auth school lookup** at login and forgot-password: one method,
+   `SchoolLookupRepository.findByCode(code)`, returning `id`, `shortCode`, `status` and nothing else.
+3. **The scheduler fan-out**: one method listing active school ids, used only to enqueue one job
+   per school. The job itself carries a `SchoolId` and uses ordinary repositories.
+4. **Session resolution**: one method, `SessionRepository.findActiveByTokenHash(hash)`, because the
+   session token is what establishes the tenant. It returns the session with its `schoolId` and
+   `userId`; everything after it is scoped. Reset and email-verification links carry the school
+   code in the URL and go through exception 2, so they need no exception of their own.
+
+### Transactions
+
+A unit of work that spans several repositories runs in **one interactive Prisma transaction**,
+propagated with `@nestjs-cls/transactional` and its Prisma adapter, so repositories pick up the
+ambient transaction without a `tx` parameter threaded through every call. Never the array (batch)
+form of `$transaction`. No `Promise.all` inside a transaction — one connection, statements in
+order. Anything that must not happen on rollback (queue dispatch, email, file moves) runs after
+commit.
 
 ### Honest statement of the risk
 
@@ -234,11 +260,22 @@ outgrows application-layer scoping — see "How tenant isolation is implemented"
 types from the schema, so a wrong field name is a compile error rather than a review burden.
 **React Native** because the maintainer ships it.
 
-Still true from the earlier research, and still provisional: **no tenancy package, forced Postgres
-row-level security, idempotency enforced as database constraints** (a device can be offline for
-days; a cache TTL cannot survive that). The forced-RLS prototype runs before the schema freezes.
-Those parts of `docs/decisions-pending-confirmation.md` Part 2 that concern Laravel, Filament and
-Flutter are void; the Postgres and idempotency reasoning stands.
+Still true from the earlier research: **no tenancy package, and idempotency enforced as database
+constraints** (a device can be offline for days; a cache TTL cannot survive that). Row-level
+security is **not** used and there is no prototype to run — see "How tenant isolation is
+implemented". Those parts of `docs/decisions-pending-confirmation.md` Part 2 that concern Laravel,
+Filament and Flutter are void; the Postgres and idempotency reasoning stands.
+
+Conventions decided 2026-10-02 with the product owner, binding on every phase:
+
+| Convention | Decision |
+|---|---|
+| Repository layout | One monorepo, pnpm workspaces: `apps/api` (NestJS), `apps/web` (Next.js), later `apps/mobile` (React Native), `packages/shared` (the capability enum, system-role defaults, error codes). Request and response types reach the web app through an OpenAPI-generated client, so a contract is declared once, on the server |
+| Primary keys | `bigint` identity. Serialised to clients as strings, because a JavaScript number cannot hold a 64-bit integer safely |
+| Login sessions | **Server-side, revocable sessions** stored in Postgres: an opaque random token, stored hashed. The web admin carries it in an `httpOnly`, `Secure`, `SameSite=Lax` cookie; the mobile app sends it as a bearer token. **Not stateless JWT** — disabling a user, an office reset and a staff member leaving must kill access immediately |
+| Roles | The five school roles (principal, office staff, teacher, parent, student) and the capability list are **defined in code**, not rows. Only school-defined custom roles are stored, so every stored row has a `school_id` |
+| Web admin UI | Tailwind + shadcn/ui components, TanStack Query and TanStack Table, react-hook-form with zod |
+| API | REST under `/api/v1`, JSON, one error envelope with a stable machine code, cursor-free page/limit pagination capped at 50, OpenAPI generated from the controllers |
 
 ---
 
@@ -295,4 +332,4 @@ Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **the capability list** (names, groups and role defaults behind rule 13; around 50 proposed, none named) · **salary structure** (bonuses, deductions, advances) · **platform support access** (the audit mechanism behind the assumption above).
+These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **salary structure** (bonuses, deductions, advances) · **platform support access** (the audit mechanism behind the assumption above).

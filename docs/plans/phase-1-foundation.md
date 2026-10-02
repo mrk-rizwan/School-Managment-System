@@ -1,20 +1,11 @@
-# Phase 1 — Foundation: build plan
-
-> ## SUPERSEDED — DO NOT EXECUTE
->
-> Written against Laravel and Filament. The stack changed to NestJS, Prisma, Next.js
-> and React Native on 2026-10-02. This plan is **structurally invalid**, not merely out
-> of date — its package pins, Filament resources and Eloquent patterns have no
-> equivalent to swap in. It must be re-planned, not edited.
->
-> **Worth carrying over:** the requirements, the slice ordering, and the R1–R60 rule
-> list, which are stack-independent and were reviewed and approved.
-
+# Phase 1 — Foundation: build plan (TypeScript stack)
 
 **Audience:** the Opus 5.5 session that writes the code. Self-contained; read `CLAUDE.md` and
 `docs/WORKLOG.md` first, then this file top to bottom before touching anything.
-**Author:** Fable 5.1, 2026-10-01. Reviewed by `data-architect`, `business-rules` and
-`security-reviewer` before approval; their findings are folded in. **Status:** approved for execution.
+**Author:** Fable 5.1, 2026-10-02. **Replaces** the Laravel/Filament plan of 2026-10-01 (git
+`29bbd13`), whose requirements, slice order and numbered rules were reviewed and are carried over.
+**Stack:** NestJS · PostgreSQL + Prisma · Next.js · Redis. Tenant isolation is application-layer
+(`CLAUDE.md` "How tenant isolation is implemented"). **Status:** DRAFT — design reviews in progress; do not execute until this line says approved.
 
 Phase 1 delivers what the client deck calls *Foundation*: **students, staff, classes, credentials
 and permissions**, on top of the tenancy and session plumbing every later phase stands on. Nothing
@@ -22,54 +13,72 @@ financial, no attendance, no mobile app. At the end a school can be created by t
 principal can log in, define sessions, classes and sections, register staff, admit students with
 their guardians, issue logins, and control who may do what.
 
+**Size, stated honestly.** The Laravel plan was about 17 working days because Filament generated
+the admin screens. Here every screen and every endpoint is written, so this plan is about
+**27 working days**. The extra is UI and API surface, not new requirements.
+
 ---
 
 ## 0. Rules that bind every task
 
-1. The settled rules in `CLAUDE.md` (1–17) are not revisited here. If a task below seems to
-   conflict with one, the rule wins and the task is wrong — say so in `WORKLOG.md`.
-2. **Every slice ends with**: tests passing (run them, paste the summary), `security-reviewer`
-   and `code-auditor` run with findings closed, `phase-gate` PASS. A slice is not done on a claim.
-3. **Tenant isolation test for every data-touching feature.** School A's session must not
-   reach School B's rows. Write it before the feature, not after.
-4. **Inspect before creating.** Laravel, Filament and the packages pinned in §2 already do
-   validation, hashing, rate limiting, encryption, activity logging, file storage, mail. Do not
-   hand-roll any of them.
-5. **Minimal.** No abstraction with one caller. No repository layer over Eloquent. No service
-   class that only forwards. Filament resources for CRUD; custom Pages only where §1 says so.
-6. **Update `docs/WORKLOG.md`** at the end of every slice, and when a decision below turns out
+1. The settled rules in `CLAUDE.md` (1–17), its tenancy section and its conventions table are not
+   revisited here. If a task below seems to conflict with one, `CLAUDE.md` wins and the task is
+   wrong — say so in `WORKLOG.md`.
+2. **Every slice ends with**: lint, typecheck and tests passing (run them, paste the summary),
+   `security-reviewer` and `code-auditor` run with findings closed, `phase-gate` PASS. A slice is
+   not done on a claim.
+3. **Tenant isolation test for every table**, written with the table, not after.
+4. **Inspect before creating.** NestJS, Prisma and the packages pinned in §2 already do
+   validation, guards, throttling, hashing, mail, scheduling. Do not hand-roll them.
+5. **Minimal.** No abstraction with one caller, no pass-through wrappers. The repository layer is
+   the one mandated layer; do not add a second one above it.
+6. **Each slice is a vertical cut**: schema → repository → service → controller → web screen →
+   tests. A slice whose API works but whose screen does not is not done.
+7. **Update `docs/WORKLOG.md`** at the end of every slice and whenever a decision here turns out
    wrong. The next session may be a different model.
-7. Commit per slice, with the message format in `.claude/agents/git-pusher.md`. Never
-   `--no-verify`.
-8. **Numbered rules in §7 (R1–R60) are test names.** Each one gets at least one test whose name
-   says which rule it proves.
+8. Commit per slice. Never `--no-verify`.
+9. **The numbered rules in §7 are test names.** Each gets at least one test whose name carries
+   the rule number.
+10. `api-designer` reviews the endpoint list of a slice before its controllers are written;
+    `data-architect` reviews its Prisma models and raw SQL before the migration is generated.
 
 ---
 
 ## 1. Shape of the system after Phase 1
 
 ```
-Platform panel  (/platform)   platform admins only; creates schools, issues the first principal login
-School panel    (/admin)      principal, office staff, teachers; tenant = school chosen at login, held in session
-Parent / student login        exists (same users table) but has no screens yet — Phase 2
+asms/
+  apps/api/                      NestJS
+    prisma/schema.prisma, migrations/
+    src/
+      main.ts, app.module.ts
+      common/          error envelope, pagination, validation config, crypto, logging
+      tenancy/         SchoolId brand, request context (CLS), session → tenant resolution
+      repositories/    THE ONLY PLACE THAT IMPORTS PRISMA. One file per aggregate.
+        platform/      the non-tenant repositories (CLAUDE.md exception 1)
+      modules/
+        platform/      schools, platform users, platform auth
+        auth/          login, sessions, password flows, email verification
+        access/        capabilities, role defaults, custom roles, grants, permission guard
+        academics/     academic years, classes, sections, subjects, teacher assignments
+        people/        staff, guardians, students, enrolments, admission
+        documents/     upload, staging, streaming
+        audit/         audit log
+  apps/web/                      Next.js App Router
+    app/(auth)/        login, forgot, reset, verify-email
+    app/(school)/      the school admin, one layout, capability-aware navigation
+    app/platform/      the platform admin, separate layout and session
+    components/, lib/api/ (generated client)
+  packages/shared/               Capability enum, system-role defaults, error codes
+  docker-compose.yml             postgres, redis, mailpit, minio
 ```
 
-Modular monolith, one Laravel app, domain folders not layers:
+Two sessions, two cookies, two login pages: `/login` for school users, `/platform/login` for
+platform admins. Parent and student accounts exist in the same `users` table and can
+authenticate against the API, but have no screens until Phase 2.
 
-```
-app/
-  Platform/      schools, platform users, platform panel
-  Tenancy/       TenantContext, middleware, RLS schema helpers, the isolation test
-  Academics/     academic years, classes, sections, subjects, teacher assignments
-  People/        staff, guardians, students, enrolments, documents, admission page
-  Access/        users, login, password flows, roles, capabilities, grants, policies
-```
-
-Filament **resources** (plain CRUD): academic years, classes, sections, subjects, staff, students
-(view/edit only — creation goes through admission), guardians, custom roles, platform schools.
-Filament **custom Pages** (Livewire, budgeted as real work): **Admission intake** (the wizard with
-the guardian-match step), **Staff member permissions** (grant screen + effective view),
-**Login / forgot password / change password** (customised Filament auth pages).
+The web app talks to the API on the **same origin**: Next.js rewrites `/api/*` to the Nest
+process, so the session cookie is first-party and there is no CORS configuration at all.
 
 ---
 
@@ -77,455 +86,362 @@ the guardian-match step), **Staff member permissions** (grant screen + effective
 
 | Item | Decision |
 |---|---|
-| PHP / Laravel / Filament | PHP 8.3, Laravel 13.x, Filament 5.x. **Pin the exact minor in `composer.json` on day one** and record it in `WORKLOG.md`. `decisions-pending-confirmation.md` saw Filament 5.7.7 on 2026-09-01; verify current. |
-| Database | PostgreSQL 16. No SQLite anywhere, including tests — RLS, partial indexes and `NULLIF` policies do not exist there. |
-| Dev environment | **Docker-first.** `docker-compose.yml` with `app` (php-fpm + nginx, or `php artisan serve` for dev), `postgres`, `redis`, `mailpit`. Nothing installed on the host except Docker Desktop. Laravel Sail is acceptable if it saves time; a hand-written compose file is acceptable if Sail fights the two-role Postgres setup. |
-| Tests | Pest. `RefreshDatabase` against the Postgres container, **migrating on the owner connection and running tests on the app role** (override `migrateFreshUsing()` to pass `--database=pgsql_owner`; list both connections in `$connectionsToTransact`). |
-| CI | GitHub Actions on every push: `composer install`, `php artisan migrate --force` against a service Postgres with both roles, `php artisan test`, `vendor/bin/pint --test`. Red CI blocks the slice. |
-| Packages allowed in Phase 1 | `filament/filament`, `spatie/laravel-activitylog`, `laravel/pint`, `pestphp/pest`, `intervention/image` (re-encode uploads). **Not** a tenancy package, **not** `spatie/laravel-permission` (§6 explains), **not** Filament's multi-tenancy feature, **not** Telescope or Debugbar. Anything else: justify in `WORKLOG.md` first. |
-| IDs | `bigint` identity primary keys everywhere (rule 5). No UUIDs in Phase 1. |
-| Money | None in Phase 1. When it arrives: integer whole rupees (rule 15). |
-| Time | All timestamps `timestamptz`, app timezone `Asia/Karachi`, academic dates as `date`. |
-| Sessions | `SESSION_DRIVER=database`. `AuthenticateSession` middleware on both panels. |
-| Secrets | `.env` only; `.env.example` committed with every key and no values. Keys introduced by this plan: `IDENTITY_HASH_KEY` (separate from `APP_KEY`), `PLATFORM_ADMIN_USERNAME`, `PLATFORM_ADMIN_PASSWORD`, `DB_OWNER_USERNAME`, `DB_OWNER_PASSWORD`, `FILESYSTEM_DISK=private`. |
-| Debug | `APP_DEBUG=false` everywhere but `local`. |
+| Node | 24 LTS on the host (`.nvmrc`, `engines`). pnpm workspaces, lockfile committed. |
+| Versions | NestJS 12.x, Prisma **7.x latest stable** (do **not** install a release candidate, even if npm's `latest` tag points at one), Next.js 16.x, React 19.x, TypeScript at the newest version all three accept. **Pin exact versions on day one and record them in `WORKLOG.md`.** |
+| Database | PostgreSQL 16 in Docker. One runtime role. No SQLite anywhere, including tests — partial indexes and `CHECK` constraints are part of the design. |
+| Dev services | `docker compose up`: `postgres`, `redis`, `mailpit` (mail catcher), `minio` (S3-compatible). Node runs on the host. |
+| API packages | `@nestjs/*` core, `@nestjs/throttler` with Redis storage, `@nestjs/schedule`, `@nestjs/swagger`, `nestjs-cls` + `@nestjs-cls/transactional` + its Prisma adapter, `class-validator` / `class-transformer`, `argon2`, `nodemailer`, `nestjs-pino`, `@aws-sdk/client-s3`, `multer`, `file-type`, `sharp`, `ulid`. |
+| Web packages | Tailwind, shadcn/ui, `@tanstack/react-query`, `@tanstack/react-table`, `react-hook-form`, `zod` (form-level validation only), `openapi-typescript` + `openapi-fetch` (typed client generated from the API's OpenAPI document). |
+| Not in Phase 1 | No BullMQ and no worker process (nothing here needs a queue; mail is sent after commit, in-process). No JWT library. No ORM other than Prisma. No state library beyond TanStack Query. Anything else: justify in `WORKLOG.md` first. |
+| Tests | API: Jest + supertest, **end-to-end against the real Postgres**, plus unit tests for pure logic (`EffectivePermissions`, phone normalisation, crypto). Web: Playwright for the flows named in each slice. |
+| CI | GitHub Actions on every push: `pnpm install --frozen-lockfile`, lint, typecheck, `prisma migrate deploy` against a service Postgres, API tests, web build, Playwright. Red CI blocks the slice. |
+| Secrets | `.env` only; `.env.example` committed with every key and no values: `DATABASE_URL`, `REDIS_URL`, `IDENTITY_HASH_KEY`, `FIELD_ENCRYPTION_KEY`, `SESSION_COOKIE_SECRET` (unused if tokens are opaque — omit if so), `S3_*`, `SMTP_*`, `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD`, `APP_URL`. |
 
 ---
 
-## 3. Slice plan
+## 3. Cross-cutting conventions (built in slice 0, used by every slice)
 
-Slices are ordered; each is demonstrable on its own and each is a commit. Half-day tasks.
-Estimates are for orientation, not commitments.
+**Tenancy.** `SchoolId` is a branded `bigint` type whose only constructors live in
+`src/tenancy/`: from a resolved session, from `SchoolLookupRepository.findByCode`, and (later) from
+a validated job payload. A request-scoped context (`nestjs-cls`) holds `{ schoolId, userId,
+sessionId }` after the session middleware runs. Services read it through a `RequestContext`
+service; repositories never read it — **`schoolId` is always an explicit first argument**, so a
+repository call cannot compile without one.
 
-### Slice 0 — Scaffold, CI, and the RLS go/no-go (≈ 2 days)
+**Repositories.** One class per aggregate in `src/repositories/`. Every method's first parameter is
+`schoolId: SchoolId`; every query's `where` includes it; `findUnique` is never used on a tenant
+model. ESLint `no-restricted-imports` forbids `@prisma/client` and the generated client path
+everywhere except `src/repositories/**`, and forbids `src/repositories/platform/**` everywhere
+except `src/modules/platform/**` and the three named exception call sites. A test asserts the
+lint rule is active by linting a fixture file that violates it.
 
-**Goal:** an empty Laravel + Filament app that boots in Docker, has green CI, and a *proven*
-answer on forced row-level security under Filament, including the login path.
+**Transactions.** `@Transactional()` from `@nestjs-cls/transactional` on the service method that
+is the unit of work. Interactive transactions only. No `Promise.all` inside one. Mail, file moves
+and anything else that must not happen on rollback run in an after-commit hook.
 
-Tasks
-- 0.1 `laravel new`, Filament install, Docker compose, `.env.example`, Pint config, Pest. First
-  commit. CI workflow. Confirm the pre-commit hook fires on a planted `.env`.
-- 0.2 Two Postgres roles in the compose init script: `asms_owner` (migrations, owns tables) and
-  `asms_app` (runtime, **no** `BYPASSRLS`, not the owner). Init script also runs
-  `ALTER DEFAULT PRIVILEGES FOR ROLE asms_owner IN SCHEMA public GRANT SELECT, INSERT, UPDATE,
-  DELETE ON TABLES TO asms_app` and `GRANT USAGE, SELECT ON SEQUENCES TO asms_app`. Two Laravel
-  connections: `pgsql` (app) and `pgsql_owner` (migrations). **`pgsql_owner` is defined only when
-  `APP_ENV` is `local`, `testing` or `ci`, or when running `migrate`**; it is unreachable from a
-  web request in production. No model may declare `$connection = 'pgsql_owner'` (test it).
-- 0.3 **RLS spike.** Throwaway tables `spike_items(id, school_id, name)` and
-  `spike_tags(id, school_id, name)`, each with `ENABLE ROW LEVEL SECURITY`, `FORCE ROW LEVEL
-  SECURITY`, policy `USING (school_id = NULLIF(current_setting('app.school_id', true), '')::bigint)
-  WITH CHECK (same)`. A Filament resource with a table, a form with a `Select` **relationship**
-  field to `spike_tags`, and a modal action. The GUC is set with `SET LOCAL` inside a transaction
-  by middleware that reads `session('school_id')`, **before** authentication runs.
-  **Pass:** with school 1 in the session, the resource, the Select options, the `exists`
-  validation and the modal show only school 1 rows; a raw `DB::select` also returns only school 1;
-  submitting a `spike_tags` id from school 2 fails validation. With no school in the session a
-  panel request aborts (H3 below), and a raw query returns **zero rows, not an error**. A queue
-  job and `schedule:run` reproduce the same through the job middleware and scheduler loop. A
-  `DB::reconnect()` mid-request yields zero rows afterwards (documented, not fixed).
-  **Fail:** any path shows another school's rows, or Filament breaks on the forced policy.
-- 0.4 Record the verdict in `WORKLOG.md`. **If PASS:** RLS is the isolation mechanism; every
-  tenant table gets the policy in its migration (§4 helper). **If FAIL:** fall back to an Eloquent
-  global scope applied by a `BelongsToSchool` trait plus a `DB::beforeExecuting` guard that fails
-  any statement on a tenant table without `school_id` in it. State the fallback in `CLAUDE.md`
-  rule 2's wording. Either way the composite tenant foreign keys (§4) and the self-enforcing test
-  in 0.5 exist.
-- 0.5 **Self-enforcing isolation test:** enumerate **every** table in `information_schema.tables`
-  (not only those with `school_id`); each must be either RLS-forced (`relrowsecurity AND
-  relforcerowsecurity`) with a policy whose expression references `app.school_id`, or in the
-  allowlist `schools`, `school_groups`, `platform_users`, `migrations`, `jobs`, `failed_jobs`,
-  `job_batches`, `cache`, `cache_locks`, `sessions`, `password_reset_tokens`. A new table outside
-  both fails CI. The test accepts the two policy shapes in §4 (plain, and nullable-school for
-  `roles`/`activity_log`).
-- 0.6 `TenantContext` service: `runFor(int $schoolId, Closure $fn)` opens a transaction, runs
-  `SET LOCAL app.school_id = ?`, sets the app-level current school, runs the closure. **`SET`
-  without `LOCAL` is forbidden** (grep test). Called from exactly three places: the school-panel
-  HTTP middleware (reads `session('school_id')`, runs before `Authenticate`), a `TenantJob`
-  middleware (reads `school_id` carried on the job; throws if absent), and the scheduler loop
-  (iterates active schools). In `local`/`testing`, a `DB::beforeExecuting` listener throws on any
-  statement touching a non-allowlisted table when no GUC is set — **no-GUC is a hard failure in
-  the application; zero rows is only the database's last line.** Queue connection has
-  `after_commit => true` so nothing dispatched inside a tenant transaction fires on rollback.
-  Platform panel middleware sets `SET LOCAL app.platform = '1'` instead; the `schools` policy is
-  `USING (current_setting('app.platform', true) = '1' OR id = NULLIF(current_setting('app.school_id',
-  true), '')::bigint)`. Delete the spike tables.
+**Ids.** `BigInt @id @default(autoincrement())`. Serialised as **strings** in every response and
+parsed from strings in every param and body (`ParseIdPipe`, a `@IsIdString()` validator). A test
+asserts no response body contains a JSON number in an `id` or `*Id` field.
 
-Acceptance: CI green on an empty app; the spike verdict is written down with the evidence;
-`php artisan test` includes the isolation test and it passes on the allowlist alone.
+**API shape.** Base path `/api/v1`. JSON only; state-changing requests with any other content type
+are refused. Errors: `{ "error": { "code": "STUDENT_BFORM_DUPLICATE", "message": "...",
+"details": {...} } }` — codes are constants in `packages/shared`, stable forever; messages may
+change. Validation failures are `422` with per-field details. Lists: `?page=1&limit=25`, `limit`
+capped at 50, response `{ data: [...], page, limit, total }`. Global `ValidationPipe` with
+`whitelist: true, forbidNonWhitelisted: true, transform: true`. No DTO declares `schoolId`.
+OpenAPI is generated on build; the web client is regenerated from it and CI fails if the
+committed client is stale.
 
-### Slice 1 — Platform and the school record (≈ 1.5 days)
+**Authorisation.** `@RequireCapability(Capability.X)` on every controller method except the
+auth endpoints; a global guard refuses any route that has neither that decorator nor an explicit
+`@Public()` / `@AuthenticatedOnly()`, so a forgotten check is a `500` in tests, not an open
+endpoint. Row-level scope (a teacher's own classes) is applied **in the repository query** through
+a `scope` argument, never by filtering results afterwards.
 
-**Goal:** a platform admin creates a school and the school exists as a tenant.
+**Sessions.** `sessions(school_id, user_id, token_hash, created_at, last_seen_at, expires_at,
+revoked_at, user_agent, ip)`. The token is 32 random bytes, base64url; only its SHA-256 is stored.
+Web: `httpOnly`, `Secure`, `SameSite=Lax` cookie `asms_session`. Mobile (Phase 2): the same token
+as `Authorization: Bearer`. Idle timeout 24 hours, absolute 30 days. Every request loads the
+session by hash (exception 4), refuses it if revoked, expired, the user is not `active`, or the
+school is `terminated`; a `suspended` school is read-only (every non-GET is `403
+SCHOOL_SUSPENDED`). Cookie-authenticated non-GET requests must carry an `Origin` equal to
+`APP_URL`. Revocation is `revoked_at = now()` — rows are kept.
 
-Tables: `platform_users` (not tenant-scoped, own guard), `school_groups` (id, name — nothing
-else, rule 11), `schools`.
-`schools`: `name`, `short_code` (`UNIQUE`, 3–12 lower-case ASCII letters/digits; typed by users at
-login, so keep it short and pronounceable), `status` (`trial|active|suspended|terminated`),
-`school_group_id` nullable, `timezone` default `Asia/Karachi`, `fee_due_day` default 10
-`CHECK (fee_due_day BETWEEN 1 AND 28)`, `currency` fixed `'PKR'`, `student_login_enabled` default
-false, `student_login_min_class_sort` nullable, `last_admission_no` integer default 0, timestamps.
-A `UNIQUE (id, short_code)` is unnecessary; `UNIQUE (short_code)` suffices.
+**Identity numbers.** `cnic` / `bForm` columns hold `v1:<iv>:<tag>:<ciphertext>` (AES-256-GCM,
+`FIELD_ENCRYPTION_KEY`), written and read only through `common/crypto`. `*_hash char(64)` =
+HMAC-SHA256 of the 13 digits with `IDENTITY_HASH_KEY`. Two separate keys; rotating one does not
+break the other. Lookups by hash; display masked (`35201-*****-1`). CNIC and B-Form never appear
+in a URL, a query string, a log line, an audit row or a list response — lookups are `POST` with
+the digits in the body.
 
-Tasks: migrations; platform panel with a Schools resource; status change is an action with a
-reason, logged by activitylog; `SchoolFactory`; seeder that creates one platform admin from
-`PLATFORM_ADMIN_USERNAME` / `PLATFORM_ADMIN_PASSWORD` (fail loudly if missing). "Issue principal
-login" action lives here but is built in slice 2 once `users` and `staff` exist.
+**Logging.** `nestjs-pino` with `redact` on `req.headers.cookie`, `req.headers.authorization`,
+`*.password`, `*.cnic`, `*.bForm`, `*.token`, and a serializer that replaces any 13-digit run with
+`[id]`. Request bodies are not logged.
 
-Tests: platform user cannot reach `/admin`; school user cannot reach `/platform`; suspended
-school's users get `403` on every write and a read-only banner (**the write block is the
-deliverable**); activity log row written on status change; `fee_due_day` 29 refused.
+**Audit.** `audit_log(school_id, actor_user_id, action, subject_type, subject_id, reason,
+metadata jsonb, created_at)`, written by `AuditService.record()` **explicitly, inside the same
+transaction** as the change — no interceptor magic. Platform actions go to `platform_audit_log`.
+`metadata` never contains identity numbers, passwords or tokens.
 
-### Slice 2 — Staff (minimal), users and login (≈ 2.5 days)
+**Phones.** Stored E.164 in `varchar(16)` with `CHECK (phone ~ '^\+[1-9][0-9]{7,14}$')`; one
+`normalisePhone()` turns `0300-1234567`, `03001234567`, `+92 300 1234567` into `+923001234567`,
+defaulting to `+92`.
 
-**Goal:** a person with a school account can log in with their school code, CNIC digits and the
-default password, is prompted to change it, can set a verified email and reset by it, and the
-office can reset anyone within the limits of §7.
+**Web.** One `(school)` layout with a sidebar built from the user's effective capabilities
+(`GET /api/v1/me`). Every list screen has loading, empty, error and no-permission states; every
+form shows field errors from the `422` details. One table component, one form field set, one
+confirm-with-reason dialog — reused everywhere, never re-made per screen.
 
-**Why staff is here:** the principal is staff (rule 7) and the `users` CHECK below requires a
-linked person, so the minimal `staff` table lands now; slice 4 extends it.
+---
 
-`staff` (minimal now): `school_id`, `full_name`, `cnic` (**encrypted cast**, nullable),
-`cnic_hash char(64)` nullable, `phone` (E.164, see §4), `designation` free text, `joined_on`,
-`status` (`active|suspended|left`), timestamps. `UNIQUE (school_id, cnic_hash) WHERE cnic_hash IS
-NOT NULL`. `UNIQUE (school_id, id)` for composite FKs. **No soft delete** (§4 lifecycle rule).
+## 4. Slice plan
 
-`users`: `school_id`, `username_hash char(64)` (HMAC of the 13 digits, §4 — **there is no
-plaintext username column**), `password`, `email` nullable (**not unique** — families share
-addresses; email is a contact, not an identity), `email_verified_at` nullable,
-`password_is_default` boolean, `password_changed_at` nullable, `status` (`active|disabled`),
-`staff_id` / `guardian_id` / `student_id` nullable FKs (composite with `school_id`), `last_login_at`,
-`remember_token`, timestamps. `UNIQUE (school_id, username_hash)`.
-`CHECK (num_nonnulls(staff_id, guardian_id, student_id) >= 1)` — added in slice 6 once all three
-tables exist; until then a deferred TODO the slice-6 gate must clear. No soft delete.
+Estimates are for orientation. Each slice lists schema, endpoints, screens and tests; `api-designer`
+turns the endpoint line into full contracts before controllers are written.
 
-Behaviour (rule 12, and §7 R1–R16):
-- **School first.** The login page has three fields: **school code, CNIC digits, password.** The
-  school code is the one place client input chooses the tenant, because no session exists yet;
-  `CLAUDE.md` rule 2 is amended to say so. The page looks the school up (the `schools` policy
-  allows a `SELECT` of `id, short_code, status` by code without a GUC — see §4), writes
-  `school_id` to the session, and only then attempts authentication through a `TenantUserProvider`
-  that always adds `where school_id = session('school_id')` and compares `username_hash`. The
-  last-used school code is remembered in a cookie and pre-filled. Every subsequent request asserts
-  `session('school_id') === auth()->user()->school_id` or logs out.
-- Rate limits via Laravel's `RateLimiter`, no columns: 5/min per school+username+IP;
-  **10/min per username across all schools** (one CNIC sprayed at many school codes trips it);
-  30/min per IP. Lockout after 5 consecutive failures = a 15-minute limiter window keyed
-  `login:{school}:{hash}`; office reset calls `RateLimiter::clear()`. Identical generic message for
-  wrong code, wrong username, wrong password, locked, disabled; the provider does a dummy
-  `Hash::check` when the user is absent so timing matches.
-- Default password = the 13 digits. User creation is an office action (slices 4–6); this slice
-  builds "Issue principal login" on the platform panel: creates the `staff` row, then the user,
-  then `user_roles → principal`.
-- After login with `password_is_default = true`: a persistent banner "You are using the default
-  password" linking to change-password. **Prompt, not force.** `canAccessPanel` re-checks
-  `users.status = active` and `schools.status` on every request.
-- Change password requires a **verified** email on the account: if `email` is null or unverified
-  the form demands one and sends a verification link (`MustVerifyEmail`). Only the account holder
-  sets or changes `users.email`; any change (including an office edit, which does not exist in
-  Phase 1) nulls `email_verified_at`. Entering an email already used by another user in the school
-  is **allowed** (shared family address). Minimum 8 characters, not equal to the username digits.
-  Password change logs out other devices.
-- Forgot password: form takes **school code + CNIC digits**, never an email. Response is always
-  "If this account has a verified email, a link has been sent." Laravel's broker is reused: the
-  `User` model overrides `getEmailForPasswordReset()` to return `"{school_id}:{id}"` (so
-  `password_reset_tokens` is tenant-unique without a custom repository) and
-  `routeNotificationForMail()` to return the real address. The notification is sent only if
-  `email_verified_at` is set and `status = active`. Token lifetime 15 minutes, single use; a
-  successful reset clears `password_is_default`, the limiter, and other sessions.
-- Office reset (capability `user.account.manage`, subject to §7 R12–R14): resets the password to
-  the default, sets `password_is_default = true`, clears the limiter, **deletes the target's
-  `sessions` rows and `remember_token`, deletes any outstanding reset token**, keeps `email` and
-  `email_verified_at`, emails the target if a verified address exists, requires a reason, is
-  activity-logged, never changes `status`. **This is the fallback for users with no email**; the
-  users list shows "no email" and "default password" columns (visible only to holders of
-  `user.account.manage`).
-- Disabling a user (any path) deletes their sessions immediately. A user cannot disable or reset
-  their own account.
-- A Monolog processor replaces any `\b\d{13}\b` with `[id]` on every log channel; `dontFlash`
-  includes `username`, `cnic`, `b_form`; `Illuminate\Auth\Events\Failed` listeners never log the
-  credentials. The office UI never displays a username; it displays the linked person's CNIC
-  masked as `35201-*****-1` from the encrypted column.
+### Slice 0 — Scaffold and guardrails (≈ 3 days)
 
-Tests: R1–R16 in §7, plus: login happy path at the right school; same digits in two schools logs
-into the one whose code was entered and the session carries that school; wrong-code / wrong-user /
-wrong-password / locked / disabled all return byte-identical responses; limiter per username across
-schools trips; default-password banner shown and gone after change; change refused without verified
-email; reset by school code + digits; reset token from school A cannot reset the same digits in
-school B; office reset clears sessions and keeps email; no 13-digit string appears in `storage/logs`
-after the whole suite runs.
+**Goal:** an empty system where the isolation guardrails are already live and provably working.
 
-### Slice 3 — Academic structure (≈ 1.5 days)
+- 0.1 pnpm workspace, `apps/api` (Nest), `apps/web` (Next), `packages/shared`. Docker compose.
+  `.env.example`. ESLint + Prettier shared config. `README.md` with the clone-to-running steps.
+  Confirm the pre-commit hook fires on a planted `.env`.
+- 0.2 API skeleton: config validation at boot (missing env → refuse to start), error envelope
+  filter, `ValidationPipe`, pino with redaction, `/api/v1/health`, OpenAPI generation, throttler
+  wired to Redis.
+- 0.3 Prisma baseline: `schools` only (full table in slice 1). Naming: models `PascalCase`,
+  tables and columns `snake_case` via `@@map` / `@map`, `timestamptz(3)` timestamps, `@db.Date`
+  dates. Migration generated, reviewed as SQL, committed.
+- 0.4 Tenancy: `SchoolId` brand, CLS request context, `@Transactional()` wiring, the ESLint
+  boundaries and the fixture test proving they fire.
+- 0.5 **Schema guard test** (reads Prisma's DMMF): every model outside the allowlist `School`,
+  `SchoolGroup`, `PlatformUser`, `PlatformSession`, `PlatformAuditLog` has a required `schoolId`,
+  a `@@unique([schoolId, id])`, and every relation to another tenant model uses the composite
+  `[schoolId, xId]` fields. A new model that breaks this fails CI.
+- 0.6 **Isolation test helper**: `expectIsolated(repoMethodForA, repoMethodForB)` plus factories
+  that create two schools. Tests never truncate — each test creates its own schools, so tenancy
+  itself isolates tests and they can run in parallel.
+- 0.7 Web skeleton: Tailwind, shadcn/ui, the layout shell, the generated API client, TanStack
+  Query provider, the shared table / form / dialog components with a throwaway demo page.
+  Playwright runs one smoke test.
+- 0.8 CI workflow green.
 
-**Goal:** the principal defines sessions, classes, sections and subjects.
+Acceptance: fresh clone → `docker compose up` → `pnpm i` → `pnpm dev` shows a health page; CI
+green; a deliberately wrong Prisma import and a deliberately tenant-less model both fail CI.
 
-Tables (tenant-scoped):
-- `academic_years`: `name` ("2026–27 April"), `starts_on`, `ends_on`, `status`
-  (`planned|active|closed`). Several may be active at once (rule 15). `CHECK (ends_on > starts_on)`.
-  No soft delete; `closed` is the end state.
-- `classes` — **one row per class per academic year, immutable once enrolments exist**:
-  `academic_year_id` not null, `name` ("Class 5"), `sort_order`, `attendance_mode`
-  (`daily|period`, default `daily` — rule 14 stores per period; this is the per-class *practice*
-  setting Phase 2 reads), `status` (`active|archived`). `UNIQUE (school_id, academic_year_id,
-  name)`; `UNIQUE (school_id, id)` and `UNIQUE (id, academic_year_id)` for composite FKs. The April
-  and September sessions of "Class 5" are two rows, exactly as two years are. **There is no
-  "current session" pointer; rollover (Phase 4) copies class and section rows into the new
-  session.** Changing a class's `academic_year_id` is refused once any enrolment or assignment
-  references it.
-- `sections`: `class_id`, `name` ("A"), `capacity` nullable, `deleted_at` (config table — soft
-  delete allowed). `UNIQUE (school_id, class_id, name) WHERE deleted_at IS NULL`;
-  `UNIQUE (school_id, id)`.
-- `subjects`: `name`, `code` nullable, `deleted_at`. `UNIQUE (school_id, name) WHERE deleted_at IS
-  NULL`. Timetable is **not** Phase 1; subjects exist so teacher assignments can name them.
+### Slice 1 — Platform and the school record (≈ 2 days)
 
-Filament resources for all four. Closing an academic year is an action, not an edit, and is
-refused while any enrolment in it is `active` (lands in slice 6; stub it to pass with a TODO that
-slice 6 must remove). Creating a class offers "copy sections from" another class.
+Schema (non-tenant, allowlisted): `platform_users` (email, password argon2id, status),
+`platform_sessions`, `platform_audit_log`, `school_groups` (id, name), `schools`: `name`,
+`short_code` (`UNIQUE`, 3–12 lower-case ASCII letters/digits — users type it at login), `status`
+(`trial|active|suspended|terminated`), `school_group_id` nullable, `timezone` default
+`Asia/Karachi`, `fee_due_day` default 10 `CHECK (BETWEEN 1 AND 28)`, `currency` `'PKR'`,
+`student_login_enabled` default false, `student_login_min_class_sort` nullable,
+`last_admission_no` int default 0.
 
-Tests: CRUD per resource; isolation per table; a section cannot be soft-deleted while an active
-enrolment references it; year date check; two active years allowed; class year change refused
-once referenced.
+Endpoints: `POST /platform/auth/login|logout`, `GET /platform/me`, `GET|POST /platform/schools`,
+`GET|PATCH /platform/schools/:id`, `POST /platform/schools/:id/status` (with reason).
+Screens: platform login, schools list, create/edit school, status change dialog.
+Seed: one platform admin from `PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD`; refuse to seed
+if either is missing.
 
-### Slice 4 — Staff (full) and teacher assignments (≈ 1.5 days)
+Tests: R56; status change audited; `fee_due_day` 29 refused; duplicate `short_code` refused;
+platform login throttled.
 
-**Goal:** the office registers staff; teachers get date-bounded assignments; each staff member
-can be issued a login; leaving and suspension behave (§7 R17–R24).
+### Slice 2 — Staff (minimal), users, sessions, login (≈ 4.5 days)
 
-- `staff` gains `photo_path` nullable, `left_on` nullable. CNIC becomes required for "Issue
-  login" only, not for the record.
-- `teacher_assignments`: `school_id`, `staff_id`, `academic_year_id`, `class_id`, `section_id`
-  nullable, `subject_id` nullable, `role` (`class_teacher|subject_teacher`), `starts_on` not null,
-  `ends_on` nullable. Composite FKs `(school_id, staff_id)`, `(class_id, academic_year_id)`,
-  `(school_id, section_id)`. `CHECK (role <> 'class_teacher' OR section_id IS NOT NULL)`.
-  `CREATE UNIQUE INDEX ... ON teacher_assignments (school_id, academic_year_id, section_id) WHERE
-  role = 'class_teacher' AND ends_on IS NULL` — one *current* class teacher per section. Active =
-  `ends_on IS NULL`. Reassignment = end the old row + insert the new in one transaction; rows are
-  never deleted. A `subject_teacher` row with `section_id IS NULL` scopes every section of the
-  class. **This table is the only scope source for teacher permission checks** (rule 13).
-- Staff resource with a "Teaching assignments" relation manager (end / add, never edit dates of
-  an ended row). "Issue login" action: HMACs the CNIC, looks up `users` by `(school_id,
-  username_hash)`; if a user exists (the person is already a guardian) **links** `staff_id` on
-  that user; otherwise creates the user with the default password. Refused when CNIC is missing,
-  when staff status is not `active`, or when this staff row already has a user.
-- CNIC edit is **refused once a login exists** (rule 12: username does not change). Flagged to the
-  owner as a Phase 2 question; do not build a correction flow.
+**Goal:** a school user logs in with school code, CNIC digits and the default password; is
+prompted to change it; can set a verified email and reset by it; the office can reset within the
+limits of §7. The capability guard goes live here so every later slice is written against it.
 
-Tests: R17–R24; CNIC stored encrypted (raw column is not the digits); duplicate CNIC in the same
-school refused with a pointer to the existing record, same CNIC in two schools allowed; one
-current class teacher per section, two sequential ones allowed; issue login idempotent and linking;
-leaving a staff member who is also a guardian keeps the login; isolation.
+Schema:
+- `staff` (minimal now; the principal is staff, rule 7): `full_name`, `cnic` encrypted nullable,
+  `cnic_hash` nullable, `phone`, `designation`, `joined_on`, `status` (`active|suspended|left`).
+  Partial unique `(school_id, cnic_hash) WHERE cnic_hash IS NOT NULL`.
+- `users`: `username_hash char(64)` (**no plaintext username column**), `password_hash`, `email`
+  nullable (**not unique**), `email_verified_at`, `password_is_default`, `password_changed_at`,
+  `status` (`active|disabled`), `staff_id` / `guardian_id` / `student_id` nullable composite FKs
+  (the latter two added in slices 5–6), `last_login_at`. `UNIQUE (school_id, username_hash)`.
+  `CHECK (num_nonnulls(staff_id, guardian_id, student_id) >= 1)` added in slice 6.
+- `sessions` (§3). `user_tokens`: `user_id`, `purpose` (`password_reset|email_verify`),
+  `token_hash`, `expires_at`, `used_at`.
+- `user_roles`: `user_id`, `system_role` nullable (`principal|office_staff|teacher|parent|
+  student`), `custom_role_id` nullable (FK added in slice 7), `CHECK` exactly one is set.
+- `audit_log` (§3).
 
-### Slice 5 — Guardians (≈ 1 day)
+Code: `packages/shared` gets the `Capability` enum (all 51 keys, §6), `SYSTEM_ROLE_DEFAULTS`, and
+the error codes. `PermissionsService.effective(user)` computes from system roles only for now;
+slice 4 adds teacher scope; slice 7 adds custom roles and grants. `@RequireCapability` guard and
+the "no undecorated route" guard go live.
 
-- `guardians`: `school_id`, `full_name`, `cnic` encrypted + `cnic_hash` (**nullable** — a guardian
-  without a CNIC on file is allowed; they cannot have a login until it is entered), `phone`
-  nullable E.164, `email` nullable (contact only; not the login email), `contact_capability`
-  (`whatsapp|smartphone_data|keypad` — **not null**, rule 17), `address` nullable,
-  `merged_into_id` nullable self FK (rule 12; the merge UI is later, the column is now), `status`
-  (`active|merged`), timestamps. No soft delete. `UNIQUE (school_id, cnic_hash) WHERE cnic_hash IS
-  NOT NULL`; `UNIQUE (school_id, id)`; index `(school_id, phone)`. **No uniqueness on phone** — two
-  guardians may share a handset.
-- Guardian resource: list (flags "no CNIC", "no phone"), view, edit; creation happens inside
-  admission (slice 6) and from an "Add guardian" action on a student. "Issue login" as in slice 4,
-  linking `guardian_id` on an existing user if the CNIC already has one (the teacher-parent case).
-- CNIC lookups are POST actions by hash, never a `searchable()` column; `cnic` is never in a
-  query string.
+Behaviour (rule 12; R1–R16, R61–R68):
+- Login `POST /auth/login { schoolCode, username, password }`. School resolved by
+  `SchoolLookupRepository.findByCode`; user by `(schoolId, usernameHash)`; `argon2.verify`, with a
+  dummy verify when the user is absent so timing matches. One generic `401 AUTH_FAILED` for wrong
+  code, wrong user, wrong password, locked, disabled, terminated school.
+- Throttling: 5/min per school+username+IP; **10/min per username across all schools**; 30/min
+  per IP. Lockout: 5 consecutive failures → 15 minutes, a Redis counter keyed
+  `lock:{schoolId}:{usernameHash}`; office reset deletes the key. (If Redis is wiped, lockouts
+  reset — acceptable; nothing of record lives in Redis.)
+- Default password = the 13 digits. This slice builds **"Issue principal login"** on the platform
+  panel: creates the `staff` row, the user, and `user_roles → principal`, in one transaction.
+- `GET /me` returns user, school, roles, effective capabilities and `passwordIsDefault`; the web
+  shows a persistent banner while it is true. **Prompt, not force.**
+- Change password `POST /me/password` requires a **verified** email on the account. `POST
+  /me/email` sets it and mails a verification link `APP_URL/verify-email/{shortCode}?token=…`;
+  any change nulls `email_verified_at`. Only the account holder sets their email. New password ≥ 8
+  characters and not the username digits. Success revokes the user's other sessions.
+- Forgot password `POST /auth/forgot { schoolCode, username }` — never an email. Always
+  `202` with the same body. A link `APP_URL/reset/{shortCode}?token=…` is mailed only if the user
+  is `active` with a verified email. Token 15 minutes, single use, stored hashed. Reset clears
+  `password_is_default`, the lockout key and all sessions.
+- Office reset `POST /users/:id/reset-password { reason }` (capability `user.account.manage`,
+  subject to R12–R14): default password, `password_is_default = true`, lockout cleared, **all of
+  the target's sessions revoked, outstanding `user_tokens` voided**, email kept, target notified by
+  email if verified, audited, `status` untouched.
+- `POST /users/:id/disable|enable { reason }`; disabling revokes sessions at once. Not on yourself.
+- Users list `GET /users` (capability `user.account.manage`): name, linked person, roles, masked
+  CNIC, "default password" and "no email" flags, status.
 
-Tests: nullable CNIC; shared phone allowed; login refused without CNIC; phone normalised to E.164
-on save and matched regardless of input format; isolation.
+Screens: login (school code remembered in `localStorage`), forgot, reset, verify-email, the
+default-password banner, change-password/email page, users list with reset/disable dialogs.
 
-### Slice 6 — Students, enrolment, admission (≈ 3.5 days)
+Tests: R1–R16, R61–R68; same digits in two schools lands in the school whose code was typed; reset
+token from school A cannot reset the same digits in school B; no 13-digit string in the captured
+log output of the whole suite. Playwright: login → banner → set email (link read from mailpit) →
+change password → banner gone.
 
-The heaviest slice and the one the office will live in. Rules R25–R44 in §7.
+### Slice 3 — Academic structure (≈ 2.5 days)
 
-- `students`: `school_id`, `admission_no` (`UNIQUE (school_id, admission_no)`; formatted
-  `S-000123` from `schools.last_admission_no` taken with `UPDATE schools SET last_admission_no =
-  last_admission_no + 1 WHERE id = ? RETURNING last_admission_no` inside the admission
-  transaction — no gaps on rollback, consecutive under concurrency), `full_name`, `gender`,
-  `date_of_birth`, `b_form` encrypted + `b_form_hash` nullable, `status`
-  (`active|suspended|withdrawn|transferred|alumni`), `admitted_on`, `photo_path` nullable,
-  `merged_into_id` nullable self FK (duplicate repair later; column now), `notes`, timestamps. No
-  soft delete. `UNIQUE (school_id, b_form_hash) WHERE b_form_hash IS NOT NULL`; `UNIQUE (school_id,
-  id)`. Rule 4: every status change is a row in `student_status_changes` (`school_id`,
-  `student_id`, `from_status`, `to_status`, `reason`, `changed_by`, `effective_on`); index
-  `(school_id, student_id)`.
-- `student_guardians`: `school_id`, `student_id`, `guardian_id`, `relationship`
-  (`father|mother|guardian|other`), `is_primary_contact`, `is_fee_payer`, `can_login`, timestamps.
-  Composite FKs to both parents. `UNIQUE (school_id, student_id, guardian_id)`; index
-  `(school_id, guardian_id)`. **Partial unique index: exactly one primary contact per student**
-  (`CREATE UNIQUE INDEX ... ON student_guardians (school_id, student_id) WHERE is_primary_contact`).
-  Enforced in Postgres, not only in the form. A guardian with no phone cannot be primary contact
-  (R30).
-- `enrolments` (rule 6, the hub): `school_id`, `student_id`, `academic_year_id`, `class_id`,
-  `section_id`, `roll_no` nullable, `status` (`active|completed|left`), `started_on`, `ended_on`
-  nullable, timestamps. Composite FKs `(school_id, student_id)`, `(class_id, academic_year_id)`,
-  `(school_id, section_id)`. `CREATE UNIQUE INDEX ... (school_id, student_id) WHERE status =
-  'active'` — one body, one class, across sessions. `CREATE UNIQUE INDEX ... (school_id,
-  section_id, roll_no) WHERE roll_no IS NOT NULL AND status = 'active'`. Indexes `(school_id,
-  section_id, status)`, `(school_id, student_id)`.
-- `student_documents`: `school_id`, `student_id`, `type` (`b_form|photo|previous_school_leaving|
-  guardian_cnic|other`), `path`, `mime`, `size_bytes`, `status` (`uploaded|verified|rejected`),
-  `verified_by` nullable, `rejection_reason` nullable, timestamps. **Only upload and view are built
-  in Phase 1**; the verify/reject screen waits for the document-verification spec. Storage rules
-  are in §4 "Uploads".
-- **Admission intake page** (custom Filament Page, multi-step; the whole thing commits in one
-  transaction at the last step, with an idempotency token generated when the page opens):
-  1. **Student lookup first.** Office enters the B-Form digits if known. A hit on an existing
-     student (any status) is shown; a hit on `withdrawn|transferred|alumni` offers **readmit**
-     (status row + new enrolment, never a new student); a hit on `active|suspended` stops with a
-     link. Then student details.
-  2. **Guardian match — non-skippable.** CNIC digits (POST, hashed) then phone. Shows
-     "Ahmed Khan — father of Ali, Class 5 — link to this record?" Phone hits may be several
-     (shared handset): show all, office picks. A hit whose `merged_into_id` is set resolves to the
-     survivor. Link or create. At least one guardian, exactly one primary contact (who must have a
-     phone), at least one fee payer. The CNIC input is `wire:model.blur`, cleared after the search;
-     only `guardian_id` is retained in page state.
-  3. Class and section (the class row implies the academic year) → creates the `enrolment`.
-  4. Documents, optional. Files are staged under a temp prefix on the private disk and moved on
-     commit; an abandoned or failed admission leaves no document rows and no reachable files
-     (daily sweep of the temp prefix).
-  5. Review → creates everything; `status = active`; writes the status row; offers "Issue guardian
-     login" and, if `student_login_enabled` and the class qualifies, "Issue student login"
-     (username = B-Form digits; **never** links to an existing user — a B-Form colliding with a
-     CNIC username is refused as a data error).
-  A repeat submit with the same idempotency token returns the first result and writes nothing;
-  the token is single-use for 24 hours (cache). Name + DOB + primary guardian matching an existing
-  student is a **warning**, not a block.
-- Student resource: view, edit details, status actions (`suspend`, `reactivate`, `withdraw`,
-  `transfer`) each a modal with reason, each writing the status row, transitions per R36.
-  **What happens to dues on exit is open decision 11 — do nothing financial; there is nothing
-  financial yet.** Enrolment relation manager: "Change section" (same class; clears `roll_no`),
-  "Set roll number"; a move to a class in another academic year is refused (a session transfer is
-  not Phase 1). Moving class in-year is a new enrolment row closing the old one, never an edit.
+Schema:
+- `academic_years`: `name`, `starts_on`, `ends_on`, `status` (`planned|active|closed`).
+  `CHECK (ends_on > starts_on)`. Several may be active (rule 15). No delete.
+- `classes` — **one row per class per academic year; its year never changes once referenced**:
+  `academic_year_id`, `name`, `sort_order`, `attendance_mode` (`daily|period`, default `daily`),
+  `status` (`active|archived`). `UNIQUE (school_id, academic_year_id, name)`,
+  `UNIQUE (school_id, id, academic_year_id)` for the composite FK from enrolments and assignments.
+  April and September "Class 5" are two rows. There is no "current session" pointer.
+- `sections`: `class_id`, `name`, `capacity` nullable, `deleted_at`. Partial unique
+  `(school_id, class_id, name) WHERE deleted_at IS NULL`.
+- `subjects`: `name`, `code` nullable, `deleted_at`. Partial unique `(school_id, name) WHERE
+  deleted_at IS NULL`. No timetable in Phase 1.
 
-Tests: R25–R44; admission creates student + guardian link + enrolment atomically and a failure
-in step 5 leaves nothing (including no files); guardian match links instead of duplicating;
-second primary contact refused by the database; one active enrolment per student; double submit
-creates one student; two concurrent admissions get consecutive admission numbers; document not
-reachable without capability, by guessing the path, or by a user of another school with the
-signed URL; SVG upload refused; EXIF stripped from a photo; status transitions; isolation for
-every table.
+Endpoints: CRUD for the four resources; `POST /academic-years/:id/close`; `POST
+/classes/:id/copy-sections`. Screens: one "Academic structure" area with four list/edit screens.
 
-### Slice 7 — Roles, capabilities, grants (≈ 2.5 days)
+Tests: R44 (closing a year with active enrolments — wired in slice 6, stubbed with a failing
+`todo` test here so it cannot be forgotten); isolation per table; year dates; class year change
+refused once referenced; section soft-delete refused while an active enrolment references it.
 
-**Goal:** rule 13 in code, with the effective-permissions view. Rules R45–R60.
+### Slice 4 — Staff (full) and teacher assignments (≈ 2.5 days)
 
-Capabilities are a **PHP backed enum** (`App\Access\Capability`) holding the 51 keys in §6 and
-their group — no `capabilities` table, no seed dance; the key is stored as `varchar(64)` and
-validated against the enum.
+Schema: `staff` gains `photo_key` nullable, `left_on` nullable. `teacher_assignments`: `staff_id`,
+`academic_year_id`, `class_id`, `section_id` nullable, `subject_id` nullable, `role`
+(`class_teacher|subject_teacher`), `starts_on`, `ends_on` nullable. `CHECK (role <>
+'class_teacher' OR section_id IS NOT NULL)`. Partial unique `(school_id, academic_year_id,
+section_id) WHERE role = 'class_teacher' AND ends_on IS NULL`. Active = `ends_on IS NULL`. Rows are
+ended, never deleted. **This table is the only scope source for teacher checks** (rule 13).
 
-Tables:
-- `roles`: `school_id` **nullable** — null rows are the five system roles (`principal`,
-  `office_staff`, `teacher`, `parent`, `student`; **platform admin is not a role here**, the
-  platform guard is its gate), non-null rows are school-defined custom roles for staff. `key`,
-  `name`, timestamps. `CREATE UNIQUE INDEX ... ON roles (key) WHERE school_id IS NULL`;
-  `... (school_id, key) WHERE school_id IS NOT NULL`. RLS policy (second shape):
-  `USING (school_id IS NULL OR school_id = GUC) WITH CHECK (school_id = GUC)`.
-- `role_capabilities`: `school_id` nullable (mirrors its role), `role_id`, `capability_key`.
-  System-role defaults seeded by migration from §6. Same nullable policy. A school cannot edit
-  system defaults; it creates a custom role instead.
-- `user_roles`: `school_id`, `user_id`, `role_id`. `UNIQUE (school_id, user_id, role_id)`. A user
-  may hold several (teacher + parent).
-- `user_capability_grants`: `school_id`, `user_id`, `capability_key`, `effect` (`grant|revoke`),
-  `granted_by`, `reason`, `revoked_at` nullable, `revoked_by` nullable, timestamps. Append-only
-  (rule 4); ending a row sets `revoked_at`. **No expiry in Phase 1** (not in rule 13; add the
-  column when a need appears).
+Endpoints: staff CRUD (no delete), `POST /staff/:id/status`, `POST /staff/:id/issue-login`,
+`GET|POST /staff/:id/assignments`, `POST /assignments/:id/end`. `ScopeService.forUser(user)`
+returns the section ids a teacher may see; `PermissionsService.can(user, cap, subject)` uses it.
+Screens: staff list, staff detail with assignments tab, status and issue-login dialogs.
 
-Logic, in one class `EffectivePermissions`:
-`effective(user) = (∪ defaults of roles whose capacity is active) − active revoke rows ∪ active
-grant rows`, order-independent (R50), cached per request. "Capacity active" means: staff roles
-count only while `staff.status = active`; the parent role only while `guardian_id` is set; the
-student role only while `student_id` is set. `Gate::define` for every enum case, plus
-`can($capability, $subject)` with scope from assignment data: a teacher `can('student.view',
-$student)` only if an active `teacher_assignment` of theirs matches the student's active
-enrolment's class or section. Office staff and principal: school-wide. Parents and students: a
-fixed closed set resolved in code, no grant rows. Platform users: nothing in `/admin`.
+Tests: R17–R24, R53, R54; CNIC column is ciphertext in the database; one current class teacher
+per section, two sequential allowed; isolation.
 
-Screens: Roles resource (custom roles only; capability checklist excludes `role.manage`, and every
-ticked capability must be held by the creator). **Staff member permissions** page (gated by
-`role.manage`): left, the role defaults; middle, the deltas with who/why/when; right, the
-effective list with the source of each line ("from role Office staff", "granted by Principal
-2026-10-01"). Role assignment and office reset obey R12–R14. Filament resource `authorize*` methods
-and policies call the Gate; **every resource in slices 3–6 is retrofitted in this slice** to use
-capabilities instead of "logged in".
+### Slice 5 — Guardians (≈ 1.5 days)
 
-Tests: R45–R60; each system role's defaults; grant then revoke, revoke then grant, both active;
-`role.manage` refused everywhere; granting or revoking what you do not hold refused; office staff
-cannot reset or re-role the principal; teacher sees own section's students and not another's, and
-loses scope the day after reassignment; audit rows exist for grant and revoke; effective view
-matches `EffectivePermissions` output; last active principal cannot be disabled.
+Schema: `guardians`: `full_name`, `cnic` encrypted + `cnic_hash` nullable, `phone` nullable,
+`email` nullable (contact, not the login email), `contact_capability` (`whatsapp|smartphone_data|
+keypad`, **not null**, rule 17), `address` nullable, `merged_into_id` nullable self FK, `status`
+(`active|merged`). Partial unique `(school_id, cnic_hash) WHERE cnic_hash IS NOT NULL`; index
+`(school_id, phone)`. **No uniqueness on phone.** `users.guardian_id` FK added.
 
-### Slice 8 — Phase close (≈ 1 day)
+Endpoints: `GET /guardians`, `GET|PATCH /guardians/:id`, `POST /guardians`,
+`POST /guardians/search { cnic? , phone? }` (POST so digits stay out of the URL),
+`POST /guardians/:id/issue-login`. Screens: guardian list (flags "no CNIC", "no phone"), detail.
 
-- Audit trail review: activitylog covers school status, user issue/reset/disable, student status,
-  enrolment changes, grants, role assignment. `activity_log` carries `school_id` (nullable; second
-  policy shape) via `tapActivity`. Every model uses `logExcept(['cnic','cnic_hash','b_form',
-  'b_form_hash','password','remember_token','username_hash'])`. Grep the table after the suite for
-  any 13-digit string.
-- `docs-maintainer` sweep; `README.md` with "clone, copy `.env.example`, `docker compose up`,
-  `migrate --seed`, log in" that a fresh machine can follow. Verify by following it.
-- `security-reviewer` on the whole phase; `performance-engineer` only on the admission search and
-  the students list.
+Tests: R27, R31, R32; shared phone allowed; phone normalisation; isolation.
+
+### Slice 6 — Students, enrolment, admission (≈ 6 days)
+
+Schema:
+- `students`: `admission_no` (`UNIQUE (school_id, admission_no)`, `S-000123`, taken by `UPDATE
+  schools SET last_admission_no = last_admission_no + 1 … RETURNING` inside the admission
+  transaction), `full_name`, `gender`, `date_of_birth`, `b_form` encrypted + `b_form_hash`
+  nullable, `status` (`active|suspended|withdrawn|transferred|alumni`), `admitted_on`, `photo_key`
+  nullable, `merged_into_id` nullable, `notes`. Partial unique `(school_id, b_form_hash) WHERE
+  b_form_hash IS NOT NULL`. `users.student_id` FK and the `num_nonnulls` CHECK added.
+- `student_status_changes`: `student_id`, `from_status`, `to_status`, `reason`, `changed_by`,
+  `effective_on`.
+- `student_guardians`: `student_id`, `guardian_id`, `relationship` (`father|mother|guardian|
+  other`), `is_primary_contact`, `is_fee_payer`, `can_login`. `UNIQUE (school_id, student_id,
+  guardian_id)`. **Partial unique `(school_id, student_id) WHERE is_primary_contact`.**
+- `enrolments` (rule 6): `student_id`, `academic_year_id`, `class_id`, `section_id`, `roll_no`
+  nullable, `status` (`active|completed|left`), `started_on`, `ended_on`. Composite FK
+  `(school_id, class_id, academic_year_id)`. Partial uniques `(school_id, student_id) WHERE status
+  = 'active'` and `(school_id, section_id, roll_no) WHERE roll_no IS NOT NULL AND status =
+  'active'`.
+- `student_documents`: `student_id`, `type` (`b_form|photo|previous_school_leaving|guardian_cnic|
+  other`), `object_key`, `mime`, `size_bytes`, `status` (`uploaded|verified|rejected`),
+  `verified_by` nullable, `rejection_reason` nullable. **Upload and view only**; no verify screen.
+- `staged_uploads`: `uploaded_by`, `object_key`, `mime`, `size_bytes`, `expires_at`.
+- `idempotency_keys`: `key`, `user_id`, `response jsonb`, `created_at`. `UNIQUE (school_id, key)`
+  — a database constraint, not a cache entry.
+
+Uploads: `POST /uploads` (multipart, 5 MB cap in multer memory storage) → sniff with `file-type`
+(allow `image/jpeg`, `image/png`, `application/pdf` only) → images re-encoded with `sharp`
+(strips EXIF) → stored at `staged/{schoolId}/{ulid}.{ext}` → returns a staged id. On admission
+commit, an after-commit step moves objects to `{schoolId}/students/{studentId}/{ulid}.{ext}`. A
+daily `@nestjs/schedule` job (exception 3: list schools, then per school) deletes expired staged
+rows and objects. **Download: `GET /documents/:id/content`, streamed by the API after
+`can(document.view, document)`**, with `Content-Disposition: attachment`, `X-Content-Type-Options:
+nosniff`, `Content-Security-Policy: sandbox`. The bucket is never reachable from a browser and no
+presigned URL is ever issued.
+
+Admission: one endpoint `POST /admissions` taking the whole wizard payload plus an
+`Idempotency-Key` header; supporting lookups `POST /students/search-bform`, `POST
+/guardians/search`. The wizard screen:
+1. **Student lookup first** by B-Form: a hit on `withdrawn|transferred|alumni` offers **readmit**
+   (`POST /students/:id/readmit`); a hit on `active|suspended` stops with a link. Then details.
+2. **Guardian match — cannot be skipped**: CNIC then phone; shows "Ahmed Khan — father of Ali,
+   Class 5 — link?"; several phone hits are all shown; merged records resolve to the survivor.
+   Link or create. One primary contact (must have a phone), at least one fee payer. The page
+   keeps `guardianId` only, never the digits.
+3. Class and section (the class row implies the year).
+4. Documents, optional (staged uploads).
+5. Review → submit. Server creates everything in one transaction, `status = active`, status row,
+   audit row. Then offers "Issue guardian login" and, where the school and class allow, "Issue
+   student login" (username = B-Form digits; never links to an existing user).
+Name + DOB + primary guardian matching an existing student is a **warning** in the response the
+UI must confirm, not a block.
+
+Other endpoints: `GET /students` (teacher-scoped in the query), `GET|PATCH /students/:id`,
+`POST /students/:id/status`, `POST /students/:id/guardians`, `PATCH /student-guardians/:id`,
+`POST /enrolments/:id/change-section`, `POST /enrolments/:id/roll-number`,
+`POST /students/:id/change-class`. Screens: students list, student detail (details, guardians,
+enrolment history, documents, status history), the admission wizard.
+
+Tests: R25–R44; atomicity (a forced failure at the last insert leaves nothing, including no moved
+files); two concurrent admissions get consecutive numbers; SVG and HTML uploads refused; EXIF
+stripped; a document id from school A is `404` for school B; isolation per table. Playwright:
+full admission with guardian match; readmission.
+
+### Slice 7 — Custom roles, grants, the permissions screen (≈ 4 days)
+
+Schema: `custom_roles` (`key`, `name`, `status` `active|archived`; partial unique on active key),
+`custom_role_capabilities` (`custom_role_id`, `capability_key`), `user_capability_grants`
+(`user_id`, `capability_key`, `effect` `grant|revoke`, `granted_by`, `reason`, `revoked_at`,
+`revoked_by`). Append-only. No expiry in Phase 1. `user_roles.custom_role_id` FK added.
+
+Logic: `EffectivePermissions` =
+`(∪ defaults of roles whose capacity is active) − active revoke rows ∪ active grant rows` (R50),
+computed once per request. Staff roles count only while `staff.status = active`; parent only
+while `guardian_id` is set; student only while `student_id` is set. Parents and students: fixed
+closed sets, no grant rows.
+
+Endpoints: custom role CRUD (no delete while held), `GET /users/:id/permissions` (defaults,
+deltas, effective set with the source of each line), `POST /users/:id/grants`, `POST
+/grants/:id/end`, `POST /users/:id/roles`, `DELETE /users/:id/roles/:roleRef`. All gated by
+`role.manage` except custom-role read.
+Screens: custom roles (checklist excludes `role.manage`; only capabilities the creator holds are
+tickable), **staff member permissions** — three columns: role defaults, deltas with who/why/when,
+effective list with sources.
+
+Tests: R45–R59; unit-test `EffectivePermissions` exhaustively (it is pure); the screen's
+effective list equals the service's output. Playwright: principal grants `payment.verify` to an
+office user, the user's `/me` shows it, principal ends it, it is gone.
+
+### Slice 8 — Phase close (≈ 1.5 days)
+
+- Audit coverage check against R57; grep `audit_log.metadata` and the captured logs for 13-digit
+  runs after a full suite run (R16).
+- `docs-maintainer` sweep; `README.md` verified by following it on a clean clone.
+- `security-reviewer` on the whole phase — it is **the** tenant-isolation control now, not a
+  second opinion (`CLAUDE.md`). `performance-engineer` on the students list and the admission
+  searches only. `code-quality` on the web app for duplicated components.
 - `phase-gate` on the Definition of Done. `WORKLOG.md` updated with what Phase 2 inherits.
-
----
-
-## 4. Schema and migration conventions
-
-**Tenant columns and RLS.** Every table except the allowlist in 0.5 carries `school_id bigint not
-null references schools`. The shared helper `Tenancy\Schema::tenantTable(Blueprint $t)` adds
-`school_id`, timestamps, and `UNIQUE (school_id, id)`; `Tenancy\Schema::enableRls('table',
-nullableSchool: false)` enables and forces RLS and creates the policy
-`school_id = NULLIF(current_setting('app.school_id', true), '')::bigint` (or the nullable-school
-shape for `roles`, `role_capabilities`, `activity_log`). Both are called in the same migration.
-`schools` has its own policy (slice 0.6) plus a `SELECT` grant on a view `school_lookup(id,
-short_code, status)` for the pre-auth login lookup.
-
-**Composite tenant foreign keys.** A child row references its parent as
-`FOREIGN KEY (school_id, parent_id) REFERENCES parent (school_id, id)`, and enrolments and
-assignments reference classes as `(class_id, academic_year_id) REFERENCES classes (id,
-academic_year_id)`. A cross-tenant id is then a constraint error even if RLS were bypassed.
-
-**Indexes.** Postgres does not index FK columns. Every FK column gets an index, `school_id`-led on
-tenant tables; the slice texts list the ones that matter. Partial uniques are **indexes**, created
-with `DB::statement('CREATE UNIQUE INDEX ...')` — `$table->unique()` cannot express `WHERE`, and
-Laravel's `unique` validation rule does not know the predicate (validate in the form too).
-
-**Lifecycle: one mechanism per table.** People and record tables (`users`, `staff`, `guardians`,
-`students`, `enrolments`, `student_guardians`, `teacher_assignments`, `user_capability_grants`)
-have a `status` or an end date and **no `deleted_at`**, so their unique indexes stay meaningful.
-Config tables (`sections`, `subjects`) have `deleted_at` and every unique index on them carries
-`AND deleted_at IS NULL`.
-
-**Identity numbers.** `cnic` / `b_form` are `text` with the `encrypted` cast; `*_hash` is
-`char(64)` = `hash_hmac('sha256', $digits, config('asms.identity_hash_key'))` from
-`IDENTITY_HASH_KEY`, a secret separate from `APP_KEY` so key rotation of one does not break the
-other. Rotation is an explicit `identity:rehash` command run from the decrypted columns. No
-per-school salt (the key is the secret, and the user's hash must match the person's hash within a
-school). Lookups use the hash; display is masked.
-
-**Phones.** `varchar(16)`, E.164, `CHECK (phone ~ '^\+[1-9][0-9]{7,14}$')`; a cast normalises
-`0300-1234567`, `03001234567`, `+92 300 1234567` to `+923001234567`, defaulting to `+92` when no
-country code is given.
-
-**Status columns** are `varchar` with `CHECK (status IN (...))`, not Postgres enums. PHP backed
-enums in the model.
-
-**Reserved words.** Never name a column `from`, `to`, `order`, `group`.
-
-**Uploads.** `FILESYSTEM_DISK=private` and `livewire.temporary_file_upload.disk=private`; the
-bucket or directory is never web-reachable. Allowlist by `finfo` sniff, not extension:
-`image/jpeg`, `image/png`, `application/pdf`; 5 MB; stored as `{school_id}/{student_id}/{ulid}.
-{ext}` with `ext` from the sniffed type and the original filename discarded. Images are re-encoded
-(strips EXIF, including the GPS of a child's home). Served only by `GET /documents/{id}` requiring
-an authenticated session **and** `can('document.view', $document)` (document loaded under RLS, so
-zero rows is a 404) **and** a signed URL with a 5-minute lifetime; headers
-`Content-Disposition: attachment` for PDF, `X-Content-Type-Options: nosniff`,
-`Content-Security-Policy: sandbox`.
-
-**Migrations** run on the owner connection; the app connection owns nothing. Never `->change()` a
-column with data in Phase 1; there is no data. From Phase 2 onward, expand-and-contract (see the
-`devops` agent).
 
 ---
 
@@ -533,21 +449,21 @@ column with data in Phase 1; there is no data. From Phase 2 onward, expand-and-c
 
 | Register item | Phase 1 stance |
 |---|---|
-| 7–10 partial payment, sibling discount, concession scope, proration | No money tables. Nothing to pre-empt. |
-| 11 exit states | Status rows exist (R36); no financial consequence is implemented. |
-| 12 staff leave | No leave tables. The date-bounded `teacher_assignments` row is what a covering teacher would use; do not build it. |
-| 13 grace and retention | `schools.status = suspended` makes writes `403`. Days and months are not computed anywhere. |
+| 7–10 partial payment, sibling discount, concession scope, proration | No money tables. |
+| 11 exit states | Status rows exist (R36); no financial consequence. |
+| 12 staff leave | No leave tables. A covering teacher would be a dated `teacher_assignments` row; do not build it. |
+| 13 grace and retention | `suspended` = read-only. No day or month arithmetic anywhere. |
 | 21–26 | Untouched. |
-| Document verification | Columns exist, nullable; no verify screen; verification gates nothing. |
-| Capability list (§6) | Names are fixed in Phase 1. Which ones a screen *enforces* is only what Phase 1 has screens for. |
-| CNIC correction after a login exists | Refused in Phase 1; flagged to the owner. |
+| Document verification | Columns exist; no verify screen; gates nothing. |
+| CNIC correction after a login exists | Refused (R24); flagged to the owner. |
+| Numeric reset code versus emailed link | Link in Phase 1; a code is a small change if the owner insists. |
 
 ---
 
 ## 6. Capability registry (51 keys) and system-role defaults
 
-Fixing the names now is the point; later phases add screens, not keys. Keys are
-`noun.verb[.qualifier]`, lower-case, dot-separated, and live in the `Capability` enum.
+Names are fixed now; later phases add screens, not keys. `noun.verb[.qualifier]`, lower-case.
+They live in `packages/shared` as an enum with a group, and `SYSTEM_ROLE_DEFAULTS` holds this table.
 
 | Group | Keys | Principal | Office staff | Teacher |
 |---|---|---|---|---|
@@ -563,125 +479,129 @@ Fixing the names now is the point; later phases add screens, not keys. Keys are
 | Finance (11) | `charge.create` `charge.campaign.send` `concession.grant` `payment.record` `payment.verify` `payment.void` `collection.handover.confirm` `expense.record` `expense.approve` `finance.report.view` `fee.statement.view` | all | `charge.create` `payment.record` `fee.statement.view` `expense.record` — **not** `payment.verify`, `concession.grant`, `finance.report.view` | — |
 | Comms (2) | `announcement.send.scope` `announcement.send.school` | both | `announcement.send.scope` | `announcement.send.scope` (own classes) |
 
-\* `role.manage` is held by the principal by default and **can never appear in a grant row or a
-custom role**. Parent and student roles have a fixed, closed set resolved in code, not in these
-tables. Platform admin has no rows anywhere in `roles`; the platform panel is gated by guard.
-
-**Why not `spatie/laravel-permission`:** it has roles and direct permissions, but no revoke delta,
-no `granted_by`/`reason`, and no "cannot grant what you do not hold". Every one of those is a
-requirement, so the package would be a wrapper we fight. Four small tables and one class is less
-code than the adapter would be. Opus: do not relitigate this without a concrete reason in
-`WORKLOG.md`.
+\* `role.manage` is the principal's by default and **can never appear in a grant row or a custom
+role**. Parent and student sets are fixed in code. Platform admins are not school users and hold
+no capabilities; the platform module is gated by its own session.
 
 ---
 
 ## 7. Numbered rules (each is a test)
 
 **Login, password, reset (slice 2)**
-- R1 The login form requires a school code; a username that exists in two schools is never
-  resolved to "the first match".
+- R1 Login requires a school code; a username present in two schools is never resolved to "the
+  first match".
 - R2 Forgot-password takes school code + digits, never an email, and always returns the same
-  message.
+  response.
 - R3 A reset link is sent only to a verified email on an `active` user.
-- R4 Office reset keeps `email` and `email_verified_at`, announces itself to that email, sets
-  `password_is_default`, clears the limiter.
-- R5 Office reset deletes the target's sessions, `remember_token` and outstanding reset tokens.
-- R6 Office reset never changes `status`; resetting a disabled user leaves them disabled.
+- R4 Office reset keeps `email` and `email_verified_at`, notifies that email, sets
+  `password_is_default`, clears the lockout.
+- R5 Office reset revokes all of the target's sessions and voids outstanding reset tokens.
+- R6 Office reset never changes `status`; a disabled user stays disabled.
 - R7 Changing a verified email nulls `email_verified_at`; password change is blocked until
   re-verified.
 - R8 The same email on two users in a school is allowed.
-- R9 Setting `status = disabled` deletes the user's sessions immediately.
+- R9 Disabling a user revokes their sessions immediately; their next request is `401`.
 - R10 A user may not disable or office-reset their own account.
-- R11 After 5 failures the username is locked for 15 minutes; all failure responses are
-  byte-identical.
+- R11 After 5 failures the username is locked for 15 minutes; every failure response is identical
+  in status, body and headers.
 - R12 Office reset of a principal-role holder requires the actor to hold `role.manage`.
 - R13 Assigning a role whose defaults exceed the actor's effective set requires `role.manage`.
 - R14 The target's effective set after any reset or role change must be a subset of the actor's,
-  or the actor holds `role.manage`.
-- R15 A school always has at least one `active` user holding `principal`; disabling the last is
-  refused (the platform panel issues a replacement).
-- R16 No 13-digit string appears in any log line, URL, activity row or Livewire payload after a
-  full test run.
+  unless the actor holds `role.manage`.
+- R15 A school always has at least one `active` principal; disabling the last is refused.
+- R16 No 13-digit string appears in any log line, URL, audit row, list response or web bundle
+  after a full test run.
 
 **Staff (slice 4)**
-- R17 `staff.status = left` removes the user's staff roles, ends every active grant row with
-  reason "staff left", ends active assignments, deletes sessions; `users.status` becomes
-  `disabled` only if no guardian or student capacity remains.
+- R17 `staff.status = left` removes staff roles, ends active grants ("staff left"), ends active
+  assignments, revokes sessions; the user is `disabled` only if no guardian or student capacity
+  remains.
 - R18 `suspended` behaves as R17 for login and effective capabilities, but assignments and grants
   are kept inert and return on reactivation.
-- R19 Re-hire (`left → active`) re-enables login only if the user is otherwise disabled; grants
-  are not restored.
-- R20 A second staff row for a CNIC already present in the school (any status) is refused with a
-  pointer to the existing row.
+- R19 Re-hire re-enables login only if the user is otherwise disabled; grants are not restored.
+- R20 A second staff row for a CNIC already in the school (any status) is refused with a pointer
+  to the existing row.
 - R21 "Issue login" is refused for `suspended`/`left` staff, when CNIC is missing, and when a
-  login already exists for this staff row.
+  login already exists for the row.
 - R22 Issue login links an existing user with the same `username_hash` (teacher-parent) instead
   of creating a second user.
 - R23 One current class teacher per section; reassignment ends the old row and inserts a new one
-  in one transaction; nothing is deleted.
+  in one transaction.
 - R24 CNIC edit is refused once a login exists.
 
 **Admission and students (slice 6)**
-- R25 Same B-Form digits in one school is refused with a link to the existing student, including
-  withdrawn ones; the same digits in two schools is allowed.
-- R26 A B-Form hit on `withdrawn|transferred|alumni` offers readmission (status row + new
-  enrolment); a new student is never created for them.
+- R25 Same B-Form in one school is refused with a link to the existing student; the same digits
+  in two schools is allowed.
+- R26 A B-Form hit on `withdrawn|transferred|alumni` offers readmission; a new student is never
+  created for them.
 - R27 A guardian with neither CNIC nor phone may be recorded but cannot be issued a login and
   cannot be found by the match step.
 - R28 Exactly one primary contact per student, enforced by the database.
 - R29 At least one fee payer per student.
 - R30 A guardian with no phone cannot be primary contact.
 - R31 A match hit whose `merged_into_id` is set resolves to the survivor.
-- R32 Phone search returning several guardians shows all; the office picks.
-- R33 Final submit requires the page's idempotency token; a repeat with the same token returns
-  the first result and writes nothing; two racing submits produce one student.
+- R32 A phone search returning several guardians returns all; the office picks.
+- R33 `POST /admissions` requires an `Idempotency-Key`; a repeat with the same key returns the
+  first response and writes nothing; two racing submits produce one student.
 - R34 Admission numbers are consecutive under concurrency and have no gaps after a rollback.
-- R35 The wizard creates the student as `active` with an active enrolment, in one transaction;
-  any failure leaves no student, guardian link, enrolment, document row or file.
+- R35 Admission creates student, guardian links and enrolment as `active` in one transaction; any
+  failure leaves no row and no stored file.
 - R36 Status transitions: `active → suspended|withdrawn|transferred`; `suspended → active`;
-  `withdrawn|transferred → active` only via readmission; `active → alumni` only via year-end
+  `withdrawn|transferred → active` only via readmission; `active → alumni` only at year end
   (Phase 4). Anything else, including repeating the current status, is refused.
-  `withdrawn|transferred` close the active enrolment (`left`, `ended_on`); `suspended` does not.
-- R37 Roll-number uniqueness is per section among `active` enrolments only; a section change
-  clears `roll_no`.
+  `withdrawn|transferred` close the active enrolment; `suspended` does not.
+- R37 Roll numbers are unique per section among `active` enrolments only; a section change clears
+  `roll_no`.
 - R38 A move to a class in another academic year is refused in Phase 1.
 - R39 Moving class in-year closes the old enrolment and opens a new one; never an edit.
 - R40 "Issue student login" never links to an existing user; a B-Form colliding with a CNIC
   username is refused.
-- R41 Files staged before commit are not reachable and are removed if the admission does not
-  commit.
-- R42 Uploads are accepted only by sniffed type (`jpeg`, `png`, `pdf`), ≤ 5 MB, re-encoded if
-  image, stored under a ULID name.
-- R43 A document URL is useless without a session holding `document.view` on that document; a
-  user of another school gets 404.
+- R41 Staged files are unreachable and are removed if the admission does not commit.
+- R42 Uploads are accepted only by sniffed type (`jpeg`, `png`, `pdf`), ≤ 5 MB, images re-encoded,
+  stored under a ULID name.
+- R43 Document content is served only to a session holding `document.view` on that document; a
+  user of another school gets `404`.
 - R44 Closing an academic year is refused while any enrolment in it is `active`.
 
-**Permissions (slice 7)**
+**Permissions (slices 2, 4, 7)**
 - R45 `role.manage` cannot appear in a grant row or a custom role.
 - R46 Nobody grants or revokes a capability they do not hold.
-- R47 `granted_by != user_id`: nobody grants or revokes on themselves, including the principal.
+- R47 Nobody grants or revokes on themselves, including the principal.
 - R48 Grants and revokes targeting a `role.manage` holder require `role.manage`.
 - R49 Grants to users whose staff record is not `active`, or who hold only parent/student roles,
   are refused.
-- R50 Effective = role defaults − active revokes ∪ active grants; a revoke row removes a default
+- R50 Effective = role defaults − active revokes ∪ active grants. A revoke row removes a default
   only; a grant ends solely by `revoked_at`; an active grant and an active revoke on the same key
   → grant wins; ending a grant twice is a no-op.
 - R51 A grantor later losing a capability does not cascade to grants they made.
-- R52 Custom roles may not contain `role.manage`; every capability in a custom role must be held
-  by its creator; a custom role held by any user cannot be deleted.
+- R52 Custom roles may not contain `role.manage`; every capability in one must be held by its
+  creator; a custom role held by any user cannot be archived.
 - R53 Teacher scope is evaluated against assignments active today; history follows the section,
-  not the person (a reassigned teacher loses all scope over the old section, the new one gains
-  all of it).
-- R54 A `subject_teacher` row with `section_id IS NULL` scopes every section of the class.
-- R55 Office staff cannot open the permissions page.
-- R56 Platform users have no access to `/admin`; school users have none to `/platform`.
-- R57 Every grant, revoke, role assignment and office reset writes an activity row with actor,
-  target, reason.
-- R58 The effective-permissions screen shows the same set `EffectivePermissions` computes.
-- R59 A staff user whose `staff.status` is not `active` has no staff capability regardless of
-  stored rows.
-- R60 Every table outside the allowlist is RLS-forced (the 0.5 test) and every child row's
-  `school_id` matches its parent's (composite FK).
+  not the person.
+- R54 A `subject_teacher` row with no section scopes every section of the class.
+- R55 Office staff get `403` on every permissions endpoint and do not see the screen.
+- R56 Platform sessions are refused on school endpoints and school sessions on platform endpoints.
+- R57 Every grant, revoke, role assignment, office reset, disable and status change writes an
+  audit row with actor, target and reason.
+- R58 The effective-permissions screen shows exactly what `EffectivePermissions` computes.
+- R59 A user whose `staff.status` is not `active` has no staff capability regardless of stored
+  rows.
+
+**Guardrails (slice 0 and 2)**
+- R60 Every Prisma model outside the allowlist has a required `schoolId`, a `(schoolId, id)`
+  unique, and composite tenant relations (schema guard test).
+- R61 Importing Prisma outside `src/repositories/**` fails lint; so does importing a platform
+  repository outside the platform module and the named exception sites.
+- R62 Every tenant table has an isolation test: written as school A, invisible and unwritable as
+  school B, through the API.
+- R63 A request body or query carrying `schoolId` is rejected `422`.
+- R64 Session tokens are stored only as hashes; a revoked or expired session is `401` on its next
+  request.
+- R65 A cookie-authenticated non-GET request with a foreign or missing `Origin` is refused.
+- R66 Every `id` / `*Id` in every response is a string.
+- R67 Every list endpoint is paginated; `limit` above 50 is refused.
+- R68 Every error response uses the envelope with a code from `packages/shared`; a route with no
+  capability decorator fails the test suite.
 
 ---
 
@@ -689,24 +609,25 @@ code than the adapter would be. Opus: do not relitigate this without a concrete 
 
 All of `CLAUDE.md`'s Definition of Done, read literally, plus:
 
-- A fresh clone on a machine with only Docker follows `README.md` to a logged-in principal in
-  under 15 minutes.
-- The isolation test enumerates every table and CI is red if a new one lacks RLS or allowlisting.
-- Every slice's tests exist and pass on the app role, not the owner role.
-- R1–R60 each have a named test.
-- No CNIC, B-Form, password or token appears in any log, URL, activity row or error page.
-- `WORKLOG.md` says what Phase 2 (attendance, diary, notices, WhatsApp/SMS, first Flutter
-  screen) inherits and what was deferred, with register numbers.
+- A fresh clone with Docker and Node follows `README.md` to a logged-in principal in under
+  15 minutes.
+- R1–R68 each have a named test, and CI runs them.
+- The schema guard and the lint boundary are red on a planted violation.
+- No CNIC, B-Form, password or token in any log, URL, audit row or list response.
+- Every screen has loading, empty, error and no-permission states, and works at 1280 px and at
+  tablet width.
+- `WORKLOG.md` says what Phase 2 inherits and what was deferred, with register numbers.
 
 ---
 
 ## 9. What Phase 2 will need from Phase 1 (so do not paint over it)
 
-- `classes.attendance_mode` and the per-period storage rule (rule 14) — Phase 2 writes the
-  `attendance` table with `UNIQUE (school_id, enrolment_id, date, period)`.
+- `classes.attendance_mode` and rule 14 — Phase 2 writes `attendance` with `UNIQUE (school_id,
+  enrolment_id, date, period)`.
 - `guardians.contact_capability` (rule 17) — every routing rule reads it.
-- Date-bounded `teacher_assignments` as the only scope source — the mobile app's "my classes" is
-  this table, and open item 12 (covering teacher) would be a row in it.
-- `users` with `guardian_id` and `student_id` — the Flutter login hits the same table, with the
-  same school code + digits + password.
+- Dated `teacher_assignments` as the only scope source — the mobile app's "my classes".
+- Bearer-token sessions already accepted by the API — React Native logs in with the same
+  `POST /auth/login`.
+- BullMQ and a worker process arrive in Phase 2 with messaging; job payloads carry a `schoolId`
+  that the tenancy module validates into a `SchoolId`.
 - The capability keys for attendance, diary and announcements already exist in the enum.
