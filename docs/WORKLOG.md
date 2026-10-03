@@ -73,9 +73,8 @@ slice 0 are not counted.
    slice 9 removes it); SMS provider options researched (`research-scout` report below) and one
    or two will be connected; **both** WAHA and the WhatsApp Business API, selectable per school
    with a platform default; cover teacher gets full class-teacher scope; the owner creates the
-   Firebase project and the Play account; Android only. **Still open:** whether office staff may,
-   by default, change a *student's* mark from absent to late at the gate (the question was
-   misread as teacher attendance). Blocks only slice 11's arrivals default.
+   Firebase project and the Play account; Android only; office staff gain `attendance.student.mark` (all scope) by default so the gate
+   can record a late arrival. Nothing in §1.2 is open.
 4. Product owner, decisions taken provisionally by the main thread — confirm or overturn:
    (a) principals are unrestricted peers (grants/revokes on a principal refused);
    (b) the login-spike recorder as part of named exception 2 (CLAUDE.md);
