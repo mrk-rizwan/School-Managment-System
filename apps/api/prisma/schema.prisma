@@ -93,6 +93,17 @@ model School {
   // Tenant back-relations: declared for the migration diff only, absent from the client (header).
   schoolSettings    SchoolSettings[]   @ignore
   schoolCounters    SchoolCounter[]    @ignore
+  academicYears     AcademicYear[]     @ignore
+  classes           Class[]            @ignore
+  sections          Section[]          @ignore
+  subjects          Subject[]          @ignore
+  guardians         Guardian[]         @ignore
+  staff             Staff[]            @ignore
+  users             User[]             @ignore
+  sessions          Session[]          @ignore
+  userTokens        UserToken[]        @ignore
+  userRoles         UserRole[]         @ignore
+  auditLogs         AuditLog[]         @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
   @@index([schoolGroupId], map: "schools_school_group_id_idx")
@@ -214,4 +225,411 @@ model SchoolCounter {
   @@unique([schoolId, name], map: "school_counters_school_id_name_key")
   @@unique([schoolId, id], map: "school_counters_school_id_id_key")
   @@map("school_counters")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Slice 3: academic structure. Names are stored trimmed and non-empty (CHECK <table>_name_check),
+// so a trailing space cannot defeat a uniqueness rule; the API trims before writing.
+// ---------------------------------------------------------------------------------------------
+
+enum AcademicYearStatus {
+  planned
+  active
+  closed
+
+  @@map("academic_year_status")
+}
+
+enum ClassStatus {
+  active
+  archived
+
+  @@map("class_status")
+}
+
+/// Rule 14: how staff record attendance for the class. A daily mark is stored as period 1.
+enum AttendanceMode {
+  daily
+  period
+
+  @@map("attendance_mode")
+}
+
+/// Tenant: a session (rule 15). A school may run several at once; each class belongs to one.
+model AcademicYear {
+  id        BigInt             @id(map: "academic_years_pkey") @default(autoincrement())
+  schoolId  BigInt             @map("school_id")
+  /// Unique per school (academic_years_school_id_name_key).
+  name      String             @db.VarChar(100)
+  startsOn  DateTime           @map("starts_on") @db.Date
+  /// CHECK academic_years_dates_check: ends_on > starts_on.
+  endsOn    DateTime           @map("ends_on") @db.Date
+  status    AcademicYearStatus @default(planned)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "academic_years_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  classes Class[]
+
+  @@unique([schoolId, id], map: "academic_years_school_id_id_key")
+  @@unique([schoolId, name], map: "academic_years_school_id_name_key")
+  @@map("academic_years")
+}
+
+/// Tenant: one row per class per academic year. The year never changes once the class is
+/// referenced: by a section, trigger classes_academic_year_immutable; by later rows (teacher
+/// assignments, enrolments), their FKs to (school_id, id, academic_year_id) ON UPDATE RESTRICT.
+model Class {
+  id             BigInt         @id(map: "classes_pkey") @default(autoincrement())
+  schoolId       BigInt         @map("school_id")
+  academicYearId BigInt         @map("academic_year_id")
+  /// Unique per year (classes_school_id_academic_year_id_name_key), archived classes included.
+  name           String         @db.VarChar(100)
+  /// Display order; CHECK classes_sort_order_check: 0 or more.
+  sortOrder      Int            @default(0) @map("sort_order")
+  /// No default: the school chooses per class (rule 14, contract slice-3 §3.3).
+  attendanceMode AttendanceMode @map("attendance_mode")
+  status         ClassStatus    @default(active)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school       School       @relation(fields: [schoolId], references: [id], map: "classes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "classes_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sections     Section[]
+
+  @@unique([schoolId, id], map: "classes_school_id_id_key")
+  /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
+  @@unique([schoolId, id, academicYearId], map: "classes_school_id_id_academic_year_id_key")
+  @@unique([schoolId, academicYearId, name], map: "classes_school_id_academic_year_id_name_key")
+  @@map("classes")
+}
+
+/// Tenant config table: soft-deleted by deleted_at. Live names are unique per class by the partial
+/// index sections_school_id_class_id_name_key (migration SQL, WHERE deleted_at IS NULL).
+model Section {
+  id        BigInt    @id(map: "sections_pkey") @default(autoincrement())
+  schoolId  BigInt    @map("school_id")
+  classId   BigInt    @map("class_id")
+  name      String    @db.VarChar(50)
+  /// Null = no limit; CHECK sections_capacity_check: 1 or more.
+  capacity  Int?      @db.SmallInt
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "sections_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class  Class  @relation(fields: [schoolId, classId], references: [schoolId, id], map: "sections_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "sections_school_id_id_key")
+  /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
+  @@unique([schoolId, id, classId], map: "sections_school_id_id_class_id_key")
+  @@index([schoolId, classId], map: "sections_school_id_class_id_idx")
+  @@map("sections")
+}
+
+/// Tenant config table: soft-deleted by deleted_at. Live name and live code are each unique per
+/// school by partial indexes subjects_school_id_name_key / subjects_school_id_code_key.
+model Subject {
+  id        BigInt    @id(map: "subjects_pkey") @default(autoincrement())
+  schoolId  BigInt    @map("school_id")
+  name      String    @db.VarChar(100)
+  code      String?   @db.VarChar(20)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+
+  @@unique([schoolId, id], map: "subjects_school_id_id_key")
+  @@map("subjects")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Identity numbers (plan §3.6), on every table that holds one: `cnic` is the AES-256-GCM envelope
+// `v1:<keyId>:<iv>:<tag>:<ciphertext>` (CHECK <table>_cnic_check), `cnic_hash` the lower-hex
+// HMAC-SHA256 of the 13 digits (CHECK <table>_cnic_hash_check); both or neither
+// (CHECK <table>_cnic_pair_check). Phones are E.164 (CHECK <table>_phone_check); emails are
+// stored trimmed and lower-cased (CHECK <table>_email_normalised_check).
+// ---------------------------------------------------------------------------------------------
+
+/// Rule 17: asked at admission, editable later. There is no "unknown"; the office must pick.
+enum ContactCapability {
+  whatsapp
+  smartphone_data
+  keypad
+
+  @@map("contact_capability")
+}
+
+enum GuardianStatus {
+  active
+  /// Folded into merged_into_id (CHECK guardians_merged_check); lookups resolve to the survivor.
+  merged
+
+  @@map("guardian_status")
+}
+
+/// Tenant: a parent or guardian, linked to students through student_guardians (slice 6). One row
+/// per person per school: a live CNIC is unique (partial index guardians_school_id_cnic_hash_key).
+/// Phone is deliberately not unique (siblings' parents share a number).
+model Guardian {
+  id                BigInt            @id(map: "guardians_pkey") @default(autoincrement())
+  schoolId          BigInt            @map("school_id")
+  fullName          String            @map("full_name") @db.VarChar(200)
+  cnic              String?           @db.VarChar(255)
+  cnicHash          String?           @map("cnic_hash") @db.Char(64)
+  phone             String?           @db.VarChar(16)
+  email             String?           @db.VarChar(254)
+  contactCapability ContactCapability @map("contact_capability")
+  address           String?           @db.VarChar(500)
+  /// Set exactly when status = merged (CHECK guardians_merged_check); never this row's own id.
+  mergedIntoId      BigInt?           @map("merged_into_id")
+  status            GuardianStatus    @default(active)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school     School     @relation(fields: [schoolId], references: [id], map: "guardians_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  mergedInto Guardian?  @relation("GuardianMerge", fields: [schoolId, mergedIntoId], references: [schoolId, id], map: "guardians_merged_into_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  mergedFrom Guardian[] @relation("GuardianMerge")
+  user       User?
+
+  @@unique([schoolId, id], map: "guardians_school_id_id_key")
+  @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
+  @@index([schoolId, mergedIntoId], map: "guardians_school_id_merged_into_id_idx")
+  @@map("guardians")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Slice 2: staff (minimal; slice 4 completes it), users, sessions, tokens, roles, audit.
+// ---------------------------------------------------------------------------------------------
+
+enum StaffStatus {
+  active
+  suspended
+  left
+
+  @@map("staff_status")
+}
+
+enum UserStatus {
+  active
+  /// Written only by the disable endpoint (R71). "No active capacity" is derived, never stored.
+  disabled
+
+  @@map("user_status")
+}
+
+/// A token is accepted only on the channel it was minted for (§3.5).
+enum SessionChannel {
+  cookie
+  bearer
+
+  @@map("session_channel")
+}
+
+enum UserTokenPurpose {
+  password_reset
+  email_verify
+
+  @@map("user_token_purpose")
+}
+
+/// Stored system roles. Parent and student are not rows: they derive from users.guardian_id and
+/// (slice 6) users.student_id.
+enum SystemRole {
+  principal
+  office_staff
+  teacher
+
+  @@map("system_role")
+}
+
+/// Tenant: one row per employed person (rule 7). Identity-number columns: see the comment above
+/// Guardian. cnic is nullable (R21: no CNIC, no login); a CNIC appears on at most one staff row in
+/// the school, any status (R20, partial index staff_school_id_cnic_hash_key).
+model Staff {
+  id          BigInt      @id(map: "staff_pkey") @default(autoincrement())
+  schoolId    BigInt      @map("school_id")
+  fullName    String      @map("full_name") @db.VarChar(200)
+  cnic        String?     @db.VarChar(255)
+  cnicHash    String?     @map("cnic_hash") @db.Char(64)
+  phone       String      @db.VarChar(16)
+  designation String?     @db.VarChar(100)
+  joinedOn    DateTime?   @map("joined_on") @db.Date
+  status      StaffStatus @default(active)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user   User?
+
+  @@unique([schoolId, id], map: "staff_school_id_id_key")
+  @@map("staff")
+}
+
+/// Tenant: a login. One per person per school: (school_id, staff_id) and (school_id, guardian_id)
+/// are unique, and a teacher who is also a parent has ONE user carrying both (rule 12). The
+/// username is never stored in clear: username_hash is the HMAC of the 13 digits. Email is not
+/// unique (R8). At least one person link (CHECK users_person_check).
+///
+/// student_id is NOT here yet: it arrives in slice 6 with its composite FK to students, and
+/// users_person_check is then replaced to count it. A *_id column without its FK would fail the
+/// schema guard, and adding a nullable column later needs no data migration.
+model User {
+  id                BigInt     @id(map: "users_pkey") @default(autoincrement())
+  schoolId          BigInt     @map("school_id")
+  /// Lower-hex HMAC-SHA256 (IDENTITY_HASH_KEY) of the 13 digits (CHECK users_username_hash_check).
+  usernameHash      String     @map("username_hash") @db.Char(64)
+  /// argon2id encoded (CHECK users_password_hash_check).
+  passwordHash      String     @map("password_hash") @db.VarChar(255)
+  email             String?    @db.VarChar(254)
+  /// Null whenever email changes (R7); set only with an email (CHECK users_email_verified_check).
+  emailVerifiedAt   DateTime?  @map("email_verified_at") @db.Timestamptz(3)
+  passwordIsDefault Boolean    @default(true) @map("password_is_default")
+  passwordChangedAt DateTime?  @map("password_changed_at") @db.Timestamptz(3)
+  status            UserStatus @default(active)
+  staffId           BigInt?    @map("staff_id")
+  guardianId        BigInt?    @map("guardian_id")
+  lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  /// Last office reset (contract slice-2 §5.4). The first login with last_login_at null or older
+  /// than this writes the audit row user.login_after_office_reset.
+  officeResetAt     DateTime?  @map("office_reset_at") @db.Timestamptz(3)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School      @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff         Staff?      @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian      Guardian?   @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sessions      Session[]
+  tokens        UserToken[]
+  roles         UserRole[]  @relation("UserRoleHolder")
+  rolesAssigned UserRole[]  @relation("UserRoleAssignedBy")
+  rolesEnded    UserRole[]  @relation("UserRoleEndedBy")
+  auditLogs     AuditLog[]
+
+  @@unique([schoolId, id], map: "users_school_id_id_key")
+  @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
+  // NULLs are distinct: these index the FKs and make "one login per person" a database fact.
+  @@unique([schoolId, staffId], map: "users_school_id_staff_id_key")
+  @@unique([schoolId, guardianId], map: "users_school_id_guardian_id_key")
+  @@map("users")
+}
+
+/// Tenant: server-side sessions (§3.5). token_hash is globally unique because resolving a session
+/// is what establishes the tenant (CLAUDE.md named exception 4); its index is the one allowlisted
+/// tenant index that does not lead with school_id.
+model Session {
+  id         BigInt         @id(map: "sessions_pkey") @default(autoincrement())
+  schoolId   BigInt         @map("school_id")
+  userId     BigInt         @map("user_id")
+  /// Lower-hex SHA-256 of the token (CHECK sessions_token_hash_check); the token is never stored.
+  tokenHash  String         @map("token_hash") @db.Char(64)
+  channel    SessionChannel
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt DateTime       @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  /// Absolute expiry (CHECK sessions_expires_at_check: after created_at).
+  expiresAt  DateTime       @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  /// Truncated to 255 characters by the application.
+  userAgent  String?        @map("user_agent") @db.VarChar(255)
+  ip         String?        @db.Inet
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "sessions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user   User   @relation(fields: [schoolId, userId], references: [schoolId, id], map: "sessions_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "sessions_school_id_id_key")
+  @@unique([tokenHash], map: "sessions_token_hash_key")
+  @@index([schoolId, userId], map: "sessions_school_id_user_id_idx")
+  @@map("sessions")
+}
+
+/// Tenant: single-use reset and email-verification tokens. Consumed by one conditional UPDATE
+/// (used_at IS NULL AND expires_at > now()), never read-then-write. used_at means consumed only;
+/// voiding an outstanding token (disable, office reset, a newer request) sets expires_at = now(),
+/// so no CHECK relates expires_at to created_at.
+model UserToken {
+  id        BigInt           @id(map: "user_tokens_pkey") @default(autoincrement())
+  schoolId  BigInt           @map("school_id")
+  userId    BigInt           @map("user_id")
+  purpose   UserTokenPurpose
+  /// Lower-hex SHA-256 of the token (CHECK user_tokens_token_hash_check).
+  tokenHash String           @map("token_hash") @db.Char(64)
+  /// The address an email_verify token was issued for; set exactly for that purpose
+  /// (CHECK user_tokens_email_check).
+  email     String?          @db.VarChar(254)
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "user_tokens_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user   User   @relation(fields: [schoolId, userId], references: [schoolId, id], map: "user_tokens_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "user_tokens_school_id_id_key")
+  @@unique([schoolId, tokenHash], map: "user_tokens_school_id_token_hash_key")
+  @@index([schoolId, userId, purpose], map: "user_tokens_school_id_user_id_purpose_idx")
+  @@map("user_tokens")
+}
+
+/// Tenant: role assignments. Ended, never deleted. One live row per (user, system role): partial
+/// index user_roles_school_id_user_id_system_role_key. systemRole is nullable because slice 7 adds
+/// custom_role_id (with its FK to custom_roles) and replaces CHECK user_roles_one_role_check with
+/// num_nonnulls(system_role, custom_role_id) = 1; until then the CHECK requires system_role.
+model UserRole {
+  id         BigInt      @id(map: "user_roles_pkey") @default(autoincrement())
+  schoolId   BigInt      @map("school_id")
+  userId     BigInt      @map("user_id")
+  systemRole SystemRole? @map("system_role")
+  /// Null only for a principal role issued by the platform (issue-principal-login), whose actor is
+  /// in audit_log.actor_platform_user_id (CHECK user_roles_assigned_by_check).
+  assignedBy BigInt?     @map("assigned_by")
+  assignedAt DateTime    @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  /// ended_at and ended_by are set together (CHECK user_roles_ended_check).
+  endedAt    DateTime?   @map("ended_at") @db.Timestamptz(3)
+  endedBy    BigInt?     @map("ended_by")
+  updatedAt  DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School @relation(fields: [schoolId], references: [id], map: "user_roles_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user           User   @relation("UserRoleHolder", fields: [schoolId, userId], references: [schoolId, id], map: "user_roles_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assignedByUser User?  @relation("UserRoleAssignedBy", fields: [schoolId, assignedBy], references: [schoolId, id], map: "user_roles_assigned_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser    User?  @relation("UserRoleEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "user_roles_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "user_roles_school_id_id_key")
+  @@index([schoolId, userId], map: "user_roles_school_id_user_id_idx")
+  @@index([schoolId, assignedBy], map: "user_roles_school_id_assigned_by_idx")
+  @@index([schoolId, endedBy], map: "user_roles_school_id_ended_by_idx")
+  @@map("user_roles")
+}
+
+/// Tenant, append-only (§3.7; triggers audit_log_append_only and audit_log_no_truncate). Written
+/// by AuditService.record() inside the transaction of the change. Exactly one actor
+/// (CHECK audit_log_actor_check): a school user, or a platform admin acting through one of the two
+/// platform operations inside a school. actor_platform_user_id and subject_id carry no FK: the
+/// first points at a non-tenant table (a tenant->platform relation cannot be declared under
+/// test/guardrails/prisma-relations.spec.ts, and an undeclared FK is dropped as drift by every
+/// generated migration), the second is polymorphic. Both are allowlisted in the schema guard
+/// (NON_FK_ID_COLUMNS in test/guardrails/schema-checks.ts).
+model AuditLog {
+  id                  BigInt   @id(map: "audit_log_pkey") @default(autoincrement())
+  schoolId            BigInt   @map("school_id")
+  actorUserId         BigInt?  @map("actor_user_id")
+  actorPlatformUserId BigInt?  @map("actor_platform_user_id")
+  action              String   @db.VarChar(64)
+  subjectType         String   @map("subject_type") @db.VarChar(32)
+  subjectId           BigInt?  @map("subject_id")
+  /// Never holds an identity number (CHECK audit_log_reason_no_id_check).
+  reason              String?  @db.VarChar(500)
+  /// Never holds an identity number (CHECK audit_log_metadata_no_id_check); timestamps inside are
+  /// ISO strings, never epoch milliseconds (13 digits).
+  metadata            Json     @default("{}")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school    School @relation(fields: [schoolId], references: [id], map: "audit_log_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  actorUser User?  @relation(fields: [schoolId, actorUserId], references: [schoolId, id], map: "audit_log_actor_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "audit_log_school_id_id_key")
+  @@index([schoolId, subjectType, subjectId, createdAt], map: "audit_log_school_id_subject_type_subject_id_created_at_idx")
+  @@index([schoolId, actorUserId, createdAt], map: "audit_log_school_id_actor_user_id_created_at_idx")
+  @@map("audit_log")
 }

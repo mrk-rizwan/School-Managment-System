@@ -64,6 +64,19 @@ export const SCHOOL_ID_IMMUTABLE_FUNCTION = 'asms_forbid_school_id_change';
 /** Indexes on tenant tables that may lead with a column other than school_id: `table.column`. */
 export const NON_SCHOOL_LEADING_INDEXES = new Set(['sessions.token_hash']);
 
+/**
+ * `table.column` *_id columns on tenant tables that cannot be foreign keys. Each needs a stated
+ * reason; a column waiting for its target table is not one (add the column with its FK instead).
+ * - audit_log.subject_id: polymorphic, names a row of the table in subject_type.
+ * - audit_log.actor_platform_user_id: points at the non-tenant platform_users. The FK cannot be
+ *   declared in schema.prisma (prisma-relations.spec.ts allows a tenant model to relate only to
+ *   School), and an FK absent from schema.prisma is dropped as drift by the next migration.
+ */
+export const NON_FK_ID_COLUMNS = new Set([
+  'audit_log.subject_id',
+  'audit_log.actor_platform_user_id',
+]);
+
 export type ExpectedObject =
   | {
       kind: 'index' | 'constraint' | 'trigger';
@@ -210,6 +223,304 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     table: 'school_counters',
     name: 'school_counters_value_check',
     definition: 'value >= 0',
+  },
+  // Wave A: trigger function behind classes_academic_year_immutable.
+  {
+    kind: 'function',
+    name: 'asms_forbid_class_year_change',
+    definition: "DETAIL = 'constraint: classes_academic_year_immutable'",
+  },
+  // Slice 3: academic structure.
+  {
+    kind: 'constraint',
+    table: 'academic_years',
+    name: 'academic_years_dates_check',
+    definition: 'CHECK ((ends_on > starts_on))',
+  },
+  {
+    kind: 'constraint',
+    table: 'academic_years',
+    name: 'academic_years_name_check',
+    definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'classes',
+    name: 'classes_name_check',
+    definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'classes',
+    name: 'classes_sort_order_check',
+    definition: 'CHECK ((sort_order >= 0))',
+  },
+  {
+    kind: 'trigger',
+    table: 'classes',
+    name: 'classes_academic_year_immutable',
+    definition:
+      'BEFORE UPDATE OF academic_year_id ON public.classes FOR EACH ROW WHEN ((old.academic_year_id IS DISTINCT FROM new.academic_year_id)) EXECUTE FUNCTION asms_forbid_class_year_change()',
+  },
+  {
+    kind: 'index',
+    table: 'sections',
+    name: 'sections_school_id_class_id_name_key',
+    definition: 'USING btree (school_id, class_id, name) WHERE (deleted_at IS NULL)',
+  },
+  {
+    kind: 'constraint',
+    table: 'sections',
+    name: 'sections_capacity_check',
+    definition: 'CHECK (((capacity IS NULL) OR (capacity >= 1)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'sections',
+    name: 'sections_name_check',
+    definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))",
+  },
+  {
+    kind: 'index',
+    table: 'subjects',
+    name: 'subjects_school_id_code_key',
+    definition: 'USING btree (school_id, code) WHERE ((code IS NOT NULL) AND (deleted_at IS NULL))',
+  },
+  {
+    kind: 'index',
+    table: 'subjects',
+    name: 'subjects_school_id_name_key',
+    definition: 'USING btree (school_id, name) WHERE (deleted_at IS NULL)',
+  },
+  {
+    kind: 'constraint',
+    table: 'subjects',
+    name: 'subjects_code_check',
+    definition:
+      "CHECK (((code IS NULL) OR (((code)::text = btrim((code)::text)) AND ((code)::text <> ''::text))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'subjects',
+    name: 'subjects_name_check',
+    definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))",
+  },
+  // Slice 5: guardians.
+  {
+    kind: 'index',
+    table: 'guardians',
+    name: 'guardians_school_id_cnic_hash_key',
+    definition: 'USING btree (school_id, cnic_hash) WHERE (cnic_hash IS NOT NULL)',
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_cnic_check',
+    definition: "CHECK (((cnic IS NULL) OR ((cnic)::text ~~ 'v1:%'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_cnic_hash_check',
+    definition: "CHECK (((cnic_hash IS NULL) OR (cnic_hash ~ '^[0-9a-f]{64}$'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_cnic_pair_check',
+    definition: 'CHECK (((cnic IS NULL) = (cnic_hash IS NULL)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_email_normalised_check',
+    definition:
+      "CHECK (((email IS NULL) OR (((email)::text = lower(btrim((email)::text))) AND (POSITION(('@'::text) IN (email)) > 1))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_full_name_check',
+    definition:
+      "CHECK ((((full_name)::text = btrim((full_name)::text)) AND ((full_name)::text <> ''::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_merged_check',
+    definition: "CHECK (((status = 'merged'::guardian_status) = (merged_into_id IS NOT NULL)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_merged_into_self_check',
+    definition: 'CHECK (((merged_into_id IS NULL) OR (merged_into_id <> id)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'guardians',
+    name: 'guardians_phone_check',
+    definition: "CHECK (((phone IS NULL) OR ((phone)::text ~ '^\\+[1-9][0-9]{7,14}$'::text)))",
+  },
+  // Slice 2: identity, sessions, roles, audit.
+  {
+    kind: 'index',
+    table: 'staff',
+    name: 'staff_school_id_cnic_hash_key',
+    definition: 'USING btree (school_id, cnic_hash) WHERE (cnic_hash IS NOT NULL)',
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_cnic_check',
+    definition: "CHECK (((cnic IS NULL) OR ((cnic)::text ~~ 'v1:%'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_cnic_hash_check',
+    definition: "CHECK (((cnic_hash IS NULL) OR (cnic_hash ~ '^[0-9a-f]{64}$'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_cnic_pair_check',
+    definition: 'CHECK (((cnic IS NULL) = (cnic_hash IS NULL)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_full_name_check',
+    definition:
+      "CHECK ((((full_name)::text = btrim((full_name)::text)) AND ((full_name)::text <> ''::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_phone_check',
+    definition: "CHECK (((phone)::text ~ '^\\+[1-9][0-9]{7,14}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'users',
+    name: 'users_email_normalised_check',
+    definition:
+      "CHECK (((email IS NULL) OR (((email)::text = lower(btrim((email)::text))) AND (POSITION(('@'::text) IN (email)) > 1))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'users',
+    name: 'users_email_verified_check',
+    definition: 'CHECK (((email_verified_at IS NULL) OR (email IS NOT NULL)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'users',
+    name: 'users_password_hash_check',
+    definition: "CHECK (((password_hash)::text ~~ '$argon2id$%'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'users',
+    name: 'users_person_check',
+    definition: 'CHECK ((num_nonnulls(staff_id, guardian_id) >= 1))',
+  },
+  {
+    kind: 'constraint',
+    table: 'users',
+    name: 'users_username_hash_check',
+    definition: "CHECK ((username_hash ~ '^[0-9a-f]{64}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'sessions',
+    name: 'sessions_expires_at_check',
+    definition: 'CHECK ((expires_at > created_at))',
+  },
+  {
+    kind: 'constraint',
+    table: 'sessions',
+    name: 'sessions_token_hash_check',
+    definition: "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_tokens',
+    name: 'user_tokens_email_check',
+    definition: "CHECK (((purpose = 'email_verify'::user_token_purpose) = (email IS NOT NULL)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_tokens',
+    name: 'user_tokens_email_normalised_check',
+    definition:
+      "CHECK (((email IS NULL) OR (((email)::text = lower(btrim((email)::text))) AND (POSITION(('@'::text) IN (email)) > 1))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_tokens',
+    name: 'user_tokens_token_hash_check',
+    definition: "CHECK ((token_hash ~ '^[0-9a-f]{64}$'::text))",
+  },
+  {
+    kind: 'index',
+    table: 'user_roles',
+    name: 'user_roles_school_id_user_id_system_role_key',
+    definition:
+      'USING btree (school_id, user_id, system_role) WHERE ((system_role IS NOT NULL) AND (ended_at IS NULL))',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_roles',
+    name: 'user_roles_assigned_by_check',
+    definition: "CHECK (((assigned_by IS NOT NULL) OR (system_role = 'principal'::system_role)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_roles',
+    name: 'user_roles_ended_check',
+    definition:
+      'CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) OR (ended_at >= assigned_at))))',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_roles',
+    name: 'user_roles_one_role_check',
+    definition: 'CHECK ((num_nonnulls(system_role) = 1))',
+  },
+  {
+    kind: 'constraint',
+    table: 'audit_log',
+    name: 'audit_log_actor_check',
+    definition: 'CHECK ((num_nonnulls(actor_user_id, actor_platform_user_id) = 1))',
+  },
+  {
+    kind: 'constraint',
+    table: 'audit_log',
+    name: 'audit_log_metadata_no_id_check',
+    definition:
+      "CHECK ((((metadata)::text !~ '[0-9]{13}'::text) AND ((metadata)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'audit_log',
+    name: 'audit_log_reason_no_id_check',
+    definition:
+      "CHECK ((((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))",
+  },
+  {
+    kind: 'trigger',
+    table: 'audit_log',
+    name: 'audit_log_append_only',
+    definition:
+      'BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  {
+    kind: 'trigger',
+    table: 'audit_log',
+    name: 'audit_log_no_truncate',
+    definition:
+      'BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
   },
 ];
 
@@ -374,6 +685,7 @@ export async function checkSchema(
     for (const { column } of columns.filter(
       (c) => c.table === table && /_(id|by)$/.test(c.column),
     )) {
+      if (NON_FK_ID_COLUMNS.has(`${table}.${column}`)) continue;
       if (!foreignKeys.some((fk) => fk.table === table && fk.columns.includes(column))) {
         violations.push(`${table}.${column}: an *_id / *_by column must be a foreign key`);
       }

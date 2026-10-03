@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, Logger, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, type Capability } from '@asms/shared';
 import type { Request } from 'express';
 import { ApiException } from '../errors/api-exception';
 // The one import from src/common into a feature module: resolving a platform session needs the
@@ -8,12 +8,17 @@ import { ApiException } from '../errors/api-exception';
 // and exports it, so the guard receives it by injection.
 import { PlatformSessionAccess } from '../../modules/platform/auth/platform-session-access';
 
-// Every route declares who may call it. Exactly one of these four, on the handler or its
-// controller. Slice 2 enforces sessions and capabilities behind the same metadata.
+// Every route declares who may call it. Exactly one of these five, on the handler or its
+// controller (contracts/slice-2.md §1). Slice 2 enforces school sessions behind the metadata.
 const PUBLIC = 'access:public';
 const AUTHENTICATED_ONLY = 'access:authenticated-only';
 const CAPABILITY = 'access:capability';
 const PLATFORM_SESSION = 'access:platform-session';
+const STAFF = 'access:staff';
+const ALLOW_WHEN_SUSPENDED = 'access:allow-when-suspended';
+
+export const ROUTE_ACCESS_KEYS = { PUBLIC, AUTHENTICATED_ONLY, CAPABILITY, PLATFORM_SESSION, STAFF } as const;
+export const ALLOW_WHEN_SUSPENDED_KEY = ALLOW_WHEN_SUSPENDED;
 
 /** No session needed (health, login, password reset). Listed in the R68 route snapshot. */
 export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(PUBLIC, true);
@@ -22,9 +27,22 @@ export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(PUBLIC
 export const AuthenticatedOnly = (): MethodDecorator & ClassDecorator =>
   SetMetadata(AUTHENTICATED_ONLY, true);
 
-/** The capability the caller must hold. A string until slice 2 introduces the Capability enum. */
-export const RequireCapability = (capability: string): MethodDecorator & ClassDecorator =>
-  SetMetadata(CAPABILITY, capability);
+/** The caller must hold ANY of the listed capabilities (contracts/slice-2.md §1). */
+export const RequireCapability = (
+  ...capabilities: [Capability, ...Capability[]]
+): MethodDecorator & ClassDecorator => SetMetadata(CAPABILITY, capabilities);
+
+/**
+ * Any signed-in user with an active staff capacity, no capability needed (staff-wide reads such
+ * as the academic structure). Parent and student sessions are refused (R78).
+ */
+export const RequireStaff = (): MethodDecorator & ClassDecorator => SetMetadata(STAFF, true);
+
+/**
+ * Marker, not an access rule: this non-GET still works while the school is suspended (R80). Only
+ * the handlers listed in contracts/slice-2.md §1.3 carry it; a test enumerates them.
+ */
+export const AllowWhenSuspended = (): MethodDecorator => SetMetadata(ALLOW_WHEN_SUSPENDED, true);
 
 /**
  * Platform-admin routes (/api/v1/platform). The level says which platform sessions may call it
@@ -58,7 +76,7 @@ export class RouteAccessGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const targets = [context.getHandler(), context.getClass()];
     const read = <T>(key: string) => this.reflector.getAllAndOverride<T | undefined>(key, targets);
-    const declared = [PUBLIC, AUTHENTICATED_ONLY, CAPABILITY, PLATFORM_SESSION].filter(
+    const declared = [PUBLIC, AUTHENTICATED_ONLY, CAPABILITY, PLATFORM_SESSION, STAFF].filter(
       (key) => read<unknown>(key) !== undefined,
     );
     if (declared.length !== 1) {
@@ -71,6 +89,11 @@ export class RouteAccessGuard implements CanActivate {
     const level = read<PlatformSessionLevel>(PLATFORM_SESSION);
     if (level !== undefined) {
       await this.platformSessions.authorise(context.switchToHttp().getRequest<Request>(), level);
+    }
+    if (read<unknown>(PUBLIC) === undefined && level === undefined) {
+      // School routes. Fails closed until slice 2 lands school session resolution here, so no
+      // school endpoint can ever be reachable without a session, even briefly.
+      throw new ApiException(401, ErrorCode.AUTH_REQUIRED, 'Sign in to continue.');
     }
     return true;
   }

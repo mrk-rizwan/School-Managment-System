@@ -8,6 +8,9 @@ import { ThrottlingModule } from './common/throttling';
 import { validationPipe } from './common/validation';
 import { EnvModule } from './config/env';
 import { HealthModule } from './modules/health/health.module';
+import { AcademicsModule } from './modules/academics/academics.module';
+import { SchoolAuthModule } from './modules/auth/school-auth.module';
+import { GuardiansModule } from './modules/people/guardians/guardians.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { DatabaseModule } from './repositories/database.module';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -23,6 +26,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
     TenancyModule,
     HealthModule,
     PlatformModule,
+    SchoolAuthModule,
+    AcademicsModule,
+    GuardiansModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

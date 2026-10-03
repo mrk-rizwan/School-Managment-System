@@ -12,13 +12,15 @@ import {
   PlatformSession,
   Public,
   RequireCapability,
+  RequireStaff,
 } from '../../src/common/auth/route-access';
+import { Capability } from '@asms/shared';
 import { API_PREFIX } from '../../src/common/http';
 import { buildOpenApiDocuments } from '../../src/openapi-documents';
 import { PlatformModule } from '../../src/modules/platform/platform.module';
 import { createTestApp } from './app';
 
-type Access = 'public' | 'authenticated-only' | 'capability' | 'platform-session';
+type Access = 'public' | 'authenticated-only' | 'capability' | 'platform-session' | 'staff';
 interface Route {
   method: string;
   path: string;
@@ -43,8 +45,9 @@ function keyOf(decorator: ClassDecorator): string {
 const ACCESS_KEYS: [Access, string][] = [
   ['public', keyOf(Public())],
   ['authenticated-only', keyOf(AuthenticatedOnly())],
-  ['capability', keyOf(RequireCapability('probe'))],
+  ['capability', keyOf(RequireCapability(Capability.STUDENT_VIEW))],
   ['platform-session', keyOf(PlatformSession())],
+  ['staff', keyOf(RequireStaff())],
 ];
 const PLATFORM_KEY = keyOf(PlatformSession());
 
