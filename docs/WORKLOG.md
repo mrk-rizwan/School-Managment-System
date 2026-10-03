@@ -76,7 +76,11 @@ slice 0 are not counted.
    or two will be connected; **both** WAHA and the WhatsApp Business API, selectable per school
    with a platform default; cover teacher gets full class-teacher scope; the owner creates the
    Firebase project and the Play account; Android only; office staff gain `attendance.student.mark` (all scope) by default so the gate
-   can record a late arrival. Nothing in §1.2 is open.
+   can record a late arrival; **SMS: Sendpk only for now** (research in
+   `docs/research/sms-gateways-2026-10-03.md`; the school-SIM Android gateway idea is deferred to
+   a later driver). Nothing in §1.2 is open. **Owner to start now:** PTA registration of the
+   platform's SMS sender name with Sendpk (15–30 days; company letterhead, NTN/SECP, signatory
+   CNIC); the Firebase project and the Play developer account before slice 15.
 4. Product owner, decisions taken provisionally by the main thread — confirm or overturn:
    (a) principals are unrestricted peers (grants/revokes on a principal refused);
    (b) the login-spike recorder as part of named exception 2 (CLAUDE.md);
