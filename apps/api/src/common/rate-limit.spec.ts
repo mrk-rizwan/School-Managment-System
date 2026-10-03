@@ -34,7 +34,7 @@ const expectNoArgs = (payloads: unknown[]) => {
   expect(Object.keys(payload as object).sort()).toEqual(['errorClass', 'stack']);
 };
 
-describe('rate-limit storage failures are logged without the command arguments', () => {
+describe('F4: rate-limit storage failures are logged without the command arguments', () => {
   it('enforceRateLimits: a throwing storage is a 503, and the log line is failureLog', async () => {
     const logger = new Logger('test');
     const payloads = loggedPayloads(logger);
@@ -62,5 +62,34 @@ describe('rate-limit storage failures are logged without the command arguments',
     const lockout = new RedisLockout(storage, 'school-login', { failures: 5, durationMs: 1000 }, logger);
     await expect(lockout.recordFailure(SECRET_ARG)).rejects.toMatchObject({ status: 503 });
     expectNoArgs(payloads());
+  });
+});
+
+describe('enforceRateLimits: a refused request does not charge the later limits', () => {
+  it('when the minute limit blocks, the hour limit is not charged at all', async () => {
+    const calls: string[] = [];
+    const storage: Pick<ThrottlerStorage, 'increment'> = {
+      increment: (key: string) => {
+        calls.push(key);
+        const blocked = key.includes('minute');
+        return Promise.resolve({ totalHits: 1, timeToExpire: 1, isBlocked: blocked, timeToBlockExpire: 7 });
+      },
+    };
+    const res = {} as Response;
+    const setHeader = jest.fn();
+    res.setHeader = setHeader;
+    await expect(
+      enforceRateLimits(
+        storage as ThrottlerStorage,
+        res,
+        [
+          { name: 'minute', key: 'u', limit: 30, ttlMs: 60_000, cost: 5 },
+          { name: 'hour', key: 'u', limit: 300, ttlMs: 3_600_000, cost: 5 },
+        ],
+        new Logger('test'),
+      ),
+    ).rejects.toMatchObject({ status: 429 });
+    expect(calls).toEqual(['asms:minute:u']);
+    expect(setHeader).toHaveBeenCalledWith('Retry-After', '7');
   });
 });

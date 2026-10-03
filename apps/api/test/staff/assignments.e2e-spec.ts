@@ -91,7 +91,7 @@ describe('teacher assignments (e2e)', () => {
     }
   });
 
-  describe('R74: nobody widens their own scope (§4.3)', () => {
+  describe('F1 / R74: nobody widens their own scope (§4.3)', () => {
     /** A teacher who holds class.manage by a grant row, as slice 7 makes it delegable. */
     const teacherWithClassManage = async (): Promise<Caller> => {
       const caller = await h.caller(school, 'teacher');

@@ -92,7 +92,9 @@ describe('R104: an identity ciphertext only decrypts in its own school, table an
       data: { cnic: copied },
     });
     const res = await http().get(`/api/v1/guardians/${parent.guardianId}`).set('Cookie', principalB);
-    expect(res.status).not.toBe(200);
+    // Decryption refuses the foreign ciphertext (AAD binds school and column): a generic 500.
+    expect(res.status).toBe(500);
+    expect(res.body).toMatchObject({ error: { code: 'INTERNAL_ERROR' } });
     const maskedA = `${inA.cnic.slice(0, 5)}-*****-${inA.cnic.slice(12)}`;
     expect(res.text).not.toContain(maskedA);
     expect(res.text).not.toContain(inA.cnic);

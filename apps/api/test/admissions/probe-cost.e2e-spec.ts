@@ -17,7 +17,7 @@ const PER_MINUTE = 30;
 
 const newGuardian = () => ({ newGuardian: { cnic: randomIdentityDigits() } });
 
-describe('identity-probe budget per identity number (e2e)', () => {
+describe('F3: identity-probe budget per identity number (e2e)', () => {
   const db = testDb();
   let app: NestExpressApplication;
   let school: TestSchool;
@@ -99,7 +99,7 @@ describe('identity-probe budget per identity number (e2e)', () => {
   });
 });
 
-describe('admissionProbeCost', () => {
+describe('F3: admissionProbeCost', () => {
   const cost = (body: unknown) =>
     admissionProbeCost({ body } as Parameters<typeof admissionProbeCost>[0]);
 

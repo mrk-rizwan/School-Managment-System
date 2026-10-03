@@ -79,6 +79,69 @@ slice 0 are not counted.
 
 ---
 
+## What Phase 2 inherits from Phase 1 (written at the Phase 1 close, 2026-10-03)
+
+**Built and ready to use (plan §10)**
+- `classes.attendance_mode` (`apps/api/prisma/schema.prisma`, enum `attendance_mode`) and rule 14:
+  Phase 2 writes `attendance` with `UNIQUE (school_id, enrolment_id, date, period)`; a daily mark
+  is the day's single period.
+- `guardians.contact_capability` (enum `contact_capability`, rule 17): every routing rule reads it.
+- Dated `teacher_assignments` are the only source of teacher scope
+  (`TeacherAssignmentRepository.activeSectionIds`, read through `PermissionsService` →
+  `scopeOf(session)`); the mobile app's "my classes" comes from here. Nobody can assign
+  themselves except a principal (F1).
+- Bearer sessions are accepted on every school route (`common/auth/school-session.ts`); React
+  Native signs in with the same `POST /api/v1/auth/login` (cookie and bearer together are refused).
+- BullMQ and a worker arrive with messaging. Job payloads carry a school id that the tenancy
+  module validates into a `SchoolId`; the scheduler fan-out (named exception 3) is the pattern.
+- Capability keys for attendance, diary and announcements already exist
+  (`packages/shared/src/capabilities.ts`); later phases add screens, not keys.
+- `school_counters` (model `SchoolCounter`) is ready for certificate and receipt numbering.
+- Effective permissions are one pure function (`modules/access/effective-permissions.ts`) behind
+  `can()`, `/me`, R14 and the permissions screen.
+
+**Conventions Phase 2 must follow**
+- Prisma sends enum conditions as a stable cast, so **a partial index whose WHERE is on an enum
+  column is never used for reads**. Put status in the index columns
+  (`20261003140000_enrolment_status_index` is the example).
+- `strictUndefinedChecks` is on; tenant→`School` foreign keys are declared `@ignore` and written
+  in hand SQL; new migrations come from `pnpm db:migration:new --name x` (create-only, then edit).
+- No `Promise.all` inside a transaction; mail, queue dispatch and file moves after commit.
+- After any API contract change: `pnpm --filter @asms/api build && pnpm --filter @asms/api openapi
+  && pnpm --filter @asms/web api:generate`; CI fails on drift.
+- Every endpoint has a contract in `docs/plans/contracts/` before or with its code; every mutating
+  route is classified in the audit table in `apps/api/test/core/routes.e2e-spec.ts` (a new
+  unclassified route fails the suite).
+- Student-linked repository methods take the branded `Scope` (control 7); identity-revealing
+  routes spend the shared `identity-probe` budget, one unit per identity number.
+- Never log a raw error object: `failureLog(error)`.
+
+**Accepted residual risks (stated, not solved)**
+- Tenant isolation is application-layer only; a query that forgets its filter leaks another
+  school's data. Controls 1–8 make this unlikely, not impossible (CLAUDE.md).
+- Brand forgery is closed for request data by `asms/no-brand-in-request`, but type predicates,
+  overloads and third-party generics can still produce a `SchoolId` without the mint files;
+  review catches these, lint does not.
+- A linked principal login's default password is known to whoever created the original login,
+  and the platform admin knows every principal's default. Every such sign-in is now audited
+  (`user.login_on_default_password`); closing it needs register item 30 and a one-time password
+  for principals (owner decision).
+
+**Deployment requirements before any internet exposure**
+- An edge proxy (nginx or Caddy) that overwrites `X-Forwarded-For` (R101). Without it the per-IP
+  login bucket is one global bucket and a single client can block every school's login. Staging
+  must prove a forged header is ignored and distinct clients get distinct buckets.
+- SSE-S3 on in production; SMTP `requireTLS`; gzip for `application/json` at the proxy (parents on
+  metered data).
+
+**Known leftovers (not defects)**
+- An S3 error mid-download truncates the response; no bucket-prefix reconcile for objects without
+  rows; two pg "client already executing a query" warnings in the full run (cause unconfirmed);
+  `students-real.spec.ts` flaked once under `--workers 2`.
+- Two teachers who both hold `class.manage` can assign each other; delegating `staff.create` +
+  `user.account.manage` + `class.manage` together reaches every section. Worth a line of guidance
+  on the grant screen.
+
 ## Process since 2026-10-03 (product owner asked for speed)
 
 Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of Phase 1:
@@ -227,7 +290,8 @@ against the test database; pre-commit hook clean (fake test passwords carry
 
 **Residual risk recorded for the product owner:** after a principal login is linked, its password
 is the CNIC default, which the clerk who planted the original login knows. The clerk could sign
-in first; this is audited (`user.login_after_office_reset`) and locks the real principal out, so
+in first; this is audited (`user.login_on_default_password`, metadata
+`afterOfficeReset`; renamed in slice 8) and locks the real principal out, so
 it is loud, not silent. Closing it fully needs a departure from rule 12 (e.g. a one-time random
 password for principals) — left to the owner (Left to do, item 5).
 

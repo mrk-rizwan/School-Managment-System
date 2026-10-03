@@ -77,6 +77,15 @@ pnpm --filter @asms/api db:test:deploy
 ```
 
 `asms_test` is created once; it survives `docker compose down` (the data lives in a volume).
+
+**Upgrading a checkout from before 2026-10-03:** object storage moved to Chainguard's MinIO image,
+which runs as uid 65532. Hand the old volume to that user once, then restart it:
+
+```sh
+docker run --rm -v schoolmanagmentsystem_miniodata:/data alpine:3 chown -R 65532:65532 /data
+docker compose up -d minio
+```
+
 `db:test:deploy` applies migrations to `TEST_DATABASE_URL` — rerun it after pulling new migrations.
 
 ## Running

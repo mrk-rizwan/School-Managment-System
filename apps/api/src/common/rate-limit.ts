@@ -46,6 +46,9 @@ export async function enforceRateLimits(
 ): Promise<void> {
   let retryAfter = 0;
   for (const { name, key, limit, ttlMs, cost = 1 } of limits) {
+    // Once one limit refuses, the later limits are not charged: a refused retry must not burn the
+    // hour budget for work that was never done.
+    if (retryAfter > 0) break;
     // The storage counts one hit per call, so a request costing several calls it that often,
     // stopping once the limit blocks.
     for (let spent = 0; spent < cost; spent++) {

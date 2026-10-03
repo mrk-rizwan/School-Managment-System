@@ -62,8 +62,15 @@ export class LoginService {
         : await this.hasher.verifyDummy(dto.password);
     // Only after the password verifies (F5): loading permissions for any existing user would make
     // an existing username measurably slower than an absent one.
+    // Also only for a live account in a live school: otherwise a correct password on a disabled
+    // account would answer measurably slower than a wrong one.
     const access =
-      school && user && passwordOk && !locked
+      school &&
+      school.status !== 'terminated' &&
+      user &&
+      user.status === 'active' &&
+      passwordOk &&
+      !locked
         ? await this.permissions.load(school.id, user.id)
         : null;
 

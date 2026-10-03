@@ -17,14 +17,24 @@ function testFiles(dir: string): string[] {
   });
 }
 
-/** The leading snake_case word of every test title in files that run the isolation helper. */
+/**
+ * The leading snake_case word of every test that is an isolation test: either its own body calls
+ * `expectIsolated`, or it sits in a dedicated isolation suite (a file named `isolation` or
+ * `repositories`, where append-only tables are checked by hand). A test elsewhere that merely
+ * shares a file with an `expectIsolated` call does not count for its table.
+ */
+const ISOLATION_SUITE = /[\\/](isolation|repositories|tenant-repositories)\.(spec|e2e-spec)\.ts$/;
+
 function isolationTitles(): Set<string> {
   const covered = new Set<string>();
   for (const file of testFiles(TEST_ROOT)) {
     const text = readFileSync(file, 'utf8');
-    if (!/\bexpectIsolated\s*[<(]/.test(text)) continue;
-    for (const match of text.matchAll(/\b(?:it|test)\(\s*['"`]([a-z][a-z_]*)\b/g)) {
-      if (match[1]) covered.add(match[1]);
+    const suite = ISOLATION_SUITE.test(file);
+    // Each chunk runs from one it()/test() call to the next, so it holds that test's body.
+    for (const chunk of text.split(/\b(?=(?:it|test)\(\s*['"`])/)) {
+      const title = /^(?:it|test)\(\s*['"`]([a-z][a-z_]*)\b/.exec(chunk);
+      if (!title?.[1]) continue;
+      if (suite || /\bexpectIsolated\s*[<(]/.test(chunk)) covered.add(title[1]);
     }
   }
   return covered;

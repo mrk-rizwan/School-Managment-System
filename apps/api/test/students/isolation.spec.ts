@@ -206,7 +206,7 @@ describe('students tenant isolation', () => {
     ).rejects.toThrow();
   });
 
-  it('control 7: the per-student lists take the caller scope; out of scope reads as nothing', async () => {
+  it('F7 / control 7: the per-student lists take the caller scope; out of scope reads as nothing', async () => {
     const { a } = await createTwoSchools();
     const { section } = await createClassWithSection(db, a);
     const student = await createStudent(db, a);

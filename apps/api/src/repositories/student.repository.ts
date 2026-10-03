@@ -165,9 +165,9 @@ export class StudentRepository {
   /**
    * The student holding this B-Form hash (unique per school). Deliberately whole-school, with no
    * Scope argument (tenancy control 7's named exception): the B-Form is unique across the school,
-   * so the uniqueness check behind POST /students/lookup, admission, readmission and a B-Form
-   * patch must see every student, not only those in the caller's sections. Only office
-   * capabilities reach it — `student.create` (lookup, admission, readmission) and
+   * so the uniqueness check behind POST /students/lookup, admission and a B-Form patch must
+   * see every student, not only those in the caller's sections. Only office capabilities
+   * reach it — `student.create` (lookup, admission) and
    * `student.update` (patch, which first reads its own student through the caller's scope); no
    * role but principal and office staff holds either by default — and every route spends the
    * identity-probe budget for it. Callers answer with no more than their contract's 409 or hit.
