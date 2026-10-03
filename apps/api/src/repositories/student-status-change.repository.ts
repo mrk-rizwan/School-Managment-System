@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
+import type { Scope } from '../tenancy/scope';
 import type { Prisma, StudentStatus } from './generated/prisma/client';
 import type { PrismaTxAdapter } from './prisma';
+import { studentInScope } from './student.repository';
 
 // contracts/slice-6.md §3.3, §3.6. The append-only table student_status_changes (trigger
 // student_status_changes_append_only): rows are inserted, never changed. `fromStatus` is null only
@@ -71,13 +73,14 @@ export class StudentStatusChangeRepository {
     });
   }
 
-  /** Newest first. The caller has checked the student is in scope. */
+  /** Newest first; none when the student is out of scope. */
   async listForStudent(
     schoolId: SchoolId,
+    scope: Scope,
     studentId: bigint,
     page: { skip: number; take: number },
   ): Promise<{ rows: StatusChangeView[]; total: number }> {
-    const where = { schoolId, studentId };
+    const where = { schoolId, studentId, student: { is: studentInScope(scope) } };
     const rows = await this.txHost.tx.studentStatusChange.findMany({
       where,
       select: SELECT,

@@ -63,8 +63,9 @@ export class GuardianLinksService {
     query: ListGuardianLinksQueryDto,
   ): Promise<Page<GuardianLinkDto>> {
     const schoolId = this.context.schoolId;
-    await this.students.require(schoolId, scopeOf(session), studentId);
-    const { rows, total } = await this.links.listForStudent(schoolId, studentId, {
+    const scope = scopeOf(session);
+    await this.students.require(schoolId, scope, studentId);
+    const { rows, total } = await this.links.listForStudent(schoolId, scope, studentId, {
       includeEnded: query.includeEnded ?? false,
       skip: (query.page - 1) * query.limit,
       take: query.limit,
@@ -125,7 +126,7 @@ export class GuardianLinksService {
       changes.isPrimaryContact = { from: false, to: true };
     }
     if (dto.isFeePayer !== undefined && dto.isFeePayer !== link.isFeePayer) {
-      if (!dto.isFeePayer) await this.assertOtherFeePayer(schoolId, link);
+      if (!dto.isFeePayer) await this.assertOtherFeePayer(schoolId, scopeOf(session), link);
       data.isFeePayer = dto.isFeePayer;
       changes.isFeePayer = { from: link.isFeePayer, to: dto.isFeePayer };
     }
@@ -154,7 +155,7 @@ export class GuardianLinksService {
     const link = await this.lockLink(schoolId, scopeOf(session), id);
     if (link.endedAt !== null) return this.view(schoolId, session, link);
     if (link.isPrimaryContact) throw primaryContactRequired();
-    if (link.isFeePayer) await this.assertOtherFeePayer(schoolId, link);
+    if (link.isFeePayer) await this.assertOtherFeePayer(schoolId, scopeOf(session), link);
 
     await this.links.end(schoolId, id, new Date());
     await this.audit.record(schoolId, {
@@ -269,8 +270,12 @@ export class GuardianLinksService {
   }
 
   /** R29: refuses taking away the last live fee payer of the link's student. */
-  private async assertOtherFeePayer(schoolId: SchoolId, link: GuardianLinkRecord): Promise<void> {
-    const live = await this.links.liveForStudent(schoolId, link.studentId);
+  private async assertOtherFeePayer(
+    schoolId: SchoolId,
+    scope: Scope,
+    link: GuardianLinkRecord,
+  ): Promise<void> {
+    const live = await this.links.liveForStudent(schoolId, scope, link.studentId);
     if (!live.some((other) => other.id !== link.id && other.isFeePayer)) throw feePayerRequired();
   }
 

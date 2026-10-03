@@ -14,7 +14,7 @@ import { studentInScope } from './student.repository';
 // Shared interface (slice 6B's admission and readmission call these inside their transaction;
 // keep the signatures stable):
 //   create(schoolId, data: GuardianLinkCreate): Promise<GuardianLinkRecord>
-//   liveForStudent(schoolId, studentId): Promise<GuardianLinkRecord[]>
+//   liveForStudent(schoolId, scope, studentId): Promise<GuardianLinkRecord[]>
 //   views(schoolId, rows): Promise<GuardianLinkView[]>
 
 export interface GuardianLinkRecord {
@@ -114,21 +114,31 @@ export class StudentGuardianRepository {
   }
 
   /** The student's live links, oldest first (R28 and R29 are decided over these). */
-  liveForStudent(schoolId: SchoolId, studentId: bigint): Promise<GuardianLinkRecord[]> {
+  liveForStudent(
+    schoolId: SchoolId,
+    scope: Scope,
+    studentId: bigint,
+  ): Promise<GuardianLinkRecord[]> {
     return this.txHost.tx.studentGuardian.findMany({
-      where: { schoolId, studentId, endedAt: null },
+      where: { schoolId, studentId, endedAt: null, student: { is: studentInScope(scope) } },
       select: SELECT,
       orderBy: { id: 'asc' },
     });
   }
 
-  /** Primary contact first, then by guardian name. The caller has checked the student's scope. */
+  /** Primary contact first, then by guardian name; none when the student is out of scope. */
   async listForStudent(
     schoolId: SchoolId,
+    scope: Scope,
     studentId: bigint,
     query: { includeEnded: boolean; skip: number; take: number },
   ): Promise<{ rows: GuardianLinkView[]; total: number }> {
-    const where = { schoolId, studentId, ...live(query.includeEnded) };
+    const where = {
+      schoolId,
+      studentId,
+      ...live(query.includeEnded),
+      student: { is: studentInScope(scope) },
+    };
     const rows = await this.txHost.tx.studentGuardian.findMany({
       where,
       select: SELECT,

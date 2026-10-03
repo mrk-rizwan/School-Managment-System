@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { Capability, ErrorCode } from '@asms/shared';
+import type { SchoolSessionContext } from '../../../common/auth/school-session';
 import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
 import { readLocked } from '../../../common/locking';
@@ -32,7 +33,7 @@ import type {
   ListTeacherAssignmentsQueryDto,
   TeacherAssignmentDto,
 } from './staff.dto';
-import { staffNotActive } from './staff.errors';
+import { selfForbidden, staffNotActive } from './staff.errors';
 import { StaffService } from './staff.service';
 
 // contracts/slice-4.md §4. "Today" is the school's (SchoolClock). Ending means "no longer counts
@@ -135,11 +136,15 @@ export class TeacherAssignmentsService {
    * R23 race: the exclusion constraint aborted the transaction, so the conflicting rows are read
    * here, in a fresh statement, and answered as the in-transaction check would have.
    */
-  async create(staffId: bigint, dto: CreateTeacherAssignmentDto): Promise<TeacherAssignmentDto> {
+  async create(
+    session: SchoolSessionContext,
+    staffId: bigint,
+    dto: CreateTeacherAssignmentDto,
+  ): Promise<TeacherAssignmentDto> {
     const actor = this.context.actor();
     assertShape(dto);
     try {
-      return await this.createInTransaction(actor, staffId, dto);
+      return await this.createInTransaction(actor, session, staffId, dto);
     } catch (error) {
       if (summariseDatabaseError(error)?.constraint !== CLASS_TEACHER_EXCL || !dto.sectionId) {
         throw error;
@@ -192,11 +197,18 @@ export class TeacherAssignmentsService {
   @Transactional()
   private async createInTransaction(
     actor: Actor,
+    session: SchoolSessionContext,
     staffId: bigint,
     dto: CreateTeacherAssignmentDto,
   ): Promise<TeacherAssignmentDto> {
     const { schoolId, userId } = actor;
     const staff = await this.staffService.lock(schoolId, staffId);
+    // R74 (§4.3): a teacher's row scope comes from their own assignments and class.manage is
+    // delegable, so assigning yourself would widen your own scope. Only a role.manage holder
+    // (a principal) may. Ending your own row only narrows it, so §4.4 does not refuse it.
+    if (staff.userId === userId && !session.access.capabilities.has(Capability.ROLE_MANAGE)) {
+      throw selfForbidden();
+    }
 
     // References, each a 422 when not in this school (the year is the class's, never input).
     // The class and its year are locked first, as the academics module locks them, so a class

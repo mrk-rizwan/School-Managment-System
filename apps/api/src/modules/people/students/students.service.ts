@@ -124,13 +124,13 @@ export class StudentsService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
-    return toPage(await this.toDtos(schoolId, session.access.capabilities, rows), query, total);
+    return toPage(await this.toDtos(schoolId, session, rows), query, total);
   }
 
   async get(session: SchoolSessionContext, id: bigint): Promise<StudentDetailDto> {
     const schoolId = this.context.schoolId;
     const row = await this.require(schoolId, scopeOf(session), id);
-    return this.toDetailDto(schoolId, session.access.capabilities, row);
+    return this.toDetailDto(schoolId, session, row);
   }
 
   /** By B-Form hash: at most one hit (unique per school). Not audited; nothing logged. */
@@ -144,7 +144,7 @@ export class StudentsService {
       identityHash(dto.bForm, this.hashKey),
     );
     if (!hit) return { data: [], truncated: false };
-    const [student] = await this.toDtos(schoolId, session.access.capabilities, [hit]);
+    const [student] = await this.toDtos(schoolId, session, [hit]);
     return {
       data: student ? [{ student, readmissible: READMISSIBLE_STATUSES.includes(hit.status) }] : [],
       truncated: false,
@@ -191,7 +191,7 @@ export class StudentsService {
 
     const effectiveOn = fromDateString(dto.effectiveOn);
     assertNotFuture(effectiveOn, await this.clock.today(schoolId), 'effectiveOn');
-    const active = await this.enrolments.findActiveForStudent(schoolId, id);
+    const active = await this.enrolments.findActiveForStudent(schoolId, scopeOf(session), id);
     const last = await this.statusChanges.latestForStudent(schoolId, id);
     const notBefore = [row.admittedOn, active?.startedOn, last?.effectiveOn].reduce<Date>(
       (latest, date) => (date !== undefined && date > latest ? date : latest),
@@ -229,7 +229,7 @@ export class StudentsService {
       reason: dto.reason,
       metadata: { from, to, effectiveOn: dto.effectiveOn, enrolmentClosed },
     });
-    return this.toDetailDto(schoolId, session.access.capabilities, updated);
+    return this.toDetailDto(schoolId, session, updated);
   }
 
   async statusChangeList(
@@ -239,7 +239,7 @@ export class StudentsService {
   ): Promise<Page<StatusChangeDto>> {
     const schoolId = this.context.schoolId;
     await this.require(schoolId, scopeOf(session), id);
-    const { rows, total } = await this.statusChanges.listForStudent(schoolId, id, {
+    const { rows, total } = await this.statusChanges.listForStudent(schoolId, scopeOf(session), id, {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
@@ -280,12 +280,21 @@ export class StudentsService {
     return this.require(schoolId, scope, id);
   }
 
-  /** StudentDto for a page of rows, with each one's active enrolment (one batched read). */
-  async toDtos(schoolId: SchoolId, held: Held, rows: StudentRecord[]): Promise<StudentDto[]> {
+  /**
+   * StudentDto for a page of rows, with each one's active enrolment (one batched read, through the
+   * caller's scope). Field visibility follows the caller's capabilities.
+   */
+  async toDtos(
+    schoolId: SchoolId,
+    session: SchoolSessionContext,
+    rows: StudentRecord[],
+  ): Promise<StudentDto[]> {
+    const held = session.access.capabilities;
     const current = new Map(
       (
         await this.enrolments.activeForStudents(
           schoolId,
+          scopeOf(session),
           rows.map((r) => r.id),
         )
       ).map((e) => [e.studentId, e]),
@@ -293,8 +302,13 @@ export class StudentsService {
     return rows.map((row) => this.toDto(schoolId, held, row, current.get(row.id) ?? null));
   }
 
-  async toDetailDto(schoolId: SchoolId, held: Held, row: StudentRecord): Promise<StudentDetailDto> {
-    const [dto] = await this.toDtos(schoolId, held, [row]);
+  async toDetailDto(
+    schoolId: SchoolId,
+    session: SchoolSessionContext,
+    row: StudentRecord,
+  ): Promise<StudentDetailDto> {
+    const held = session.access.capabilities;
+    const [dto] = await this.toDtos(schoolId, session, [row]);
     if (!dto) throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
     const photo = held.has(Capability.DOCUMENT_VIEW)
       ? await this.students.latestPhotoDocumentId(schoolId, row.id)
@@ -396,8 +410,7 @@ export class StudentsService {
       data.notes = dto.notes;
       changes.notes = { changed: true };
     }
-    const held = session.access.capabilities;
-    if (Object.keys(changes).length === 0) return this.toDetailDto(schoolId, held, row);
+    if (Object.keys(changes).length === 0) return this.toDetailDto(schoolId, session, row);
 
     const updated = await this.students.update(schoolId, id, data);
     await this.audit.record(schoolId, {
@@ -407,7 +420,7 @@ export class StudentsService {
       subjectId: id,
       metadata: { changes },
     });
-    return this.toDetailDto(schoolId, held, updated);
+    return this.toDetailDto(schoolId, session, updated);
   }
 
   /** R25: refuses a B-Form already on another student of the school, pointing at it. */

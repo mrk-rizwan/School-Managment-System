@@ -178,6 +178,10 @@ Effects, one transaction:
 |---|---|
 | `systemRole` | required `SystemRole` |
 | `confirmLinkExisting` | optional boolean; must be `true` when a login with this CNIC already exists |
+| `reason` | optional, 3–500, trimmed, no identity number (amended 2026-10-03, R57) |
+
+R57: the `user.login_issued` row always carries a reason — the one given, else
+`LOGIN_ISSUED_REASONS.staff` (`'Login issued from the staff record'`, `@asms/shared`).
 
 Preconditions, staff row locked, in order:
 1. `status ≠ active` → `409 STAFF_NOT_ACTIVE` (R21).
@@ -237,6 +241,12 @@ today`), `academicYearId`. Sort `-startsOn` (default), `startsOn`, `className`. 
 | `endsOn` | optional date or `null`; ≥ `startsOn`, ≤ `year.endsOn` |
 | `replaceCurrent` | optional boolean, `class_teacher` only |
 
+**Self (R74, amended 2026-10-03 after the Phase 1 security review, F1).** The staff member's
+login is the caller's and the caller does not hold `role.manage` → `409 SELF_ACTION_FORBIDDEN`,
+checked right after the staff row is locked (so an unknown staff id is still `404`). A teacher's
+row scope comes from their own assignments and `class.manage` is delegable (a grant or a custom
+role), so without this a holder could widen their own scope. A principal may assign themselves.
+
 Refusals: staff not `active` → `409 STAFF_NOT_ACTIVE`; year `closed` → `409
 ACADEMIC_YEAR_CLOSED`; class archived → `409 CLASS_ARCHIVED`; section archived → `409
 SECTION_ARCHIVED`; subject archived → `409 SUBJECT_ARCHIVED`. The staff member need not hold the
@@ -263,6 +273,9 @@ otherwise voided; then the new row is inserted. The constraint
 - `endsOn` present (a planned last day): ≥ today, ≥ `starts_on`, and ≤ the current `ends_on` if
   set, else `422` on `endsOn`.
 - Already voided, or `ends_on < today` → `200`, unchanged, no audit.
+- **Ending your own row is allowed** (decided 2026-10-03 with F1): an end or void only narrows
+  the caller's scope, never widens it, so R74 has nothing to protect here. The audit row records
+  the actor, so a self-end is visible.
 
 **200** `TeacherAssignmentDto`. Audit `teacher_assignment.ended`.
 
@@ -326,7 +339,7 @@ the `user_roles` system-role partial unique → `ROLE_ALREADY_ASSIGNED`.
 | `staff.created` | staff | — | `{ hasCnic }` |
 | `staff.updated` | staff | — | `{ changes }`; `cnic`, `phone` as `{ changed: true }` only |
 | `staff.status_changed` | staff | required | `{ from, to, rolesEnded, assignmentsEnded, sessionsRevoked }` (counts) |
-| `user.login_issued` | user | — | `{ capacity: 'staff', systemRole, linkedExistingUser }` |
+| `user.login_issued` | user | as given, else `'Login issued from the staff record'` (R57) | `{ capacity: 'staff', systemRole, linkedExistingUser }` |
 | `user.reset_on_staff_link` | user | — | `{ capacity: systemRole }` |
 | `user_role.assigned` / `user_role.removed` | user | required | `{ systemRole, userRoleId }` |
 | `teacher_assignment.created` | teacher_assignment | — | `{ staffId, role, classId, sectionId, subjectId, startsOn, endsOn }` |

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Capability, ErrorCode, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
+import { Capability, ErrorCode, LOGIN_ISSUED_REASONS, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import type { SchoolSessionContext } from '../../../common/auth/school-session';
 import { PasswordHasher } from '../../../common/crypto/password';
 import { ApiException } from '../../../common/errors/api-exception';
@@ -143,6 +143,7 @@ export class StaffLoginService {
       action: 'user.login_issued',
       subjectType: 'user',
       subjectId: userId,
+      reason: dto.reason ?? LOGIN_ISSUED_REASONS.staff,
       metadata: {
         capacity: 'staff',
         systemRole: dto.systemRole,

@@ -574,7 +574,7 @@ model User {
   studentId         BigInt?    @map("student_id")
   lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
   /// Last office reset (contract slice-2 §5.4). The first login with last_login_at null or older
-  /// than this writes the audit row user.login_after_office_reset.
+  /// than this marks that login's user.login_on_default_password row afterOfficeReset: true.
   officeResetAt     DateTime?  @map("office_reset_at") @db.Timestamptz(3)
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)

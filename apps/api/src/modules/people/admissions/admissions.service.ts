@@ -27,6 +27,7 @@ import { StudentGuardianRepository } from '../../../repositories/student-guardia
 import { StudentStatusChangeRepository } from '../../../repositories/student-status-change.repository';
 import { StudentRepository, type StudentRecord } from '../../../repositories/student.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
+import type { Scope } from '../../../tenancy/scope';
 import { SchoolClock } from '../../../common/school-clock';
 import {
   photoNotImage,
@@ -164,7 +165,7 @@ export class AdmissionsService {
     const bFormHash = dto.student.bForm ? identityHash(dto.student.bForm, this.hashKey) : null;
     let studentId: bigint;
     try {
-      studentId = await this.admitInTransaction(actor, dto, key, requestHash, today);
+      studentId = await this.admitInTransaction(actor, scopeOf(session), dto, key, requestHash, today);
     } catch (error) {
       // Rolled back. R89: a racing same-key submit committed first; replay it (step 6).
       const constraint = summariseDatabaseError(error)?.constraint;
@@ -172,7 +173,14 @@ export class AdmissionsService {
         const winner = await this.keys.find(actor.schoolId, actor.userId, ENDPOINT, key);
         if (winner) return this.replay(session, winner, requestHash);
       }
-      throw await this.conflictAfterRollback(actor.schoolId, error, constraint, bFormHash, dto);
+      throw await this.conflictAfterRollback(
+        actor.schoolId,
+        scopeOf(session),
+        error,
+        constraint,
+        bFormHash,
+        dto,
+      );
     }
     return { status: 201, replayed: false, result: await this.result(session, studentId) };
   }
@@ -187,15 +195,16 @@ export class AdmissionsService {
     const scope = scopeOf(session);
     const held = session.access.capabilities;
     const row = await this.studentsService.require(schoolId, scope, studentId);
-    const student = await this.studentsService.toDetailDto(schoolId, held, row);
+    const student = await this.studentsService.toDetailDto(schoolId, session, row);
     const enrolment =
-      (await this.enrolments.findActiveForStudent(schoolId, studentId)) ??
-      (await this.enrolments.listForStudent(schoolId, studentId, { skip: 0, take: 1 })).rows[0];
+      (await this.enrolments.findActiveForStudent(schoolId, scope, studentId)) ??
+      (await this.enrolments.listForStudent(schoolId, scope, studentId, { skip: 0, take: 1 }))
+        .rows[0];
     if (!enrolment) throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
     const [view] = await this.enrolments.withNames(schoolId, [enrolment]);
     const links = await this.links.views(
       schoolId,
-      await this.links.liveForStudent(schoolId, studentId),
+      await this.links.liveForStudent(schoolId, scope, studentId),
     );
     const documents = await this.documents.listAllForStudent(schoolId, scope, studentId);
     const settings = await this.settings.find(schoolId);
@@ -361,6 +370,7 @@ export class AdmissionsService {
    */
   private async conflictAfterRollback(
     schoolId: SchoolId,
+    scope: Scope,
     error: unknown,
     constraint: string | null | undefined,
     bFormHash: string | null,
@@ -380,7 +390,7 @@ export class AdmissionsService {
       for (const g of dto.guardians) {
         const cnic = g.newGuardian?.cnic;
         if (!cnic) continue;
-        const refusal = await this.guardianCnicExists(cnic);
+        const refusal = await this.guardianCnicExists(scope, cnic);
         if (refusal) return refusal;
       }
     }
@@ -390,6 +400,7 @@ export class AdmissionsService {
   @Transactional()
   private async admitInTransaction(
     actor: Actor,
+    scope: Scope,
     dto: CreateAdmissionDto,
     key: string,
     requestHash: string,
@@ -427,7 +438,13 @@ export class AdmissionsService {
     if (!primary) throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
     const dateOfBirth = fromDateString(dto.student.dateOfBirth);
     if (primary.existing) {
-      await this.assertNoUnacknowledgedDuplicate(schoolId, dto, dateOfBirth, primary.existing.id);
+      await this.assertNoUnacknowledgedDuplicate(
+        schoolId,
+        scope,
+        dto,
+        dateOfBirth,
+        primary.existing.id,
+      );
     }
 
     // Refusals.
@@ -440,7 +457,7 @@ export class AdmissionsService {
     }
     for (const g of guardians) {
       if (!g.newCnic) continue;
-      const refusal = await this.guardianCnicExists(g.newCnic.digits);
+      const refusal = await this.guardianCnicExists(scope, g.newCnic.digits);
       if (refusal) throw refusal;
     }
     const primaryPhone = primary.existing
@@ -608,6 +625,7 @@ export class AdmissionsService {
 
   private async assertNoUnacknowledgedDuplicate(
     schoolId: SchoolId,
+    scope: Scope,
     dto: CreateAdmissionDto,
     dateOfBirth: Date,
     guardianId: bigint,
@@ -623,6 +641,7 @@ export class AdmissionsService {
       (
         await this.enrolments.activeForStudents(
           schoolId,
+          scope,
           matches.map((m) => m.id),
         )
       ).map((e) => [e.studentId, e.className]),
@@ -651,8 +670,8 @@ export class AdmissionsService {
   }
 
   /** GUARDIAN_CNIC_EXISTS naming the holder's survivor (the guardian lookup follows merges). */
-  private async guardianCnicExists(digits: string): Promise<ApiException | null> {
-    const { data } = await this.guardiansService.lookup({ cnic: digits });
+  private async guardianCnicExists(scope: Scope, digits: string): Promise<ApiException | null> {
+    const { data } = await this.guardiansService.lookup(scope, { cnic: digits });
     const survivor = data[0]?.guardian;
     if (!survivor) return null;
     return new ApiException(

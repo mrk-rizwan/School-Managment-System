@@ -104,7 +104,7 @@ function BFormCheck({ onChecked, guard }: { onChecked: (bForm: string | null) =>
             autoFocus
             inputMode="numeric"
             maxLength={15}
-            placeholder="35201-1234567-1"
+            placeholder="#####-#######-#"
             className="w-full sm:w-64"
             onChange={(event) => {
               setHit(null);

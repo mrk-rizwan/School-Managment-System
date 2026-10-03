@@ -6,6 +6,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import { useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
+import { OptionalReasonField, readReason } from '@/components/issue-login-dialog';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -131,13 +132,19 @@ function IssueLoginForm({
   // Set when the CNIC already has a sign-in (§3.6, LINK_EXISTING_LOGIN_UNCONFIRMED): the second
   // step asks before that sign-in is reset and linked.
   const [confirmLink, setConfirmLink] = useState(false);
+  const [reasonText, setReasonText] = useState('');
+  const { reason, ok: reasonOk } = readReason(reasonText);
 
   const issue = useMutation({
     mutationFn: (confirmLinkExisting: boolean) =>
       unwrap(
         staffApi.POST('/api/v1/staff/{id}/issue-login', {
           params: { path: { id: staff.id } },
-          body: { systemRole: role as SystemRole, ...(confirmLinkExisting && { confirmLinkExisting }) },
+          body: {
+            systemRole: role as SystemRole,
+            ...(confirmLinkExisting && { confirmLinkExisting }),
+            ...(reason && { reason }),
+          },
         }),
       ),
     onMutate: () => onPendingChange(true),
@@ -222,7 +229,7 @@ function IssueLoginForm({
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (role && !issue.isPending) issue.mutate(false);
+        if (role && reasonOk && !issue.isPending) issue.mutate(false);
       }}
     >
       <DialogHeader>
@@ -252,6 +259,7 @@ function IssueLoginForm({
           Only the roles you may give are listed.
         </p>
       </div>
+      <OptionalReasonField value={reasonText} onChange={setReasonText} disabled={issue.isPending} />
       {shownError && (
         <Alert variant="destructive">
           <AlertDescription>{refusalMessage(shownError, 'record')}</AlertDescription>
@@ -261,7 +269,7 @@ function IssueLoginForm({
         <Button type="button" variant="outline" disabled={issue.isPending} onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" disabled={!role || issue.isPending}>
+        <Button type="submit" disabled={!role || !reasonOk || issue.isPending}>
           {issue.isPending ? 'Issuing…' : 'Issue login'}
         </Button>
       </DialogFooter>

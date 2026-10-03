@@ -1,7 +1,11 @@
 // Unit checks for two wave-A fixes: SMTP requires TLS in production only, and the log scrubber
-// masks identity numbers split by spaces, `+`, `-` or their URL encodings.
+// masks identity numbers split by spaces, `+`, `-` or their URL encodings. Also R92: a failing
+// SMTP server costs three attempts and one identity-free log line, never a rejection.
+import { createServer, type AddressInfo, type Server } from 'node:net';
+import { Logger } from '@nestjs/common';
 import { scrubbingStream } from '../../src/common/logging';
-import { smtpOptions } from '../../src/modules/auth/mailer';
+import { loadEnv } from '../../src/config/env';
+import { Mailer, smtpOptions } from '../../src/modules/auth/mailer';
 
 describe('smtpOptions', () => {
   const base = { SMTP_HOST: 'smtp.example.test', SMTP_PORT: 587 };
@@ -41,4 +45,50 @@ describe('scrubbingStream', () => {
     const line = '{"time":"2026-10-03T10:11:12.345Z","limit":50,"phone":"+923001234567"}';
     expect(scrub(line)).toBe(line);
   });
+});
+
+describe('Mailer when the SMTP server fails (R92)', () => {
+  // An SMTP "server" that accepts each connection and drops it at once: every send fails.
+  let server: Server;
+  let port: number;
+  let connections = 0;
+
+  beforeAll(async () => {
+    server = createServer((socket) => {
+      connections += 1;
+      socket.destroy();
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    port = (server.address() as AddressInfo).port;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it('R92: tries three times, never rejects, and logs one line with no address, token or identity digits', async () => {
+    const mailer = new Mailer({ ...loadEnv(), SMTP_HOST: '127.0.0.1', SMTP_PORT: port });
+    const errors = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const token = 'tok_R92_SECRET_abcdefghijklmnopqrstuvwxyz0123';
+    const digits = '3520212345671';
+    try {
+      await expect(
+        mailer.send({
+          to: 'parent.r92@example.test',
+          subject: 'Reset your password',
+          text: `https://app.example.test/reset/x#token=${token} for ${digits}`,
+        }),
+      ).resolves.toBeUndefined();
+      expect(connections).toBe(3);
+      expect(errors).toHaveBeenCalledTimes(1);
+      const logged = JSON.stringify(errors.mock.calls);
+      expect(logged).toContain('mail not sent');
+      expect(logged).not.toContain('parent.r92@example.test');
+      expect(logged).not.toContain(token);
+      expect(logged).not.toMatch(/[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]/);
+    } finally {
+      errors.mockRestore();
+      mailer.onModuleDestroy();
+    }
+  }, 15_000);
 });

@@ -116,7 +116,7 @@ export function GuardianFinder({
               className="w-full sm:w-64"
               inputMode={stage === 'cnic' ? 'numeric' : 'tel'}
               maxLength={stage === 'cnic' ? 15 : 20}
-              placeholder={stage === 'cnic' ? '35201-1234567-1' : '0300 1234567'}
+              placeholder={stage === 'cnic' ? '#####-#######-#' : '0300 1234567'}
               onChange={(event) =>
                 setValue(stage === 'cnic' ? formatIdentityInput(event.target.value) : event.target.value)
               }

@@ -335,7 +335,9 @@ test('issue login: states the username and default password, then shows the logi
   await dialog.getByRole('button', { name: 'Issue login' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText('This guardian has a login.')).toBeVisible();
-  expect(calls(requests, 'POST', '/guardians/g1/issue-login')).toHaveLength(1);
+  const posts = calls(requests, 'POST', '/guardians/g1/issue-login');
+  // R57: the reason is optional; left blank, none is sent and the API records where.
+  expect(posts.map((r) => r.postDataJSON())).toEqual([{}]);
 });
 
 test('issue login: a refusal is shown in the dialog', async ({ page }) => {

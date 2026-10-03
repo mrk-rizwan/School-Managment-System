@@ -173,8 +173,9 @@ describe('users administration', () => {
       expect(audit).toMatchObject({ actorUserId: principal.userId, reason: 'Forgot it at the desk', metadata: { clearEmail: false } });
       // A kept, verified address is told.
       expect((await mailer.next(email)).subject).toBe('Your password was reset by the school office');
-      // The first login after it is audited.
-      expect(await auditFor(target.userId, 'user.login_after_office_reset')).toHaveLength(1);
+      // The first login after it is audited, as a default-password login after an office reset.
+      const logins = await auditFor(target.userId, 'user.login_on_default_password');
+      expect(logins.map((a) => a.metadata)).toEqual([{ afterOfficeReset: true }]);
     });
 
     it('R4: clearEmail removes the address and its verification', async () => {

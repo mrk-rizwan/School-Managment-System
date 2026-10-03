@@ -3,6 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import type { Request } from 'express';
 import { PasswordHasher } from '../../common/crypto/password';
+import { failureLog } from '../../common/errors/all-exceptions.filter';
 import { ApiException } from '../../common/errors/api-exception';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { SchoolLookupRepository } from '../../repositories/school-lookup.repository';
@@ -54,10 +55,17 @@ export class LoginService {
     const user = school
       ? await this.users.findCredentialsByUsernameHash(school.id, usernameHash)
       : null;
-    const passwordOk = user
-      ? await this.hasher.verify(user.passwordHash, dto.password)
-      : await this.hasher.verifyDummy(dto.password);
-    const access = school && user ? await this.permissions.load(school.id, user.id) : null;
+    // A locked account gets the dummy verify, so its timing says nothing about the password.
+    const passwordOk =
+      user && !locked
+        ? await this.hasher.verify(user.passwordHash, dto.password)
+        : await this.hasher.verifyDummy(dto.password);
+    // Only after the password verifies (F5): loading permissions for any existing user would make
+    // an existing username measurably slower than an absent one.
+    const access =
+      school && user && passwordOk && !locked
+        ? await this.permissions.load(school.id, user.id)
+        : null;
 
     const ok =
       school !== null &&
@@ -85,7 +93,7 @@ export class LoginService {
     try {
       await this.lockout.resetCount(account);
     } catch (error) {
-      this.logger.warn({ err: error }, 'lockout reset failed after a committed sign-in');
+      this.logger.warn(failureLog(error), 'lockout reset failed after a committed sign-in');
     }
     return issued;
   }
@@ -112,17 +120,19 @@ export class LoginService {
     const now = new Date();
     await this.resolver.revokePresented(req, now);
     // Read before recordLogin overwrites last_login_at (contract §3.1 step 5).
-    const firstAfterOfficeReset =
+    const afterOfficeReset =
       user.officeResetAt !== null &&
       (user.lastLoginAt === null || user.lastLoginAt < user.officeResetAt);
     await this.users.recordLogin(schoolId, user.id, now);
-    if (firstAfterOfficeReset) {
+    // Every sign-in on the default password (the CNIC digits, which colleagues may know) is
+    // audited, whatever made it default; an office reset always leaves it default.
+    if (user.passwordIsDefault) {
       await this.audit.record(schoolId, {
         actorUserId: user.id,
-        action: 'user.login_after_office_reset',
+        action: 'user.login_on_default_password',
         subjectType: 'user',
         subjectId: user.id,
-        metadata: {},
+        metadata: { afterOfficeReset },
       });
     }
     const { token, expiresAt } = await this.me.mint(schoolId, user.id, meta, now);

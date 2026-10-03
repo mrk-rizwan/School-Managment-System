@@ -2,6 +2,7 @@
 // uniqueness, merge resolution on lookup (R31), shared phones (R32), R27, PATCH rules, issue-login
 // (R21, R22, R77, R12/R14 target rules) and tenant isolation (control 4).
 import { Test } from '@nestjs/testing';
+import { Capability } from '@asms/shared';
 import { randomBytes } from 'node:crypto';
 import { CryptoModule } from '../../src/common/crypto/crypto.module';
 import { FieldEncryption } from '../../src/common/crypto/field-encryption';
@@ -9,6 +10,7 @@ import { PasswordHasher } from '../../src/common/crypto/password';
 import { ApiException } from '../../src/common/errors/api-exception';
 import { SchoolContext, type Actor } from '../../src/common/school-context';
 import { EnvModule } from '../../src/config/env';
+import { PermissionsService } from '../../src/modules/access/permissions.service';
 import { GuardianLoginService } from '../../src/modules/people/guardians/guardian-login.service';
 import type { CreateGuardianDto } from '../../src/modules/people/guardians/guardians.dto';
 import { GuardiansService } from '../../src/modules/people/guardians/guardians.service';
@@ -21,6 +23,7 @@ import { UserRepository } from '../../src/repositories/user.repository';
 import { AccessModule } from '../../src/modules/access/access.module';
 import { RequestContextService } from '../../src/tenancy/request-context';
 import type { SchoolId } from '../../src/tenancy/school-id';
+import type { Scope } from '../../src/tenancy/scope';
 import { TenancyModule } from '../../src/tenancy/tenancy.module';
 import { expectIsolated } from '../support/isolation';
 import {
@@ -64,6 +67,8 @@ describe('guardians (service)', () => {
   let repo: GuardianRepository;
   let encryption: FieldEncryption;
   let passwords: PasswordHasher;
+  /** A school-wide scope, from a principal's guardian.manage (the guardian routes' scope). */
+  let wholeSchool: Scope;
   let close: () => Promise<void>;
   const db = testDb();
   /** What session resolution would put in the request context, set per call. */
@@ -90,7 +95,7 @@ describe('guardians (service)', () => {
     issueLogin: async (guardianId: bigint) => {
       await allowLogin(actor.schoolId, guardianId);
       actAs(actor);
-      return logins.issueLogin(guardianId);
+      return logins.issueLogin(guardianId, {});
     },
   });
 
@@ -131,6 +136,14 @@ describe('guardians (service)', () => {
     repo = moduleRef.get(GuardianRepository);
     encryption = moduleRef.get(FieldEncryption);
     passwords = moduleRef.get(PasswordHasher);
+
+    const school = await createSchool();
+    const principal = await createSchoolUser(db, school, { systemRole: 'principal' });
+    const permissions = moduleRef.get(PermissionsService);
+    const access = await permissions.load(school.id, principal.userId);
+    const scope = access && (await permissions.can(school.id, access, Capability.GUARDIAN_MANAGE));
+    if (!scope || scope.kind !== 'all') throw new Error('expected a school-wide scope');
+    wholeSchool = scope;
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -170,7 +183,7 @@ describe('guardians (service)', () => {
 
   // ------------------------------------------------------------------------------- isolation
 
-  it('control 4: a guardian written as school A is invisible to and unwritable by school B', async () => {
+  it('guardians: a row written as school A is invisible to and unwritable by school B (control 4)', async () => {
     const schools = await createTwoSchools();
     const actorA = await staffActor(schools.a);
     const actorB = await staffActor(schools.b);
@@ -196,14 +209,14 @@ describe('guardians (service)', () => {
     const created = await by(actorA).create(input);
     const id = BigInt(created.id);
 
-    expect((await by(b.id).lookup({ cnic: input.cnic ?? '' })).data).toEqual([]);
-    expect((await by(b.id).lookup({ phone: input.phone ?? '' })).data).toEqual([]);
+    expect((await by(b.id).lookup(wholeSchool, { cnic: input.cnic ?? '' })).data).toEqual([]);
+    expect((await by(b.id).lookup(wholeSchool, { phone: input.phone ?? '' })).data).toEqual([]);
     expect(await caught(by(b.id).get(id))).toMatchObject({ status: 404, code: 'NOT_FOUND' });
-    expect(await caught(by(b.id).students(id, PAGE))).toMatchObject({ status: 404 });
+    expect(await caught(by(b.id).students(wholeSchool, id, PAGE))).toMatchObject({ status: 404 });
     expect(await caught(by(actorB).update(id, { fullName: 'X Y' }))).toMatchObject({
       status: 404,
     });
-    expect(await caught(loginsBy(actorB).issueLogin(id))).toMatchObject({ status: 404 });
+    expect(await caught(loginsBy(actorB).issueLogin(id, {}))).toMatchObject({ status: 404 });
     expect(await db.user.count({ where: { schoolId: b.id } })).toBe(1);
   });
 
@@ -270,7 +283,7 @@ describe('guardians (service)', () => {
       phone: null,
       hasPhone: false,
     });
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id), {}))).toMatchObject({
       status: 409,
       code: 'GUARDIAN_CNIC_MISSING',
     });
@@ -331,7 +344,7 @@ describe('guardians (service)', () => {
     const actor = await staffActor(school);
     const input = guardianInput();
     const created = await by(actor).create(input);
-    const result = await by(school.id).lookup({ cnic: input.cnic ?? '' });
+    const result = await by(school.id).lookup(wholeSchool, { cnic: input.cnic ?? '' });
     expect(result).toEqual({
       data: [
         {
@@ -343,7 +356,7 @@ describe('guardians (service)', () => {
       truncated: false,
     });
     expect(JSON.stringify(result)).not.toContain(input.cnic);
-    expect(await by(school.id).lookup({ cnic: randomIdentityDigits() })).toEqual({
+    expect(await by(school.id).lookup(wholeSchool, { cnic: randomIdentityDigits() })).toEqual({
       data: [],
       truncated: false,
     });
@@ -352,7 +365,7 @@ describe('guardians (service)', () => {
   it('lookup needs exactly one of cnic and phone (422 on the body root)', async () => {
     const school = await createSchool();
     for (const body of [{}, { cnic: randomIdentityDigits(), phone: randomPhone() }]) {
-      expect(await caught(by(school.id).lookup(body))).toMatchObject({
+      expect(await caught(by(school.id).lookup(wholeSchool, body))).toMatchObject({
         status: 422,
         code: 'VALIDATION_FAILED',
         details: { fields: [{ path: '', code: 'INVALID_VALUE' }] },
@@ -369,7 +382,7 @@ describe('guardians (service)', () => {
     );
     const ali = await by(actor).create(guardianInput({ phone, fullName: 'Ali Raza' }));
     await by(actor).create(guardianInput({ fullName: 'Other Phone' }));
-    const result = await by(school.id).lookup({ phone });
+    const result = await by(school.id).lookup(wholeSchool, { phone });
     expect(result.data.map((hit) => hit.guardian.id)).toEqual([ali.id, zara.id]);
     expect(result.truncated).toBe(false);
   });
@@ -382,7 +395,7 @@ describe('guardians (service)', () => {
     const survivor = await by(actor).create(guardianInput({ cnic: null, phone: randomPhone() }));
     await merge(school.id, merged.id, survivor.id);
 
-    const result = await by(school.id).lookup({ cnic: input.cnic ?? '' });
+    const result = await by(school.id).lookup(wholeSchool, { cnic: input.cnic ?? '' });
     expect(result.data).toEqual([
       {
         guardian: expect.objectContaining({ id: survivor.id, status: 'active' }),
@@ -399,7 +412,7 @@ describe('guardians (service)', () => {
     const merged = await by(actor).create(guardianInput({ phone, fullName: 'Aaa First' }));
     const survivor = await by(actor).create(guardianInput({ phone, fullName: 'Bbb Second' }));
     await merge(school.id, merged.id, survivor.id);
-    const result = await by(school.id).lookup({ phone });
+    const result = await by(school.id).lookup(wholeSchool, { phone });
     expect(result.data).toEqual([
       expect.objectContaining({
         guardian: expect.objectContaining({ id: survivor.id }),
@@ -419,12 +432,12 @@ describe('guardians (service)', () => {
       await merge(school.id, chain[i]?.id ?? '', chain[i + 1]?.id ?? '');
     }
     // phones[1] is five hops from the end of the chain; phones[0] is six.
-    const five = await by(school.id).lookup({ phone: phones[1] ?? '' });
+    const five = await by(school.id).lookup(wholeSchool, { phone: phones[1] ?? '' });
     expect(five.data[0]).toMatchObject({
       guardian: { id: chain[6]?.id },
       resolvedFromId: chain[1]?.id,
     });
-    expect(await caught(by(school.id).lookup({ phone: phones[0] ?? '' }))).toMatchObject({
+    expect(await caught(by(school.id).lookup(wholeSchool, { phone: phones[0] ?? '' }))).toMatchObject({
       status: 500,
       code: 'INTERNAL_ERROR',
     });
@@ -437,7 +450,7 @@ describe('guardians (service)', () => {
     for (let i = 0; i < 21; i++) {
       await by(actor).create(guardianInput({ phone, cnic: null, fullName: `Family ${i}` }));
     }
-    const result = await by(school.id).lookup({ phone });
+    const result = await by(school.id).lookup(wholeSchool, { phone });
     expect(result.data).toHaveLength(20);
     expect(result.truncated).toBe(true);
   });
@@ -454,7 +467,7 @@ describe('guardians (service)', () => {
     const noPhone = await by(actor).create(
       guardianInput({ fullName: 'Chand NoPhone', phone: null, contactCapability: 'keypad' }),
     );
-    await loginsBy(actor).issueLogin(BigInt(full.id));
+    await loginsBy(actor).issueLogin(BigInt(full.id), {});
 
     const ids = async (query: Parameters<GuardiansService['list']>[0]) =>
       (await by(school.id).list(query)).data.map((g) => g.id);
@@ -483,7 +496,7 @@ describe('guardians (service)', () => {
   it('students: an empty page for an existing guardian until slice 6', async () => {
     const school = await createSchool();
     const created = await by(await staffActor(school)).create(guardianInput());
-    expect(await by(school.id).students(BigInt(created.id), PAGE)).toEqual({
+    expect(await by(school.id).students(wholeSchool, BigInt(created.id), PAGE)).toEqual({
       data: [],
       page: 1,
       limit: 50,
@@ -554,7 +567,7 @@ describe('guardians (service)', () => {
       details: { guardianId: otherRow.id },
     });
 
-    await loginsBy(actor).issueLogin(id);
+    await loginsBy(actor).issueLogin(id, {});
     for (const cnic of [randomIdentityDigits(), null]) {
       expect(await caught(by(actor).update(id, { cnic }))).toMatchObject({
         status: 409,
@@ -636,7 +649,7 @@ describe('guardians (service)', () => {
     });
     const ended = await linkGuardian(db, school, ali, gid, { endedAt: new Date() });
 
-    const page = await by(school.id).students(gid.id, PAGE);
+    const page = await by(school.id).students(wholeSchool, gid.id, PAGE);
     expect(page.total).toBe(1);
     expect(page.data).toEqual([
       {
@@ -653,7 +666,7 @@ describe('guardians (service)', () => {
         linkEndedAt: null,
       },
     ]);
-    const all = await by(school.id).students(gid.id, { ...PAGE, includeEnded: true });
+    const all = await by(school.id).students(wholeSchool, gid.id, { ...PAGE, includeEnded: true });
     expect(all.data.map((r) => r.linkId)).toEqual([ended.id.toString(), live.id.toString()]);
     expect(all.data[0]).toMatchObject({ className: null, sectionName: null });
   });
@@ -674,7 +687,7 @@ describe('guardians (service)', () => {
     const other = await createStudent(db, school);
     await linkGuardian(db, school, other, { id: BigInt(guardian.id) }, { endedAt: new Date() });
 
-    const result = await by(school.id).lookup({ cnic: input.cnic ?? '' });
+    const result = await by(school.id).lookup(wholeSchool, { cnic: input.cnic ?? '' });
     expect(result.data[0]?.students).toEqual([
       {
         studentId: student.id.toString(),
@@ -692,7 +705,7 @@ describe('guardians (service)', () => {
     const actor = await staffActor(school);
     const input = guardianInput({ email: 'contact@example.com' });
     const created = await by(actor).create(input);
-    const user = await loginsBy(actor).issueLogin(BigInt(created.id));
+    const user = await loginsBy(actor).issueLogin(BigInt(created.id), {});
 
     expect(user).toMatchObject({
       staffId: null,
@@ -721,7 +734,7 @@ describe('guardians (service)', () => {
       metadata: { capacity: 'guardian', linkedExistingUser: false },
     });
 
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id), {}))).toMatchObject({
       status: 409,
       code: 'LOGIN_ALREADY_EXISTS',
     });
@@ -733,7 +746,7 @@ describe('guardians (service)', () => {
     const merged = await by(actor).create(guardianInput());
     const survivor = await by(actor).create(guardianInput());
     await merge(school.id, merged.id, survivor.id);
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(merged.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(merged.id), {}))).toMatchObject({
       status: 409,
       code: 'GUARDIAN_MERGED',
     });
@@ -746,7 +759,7 @@ describe('guardians (service)', () => {
     const guardian = await by(actor).create(guardianInput({ cnic: teacher.cnic }));
     // The office (no role.manage) may act on a teacher only if the teacher's set is within its own.
     const principal = await staffActor(school, { systemRole: 'principal' });
-    const user = await loginsBy(principal).issueLogin(BigInt(guardian.id));
+    const user = await loginsBy(principal).issueLogin(BigInt(guardian.id), {});
     expect(user).toMatchObject({
       id: teacher.userId.toString(),
       staffId: teacher.staffId.toString(),
@@ -770,7 +783,7 @@ describe('guardians (service)', () => {
       BigInt((await by(office).create(guardianInput({ cnic }))).id);
 
     expect(
-      await caught(loginsBy(office).issueLogin(await forPerson(principalTarget.cnic))),
+      await caught(loginsBy(office).issueLogin(await forPerson(principalTarget.cnic), {})),
     ).toMatchObject({
       status: 403,
       code: 'PERMISSION_DENIED',
@@ -778,14 +791,14 @@ describe('guardians (service)', () => {
     });
     // A teacher holds attendance and marks keys the office does not.
     expect(
-      await caught(loginsBy(office).issueLogin(await forPerson(teacherTarget.cnic))),
+      await caught(loginsBy(office).issueLogin(await forPerson(teacherTarget.cnic), {})),
     ).toMatchObject({
       status: 403,
       details: { reason: 'target_exceeds_actor' },
     });
     // Same set as the actor: allowed.
     await expect(
-      loginsBy(office).issueLogin(await forPerson(officeTarget.cnic)),
+      loginsBy(office).issueLogin(await forPerson(officeTarget.cnic), {}),
     ).resolves.toMatchObject({
       id: officeTarget.userId.toString(),
     });
@@ -799,12 +812,12 @@ describe('guardians (service)', () => {
       userStatus: 'disabled',
     });
     const forDisabled = await by(actor).create(guardianInput({ cnic: disabled.cnic }));
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(forDisabled.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(forDisabled.id), {}))).toMatchObject({
       status: 409,
       code: 'USER_DISABLED',
     });
     const forSelf = await by(actor).create(guardianInput({ cnic: actor.cnic }));
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(forSelf.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(forSelf.id), {}))).toMatchObject({
       status: 409,
       code: 'SELF_ACTION_FORBIDDEN',
     });
@@ -818,8 +831,8 @@ describe('guardians (service)', () => {
     const actor = await staffActor(school);
     const created = await by(actor).create(guardianInput());
     const results = await Promise.allSettled([
-      loginsBy(actor).issueLogin(BigInt(created.id)),
-      loginsBy(actor).issueLogin(BigInt(created.id)),
+      loginsBy(actor).issueLogin(BigInt(created.id), {}),
+      loginsBy(actor).issueLogin(BigInt(created.id), {}),
     ]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const [lost] = results.flatMap((r) => (r.status === 'rejected' ? [r.reason as unknown] : []));
@@ -837,7 +850,7 @@ describe('guardians (service)', () => {
     const loginRepo = jest.spyOn(UserRepository.prototype, 'findCredentialsByUsernameHash');
     // First pass: the existing user is not seen, so the insert hits the username unique key.
     loginRepo.mockResolvedValueOnce(null);
-    const user = await loginsBy(actor).issueLogin(BigInt(created.id));
+    const user = await loginsBy(actor).issueLogin(BigInt(created.id), {});
     expect(user).toMatchObject({ id: officeTarget.userId.toString(), guardianId: created.id });
     expect(
       await db.user.count({
@@ -857,7 +870,7 @@ describe('guardians (service)', () => {
     const other = await createStudent(db, school);
     await linkGuardian(db, school, other, { id }, { canLogin: true, endedAt: new Date() });
     actAs(actor);
-    expect(await caught(logins.issueLogin(id))).toMatchObject({
+    expect(await caught(logins.issueLogin(id, {}))).toMatchObject({
       status: 409,
       code: 'GUARDIAN_NO_LOGIN_LINK',
     });
@@ -866,7 +879,7 @@ describe('guardians (service)', () => {
       data: { canLogin: true },
     });
     actAs(actor);
-    await expect(logins.issueLogin(id)).resolves.toMatchObject({ guardianId: created.id });
+    await expect(logins.issueLogin(id, {})).resolves.toMatchObject({ guardianId: created.id });
   });
 
   it('issue-login refuses linking onto a student login: 409 USERNAME_IN_USE', async () => {
@@ -883,7 +896,7 @@ describe('guardians (service)', () => {
       },
     });
     const created = await by(actor).create(guardianInput({ cnic: digits }));
-    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id)))).toMatchObject({
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id), {}))).toMatchObject({
       status: 409,
       code: 'USERNAME_IN_USE',
     });

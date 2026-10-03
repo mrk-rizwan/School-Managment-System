@@ -10,12 +10,12 @@ import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../../common/pagination';
 import {
-  bodyHasString,
+  oneIfBodyHasString,
   identityProbeThrottle,
   IdentityProbeThrottleGuard,
 } from '../../../common/rate-limit';
 import { NoQueryDto } from '../../../common/validation';
-import { UserDto } from '../../users/users.dto';
+import { IssueLoginDto, UserDto } from '../../users/users.dto';
 import { EnrolmentsService } from './enrolments.service';
 import { GuardianLinksService } from './guardian-links.service';
 import { StudentLoginService } from './student-login.service';
@@ -41,7 +41,7 @@ import { StudentsService } from './students.service';
 const COMMON = [401, 403, 429];
 
 /** A patch that sets a B-Form can answer STUDENT_BFORM_EXISTS: it spends the probe budget. */
-export const BFormPatchThrottleGuard = identityProbeThrottle(bodyHasString('bForm'));
+export const BFormPatchThrottleGuard = identityProbeThrottle(oneIfBodyHasString('bForm'));
 
 @ApiTags('students')
 @Controller('students')
@@ -183,8 +183,9 @@ export class StudentsController {
   issueLogin(
     @CurrentSchoolSession() session: SchoolSessionContext,
     @IdParam() id: bigint,
+    @Body() body: IssueLoginDto,
     @Query() _query: NoQueryDto,
   ): Promise<UserDto> {
-    return this.logins.issueLogin(session, id);
+    return this.logins.issueLogin(session, id, body);
   }
 }

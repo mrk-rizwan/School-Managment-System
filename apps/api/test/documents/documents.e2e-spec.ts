@@ -134,7 +134,7 @@ describe('uploads and documents (e2e)', () => {
       expect(res.status).toBe(403);
     });
 
-    it('stores a JPEG re-encoded without its EXIF, under a ULID key in the school prefix', async () => {
+    it('R42: stores a JPEG re-encoded without its EXIF, under a ULID key in the school prefix', async () => {
       const input = await jpegWithExif();
       expect((await sharp(input).metadata()).exif).toBeDefined();
       expect(input.includes(EXIF_MARKER)).toBe(true);
@@ -172,7 +172,7 @@ describe('uploads and documents (e2e)', () => {
       expect(bytes.includes(EXIF_MARKER)).toBe(false);
     });
 
-    it('accepts PNG and PDF by their bytes, whatever the declared type and name', async () => {
+    it('R42: accepts PNG and PDF by their bytes, whatever the declared type and name', async () => {
       const p = await upload(await png(), office, 'not-really.pdf', 'application/pdf');
       expect(p.status).toBe(201);
       expect((p.body as Staged).mime).toBe('image/png');
@@ -182,7 +182,7 @@ describe('uploads and documents (e2e)', () => {
       expect((d.body as Staged).sizeBytes).toBe(pdf().length);
     });
 
-    it('415 for SVG, HTML and GIF, even when declared as an image', async () => {
+    it('R42: 415 for SVG, HTML and GIF, even when declared as an image', async () => {
       for (const [body, name] of [
         [svg(), 'logo.svg'],
         [html(), 'photo.jpg'],
@@ -195,7 +195,7 @@ describe('uploads and documents (e2e)', () => {
       }
     });
 
-    it('415 image_rejected for a pixel bomb and for a truncated image', async () => {
+    it('R42: 415 image_rejected for a pixel bomb and for a truncated image', async () => {
       const bomb = await upload(await pixelBombPng(), office, 'bomb.png');
       expect(bomb.status).toBe(415);
       expect(errorOf(bomb).details?.reason).toBe('image_rejected');
@@ -206,7 +206,7 @@ describe('uploads and documents (e2e)', () => {
       expect(errorOf(truncated).details?.reason).toBe('image_rejected');
     });
 
-    it('413 over 5 MB', async () => {
+    it('R42: 413 over 5 MB', async () => {
       const big = Buffer.concat([pdf(), Buffer.alloc(5 * 1024 * 1024)]);
       const res = await upload(big, office, 'big.pdf');
       expect(res.status).toBe(413);
@@ -251,6 +251,20 @@ describe('uploads and documents (e2e)', () => {
         .send({ file: 'aGVsbG8=' });
       expect(json.status).toBe(422);
       expect(errorOf(json).details?.fields?.[0]?.path).toBe('file');
+    });
+
+    it('R41: staged content has no read endpoint; even its uploader gets 404 on every GET', async () => {
+      const staged = await stage(await png());
+      for (const path of [
+        '/api/v1/uploads',
+        `/api/v1/uploads/${staged.id}`,
+        `/api/v1/uploads/${staged.id}/content`,
+        `/api/v1/uploads/${staged.id}/download`,
+      ]) {
+        const res = await http().get(path).set('Cookie', office);
+        expect(res.status).toBe(404);
+        expect(res.headers['content-type']).toMatch(/^application\/json/);
+      }
     });
 
     it('a JSON-only route still refuses multipart (the exception is POST /uploads alone)', async () => {

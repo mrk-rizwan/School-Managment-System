@@ -51,7 +51,7 @@ describe('token flows and office reset take locks in one order', () => {
   const publicPost = (path: string, body: object) =>
     http().post(`/api/v1${path}`).set('Origin', ORIGIN).set('X-Forwarded-For', nextIp()).send(body);
 
-  it('reset-by-token racing an office reset: never a 500, and the end state is consistent', async () => {
+  it('R99: reset-by-token racing an office reset: never a 500, and the end state is consistent', async () => {
     for (let i = 0; i < ITERATIONS; i++) {
       const target = await createSchoolUser(db(), school, { systemRole: 'teacher', password: 'old-password-1', email: uniqueEmail(), emailVerified: true }); // pragma: allowlist secret
       await createSchoolSession(db(), school, target);

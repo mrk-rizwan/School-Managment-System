@@ -200,7 +200,7 @@ function EditGuardianForm({ guardian }: { guardian: GuardianDetailDto }) {
               hint="Leave blank to keep the current value."
               inputMode="numeric"
               autoComplete="off"
-              placeholder="35201-1234567-1"
+              placeholder="#####-#######-#"
               maxLength={15}
               format={formatIdentityInput}
             />
@@ -267,10 +267,11 @@ function LoginCard({ guardian }: { guardian: GuardianDetailDto }) {
           <IssueLoginDialog
             fullName={guardian.fullName}
             description="The username is the guardian’s CNIC without dashes. The password is the same CNIC until they change it. Tell the guardian in person; nothing is sent to them."
-            issue={() =>
+            issue={(reason) =>
               unwrap(
                 guardiansApi.POST('/api/v1/guardians/{id}/issue-login', {
                   params: { path: { id: guardian.id } },
+                  body: { ...(reason && { reason }) },
                 }),
               )
             }

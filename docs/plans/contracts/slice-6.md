@@ -89,7 +89,7 @@ null for the admission row), `effectiveOn`, `changedBy` (user id), `changedByNam
 **identity-probe budget**, one bucket shared by every route that can reveal whether an identity
 number exists: this lookup, `POST /guardians/lookup`, `POST /admissions`, `PATCH /students/:id`
 when the body carries a `bForm` string, and `POST /guardians`, `PATCH /guardians/:id`, `POST
-/staff`, `PATCH /staff/:id` when the body carries a `cnic` string. Spreading probes across routes gains nothing. Not audited; logged without
+/staff`, `PATCH /staff/:id` when the body carries a `cnic` string. Spreading probes across routes gains nothing. The budget counts identity numbers, not requests: a request spends one per number it can test (`POST /admissions` up to five). Not audited; logged without
 digits. By `b_form_hash`. **200** `{ data: [{ student: StudentDto, readmissible: boolean }],
 truncated: false }` — at most one hit (unique); `readmissible` = status `withdrawn | transferred |
 alumni` (R26). A miss is `data: []`.
@@ -135,7 +135,14 @@ readmittedOn`); status-change row; admission number unchanged; live guardian lin
 must still hold, else `409 PRIMARY_CONTACT_REQUIRED` / `FEE_PAYER_REQUIRED` — fix links first).
 Retry: a resubmit is `409 ILLEGAL_STATUS_TRANSITION`. **200** `StudentDetailDto`.
 
-### 3.8 `POST /students/:id/issue-login` (R40) — empty body
+### 3.8 `POST /students/:id/issue-login` (R40) — `{ reason? }`
+
+Amended 2026-10-03 (R57): the body is `IssueLoginDto` — `reason` optional, 3–500, trimmed, no
+identity number; an absent body is the same as `{}`. The `user.login_issued` row always carries a
+reason: the one given, else `LOGIN_ISSUED_REASONS.student` (`'Login issued from the student
+record'`, `@asms/shared`). From the admission wizard (§9, step 5 offers) both the student dialog
+and the guardian offers send `LOGIN_ISSUED_REASONS.admission` (`'Login issued at admission'`)
+when the clerk gives none; the reason field there stays optional.
 
 Student locked, in order: `school_settings.student_login_enabled` false → `409
 STUDENT_LOGIN_DISABLED`; status ≠ `active` → `409 STUDENT_NOT_ACTIVE`; no B-Form → `409
@@ -253,7 +260,9 @@ upload unusable (R91); `photo` not an image.
 
 Order:
 1. Guard (`student.create`) — before any key lookup (R85). Then the identity-probe budget (§3.4):
-   every admission spends one. Then, when any guardian is a `newGuardian` or has `canLogin: true`,
+   an admission spends one per identity number it carries — the student's `bForm` and each
+   `guardians[].newGuardian.cnic` — and never less than one (amended 2026-10-03, Phase 1 security
+   review F3: the budget is per number, not per request). Then, when any guardian is a `newGuardian` or has `canLogin: true`,
    the caller must also hold `guardian.manage` (as `POST /guardians` and the link routes require)
    → `403 PERMISSION_DENIED`; linking an existing guardian without a login needs `student.create`
    only.
@@ -332,7 +341,7 @@ Reused: `USERNAME_IN_USE` (slice 4), `ILLEGAL_STATUS_TRANSITION`, `IDENTITY_NUMB
 | `guardian_link.created` / `.updated` / `.ended` | student_guardian | end: required | `{ studentId, guardianId }`; `{ changes }`; `{}` |
 | `enrolment.roll_no_set` / `.section_changed` / `.class_changed` | enrolment | as given | `{ from, to }`; `{ fromSectionId, toSectionId }`; `{ newEnrolmentId, toClassId }` |
 | `document.added` | student_document | — | `{ studentId, type, mime, sizeBytes }` |
-| `user.login_issued` | user | — | `{ capacity: 'student', linkedExistingUser: false }` |
+| `user.login_issued` | user | as given, else `'Login issued from the student record'` (or `'Login issued at admission'` from the wizard) (R57) | `{ capacity: 'student', linkedExistingUser: false }` |
 
 ---
 

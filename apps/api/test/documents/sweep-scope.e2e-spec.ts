@@ -1,7 +1,8 @@
-// The staged-upload sweep (R41, R90), the row scope on documents (plan §3.4, R43), per-table
+// The staged-upload sweep (R41, R90), idempotency keys outliving it (R86), the row scope on documents (plan §3.4, R43), per-table
 // isolation of the slice-6B tables (R62) and the re-encode concurrency limit.
 import { randomBytes } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { ulid } from 'ulid';
 import { Capability } from '@asms/shared';
 import { ObjectNotFoundError, ObjectStorage } from '../../src/common/storage/object-storage';
@@ -85,7 +86,7 @@ describe('staged uploads, scope and isolation (e2e)', () => {
     (await db.stagedUpload.findFirst({ where: { schoolId: school.id, id } })) !== null;
 
   describe('sweep', () => {
-    it('deletes only unconsumed rows past expiry plus the grace, object first; keeps committed objects', async () => {
+    it('R41 / R90: deletes only unconsumed rows past expiry plus the grace, object first; keeps committed objects', async () => {
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });
       const student = await createStudent(db, school);
@@ -113,6 +114,31 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         expect(await rowExists(school, kept.id)).toBe(true);
         expect(await exists(kept.objectKey)).toBe(true);
       }
+    });
+
+    it('R86: idempotency keys are never purged: the only scheduled job leaves a years-old key in place', async () => {
+      // The sweep is the one scheduled job; a new one (a purge) must be a reviewed change here.
+      expect([...app.get(SchedulerRegistry).getCronJobs().keys()]).toEqual(['staged-upload-sweep']);
+      const school = await createSchool();
+      const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });
+      const created = new Date(Date.now() - 2 * 365 * 24 * HOUR);
+      const row = await db.idempotencyKey.create({
+        data: {
+          schoolId: school.id,
+          userId: user.userId,
+          endpoint: 'admissions',
+          key: `k${randomBytes(12).toString('hex')}`,
+          requestHash: 'b'.repeat(64),
+          responseStatus: 201,
+          subjectType: 'student',
+          subjectId: 1n,
+          createdAt: created,
+        },
+      });
+      const farFuture = new Date(Date.now() + 5 * 365 * 24 * HOUR);
+      await app.get(StagedUploadSweep).sweepSchool(school.id, farFuture);
+      const kept = await db.idempotencyKey.findFirst({ where: { schoolId: school.id, id: row.id } });
+      expect(kept).toEqual(row);
     });
 
     it('an object that cannot be deleted keeps its row for the next run', async () => {

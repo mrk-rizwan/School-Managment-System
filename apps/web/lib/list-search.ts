@@ -13,7 +13,7 @@ export type ListSearch = { q?: string; identity?: boolean; hint?: string };
 /**
  * `q` only when the API would accept it: 2–100 characters and no identity number. The identity
  * check is the API's strictest (`NoIdentityNumber({ ignoreSeparators: true })`): spaces, dashes
- * and `+` are removed first, so `35201-1234567-1` and `35201 1234567 1` are caught too.
+ * and `+` are removed first, so dashed and spaced numbers are caught too.
  */
 export function listSearchTerm(raw: string): ListSearch {
   const q = raw.trim();

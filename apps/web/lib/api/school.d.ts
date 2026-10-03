@@ -1535,8 +1535,12 @@ export interface components {
             /** @enum {string} */
             status: "ok";
         };
+        IssueLoginDto: {
+            reason?: string;
+        };
         IssueStaffLoginDto: {
             confirmLinkExisting?: boolean;
+            reason?: string;
             systemRole: components["schemas"]["SystemRole"];
         };
         LoginOffersDto: {
@@ -4687,7 +4691,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueLoginDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -6785,7 +6793,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueLoginDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {

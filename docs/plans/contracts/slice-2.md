@@ -114,8 +114,13 @@ routes resolve no session and are unaffected. A router-enumeration test asserts 
    password verifies, not locked. Anything else → `401 AUTH_FAILED` "School code, username or
    password is incorrect.", counted — identical status, body and headers (R11).
 5. On success: lockout count reset; presented session revoked; new `cookie` session; `last_login_at
-   = now`. If `office_reset_at IS NOT NULL AND (last_login_at IS NULL OR last_login_at <
-   office_reset_at)` (read before the update) → audit `user.login_after_office_reset`.
+   = now`. If `password_is_default` → audit `user.login_on_default_password` with metadata
+   `{ afterOfficeReset }`, true when `office_reset_at IS NOT NULL AND (last_login_at IS NULL OR
+   last_login_at < office_reset_at)` (read before the update). One row per such login, whatever
+   made the password default (a fresh issue or an office reset, which always leaves it default).
+   Amended 2026-10-03 (Phase 1 security review F2): this one row replaces
+   `user.login_after_office_reset`, which is no longer written. Permissions are loaded only after
+   the password verifies (F5), so an existing username costs no more time than an absent one.
 6. **Spray detection:** per-school failure counter (resolved schools only), 10-minute window;
    at 50 failures write one `login_failure_spike` row to `platform_audit_log` (`school_id`,
    metadata `{ failures, windowStartedAt }`) — once per window. The login service file is added
@@ -292,7 +297,9 @@ session revoked, outstanding tokens voided, password back to the default digits
 (`password_is_default`), email and its verification cleared, audit `user.reset_on_staff_link`
 `{ capacity: 'principal' }` (wave-A security fix: an office clerk must not be able to pre-position a
 login and keep it once it becomes principal). User absent → create with the default password.
-Insert the `principal` row (`assigned_by` null). Audit to both logs. After commit, if `reason` was used, existing principals
+Insert the `principal` row (`assigned_by` null). Audit to both logs; R57: the two login-issued rows
+always carry a reason — the one given, else the fixed `LOGIN_ISSUED_REASONS.platformPrincipal`
+(`'Principal login issued by the platform'`, `@asms/shared`; amended 2026-10-03). After commit, if `reason` was used, existing principals
 with a verified email get a notice.
 
 **201** `{ userId, staffId, fullName, linkedExistingUser: boolean }`. Errors: `401` · `403` (slice-1
@@ -323,13 +330,14 @@ Reused: `AUTH_FAILED`, `AUTH_REQUIRED`, `PERMISSION_DENIED`, `SCHOOL_SUSPENDED`,
 
 | Action | Subject | Actor | Reason | Metadata |
 |---|---|---|---|---|
-| `user.login_after_office_reset` | user | user | — | `{}` |
+| `user.login_on_default_password` | user | user | — | `{ afterOfficeReset }` (no identity data). Replaces `user.login_after_office_reset` (F2, 2026-10-03) |
 | `user.email_changed` / `user.email_verified` | user | user | — | `{}` (no address) |
 | `user.password_changed` / `user.password_reset_by_token` | user | user | — | `{}` |
 | `user.office_reset` | user | caller | required | `{ clearEmail }` |
 | `user.disabled` / `user.enabled` | user | caller | required | `{}` |
 | `school_settings.updated` | school_settings | caller | — | `{ changes }` |
-| `staff.created`, `user.principal_login_issued` | staff / user | platform user | as given | `{ linkedExistingUser }` |
+| `staff.created` | staff | platform user | as given | `{ linkedExistingUser }` |
+| `user.principal_login_issued` | user | platform user | as given, else `'Principal login issued by the platform'` (R57) | `{ linkedExistingUser }` |
 | `user.reset_on_staff_link` | user | platform user | — | `{ capacity }` |
 
 Token-driven rows have no user actor: `actor_user_id` is the target. Platform log adds

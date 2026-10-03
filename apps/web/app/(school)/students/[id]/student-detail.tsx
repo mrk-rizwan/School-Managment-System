@@ -275,7 +275,7 @@ function DetailsCard({ student }: { student: StudentDetailDto }) {
               hint="Leave blank to keep the current value."
               inputMode="numeric"
               autoComplete="off"
-              placeholder="35201-1234567-1"
+              placeholder="#####-#######-#"
               maxLength={15}
               format={formatIdentityInput}
             />

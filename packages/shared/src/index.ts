@@ -8,3 +8,4 @@ export * from './academic-structure';
 export * from './guardian';
 export * from './student';
 export * from './staff';
+export * from './logins';

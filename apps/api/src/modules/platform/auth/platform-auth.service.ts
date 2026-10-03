@@ -9,6 +9,7 @@ import {
 } from '../../../common/auth/platform-session';
 import { FieldDecryptionError, FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
+import { failureLog } from '../../../common/errors/all-exceptions.filter';
 import { ApiException } from '../../../common/errors/api-exception';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { PlatformSessionRepository } from '../../../repositories/platform/platform-session.repository';
@@ -284,7 +285,7 @@ export class PlatformAuthService {
     try {
       await this.lockout.reset(key);
     } catch (error) {
-      this.logger.warn({ err: error }, 'lockout reset failed after a committed sign-in');
+      this.logger.warn(failureLog(error), 'lockout reset failed after a committed sign-in');
     }
   }
 

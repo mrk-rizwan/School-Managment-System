@@ -69,8 +69,9 @@ export class EnrolmentsService {
     query: PageQueryDto,
   ): Promise<Page<EnrolmentDto>> {
     const schoolId = this.context.schoolId;
-    await this.students.require(schoolId, scopeOf(session), studentId);
-    const { rows, total } = await this.enrolments.listForStudent(schoolId, studentId, {
+    const scope = scopeOf(session);
+    await this.students.require(schoolId, scope, studentId);
+    const { rows, total } = await this.enrolments.listForStudent(schoolId, scope, studentId, {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });

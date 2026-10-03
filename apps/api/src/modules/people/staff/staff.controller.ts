@@ -135,8 +135,9 @@ export class StaffController {
     @IdParam() id: bigint,
     @Body() body: CreateTeacherAssignmentDto,
     @Query() _query: NoQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
   ): Promise<TeacherAssignmentDto> {
-    return this.assignments.create(id, body);
+    return this.assignments.create(session, id, body);
   }
 }
 

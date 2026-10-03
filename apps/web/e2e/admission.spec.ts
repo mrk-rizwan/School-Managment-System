@@ -1,4 +1,4 @@
-import { SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
+import { LOGIN_ISSUED_REASONS, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import { expect as baseExpect, test, type Page, type Request } from '@playwright/test';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
 import type { AcademicYearDto, ClassDto, SectionDto } from '../lib/api/school-academics-contract';
@@ -289,7 +289,9 @@ test('happy path: B-Form checked, guardian matched by CNIC, a document staged, t
   // Login offers (user.account.manage).
   await page.getByRole('listitem').filter({ hasText: 'Ahmed Khan (guardian)' }).getByRole('button', { name: 'Issue login' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: 'Ahmed Khan (guardian)' }).getByText('Login issued')).toBeVisible();
-  expect(calls(requests, 'POST', '/guardians/g1/issue-login')).toHaveLength(1);
+  const loginPosts = calls(requests, 'POST', '/guardians/g1/issue-login');
+  // R57: a login offered at admission says so in its audit reason.
+  expect(loginPosts.map((r) => r.postDataJSON())).toEqual([{ reason: LOGIN_ISSUED_REASONS.admission }]);
   await expect(page.getByRole('link', { name: 'Open the student’s record' })).toHaveAttribute('href', '/students/st-new');
 });
 
@@ -416,6 +418,25 @@ test('session expiry: the submit signs in again in place and resends with the sa
   const [first, second] = calls(requests, 'POST', '/admissions');
   expect(second.headers()['idempotency-key']).toBe(first.headers()['idempotency-key']);
   expect(second.postDataJSON()).toEqual(first.postDataJSON());
+});
+
+test('R97: wizard state is never written to localStorage or sessionStorage', async ({ page }) => {
+  await mockApi(page, {
+    cnicHits: AHMED_HIT,
+    admissions: [{ status: 401, body: errorBody('AUTH_REQUIRED', 'Sign in to continue.') }],
+  });
+  await reachReview(page);
+  // Also across a submit that meets an expired session, when keeping the answers matters most.
+  await page.getByRole('button', { name: 'Admit student' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sign in to continue' })).toBeVisible();
+  const stored = await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  // The school code is the one thing the app keeps in storage.
+  expect(Object.keys(stored.local).filter((k) => k !== 'asms.schoolCode')).toEqual([]);
+  expect(Object.keys(stored.session)).toEqual([]);
+  const text = JSON.stringify(stored);
+  for (const answer of ['Ali Khan', '3520212345673', '2016-05-04', 'sec-a', 'g1']) {
+    expect(text).not.toContain(answer);
+  }
 });
 
 test('a background 401 (GET /me on window focus) opens the sign-in dialog instead of leaving the wizard', async ({

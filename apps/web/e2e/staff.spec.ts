@@ -485,6 +485,11 @@ test('issue login: office may give only office staff; an existing login needs a 
   // Office defaults cover office staff only: not teacher (marks, attendance) nor principal.
   await expect(select.locator('option')).toHaveText(['Choose…', 'Office staff']);
   await expect(select).toHaveValue('office_staff');
+  // R57: an optional reason; too short is held back, a typed one is sent trimmed.
+  const reason = dialog.getByLabel('Reason (optional)');
+  await reason.fill('ab');
+  await expect(dialog.getByRole('button', { name: 'Issue login' })).toBeDisabled();
+  await reason.fill('  New office clerk  ');
   await dialog.getByRole('button', { name: 'Issue login' }).click();
 
   await expect(dialog.getByText('This CNIC already has a sign-in')).toBeVisible();
@@ -495,8 +500,8 @@ test('issue login: office may give only office staff; an existing login needs a 
 
   const posts = calls(requests, 'POST', '/staff/st1/issue-login');
   expect(posts.map((r) => r.postDataJSON())).toEqual([
-    { systemRole: 'office_staff' },
-    { systemRole: 'office_staff', confirmLinkExisting: true },
+    { systemRole: 'office_staff', reason: 'New office clerk' },
+    { systemRole: 'office_staff', confirmLinkExisting: true, reason: 'New office clerk' },
   ]);
 });
 

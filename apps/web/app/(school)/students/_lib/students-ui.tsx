@@ -87,9 +87,12 @@ export function dateOfBirthProblem(value: string, today = todayInSchool()): stri
 /** POST /students/:id/issue-login (contracts/slice-6.md §3.8, R40), confirmed in a dialog. */
 export function IssueStudentLoginDialog({
   student,
+  defaultReason,
   ...dialog
 }: {
   student: Pick<StudentDetailDto, 'id' | 'fullName'>;
+  /** Sent when the clerk gives none (the admission wizard: LOGIN_ISSUED_REASONS.admission). */
+  defaultReason?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onIssued?: () => void;
@@ -99,11 +102,15 @@ export function IssueStudentLoginDialog({
       {...dialog}
       fullName={student.fullName}
       description="The username is the student’s B-Form number without dashes. The password is the same number until they change it. Tell the family in person; nothing is sent to them."
-      issue={() =>
-        unwrap(
-          studentsApi.POST('/api/v1/students/{id}/issue-login', { params: { path: { id: student.id } } }),
-        )
-      }
+      issue={(typed) => {
+        const reason = typed ?? defaultReason;
+        return unwrap(
+          studentsApi.POST('/api/v1/students/{id}/issue-login', {
+            params: { path: { id: student.id } },
+            body: { ...(reason && { reason }) },
+          }),
+        );
+      }}
       invalidate={studentsKeys.all}
     />
   );

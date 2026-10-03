@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CryptoModule } from '../../../common/crypto/crypto.module';
-import { IdentityProbeThrottleGuard } from '../../../common/rate-limit';
 import { SchoolContext } from '../../../common/school-context';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
 import { GuardianRepository } from '../../../repositories/guardian.repository';
@@ -10,7 +9,7 @@ import { StagedUploadRepository } from '../../../repositories/staged-upload.repo
 import { StudentDocumentRepository } from '../../../repositories/student-document.repository';
 import { GuardiansService } from '../guardians/guardians.service';
 import { StudentsModule } from '../students/students.module';
-import { AdmissionsController } from './admissions.controller';
+import { AdmissionProbeThrottleGuard, AdmissionsController } from './admissions.controller';
 import { AdmissionsService } from './admissions.service';
 import { ReadmissionService } from './readmission.service';
 
@@ -26,7 +25,7 @@ import { ReadmissionService } from './readmission.service';
     SchoolContext,
     AdmissionsService,
     ReadmissionService,
-    IdentityProbeThrottleGuard,
+    AdmissionProbeThrottleGuard,
     GuardiansService,
     GuardianRepository,
     IdempotencyKeyRepository,

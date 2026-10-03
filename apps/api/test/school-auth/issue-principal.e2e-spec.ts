@@ -2,6 +2,7 @@
 // R21, R22, R56, R57, R77, R103, and the default-password login it enables.
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { LOGIN_ISSUED_REASONS } from '@asms/shared';
 import { Mailer } from '../../src/modules/auth/mailer';
 import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
@@ -60,6 +61,10 @@ describe('issue principal login', () => {
     ]);
     const platformAudit = await db().platformAuditLog.findFirst({ where: { schoolId: school.id, action: 'school.principal_login_issued' } });
     expect(platformAudit?.actorPlatformUserId).toBe(admin.id);
+    // R57: with no reason given, both login-issued rows say where the login was issued.
+    const loginRow = await db().auditLog.findFirst({ where: { schoolId: school.id, action: 'user.principal_login_issued' } });
+    expect(loginRow?.reason).toBe(LOGIN_ISSUED_REASONS.platformPrincipal);
+    expect(platformAudit?.reason).toBe(LOGIN_ISSUED_REASONS.platformPrincipal);
     // The default password is the digits; first login shows the banner flag.
     const login = await http().post('/api/v1/auth/login').set('Origin', ORIGIN).set('X-Forwarded-For', nextIp())
       .send({ schoolCode: school.shortCode, username: who.cnic, password: who.cnic }).expect(200);

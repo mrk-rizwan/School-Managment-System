@@ -232,19 +232,47 @@ describe('school login, logout and /me', () => {
       expect(me.fullName).toMatch(/^Guardian /);
     });
 
-    it('audits the first login after an office reset, once', async () => {
-      const user = await createSchoolUser(db(), school, { systemRole: 'teacher', password: 'after-reset-pass' }); // pragma: allowlist secret
+    const defaultPasswordLogins = (userId: bigint) =>
+      db().auditLog.findMany({
+        where: { schoolId: school.id, subjectId: userId, action: 'user.login_on_default_password' },
+        orderBy: { id: 'asc' },
+      });
+
+    it('F2: audits every login on a freshly issued default password; none once it is changed', async () => {
+      const user = await createSchoolUser(db(), school, { systemRole: 'teacher', defaultPassword: true });
+      await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
+      await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
+      const rows = await defaultPasswordLogins(user.userId);
+      expect(rows.map((r) => [r.actorUserId, r.subjectType, r.metadata])).toEqual([
+        [user.userId, 'user', { afterOfficeReset: false }],
+        [user.userId, 'user', { afterOfficeReset: false }],
+      ]);
+      // No identity data in the row: the metadata is the one flag, and no column holds the digits.
+      expect(JSON.stringify(rows, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v))).not.toContain(user.cnic);
+      // A user on a password of their own is not audited at sign-in.
+      const own = await createSchoolUser(db(), school, { systemRole: 'teacher', password: 'own-pass-1' }); // pragma: allowlist secret
+      await login({ schoolCode: school.shortCode, username: own.cnic, password: 'own-pass-1' }).expect(200); // pragma: allowlist secret
+      expect(await defaultPasswordLogins(own.userId)).toEqual([]);
+    });
+
+    it('F2: after an office reset the first default-password login says so; later ones do not', async () => {
+      const user = await createSchoolUser(db(), school, { systemRole: 'teacher', defaultPassword: true });
       await db().user.update({
         where: { schoolId_id: { schoolId: school.id, id: user.userId } },
         data: { officeResetAt: new Date(Date.now() - 1000), lastLoginAt: new Date(Date.now() - 60_000) },
       });
-      await login({ schoolCode: school.shortCode, username: user.cnic, password: 'after-reset-pass' }).expect(200); // pragma: allowlist secret
-      await login({ schoolCode: school.shortCode, username: user.cnic, password: 'after-reset-pass' }).expect(200); // pragma: allowlist secret
-      const rows = await db().auditLog.findMany({
-        where: { schoolId: school.id, subjectId: user.userId, action: 'user.login_after_office_reset' },
-      });
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.actorUserId).toBe(user.userId);
+      await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
+      await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
+      expect((await defaultPasswordLogins(user.userId)).map((r) => r.metadata)).toEqual([
+        { afterOfficeReset: true },
+        { afterOfficeReset: false },
+      ]);
+      // The single row replaced the old action (contract slice-2 §3.1 step 5, §9).
+      expect(
+        await db().auditLog.count({
+          where: { schoolId: school.id, subjectId: user.userId, action: 'user.login_after_office_reset' },
+        }),
+      ).toBe(0);
     });
   });
 

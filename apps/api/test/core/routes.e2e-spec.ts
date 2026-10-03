@@ -1,6 +1,9 @@
 // Route and OpenAPI hygiene over the REAL application (no test-only modules): the R68 snapshot
 // of routes that need no capability, the §3.9 rule that every operation documents the error
-// envelope, and R66 (every id in the document is a string).
+// envelope, R66 (every id in the document is a string) and the R57 audit classification of
+// every state-changing route.
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { RequestMethod, Type } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { MODULE_METADATA } from '@nestjs/common/constants';
@@ -212,6 +215,102 @@ const PLATFORM_AUTH_ROUTES: [string, string, string][] = [
 ];
 const PLATFORM_PREFIX = '/api/v1/platform/';
 
+// R57 / plan §3.7: what every state-changing route writes to the audit trail. Each entry is
+// either the audit actions the route records (audit_log, or platform_audit_log under
+// /platform) or `none:` with the reason it records nothing. A new POST/PATCH/PUT/DELETE route
+// fails the guard below until it is classified here, which is a reviewed change: "none" must
+// be argued, not defaulted. Behaviour is proved per action in the suites (R57's own list in
+// test/access/audit-trail.e2e-spec.ts).
+type AuditClass = string[] | `none: ${string}`;
+const MUTATION_AUDIT: Record<string, AuditClass> = {
+  'POST /api/v1/academic-years': ['academic_year.created'],
+  'PATCH /api/v1/academic-years/:id': ['academic_year.updated'],
+  'POST /api/v1/academic-years/:id/activate': ['academic_year.activated'],
+  'POST /api/v1/academic-years/:id/close': ['academic_year.closed'],
+  'POST /api/v1/admissions': ['guardian.created', 'student.admitted'],
+  'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
+  'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],
+  'POST /api/v1/auth/logout': 'none: ends the caller own session only',
+  'POST /api/v1/auth/reset-password': ['user.password_reset_by_token'],
+  'POST /api/v1/auth/verify-email': ['user.email_verified'],
+  'POST /api/v1/classes': ['class.created'],
+  'PATCH /api/v1/classes/:id': ['class.updated'],
+  'POST /api/v1/classes/:id/archive': ['class.archived'],
+  'POST /api/v1/classes/:id/copy-sections': ['class.sections_copied'],
+  'POST /api/v1/classes/:id/sections': ['section.created'],
+  'POST /api/v1/custom-roles': ['custom_role.created'],
+  'PATCH /api/v1/custom-roles/:id': ['custom_role.updated'],
+  'POST /api/v1/custom-roles/:id/archive': ['custom_role.archived'],
+  'PATCH /api/v1/enrolments/:id': ['enrolment.roll_no_set'],
+  'POST /api/v1/enrolments/:id/change-class': ['enrolment.class_changed'],
+  'POST /api/v1/enrolments/:id/change-section': ['enrolment.section_changed'],
+  'POST /api/v1/grants/:id/end': ['capability_grant.ended'],
+  'PATCH /api/v1/guardian-links/:id': ['guardian_link.updated'],
+  'POST /api/v1/guardian-links/:id/end': ['guardian_link.ended'],
+  'POST /api/v1/guardians': ['guardian.created'],
+  'PATCH /api/v1/guardians/:id': ['guardian.updated'],
+  'POST /api/v1/guardians/:id/issue-login': ['user.login_issued'],
+  'POST /api/v1/guardians/lookup': 'none: a read carried in a body so the CNIC stays out of the URL',
+  'POST /api/v1/me/change-email': ['user.email_changed'],
+  'POST /api/v1/me/change-password': ['user.password_changed'],
+  'POST /api/v1/platform/auth/change-password': ['platform_user.password_changed'],
+  'POST /api/v1/platform/auth/login': ['platform_user.login'],
+  'POST /api/v1/platform/auth/logout': 'none: ends the caller own session only',
+  'POST /api/v1/platform/auth/totp/confirm': ['platform_user.totp_enrolled'],
+  'POST /api/v1/platform/auth/totp/enrol': 'none: a pending secret, inert until confirm (audited there)',
+  'POST /api/v1/platform/schools': ['school.created'],
+  'PATCH /api/v1/platform/schools/:id': ['school.updated'],
+  'POST /api/v1/platform/schools/:id/change-status': ['school.status_changed'],
+  'POST /api/v1/platform/schools/:id/issue-principal-login': [
+    'staff.created',
+    'user.principal_login_issued',
+    'school.principal_login_issued',
+  ],
+  'PATCH /api/v1/school/settings': ['school_settings.updated'],
+  'PATCH /api/v1/sections/:id': ['section.updated'],
+  'POST /api/v1/sections/:id/archive': ['section.archived'],
+  'POST /api/v1/staff': ['staff.created'],
+  'PATCH /api/v1/staff/:id': ['staff.updated'],
+  'POST /api/v1/staff/:id/change-status': ['staff.status_changed'],
+  'POST /api/v1/staff/:id/issue-login': ['user.login_issued', 'user.reset_on_staff_link'],
+  'POST /api/v1/staff/:id/teacher-assignments': ['teacher_assignment.created', 'teacher_assignment.ended'],
+  'POST /api/v1/students/:id/change-status': ['student.status_changed'],
+  'POST /api/v1/students/:id/documents': ['document.added'],
+  'POST /api/v1/students/:id/guardian-links': ['guardian_link.created'],
+  'POST /api/v1/students/:id/issue-login': ['user.login_issued'],
+  'POST /api/v1/students/:id/readmit': ['student.readmitted'],
+  'PATCH /api/v1/students/:id': ['student.updated'],
+  'POST /api/v1/students/lookup': 'none: a read carried in a body so the B-Form stays out of the URL',
+  'POST /api/v1/subjects': ['subject.created'],
+  'PATCH /api/v1/subjects/:id': ['subject.updated'],
+  'POST /api/v1/subjects/:id/archive': ['subject.archived'],
+  'POST /api/v1/teacher-assignments/:id/end': ['teacher_assignment.ended'],
+  'POST /api/v1/uploads': 'none: a staged upload is not a record; committing it is audited as document.added',
+  'POST /api/v1/user-roles/:id/remove': ['user_role.removed'],
+  'POST /api/v1/users/:id/disable': ['user.disabled'],
+  'POST /api/v1/users/:id/enable': ['user.enabled'],
+  'POST /api/v1/users/:id/grants': ['capability_grant.created'],
+  'POST /api/v1/users/:id/reset-password': ['user.office_reset'],
+  'POST /api/v1/users/:id/roles': ['user_role.assigned'],
+};
+
+/** The text of every non-generated, non-test source file under src/. */
+function sourceText(): string {
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'generated') walk(path);
+      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.spec.ts')) {
+        files.push(path);
+      }
+    }
+  };
+  walk(join(__dirname, '../../src'));
+  return files.map((f) => readFileSync(f, 'utf8')).join('\n');
+}
+
 const OPERATIONS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -299,6 +398,23 @@ describe('Routes and OpenAPI over the real AppModule', () => {
   it('the enumerated routes are exactly the ones Express serves', () => {
     const fromNest = routes.map((r) => `${r.method} ${r.path}`).sort();
     expect(expressRoutes(app).sort()).toEqual(fromNest);
+  });
+
+  it('R57: every state-changing route is classified for audit in the reviewed table', () => {
+    const mutating = routes
+      .filter((r) => ['POST', 'PATCH', 'PUT', 'DELETE'].includes(r.method))
+      .map((r) => `${r.method} ${r.path}`)
+      .sort();
+    expect(mutating.length).toBeGreaterThan(0);
+    expect(mutating).toEqual(Object.keys(MUTATION_AUDIT).sort());
+  });
+
+  it('R57: every audit action the table names is written somewhere in src (the table is not stale)', () => {
+    const text = sourceText();
+    const missing = Object.values(MUTATION_AUDIT)
+      .flatMap((c) => (typeof c === 'string' ? [] : c))
+      .filter((action) => !text.includes(`'${action}'`));
+    expect(missing).toEqual([]);
   });
 
   it('R68: every route declares exactly one access decorator', () => {

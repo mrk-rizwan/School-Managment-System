@@ -467,7 +467,13 @@ test('issue student login: a refusal (setting off) is shown; a principal sees th
   await page.goto('/students/st1');
   await page.getByRole('button', { name: 'Issue login' }).click();
   const dialog = page.getByRole('dialog', { name: 'Issue a login to Ali Khan?' });
+  // R57: an optional reason, sent as typed.
+  await dialog.getByLabel('Reason (optional)').fill('Asked by the class teacher');
+  const posted = page.waitForRequest(
+    (r) => r.method() === 'POST' && new URL(r.url()).pathname.endsWith('/students/st1/issue-login'),
+  );
   await dialog.getByRole('button', { name: 'Issue login' }).click();
+  expect((await posted).postDataJSON()).toEqual({ reason: 'Asked by the class teacher' });
   await expect(dialog.getByText('Student logins are turned off for this school.')).toBeVisible();
 
   await page.unrouteAll({ behavior: 'wait' });

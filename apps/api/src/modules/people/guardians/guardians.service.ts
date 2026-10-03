@@ -21,6 +21,7 @@ import {
   type GuardianStudentLink,
 } from '../../../repositories/student-guardian.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
+import type { Scope } from '../../../tenancy/scope';
 import type {
   CreateGuardianDto,
   GuardianDetailDto,
@@ -105,9 +106,11 @@ export class GuardiansService {
 
   /**
    * The guardian's links (live, or all with includeEnded) with each student's current class and
-   * section. Unscoped: guardian.manage is school-wide (contracts/slice-6.md §9).
+   * section. The links are unscoped (guardian.manage is school-wide, contracts/slice-6.md §9);
+   * the placements come through the caller's scope like every student-linked read.
    */
   async students(
+    scope: Scope,
     id: bigint,
     query: ListGuardianStudentsQueryDto,
   ): Promise<Page<GuardianStudentDto>> {
@@ -118,7 +121,7 @@ export class GuardiansService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
-    const current = await this.currentPlacement(schoolId, rows);
+    const current = await this.currentPlacement(schoolId, scope, rows);
     return toPage(
       rows.map((row) => ({
         linkId: row.id.toString(),
@@ -163,7 +166,7 @@ export class GuardiansService {
    * by name, at most 20 (R32: all phone hits, the office picks). No CNIC and no phone matches
    * nothing (R27). Not audited.
    */
-  async lookup(dto: GuardianLookupDto): Promise<GuardianLookupResultDto> {
+  async lookup(scope: Scope, dto: GuardianLookupDto): Promise<GuardianLookupResultDto> {
     const schoolId = this.context.schoolId;
     // The DTO refuses null on either key; this is the "exactly one" rule over what is present.
     if ((dto.cnic === undefined) === (dto.phone === undefined)) {
@@ -188,6 +191,7 @@ export class GuardiansService {
     const resolved = await this.resolveSurvivors(schoolId, hits.slice(0, LOOKUP_SCAN));
     const students = await this.liveStudents(
       schoolId,
+      scope,
       resolved.map((r) => r.survivor.id),
     );
     const bySurvivor = new Map<bigint, GuardianLookupHitDto>();
@@ -363,8 +367,12 @@ export class GuardiansService {
   }
 
   /** Each student's active enrolment (class and section names), one batched read. */
-  private async currentPlacement(schoolId: SchoolId, rows: readonly GuardianStudentLink[]) {
-    const active = await this.enrolments.activeForStudents(schoolId, [
+  private async currentPlacement(
+    schoolId: SchoolId,
+    scope: Scope,
+    rows: readonly GuardianStudentLink[],
+  ) {
+    const active = await this.enrolments.activeForStudents(schoolId, scope, [
       ...new Set(rows.map((r) => r.studentId)),
     ]);
     return new Map(active.map((e) => [e.studentId, e]));
@@ -373,10 +381,11 @@ export class GuardiansService {
   /** The live links of each guardian, for the lookup's `students` field (contract slice-5 §3.6). */
   private async liveStudents(
     schoolId: SchoolId,
+    scope: Scope,
     guardianIds: readonly bigint[],
   ): Promise<Map<bigint, GuardianLookupStudentDto[]>> {
     const links = await this.links.liveForGuardians(schoolId, [...new Set(guardianIds)]);
-    const current = await this.currentPlacement(schoolId, links);
+    const current = await this.currentPlacement(schoolId, scope, links);
     const byGuardian = new Map<bigint, GuardianLookupStudentDto[]>();
     for (const link of links) {
       const list = byGuardian.get(link.guardianId) ?? [];

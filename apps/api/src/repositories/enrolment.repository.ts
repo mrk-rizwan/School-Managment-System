@@ -14,7 +14,7 @@ import { studentInScope } from './student.repository';
 // Shared interface (slice 6B's admission and readmission call these inside their transaction;
 // keep the signatures stable):
 //   create(schoolId, data: EnrolmentCreate): Promise<EnrolmentRecord>       (status active)
-//   findActiveForStudent(schoolId, studentId): Promise<EnrolmentRecord | null>
+//   findActiveForStudent(schoolId, scope, studentId): Promise<EnrolmentRecord | null>
 //   findActiveByRollNo(schoolId, sectionId, rollNo): Promise<EnrolmentRecord | null>
 //   withNames(schoolId, rows): Promise<EnrolmentView[]>
 
@@ -83,9 +83,14 @@ export class EnrolmentRepository {
     });
   }
 
-  findActiveForStudent(schoolId: SchoolId, studentId: bigint): Promise<EnrolmentRecord | null> {
+  /** Scoped through the student (tenancy control 7): out of scope reads as absent. */
+  findActiveForStudent(
+    schoolId: SchoolId,
+    scope: Scope,
+    studentId: bigint,
+  ): Promise<EnrolmentRecord | null> {
     return this.txHost.tx.enrolment.findFirst({
-      where: { schoolId, studentId, status: 'active' },
+      where: { schoolId, studentId, status: 'active', student: { is: studentInScope(scope) } },
       select: SELECT,
     });
   }
@@ -102,13 +107,14 @@ export class EnrolmentRepository {
     });
   }
 
-  /** A student's enrolments, newest first. The caller has checked the student is in scope. */
+  /** A student's enrolments, newest first; none when the student is out of scope. */
   async listForStudent(
     schoolId: SchoolId,
+    scope: Scope,
     studentId: bigint,
     page: { skip: number; take: number },
   ): Promise<{ rows: EnrolmentRecord[]; total: number }> {
-    const where = { schoolId, studentId };
+    const where = { schoolId, studentId, student: { is: studentInScope(scope) } };
     const rows = await this.txHost.tx.enrolment.findMany({
       where,
       select: SELECT,
@@ -120,14 +126,20 @@ export class EnrolmentRepository {
     return { rows, total };
   }
 
-  /** The active enrolments of several students (at most one each), with names. */
+  /** The active enrolments of several students (at most one each), with names; in scope only. */
   async activeForStudents(
     schoolId: SchoolId,
+    scope: Scope,
     studentIds: readonly bigint[],
   ): Promise<EnrolmentView[]> {
     if (studentIds.length === 0) return [];
     const rows = await this.txHost.tx.enrolment.findMany({
-      where: { schoolId, studentId: { in: [...studentIds] }, status: 'active' },
+      where: {
+        schoolId,
+        studentId: { in: [...studentIds] },
+        status: 'active',
+        student: { is: studentInScope(scope) },
+      },
       select: SELECT,
     });
     return this.withNames(schoolId, rows);

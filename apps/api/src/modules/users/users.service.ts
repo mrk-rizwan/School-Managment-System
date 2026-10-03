@@ -4,6 +4,7 @@ import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { FieldDecryptionError, FieldEncryption } from '../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../common/crypto/password';
+import { failureLog } from '../../common/errors/all-exceptions.filter';
 import { ApiException, notFound } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
@@ -101,7 +102,7 @@ export class UsersService {
     try {
       await this.lockout.clear(this.keys.account(session.school.shortCode, user.usernameHash));
     } catch (error) {
-      this.logger.warn({ err: error }, 'lockout clear failed after a committed office reset');
+      this.logger.warn(failureLog(error), 'lockout clear failed after a committed office reset');
     }
     for (const message of outbox) void this.mailer.send(message);
     return this.get(session.schoolId, id);

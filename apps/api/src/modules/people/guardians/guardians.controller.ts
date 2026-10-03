@@ -2,12 +2,17 @@ import { Body, Controller, Get, HttpCode, Patch, Post, Query, UseGuards } from '
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
 import { RequireCapability } from '../../../common/auth/route-access';
+import {
+  CurrentSchoolSession,
+  scopeOf,
+  type SchoolSessionContext,
+} from '../../../common/auth/school-session';
 import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { ApiPaginated, type Page } from '../../../common/pagination';
 import { CnicProbeThrottleGuard, IdentityProbeThrottleGuard } from '../../../common/rate-limit';
 import { NoQueryDto } from '../../../common/validation';
-import { UserDto } from '../../users/users.dto';
+import { IssueLoginDto, UserDto } from '../../users/users.dto';
 import { GuardianLoginService } from './guardian-login.service';
 import {
   CreateGuardianDto,
@@ -61,8 +66,9 @@ export class GuardiansController {
   lookup(
     @Body() body: GuardianLookupDto,
     @Query() _query: NoQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
   ): Promise<GuardianLookupResultDto> {
-    return this.guardians.lookup(body);
+    return this.guardians.lookup(scopeOf(session), body);
   }
 
   @Get(':id')
@@ -82,8 +88,9 @@ export class GuardiansController {
   students(
     @IdParam() id: bigint,
     @Query() query: ListGuardianStudentsQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
   ): Promise<Page<GuardianStudentDto>> {
-    return this.guardians.students(id, query);
+    return this.guardians.students(scopeOf(session), id, query);
   }
 
   @Patch(':id')
@@ -105,7 +112,11 @@ export class GuardiansController {
   @ApiIdParam()
   @ApiCreatedResponse({ type: UserDto })
   @ApiErrors(...COMMON, 404, 409, 422)
-  issueLogin(@IdParam() id: bigint, @Query() _query: NoQueryDto): Promise<UserDto> {
-    return this.logins.issueLogin(id);
+  issueLogin(
+    @IdParam() id: bigint,
+    @Body() body: IssueLoginDto,
+    @Query() _query: NoQueryDto,
+  ): Promise<UserDto> {
+    return this.logins.issueLogin(id, body);
   }
 }

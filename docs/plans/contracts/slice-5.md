@@ -140,7 +140,13 @@ without identity data); results de-duplicated by survivor id, ordered `fullName`
 
 The CNIC is never echoed. A miss is `200` with `data: []`.
 
-### 3.7 `POST /guardians/:id/issue-login` — empty body
+### 3.7 `POST /guardians/:id/issue-login` — `{ reason? }`
+
+Amended 2026-10-03 (R57): the body is `IssueLoginDto` — `reason` optional, 3–500, trimmed, no
+identity number; an absent body is the same as `{}`. The `user.login_issued` row always carries a
+reason: the one given, else `LOGIN_ISSUED_REASONS.guardian` (`'Login issued from the guardian
+record'`, `@asms/shared`). The admission wizard's offer sends `LOGIN_ISSUED_REASONS.admission`
+(`'Login issued at admission'`).
 
 Preconditions, in order, with the guardian row locked:
 
@@ -195,7 +201,7 @@ Reused: `USER_DISABLED`, `SELF_ACTION_FORBIDDEN` (slice 2), `CONCURRENT_UPDATE`,
 |---|---|
 | `guardian.created` | `{ hasCnic, hasPhone, contactCapability }` |
 | `guardian.updated` | `{ changes }` — for `cnic` and `phone` only `{ changed: true }`, never values (phones can hit the 13-digit audit CHECK) |
-| `user.login_issued` | `{ capacity: 'guardian', linkedExistingUser }` |
+| `user.login_issued` | `{ capacity: 'guardian', linkedExistingUser }`; reason as given, else `'Login issued from the guardian record'` (R57) |
 
 ---
 

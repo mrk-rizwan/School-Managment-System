@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, ErrorCode } from '@asms/shared';
+import { Capability, ErrorCode, LOGIN_ISSUED_REASONS } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -560,6 +560,7 @@ function AdmissionDone({ result, onRestart }: { result: AdmissionResultDto; onRe
               </ul>
               <IssueStudentLoginDialog
                 student={student}
+                defaultReason={LOGIN_ISSUED_REASONS.admission}
                 open={studentLoginOpen}
                 onOpenChange={setStudentLoginOpen}
                 onIssued={() => setStudentIssued(true)}
@@ -588,7 +589,13 @@ function GuardianLoginOffer({ guardianId, fullName }: { guardianId: string; full
     setState('pending');
     setError(null);
     try {
-      await unwrap(guardiansApi.POST('/api/v1/guardians/{id}/issue-login', { params: { path: { id: guardianId } } }));
+      await unwrap(
+        guardiansApi.POST('/api/v1/guardians/{id}/issue-login', {
+          params: { path: { id: guardianId } },
+          // R57: the audit row says the login was issued at admission.
+          body: { reason: LOGIN_ISSUED_REASONS.admission },
+        }),
+      );
       setState('issued');
     } catch (e) {
       // A resubmit after a lost response: the login exists, which is what was wanted.

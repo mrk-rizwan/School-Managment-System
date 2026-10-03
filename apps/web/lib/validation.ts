@@ -20,7 +20,7 @@ export function nameSchema(min: number, max: number) {
 export const optionalCnicSchema = z
   .string()
   .trim()
-  .refine((v) => v === '' || IDENTITY_INPUT_PATTERN.test(v), 'Enter all 13 digits, as 35201-1234567-1.');
+  .refine((v) => v === '' || IDENTITY_INPUT_PATTERN.test(v), 'Enter all 13 digits, as #####-#######-#.');
 
 /** A school user's new password: 8–128 characters. The API also refuses the username digits. */
 export const newPasswordSchema = z
@@ -31,7 +31,7 @@ export const newPasswordSchema = z
 /** `''` becomes null: the API reads null as "not given" on create and "clear" on edit. */
 export const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim());
 
-/** Formats CNIC / B-Form digits as they are typed: 35201-1234567-1. Anything but digits is dropped. */
+/** Formats CNIC / B-Form digits as they are typed: #####-#######-#. Anything but digits is dropped. */
 export function formatIdentityInput(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 13);
   if (digits.length <= 5) return digits;

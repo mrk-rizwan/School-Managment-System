@@ -3,7 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, ValidateBy } from 'class-validator';
 import { containsIdentityNumber, SYSTEM_ROLES, type SystemRole } from '@asms/shared';
-import { QueryBoolean, TextField, trim } from '../../common/fields';
+import { IfPresent, QueryBoolean, TextField, trim } from '../../common/fields';
 import { PageQueryDto } from '../../common/pagination';
 
 // contracts/slice-2.md §5.
@@ -118,4 +118,16 @@ export class OfficeResetDto {
 export class ReasonDto {
   @ReasonField()
   reason: string;
+}
+
+/**
+ * The body of guardian and student issue-login (staff extends it). R57: the audit row always
+ * carries a reason; absent here, the service records where the login was issued
+ * (LOGIN_ISSUED_REASONS).
+ */
+export class IssueLoginDto {
+  @ApiPropertyOptional({ minLength: 3, maxLength: 500 })
+  @IfPresent()
+  @TextField(3, 500)
+  reason?: string;
 }

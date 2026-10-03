@@ -169,7 +169,7 @@ function LookupForm({ initialCnic, onDone }: { initialCnic?: string; onDone: () 
             autoFocus
             inputMode={mode === 'cnic' ? 'numeric' : 'tel'}
             maxLength={mode === 'cnic' ? 15 : 20}
-            placeholder={mode === 'cnic' ? '35201-1234567-1' : '0300 1234567'}
+            placeholder={mode === 'cnic' ? '#####-#######-#' : '0300 1234567'}
             onChange={(event) =>
               setValue(mode === 'cnic' ? formatIdentityInput(event.target.value) : event.target.value)
             }

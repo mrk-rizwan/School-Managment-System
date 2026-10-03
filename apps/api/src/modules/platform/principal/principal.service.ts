@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, LOGIN_ISSUED_REASONS } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
 import { ApiException, notFound } from '../../../common/errors/api-exception';
@@ -87,6 +87,8 @@ export class PrincipalLoginService {
     const now = new Date();
     const actor = { actorUserId: null, actorPlatformUserId: platformUserId };
     const reason = dto.reason === undefined ? {} : { reason: dto.reason };
+    // R57: the login-issued rows always carry a reason; with none given, where it was issued.
+    const loginReason = dto.reason ?? LOGIN_ISSUED_REASONS.platformPrincipal;
 
     // R22: an existing login for the same digits (a parent, say) is linked, never duplicated.
     // R99: it is locked and read again before anything is decided about it.
@@ -185,7 +187,7 @@ export class PrincipalLoginService {
       action: 'user.principal_login_issued',
       subjectType: 'user',
       subjectId: userId,
-      ...reason,
+      reason: loginReason,
       metadata: { linkedExistingUser, ...(grantsEnded > 0 ? { grantsEnded } : {}) },
     });
     await this.platformAudit.record({
@@ -194,7 +196,7 @@ export class PrincipalLoginService {
       action: 'school.principal_login_issued',
       subjectType: 'school',
       subjectId: schoolId,
-      ...reason,
+      reason: loginReason,
       metadata: { linkedExistingUser },
     });
     return {

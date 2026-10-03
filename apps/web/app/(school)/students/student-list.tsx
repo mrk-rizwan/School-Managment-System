@@ -308,7 +308,7 @@ function LookupForm({ initialDigits, onDone }: { initialDigits?: string; onDone:
           autoFocus
           inputMode="numeric"
           maxLength={15}
-          placeholder="35201-1234567-1"
+          placeholder="#####-#######-#"
           onChange={(event) => setValue(formatIdentityInput(event.target.value))}
         />
       </div>

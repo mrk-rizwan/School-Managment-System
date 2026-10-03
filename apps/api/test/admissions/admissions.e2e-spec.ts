@@ -201,7 +201,7 @@ describe('admissions (e2e)', () => {
   });
 
   describe('a committed admission', () => {
-    it('201 creates student, guardians, links, enrolment, documents, status row and audit in one go', async () => {
+    it('R35 / R82: 201 creates student, guardians, links, enrolment, documents, status row and audit in one go; the key row holds no digits and no body', async () => {
       const existing = await createGuardian(db, school, { fullName: 'Amina Bibi' });
       const photo = await stage(await jpegWithExif());
       const scan = await stage(pdf());
@@ -307,9 +307,18 @@ describe('admissions (e2e)', () => {
         subjectId: studentId,
         requestHash: expect.stringMatching(/^[0-9a-f]{64}$/),
       });
-      expect(
-        JSON.stringify(keyRow, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)),
-      ).not.toMatch(/[0-9]{13}/);
+      // No column for a response body exists at all; a new one must be a reviewed change here.
+      expect(Object.keys(keyRow ?? {}).sort()).toEqual(
+        ['createdAt', 'endpoint', 'id', 'key', 'requestHash', 'responseStatus', 'schoolId', 'subjectId', 'subjectType', 'userId'],
+      );
+      // The request hash is 64 hex characters, which hold a run of 13 decimal digits about one
+      // time in 23 by chance, so the pattern check skips it; the digits actually sent are
+      // checked in every column.
+      const { requestHash: _hash, ...rest } = keyRow ?? {};
+      const asText = (v: object) =>
+        JSON.stringify(v, (_k, x: unknown) => (typeof x === 'bigint' ? x.toString() : x));
+      expect(asText(rest)).not.toMatch(/[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]/);
+      for (const d of digitsUsed) expect(asText(keyRow ?? {})).not.toContain(d);
     });
 
     it('R33: the same key and body replays the result with Idempotency-Replayed and writes nothing', async () => {

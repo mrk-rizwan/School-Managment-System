@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, LOGIN_ISSUED_REASONS } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../../common/auth/school-session';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
@@ -12,7 +12,7 @@ import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
 import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { UserRepository } from '../../../repositories/user.repository';
-import type { UserDto } from '../../users/users.dto';
+import type { IssueLoginDto, UserDto } from '../../users/users.dto';
 import { toUserDto } from '../../users/users.service';
 import { StudentsService } from './students.service';
 
@@ -53,9 +53,13 @@ export class StudentLoginService {
    * A unique violation aborts the transaction, so a race is caught here, outside it: the student
    * gained a login meanwhile → LOGIN_ALREADY_EXISTS; the username was taken → USERNAME_IN_USE.
    */
-  async issueLogin(session: SchoolSessionContext, studentId: bigint): Promise<UserDto> {
+  async issueLogin(
+    session: SchoolSessionContext,
+    studentId: bigint,
+    dto: IssueLoginDto,
+  ): Promise<UserDto> {
     try {
-      return await this.issueInTransaction(session, studentId);
+      return await this.issueInTransaction(session, studentId, dto);
     } catch (error) {
       const constraint = summariseDatabaseError(error)?.constraint;
       if (constraint === STUDENT_ID_UNIQUE) throw loginExists();
@@ -68,6 +72,7 @@ export class StudentLoginService {
   private async issueInTransaction(
     session: SchoolSessionContext,
     studentId: bigint,
+    dto: IssueLoginDto,
   ): Promise<UserDto> {
     const { schoolId, userId: actorUserId } = this.context.actor();
     // Preconditions in contract order, on the locked row: racing issue-logins queue here.
@@ -104,6 +109,7 @@ export class StudentLoginService {
       action: 'user.login_issued',
       subjectType: 'user',
       subjectId: userId,
+      reason: dto.reason ?? LOGIN_ISSUED_REASONS.student,
       metadata: { capacity: 'student', linkedExistingUser: false },
     });
     const user = await this.users.find(schoolId, userId);

@@ -91,6 +91,55 @@ describe('teacher assignments (e2e)', () => {
     }
   });
 
+  describe('R74: nobody widens their own scope (§4.3)', () => {
+    /** A teacher who holds class.manage by a grant row, as slice 7 makes it delegable. */
+    const teacherWithClassManage = async (): Promise<Caller> => {
+      const caller = await h.caller(school, 'teacher');
+      const granted = await h.send(
+        'post',
+        `/api/v1/users/${caller.userId}/grants`,
+        { capability: 'class.manage', effect: 'grant', reason: 'Timetable coordinator' },
+        principal.cookie,
+      );
+      expect(granted.status).toBe(201);
+      return caller;
+    };
+
+    it('a class.manage holder cannot assign themselves: 409 SELF_ACTION_FORBIDDEN, nothing written', async () => {
+      const caller = await teacherWithClassManage();
+      const s = await section();
+      for (const body of [classTeacher(s), { role: 'subject_teacher', classId: String(klass.id), subjectId: String(subjectId) }]) {
+        const res = await create(caller, body, caller.cookie);
+        expect(res.status).toBe(409);
+        expect(errorOf(res).code).toBe(ErrorCode.SELF_ACTION_FORBIDDEN);
+      }
+      expect(await db.teacherAssignment.count({ where: { schoolId: school.id, staffId: caller.staffId } })).toBe(0);
+    });
+
+    it('the same holder may assign another staff member, and end their own row (it only narrows)', async () => {
+      const caller = await teacherWithClassManage();
+      const other = await teacher();
+      const res = await create(other, classTeacher(await section()), caller.cookie);
+      expect(res.status).toBe(201);
+      const own = await createTeacherAssignment(db, school, caller, {
+        role: 'subject_teacher',
+        subjectId,
+        klass,
+        startsOn: schoolDay(-3),
+      });
+      const ended = await end(own.id, {}, caller.cookie);
+      expect(ended.status).toBe(200);
+      expect((ended.body as Assignment).endsOn).toBe(schoolDay(-1));
+    });
+
+    it('a principal (role.manage) may assign themselves', async () => {
+      const self = await h.caller(school, 'principal');
+      const res = await create(self, classTeacher(await section()), self.cookie);
+      expect(res.status).toBe(201);
+      expect((res.body as Assignment).staffId).toBe(String(self.staffId));
+    });
+  });
+
   describe('POST /staff/:id/teacher-assignments', () => {
     it('creates a class teacher from today by default; the year is the class’s; audited', async () => {
       const t = await teacher('Saima Bibi');

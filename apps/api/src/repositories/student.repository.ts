@@ -163,8 +163,14 @@ export class StudentRepository {
   }
 
   /**
-   * The student holding this B-Form hash (unique per school). Unscoped: POST /students/lookup and
-   * admission are school-wide `student.create` actions.
+   * The student holding this B-Form hash (unique per school). Deliberately whole-school, with no
+   * Scope argument (tenancy control 7's named exception): the B-Form is unique across the school,
+   * so the uniqueness check behind POST /students/lookup, admission, readmission and a B-Form
+   * patch must see every student, not only those in the caller's sections. Only office
+   * capabilities reach it — `student.create` (lookup, admission, readmission) and
+   * `student.update` (patch, which first reads its own student through the caller's scope); no
+   * role but principal and office staff holds either by default — and every route spends the
+   * identity-probe budget for it. Callers answer with no more than their contract's 409 or hit.
    */
   async findByBFormHash(schoolId: SchoolId, bFormHash: string): Promise<StudentRecord | null> {
     const row = await this.txHost.tx.student.findFirst({
@@ -176,7 +182,10 @@ export class StudentRepository {
 
   /**
    * Admission's possible-duplicate check (contract §6.3): same name (case-insensitive, already
-   * normalised by the DTO), same date of birth, and a live link to `guardianId`. Unscoped.
+   * normalised by the DTO), same date of birth, and a live link to `guardianId`. Deliberately
+   * whole-school, with no Scope argument: a duplicate admission is a duplicate wherever in the
+   * school the existing child sits. Reached only from POST /admissions (`student.create`, an
+   * office capability) and answers with the matches the contract's 409 lists.
    */
   async findPossibleDuplicates(
     schoolId: SchoolId,

@@ -109,7 +109,7 @@ function StaffForm() {
               hint="13 digits. Needed for a login: it becomes the username."
               inputMode="numeric"
               autoComplete="off"
-              placeholder="35201-1234567-1"
+              placeholder="#####-#######-#"
               maxLength={15}
               format={formatIdentityInput}
             />

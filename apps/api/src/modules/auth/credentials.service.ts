@@ -4,6 +4,7 @@ import { ErrorCode } from '@asms/shared';
 import { newSessionToken, sha256Hex } from '../../common/auth/platform-session';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { PasswordHasher } from '../../common/crypto/password';
+import { failureLog } from '../../common/errors/all-exceptions.filter';
 import { ApiException } from '../../common/errors/api-exception';
 import { identityHash } from '../../common/identity';
 import { ENV, type Env } from '../../config/env';
@@ -88,7 +89,7 @@ export class CredentialsService {
       const outbox = await this.issueResetToken(dto);
       this.send(outbox);
     } catch (error) {
-      this.logger.error({ err: error }, 'forgot-password failed after the response');
+      this.logger.error(failureLog(error), 'forgot-password failed after the response');
     }
   }
 
@@ -366,7 +367,7 @@ export class CredentialsService {
     try {
       await this.lockout.clear(this.keys.account(shortCode, usernameHash));
     } catch (error) {
-      this.logger.warn({ err: error }, 'lockout clear failed after a committed reset');
+      this.logger.warn(failureLog(error), 'lockout clear failed after a committed reset');
     }
   }
 }

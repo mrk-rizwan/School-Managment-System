@@ -106,7 +106,7 @@ export class ReadmissionService {
     const { klass } = await this.enrolmentsService.lockTarget(schoolId, classId, sectionId);
 
     // R28 and R29 must still hold over the kept links; the office fixes the links first.
-    const live = await this.links.liveForStudent(schoolId, id);
+    const live = await this.links.liveForStudent(schoolId, scopeOf(session), id);
     if (live.filter((link) => link.isPrimaryContact).length !== 1) throw primaryContactRequired();
     if (!live.some((link) => link.isFeePayer)) throw feePayerRequired();
 
@@ -146,6 +146,6 @@ export class ReadmissionService {
         fromStatus: student.status,
       },
     });
-    return this.studentsService.toDetailDto(schoolId, session.access.capabilities, updated);
+    return this.studentsService.toDetailDto(schoolId, session, updated);
   }
 }

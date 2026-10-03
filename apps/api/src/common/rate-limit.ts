@@ -11,6 +11,7 @@ import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ErrorCode } from '@asms/shared';
 import type { Request, Response } from 'express';
+import { failureLog } from './errors/all-exceptions.filter';
 import { ApiException } from './errors/api-exception';
 import { SchoolContext } from './school-context';
 
@@ -21,18 +22,22 @@ import { SchoolContext } from './school-context';
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
 
-/** One counter: `limit` hits per `ttlMs`, stored at `asms:${name}:${key}`. */
+/**
+ * One counter: `limit` hits per `ttlMs`, stored at `asms:${name}:${key}`. `cost` (default 1) is
+ * how many hits this request counts for.
+ */
 export interface RateLimit {
   name: string;
   key: string;
   limit: number;
   ttlMs: number;
+  cost?: number;
 }
 
 export const storageUnavailable = (): ApiException =>
   new ApiException(503, ErrorCode.SERVICE_UNAVAILABLE, 'The service is temporarily unavailable.');
 
-/** Counts one hit against each limit; 429 with Retry-After (seconds) if any is exceeded. */
+/** Counts `cost` hits against each limit; 429 with Retry-After (seconds) if any is exceeded. */
 export async function enforceRateLimits(
   storage: ThrottlerStorage,
   res: Response,
@@ -40,15 +45,22 @@ export async function enforceRateLimits(
   logger: Logger,
 ): Promise<void> {
   let retryAfter = 0;
-  for (const { name, key, limit, ttlMs } of limits) {
-    let record;
-    try {
-      record = await storage.increment(`asms:${name}:${key}`, ttlMs, limit, ttlMs, name);
-    } catch (error) {
-      logger.error({ err: error }, 'rate-limit storage unreachable');
-      throw storageUnavailable();
+  for (const { name, key, limit, ttlMs, cost = 1 } of limits) {
+    // The storage counts one hit per call, so a request costing several calls it that often,
+    // stopping once the limit blocks.
+    for (let spent = 0; spent < cost; spent++) {
+      let record;
+      try {
+        record = await storage.increment(`asms:${name}:${key}`, ttlMs, limit, ttlMs, name);
+      } catch (error) {
+        logger.error(failureLog(error), 'rate-limit storage unreachable');
+        throw storageUnavailable();
+      }
+      if (record.isBlocked) {
+        retryAfter = Math.max(retryAfter, record.timeToBlockExpire, 1);
+        break;
+      }
     }
-    if (record.isBlocked) retryAfter = Math.max(retryAfter, record.timeToBlockExpire, 1);
   }
   if (retryAfter > 0) {
     // The plain header, whatever the limit's name: the global throttler's named limits would
@@ -58,17 +70,21 @@ export async function enforceRateLimits(
   }
 }
 
+/** How many hits a request counts for. Reads the raw body: guards run before validation. */
+export type RequestCost = (req: Request) => number;
+
 /**
  * A route guard counting `perMinute` and `perHour` hits per school user under `${name}-minute`
  * and `${name}-hour`. Guards built with the same name share one bucket, whichever route they
- * guard. `applies` decides whether a request counts at all (default: every request). Runs after
- * the access guard, so it is only reached with a session. Call once per guard, at module level.
+ * guard. `cost` says how many hits a request counts for (default one; 0 means it does not count).
+ * Runs after the access guard, so it is only reached with a session. Call once per guard, at
+ * module level.
  */
 export function perUserThrottle(
   name: string,
   perMinute: number,
   perHour: number,
-  applies: (req: Request) => boolean = () => true,
+  cost: RequestCost = () => 1,
 ): Type<CanActivate> {
   @Injectable()
   class PerUserThrottleGuard implements CanActivate {
@@ -81,15 +97,16 @@ export function perUserThrottle(
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const http = context.switchToHttp();
-      if (!applies(http.getRequest<Request>())) return true;
+      const hits = cost(http.getRequest<Request>());
+      if (hits <= 0) return true;
       const { schoolId, userId } = this.context.actor();
       const key = `${schoolId}:${userId}`;
       await enforceRateLimits(
         this.storage,
         http.getResponse<Response>(),
         [
-          { name: `${name}-minute`, key, limit: perMinute, ttlMs: MINUTE_MS },
-          { name: `${name}-hour`, key, limit: perHour, ttlMs: HOUR_MS },
+          { name: `${name}-minute`, key, limit: perMinute, ttlMs: MINUTE_MS, cost: hits },
+          { name: `${name}-hour`, key, limit: perHour, ttlMs: HOUR_MS, cost: hits },
         ],
         this.logger,
       );
@@ -104,12 +121,13 @@ export function perUserThrottle(
  * One per-user budget for every route that can tell its caller whether an identity number (a
  * B-Form or a CNIC) exists in the school: the lookups, admission and a B-Form patch
  * (contracts/slice-5.md §3.6, slice-6.md §3.4). 30 a minute and 300 an hour in all, so spreading
- * probes across routes gains nothing.
+ * probes across routes gains nothing. The budget is per identity number, not per request: `cost`
+ * counts the numbers one request can test (default one).
  */
-export const identityProbeThrottle = (applies?: (req: Request) => boolean): Type<CanActivate> =>
-  perUserThrottle('identity-probe', 30, 300, applies);
+export const identityProbeThrottle = (cost?: RequestCost): Type<CanActivate> =>
+  perUserThrottle('identity-probe', 30, 300, cost);
 
-/** Lookups and admission count every request. */
+/** The lookups test one number per request. */
 export const IdentityProbeThrottleGuard = identityProbeThrottle();
 
 /** True when the JSON body has `field` as a string (a value to check, not a clearing null). */
@@ -125,8 +143,14 @@ export const bodyHasString =
     );
   };
 
+/** One hit when the JSON body has `field` as a string, otherwise none. */
+export const oneIfBodyHasString =
+  (field: string): RequestCost =>
+  (req) =>
+    bodyHasString(field)(req) ? 1 : 0;
+
 /** Guardian and staff create and patch: only a body carrying a CNIC can answer *_CNIC_EXISTS. */
-export const CnicProbeThrottleGuard = identityProbeThrottle(bodyHasString('cnic'));
+export const CnicProbeThrottleGuard = identityProbeThrottle(oneIfBodyHasString('cnic'));
 
 /** `failures` consecutive failures for one key lock it for `durationMs`. */
 export interface LockoutPolicy {
@@ -188,7 +212,7 @@ export class RedisLockout {
     try {
       return await this.storage.redis.call(command, ...args);
     } catch (error) {
-      this.logger.error({ err: error }, 'lockout storage unreachable');
+      this.logger.error(failureLog(error), 'lockout storage unreachable');
       throw storageUnavailable();
     }
   }

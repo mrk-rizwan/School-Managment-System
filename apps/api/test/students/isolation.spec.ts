@@ -42,6 +42,8 @@ describe('students tenant isolation', () => {
   let users: UserRepository;
   /** A school-wide scope, from a principal's student.view. */
   let all: Scope;
+  /** A section scope over no sections (a teacher with no assignments). */
+  let none: Scope;
   const db = testDb();
   const page = { skip: 0, take: 50 };
   const asSchool = (schoolId: SchoolId): TestSchool => ({ id: schoolId, shortCode: '' });
@@ -72,6 +74,15 @@ describe('students tenant isolation', () => {
     const scope = access && (await permissions.can(school.id, access, Capability.STUDENT_VIEW));
     if (!scope || scope.kind !== 'all') throw new Error('expected a school-wide scope');
     all = scope;
+    // A teacher with no assignments: a section scope with no sections, which matches no row.
+    const teacher = await createSchoolUser(db, school, { systemRole: 'teacher' });
+    const teacherAccess = await permissions.load(school.id, teacher.userId);
+    const narrow =
+      teacherAccess && (await permissions.can(school.id, teacherAccess, Capability.STUDENT_VIEW));
+    if (!narrow || narrow.kind !== 'sections' || narrow.ids.length !== 0) {
+      throw new Error('expected an empty section scope');
+    }
+    none = narrow;
   });
 
   afterAll(async () => {
@@ -119,8 +130,8 @@ describe('students tenant isolation', () => {
     const student = await createStudent(db, schools.a);
     const link = await linkGuardian(db, schools.a, student, await createGuardian(db, schools.a));
     expect(await links.end(schools.b.id, link.id, new Date())).toBe(0);
-    expect(await links.liveForStudent(schools.b.id, student.id)).toEqual([]);
-    expect(await links.liveForStudent(schools.a.id, student.id)).toHaveLength(1);
+    expect(await links.liveForStudent(schools.b.id, all, student.id)).toEqual([]);
+    expect(await links.liveForStudent(schools.a.id, all, student.id)).toHaveLength(1);
   });
 
   it('enrolments', async () => {
@@ -139,8 +150,8 @@ describe('students tenant isolation', () => {
     const student = await createStudent(db, schools.a);
     const enrolment = await enrol(db, schools.a, student, section);
     expect(await enrolments.close(schools.b.id, enrolment.id, day('2026-01-01'))).toBe(0);
-    expect(await enrolments.findActiveForStudent(schools.b.id, student.id)).toBeNull();
-    expect((await enrolments.listForStudent(schools.b.id, student.id, page)).total).toBe(0);
+    expect(await enrolments.findActiveForStudent(schools.b.id, all, student.id)).toBeNull();
+    expect((await enrolments.listForStudent(schools.b.id, all, student.id, page)).total).toBe(0);
     expect(await enrolments.hasActiveInSection(schools.b.id, section.id)).toBe(false);
     expect(await enrolments.hasActiveInSection(schools.a.id, section.id)).toBe(true);
   });
@@ -158,9 +169,9 @@ describe('students tenant isolation', () => {
       effectiveOn: day('2026-01-01'),
     });
     expect(
-      (await statusChanges.listForStudent(a.id, student.id, page)).rows.map((r) => r.id),
+      (await statusChanges.listForStudent(a.id, all, student.id, page)).rows.map((r) => r.id),
     ).toEqual([row.id]);
-    expect((await statusChanges.listForStudent(b.id, student.id, page)).total).toBe(0);
+    expect((await statusChanges.listForStudent(b.id, all, student.id, page)).total).toBe(0);
     expect(await statusChanges.latestForStudent(b.id, student.id)).toBeNull();
     // A row naming another school's student or user is refused by the composite foreign keys.
     await expect(
@@ -193,5 +204,33 @@ describe('students tenant isolation', () => {
         studentId: student.id,
       }),
     ).rejects.toThrow();
+  });
+
+  it('control 7: the per-student lists take the caller scope; out of scope reads as nothing', async () => {
+    const { a } = await createTwoSchools();
+    const { section } = await createClassWithSection(db, a);
+    const student = await createStudent(db, a);
+    await enrol(db, a, student, section);
+    await linkGuardian(db, a, student, await createGuardian(db, a));
+    const actor = await createSchoolUser(db, a, { systemRole: 'office_staff' });
+    await statusChanges.record(a.id, {
+      studentId: student.id,
+      fromStatus: null,
+      toStatus: 'active',
+      reason: null,
+      changedBy: actor.userId,
+      effectiveOn: day('2026-01-01'),
+    });
+    for (const [scope, seen] of [[all, 1], [none, 0]] as const) {
+      expect((await enrolments.listForStudent(a.id, scope, student.id, page)).total).toBe(seen);
+      expect(await enrolments.findActiveForStudent(a.id, scope, student.id)).toEqual(
+        seen ? expect.objectContaining({ studentId: student.id }) : null,
+      );
+      expect(await enrolments.activeForStudents(a.id, scope, [student.id])).toHaveLength(seen);
+      expect(await links.liveForStudent(a.id, scope, student.id)).toHaveLength(seen);
+      const linkPage = { includeEnded: true, ...page };
+      expect((await links.listForStudent(a.id, scope, student.id, linkPage)).total).toBe(seen);
+      expect((await statusChanges.listForStudent(a.id, scope, student.id, page)).total).toBe(seen);
+    }
   });
 });

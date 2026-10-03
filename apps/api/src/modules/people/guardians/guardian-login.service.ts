@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Capability, ErrorCode } from '@asms/shared';
+import { Capability, ErrorCode, LOGIN_ISSUED_REASONS } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
 import { ApiException } from '../../../common/errors/api-exception';
@@ -12,7 +12,7 @@ import { GuardianLoginRepository } from '../../../repositories/guardian-login.re
 import { StudentGuardianRepository } from '../../../repositories/student-guardian.repository';
 import { UserRepository, type UserCredentialRow } from '../../../repositories/user.repository';
 import { PermissionsService } from '../../access/permissions.service';
-import type { UserDto } from '../../users/users.dto';
+import type { IssueLoginDto, UserDto } from '../../users/users.dto';
 import { toUserDto } from '../../users/users.service';
 import { SchoolContext, type Actor } from '../../../common/school-context';
 import type { SchoolId } from '../../../tenancy/school-id';
@@ -58,11 +58,11 @@ export class GuardianLoginService {
    * guardian gained a login meanwhile → LOGIN_ALREADY_EXISTS; the username was taken by another
    * user (say a staff login issued at the same moment) → once more, which now takes the link path.
    */
-  async issueLogin(guardianId: bigint): Promise<UserDto> {
+  async issueLogin(guardianId: bigint, dto: IssueLoginDto): Promise<UserDto> {
     const actor = this.context.actor();
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.issueInTransaction(actor, guardianId);
+        return await this.issueInTransaction(actor, guardianId, dto);
       } catch (error) {
         const constraint = summariseDatabaseError(error)?.constraint;
         if (constraint === GUARDIAN_ID_UNIQUE) throw loginExists();
@@ -73,7 +73,11 @@ export class GuardianLoginService {
   }
 
   @Transactional()
-  private async issueInTransaction(actor: Actor, guardianId: bigint): Promise<UserDto> {
+  private async issueInTransaction(
+    actor: Actor,
+    guardianId: bigint,
+    dto: IssueLoginDto,
+  ): Promise<UserDto> {
     const { schoolId } = actor;
     // Preconditions in contract order, on the locked row: racing issue-logins queue here.
     const guardian = await this.guardians.lock(schoolId, guardianId);
@@ -124,6 +128,7 @@ export class GuardianLoginService {
       action: 'user.login_issued',
       subjectType: 'user',
       subjectId: userId,
+      reason: dto.reason ?? LOGIN_ISSUED_REASONS.guardian,
       metadata: { capacity: 'guardian', linkedExistingUser: existing !== null },
     });
     const user = await this.users.find(schoolId, userId);

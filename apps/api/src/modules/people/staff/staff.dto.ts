@@ -25,6 +25,7 @@ import {
 } from '../../../common/fields';
 import { ID_PATTERN, IsIdString } from '../../../common/ids';
 import { PageQueryDto } from '../../../common/pagination';
+import { IssueLoginDto } from '../../users/users.dto';
 
 // contracts/slice-4.md §2-§5. Identity numbers are accepted in bodies only, never echoed: every
 // response carries the masked form.
@@ -284,7 +285,7 @@ export class ChangeStaffStatusDto {
   reason: string;
 }
 
-export class IssueStaffLoginDto {
+export class IssueStaffLoginDto extends IssueLoginDto {
   @ApiProperty(SYSTEM_ROLE)
   @IsIn(SYSTEM_ROLES)
   systemRole: SystemRole;
