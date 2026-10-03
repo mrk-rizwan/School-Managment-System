@@ -61,8 +61,20 @@ export function tenantModelTables(
 /** The trigger function every tenant table attaches BEFORE UPDATE (migration school_id_immutable). */
 export const SCHOOL_ID_IMMUTABLE_FUNCTION = 'asms_forbid_school_id_change';
 
-/** Indexes on tenant tables that may lead with a column other than school_id: `table.column`. */
-export const NON_SCHOOL_LEADING_INDEXES = new Set(['sessions.token_hash']);
+
+/**
+ * Indexes on tenant tables that may lead with a column other than school_id: `table.column`.
+ * - sessions.token_hash: resolving a session establishes the tenant (named exception 4).
+ * - whatsapp_numbers.waha_session, whatsapp_numbers.cloud_phone_number_id, message_deliveries.channel
+ *   (the provider-reference index): a delivery webhook names a provider reference, not a school
+ *   (named exception 5, phase-2-daily-operations.md §4.1).
+ */
+export const NON_SCHOOL_LEADING_INDEXES = new Set([
+  'sessions.token_hash',
+  'whatsapp_numbers.waha_session',
+  'whatsapp_numbers.cloud_phone_number_id',
+  'message_deliveries.channel',
+]);
 
 /**
  * `table.column` *_id columns on tenant tables that cannot be foreign keys. Each needs a stated
@@ -72,11 +84,20 @@ export const NON_SCHOOL_LEADING_INDEXES = new Set(['sessions.token_hash']);
  *   declared in schema.prisma (prisma-relations.spec.ts allows a tenant model to relate only to
  *   School), and an FK absent from schema.prisma is dropped as drift by the next migration.
  * - idempotency_keys.subject_id: polymorphic, names a row of the table in subject_type.
+ * - messages.subject_id: polymorphic, names a row of the table in subject_type (plan §5).
+ * - whatsapp_numbers.cloud_phone_number_id: Meta's identifier for the number, not a row id.
+ * - holidays.announcement_id: FK added in slice 14 with the announcements table. The one
+ *   recorded exception to "a column waiting for its target table is not a reason" (the Phase 2
+ *   groundwork ships the holidays shape before slice 14; contracts/slice-10.md §4.7). Slice 14
+ *   adds the FK and removes this entry.
  */
 export const NON_FK_ID_COLUMNS = new Set([
   'audit_log.subject_id',
   'audit_log.actor_platform_user_id',
   'idempotency_keys.subject_id',
+  'messages.subject_id',
+  'whatsapp_numbers.cloud_phone_number_id',
+  'holidays.announcement_id',
 ]);
 
 export type ExpectedObject =
@@ -588,7 +609,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     table: 'teacher_assignments',
     name: 'teacher_assignments_columns_immutable',
     definition:
-      "BEFORE UPDATE ON public.teacher_assignments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'academic_year_id', 'class_id', 'section_id', 'subject_id', 'role', 'starts_on')",
+      "BEFORE UPDATE ON public.teacher_assignments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'academic_year_id', 'class_id', 'section_id', 'subject_id', 'role', 'starts_on', 'covers_assignment_id')",
   },
   // Slice 6: students, guardian links, enrolments, documents, uploads, idempotency.
   {
@@ -596,7 +617,9 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     table: 'enrolments',
     name: 'enrolments_ended_check',
     definition:
-      "CHECK ((((status = 'active'::enrolment_status) = (ended_on IS NULL)) AND ((ended_on IS NULL) OR (ended_on >= started_on))))",
+      // Relaxed by one day in Phase 2: the zero-length enrolment of a same-day section or class
+      // correction (contracts/slice-10.md §8.1).
+      "CHECK ((((status = 'active'::enrolment_status) = (ended_on IS NULL)) AND ((ended_on IS NULL) OR (ended_on >= (started_on - 1)))))",
   },
   {
     kind: 'constraint',
@@ -1015,7 +1038,450 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     name: 'user_capability_grants_not_self_end_check',
     definition: 'CHECK (((revoked_by IS NULL) OR (revoked_by <> user_id)))',
   },
+  ...PHASE_2_GROUNDWORK_OBJECTS(),
 ];
+
+/** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
+function noDeleteTriggers(...tables: string[]): ExpectedObject[] {
+  return tables.flatMap((table): ExpectedObject[] => [
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_no_delete`,
+      definition: `BEFORE DELETE ON public.${table} FOR EACH ROW EXECUTE FUNCTION asms_forbid_delete()`,
+    },
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_no_truncate`,
+      definition: `BEFORE TRUNCATE ON public.${table} FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()`,
+    },
+  ]);
+}
+
+/** The identity-number CHECK every free-text column carries, as pg_get_constraintdef prints it. */
+function noIdCheck(column: string): string {
+  return `CHECK ((((${column})::text !~ '[0-9]{13}'::text) AND ((${column})::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))`;
+}
+
+/**
+ * Phase 2 groundwork (migrations 20261003182514_phase2_teacher_cover_role,
+ * 20261003183118_phase2_messaging, 20261003184500_phase2_calendar_settings). A function, not a
+ * literal, only because it is declared after EXPECTED_OBJECTS reads it.
+ */
+function PHASE_2_GROUNDWORK_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- schools, platform_settings, platform_delivery_health (non-tenant)
+    {
+      kind: 'constraint',
+      table: 'schools',
+      name: 'schools_sms_monthly_cap_check',
+      definition: 'CHECK (((sms_monthly_cap >= 0) AND (sms_monthly_cap <= 100000)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'platform_settings',
+      name: 'platform_settings_one_row_check',
+      definition: 'CHECK ((id = 1))',
+    },
+    ...noDeleteTriggers('platform_settings'),
+    {
+      kind: 'constraint',
+      table: 'platform_delivery_health',
+      name: 'platform_delivery_health_counts_check',
+      definition:
+        'CHECK (((accepted >= 0) AND (delivered >= 0) AND (failed >= 0) AND (suppressed >= 0) AND (sms_used >= 0) AND (sms_cap >= 0)))',
+    },
+    {
+      kind: 'trigger',
+      table: 'platform_delivery_health',
+      name: 'platform_delivery_health_columns_immutable',
+      definition: "EXECUTE FUNCTION asms_forbid_columns_change('school_id', 'day', 'channel')",
+    },
+    // ---- whatsapp_numbers
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_phone_check',
+      definition: "CHECK (((phone)::text ~ '^\\+[1-9][0-9]{7,14}$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_provider_check',
+      definition:
+        "CHECK ((((provider = 'waha'::whatsapp_provider) AND (cloud_phone_number_id IS NULL) AND (cloud_access_token IS NULL)) OR ((provider = 'cloud_api'::whatsapp_provider) AND (waha_session IS NULL) AND (cloud_phone_number_id IS NOT NULL) AND (cloud_access_token IS NOT NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_waha_session_check',
+      definition: "CHECK (((waha_session)::text ~ '^[a-z0-9_]{1,64}$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_cloud_phone_number_id_check',
+      definition: "CHECK (((cloud_phone_number_id)::text ~ '^[0-9]{1,32}$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_cloud_access_token_check',
+      definition: "CHECK (((cloud_access_token)::text ~~ 'v1:%'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_inbound_ignored_count_check',
+      definition: 'CHECK ((inbound_ignored_count >= 0))',
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_paired_check',
+      definition: 'CHECK (((paired_at IS NULL) OR (paired_by IS NOT NULL)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_disabled_check',
+      definition:
+        "CHECK ((((status = 'disabled'::whatsapp_status) = (disabled_at IS NOT NULL)) AND ((disabled_at IS NULL) = (disabled_by IS NULL)) AND ((disabled_at IS NULL) = (disabled_reason IS NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_disabled_reason_no_id_check',
+      definition: noIdCheck('disabled_reason'),
+    },
+    {
+      kind: 'index',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_school_id_live_key',
+      definition: "USING btree (school_id) WHERE (status <> 'disabled'::whatsapp_status)",
+    },
+    {
+      kind: 'trigger',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_columns_immutable',
+      definition:
+        "EXECUTE FUNCTION asms_forbid_columns_change('provider', 'phone', 'cloud_phone_number_id')",
+    },
+    {
+      kind: 'trigger',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_waha_session_frozen',
+      definition: "EXECUTE FUNCTION asms_forbid_change_once_set('waha_session')",
+    },
+    {
+      kind: 'trigger',
+      table: 'whatsapp_numbers',
+      name: 'whatsapp_numbers_disabled_frozen',
+      definition:
+        "EXECUTE FUNCTION asms_forbid_change_once_set('disabled_at', 'disabled_by', 'disabled_reason', 'status')",
+    },
+    ...noDeleteTriggers('whatsapp_numbers'),
+    // ---- devices
+    {
+      kind: 'constraint',
+      table: 'devices',
+      name: 'devices_app_version_check',
+      definition: "CHECK (((app_version)::text ~ '^[0-9]{1,4}(\\.[0-9]{1,4}){2}$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'devices',
+      name: 'devices_push_token_check',
+      definition:
+        "CHECK ((((push_token)::text <> ''::text) AND ((push_token)::text = btrim((push_token)::text))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'devices',
+      name: 'devices_unregistered_check',
+      definition: 'CHECK (((unregistered_at IS NULL) = (unregistered_reason IS NULL)))',
+    },
+    {
+      kind: 'trigger',
+      table: 'devices',
+      name: 'devices_columns_immutable',
+      definition: "EXECUTE FUNCTION asms_forbid_columns_change('user_id')",
+    },
+    ...noDeleteTriggers('devices'),
+    // ---- messages
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_recipient_check',
+      definition: 'CHECK ((num_nonnulls(guardian_id, staff_id, student_id) = 1))',
+    },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_subject_type_check',
+      definition: "CHECK (((subject_type)::text ~ '^[a-z][a-z_]{0,31}$'::text))",
+    },
+    { kind: 'constraint', table: 'messages', name: 'messages_body_no_id_check', definition: noIdCheck('body') },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_media_object_key_check',
+      definition:
+        "CHECK (((media_object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_channel_plan_check',
+      definition:
+        'CHECK (((channel_plan IS NOT NULL) AND (array_position(channel_plan, NULL::message_channel) IS NULL)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_suppressed_check',
+      definition: "CHECK (((status = 'suppressed'::message_status) = (suppressed_reason IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_finished_check',
+      definition:
+        "CHECK (((finished_at IS NULL) = (status = ANY (ARRAY['queued'::message_status, 'sending'::message_status]))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_claimed_check',
+      definition: "CHECK (((status <> 'sending'::message_status) OR (claimed_at IS NOT NULL)))",
+    },
+    ...(['guardian', 'staff', 'student'] as const).map(
+      (person): ExpectedObject => ({
+        kind: 'index',
+        table: 'messages',
+        name: `messages_subject_${person}_key`,
+        definition: `USING btree (school_id, subject_type, subject_id, ${person}_id) WHERE (${person}_id IS NOT NULL)`,
+      }),
+    ),
+    {
+      kind: 'trigger',
+      table: 'messages',
+      name: 'messages_columns_immutable',
+      definition:
+        "EXECUTE FUNCTION asms_forbid_columns_change('type', 'priority', 'subject_type', 'subject_id', 'guardian_id', 'staff_id', 'student_id', 'body', 'media_object_key', 'created_at')",
+    },
+    ...noDeleteTriggers('messages'),
+    // ---- message_deliveries
+    {
+      kind: 'function',
+      name: 'asms_message_delivery_forward_only',
+      definition: "DETAIL = 'constraint: message_deliveries_forward_only'",
+    },
+    {
+      kind: 'trigger',
+      table: 'message_deliveries',
+      name: 'message_deliveries_forward_only',
+      definition:
+        'BEFORE DELETE OR UPDATE ON public.message_deliveries FOR EACH ROW EXECUTE FUNCTION asms_message_delivery_forward_only()',
+    },
+    {
+      kind: 'trigger',
+      table: 'message_deliveries',
+      name: 'message_deliveries_no_truncate',
+      definition:
+        'BEFORE TRUNCATE ON public.message_deliveries FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()',
+    },
+    {
+      kind: 'index',
+      table: 'message_deliveries',
+      name: 'message_deliveries_provider_ref_key',
+      definition: 'USING btree (channel, provider_ref_hash) WHERE (provider_ref_hash IS NOT NULL)',
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_attempt_check',
+      definition: 'CHECK ((attempt >= 1))',
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_segments_check',
+      definition: 'CHECK ((segments >= 1))',
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_provider_ref_hash_check',
+      definition: "CHECK ((provider_ref_hash ~ '^[0-9a-f]{64}$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_to_masked_no_id_check',
+      definition: "CHECK (((to_masked)::text !~ '[0-9]{7}'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_status_check',
+      definition:
+        "CHECK ((((status = 'delivered'::delivery_status) = (delivered_at IS NOT NULL)) AND ((status = 'failed'::delivery_status) = (failed_at IS NOT NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_error_code_check',
+      definition: "CHECK (((error_code IS NULL) OR (status = 'failed'::delivery_status)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_suppressed_check',
+      definition: "CHECK (((status = 'suppressed'::delivery_status) = (suppressed_reason IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_deliveries',
+      name: 'message_deliveries_poll_ref_check',
+      definition:
+        "CHECK (((poll_ref IS NULL) OR ((poll_ref ~~ 'v1:%'::text) AND (channel = 'sms'::message_channel) AND (status = 'accepted'::delivery_status))))",
+    },
+    // ---- message_usage
+    {
+      kind: 'constraint',
+      table: 'message_usage',
+      name: 'message_usage_year_month_check',
+      definition: "CHECK ((year_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text))",
+    },
+    {
+      kind: 'constraint',
+      table: 'message_usage',
+      name: 'message_usage_sent_count_check',
+      definition: 'CHECK ((sent_count >= 0))',
+    },
+    {
+      kind: 'trigger',
+      table: 'message_usage',
+      name: 'message_usage_columns_immutable',
+      definition: "EXECUTE FUNCTION asms_forbid_columns_change('year_month', 'channel')",
+    },
+    ...noDeleteTriggers('message_usage'),
+    // ---- school_settings
+    {
+      kind: 'constraint',
+      table: 'school_settings',
+      name: 'school_settings_periods_per_day_check',
+      definition: 'CHECK (((periods_per_day >= 1) AND (periods_per_day <= 12)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'school_settings',
+      name: 'school_settings_weekly_off_days_check',
+      definition:
+        'CHECK (((weekly_off_days IS NOT NULL) AND (array_position(weekly_off_days, NULL::smallint) IS NULL) AND (weekly_off_days <@ ARRAY[(0)::smallint, (1)::smallint, (2)::smallint, (3)::smallint, (4)::smallint, (5)::smallint, (6)::smallint]) AND (cardinality(weekly_off_days) < 7)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'school_settings',
+      name: 'school_settings_attendance_amend_window_days_check',
+      definition:
+        'CHECK (((attendance_amend_window_days >= 0) AND (attendance_amend_window_days <= 30)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'school_settings',
+      name: 'school_settings_late_cutoff_time_check',
+      definition:
+        "CHECK (((late_counts_as <> 'absent_after_cutoff'::late_counts_as) OR (late_cutoff_time IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'school_settings',
+      name: 'school_settings_sms_allowed_types_check',
+      definition:
+        "(sms_allowed_types <@ ARRAY['absence_alert'::message_type, 'late_advice'::message_type, 'attendance_corrected'::message_type, 'announcement_urgent'::message_type, 'announcement_normal'::message_type, 'holiday_notice'::message_type])",
+    },
+    // ---- teacher_assignments: cover
+    {
+      kind: 'constraint',
+      table: 'teacher_assignments',
+      name: 'teacher_assignments_cover_check',
+      definition:
+        "CHECK (((role <> 'cover'::teacher_assignment_role) OR ((section_id IS NOT NULL) AND (subject_id IS NULL) AND (ends_on IS NOT NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'teacher_assignments',
+      name: 'teacher_assignments_covers_check',
+      definition:
+        "CHECK (((covers_assignment_id IS NULL) OR (role = 'cover'::teacher_assignment_role)))",
+    },
+    // ---- holidays
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_live_excl',
+      definition:
+        "EXCLUDE USING gist (school_id WITH =, daterange(starts_on, ends_on, '[]'::text) WITH &&) WHERE ((status <> 'cancelled'::holiday_status))",
+    },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_dates_check',
+      definition: 'CHECK ((ends_on >= starts_on))',
+    },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_name_check',
+      definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))",
+    },
+    { kind: 'constraint', table: 'holidays', name: 'holidays_name_no_id_check', definition: noIdCheck('name') },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_description_no_id_check',
+      definition: noIdCheck('description'),
+    },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_cancel_reason_no_id_check',
+      definition: noIdCheck('cancel_reason'),
+    },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_published_check',
+      definition:
+        "CHECK ((((published_at IS NULL) = (published_by IS NULL)) AND ((status <> 'published'::holiday_status) OR (published_at IS NOT NULL)) AND ((status <> 'draft'::holiday_status) OR (published_at IS NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'holidays',
+      name: 'holidays_cancelled_check',
+      definition:
+        "CHECK ((((status = 'cancelled'::holiday_status) = (cancelled_at IS NOT NULL)) AND ((cancelled_at IS NULL) = (cancelled_by IS NULL)) AND ((cancelled_at IS NULL) = (cancel_reason IS NULL))))",
+    },
+    {
+      kind: 'trigger',
+      table: 'holidays',
+      name: 'holidays_published_frozen',
+      definition:
+        "EXECUTE FUNCTION asms_forbid_change_once_set('published_at', 'published_by', 'starts_on', 'ends_on', 'kind', 'name')",
+    },
+    {
+      kind: 'trigger',
+      table: 'holidays',
+      name: 'holidays_cancelled_frozen',
+      definition:
+        "EXECUTE FUNCTION asms_forbid_change_once_set('cancelled_at', 'cancelled_by', 'cancel_reason', 'status', 'starts_on', 'ends_on', 'name', 'description', 'kind', 'applies_to_staff', 'announcement_id')",
+    },
+    ...noDeleteTriggers('holidays'),
+  ];
+}
 
 interface Column {
   table: string;
@@ -1176,7 +1642,8 @@ export async function checkSchema(
       violations.push(`${table}: needs a unique index on exactly (school_id, id)`);
     }
     for (const { column } of columns.filter(
-      (c) => c.table === table && /_(id|by)$/.test(c.column),
+      // `_ids` too, so an array of ids can never dodge the check (Phase 2 plan §5).
+      (c) => c.table === table && /_(id|by|ids)$/.test(c.column),
     )) {
       if (NON_FK_ID_COLUMNS.has(`${table}.${column}`)) continue;
       if (!foreignKeys.some((fk) => fk.table === table && fk.columns.includes(column))) {

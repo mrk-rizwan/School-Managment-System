@@ -75,6 +75,28 @@ const IMPORTS = {
     regex: `(^|/)session-establisher${EXT}$`,
     message: 'Only session resolution (src/tenancy/**) sets the request tenant.',
   },
+  // Phase 2 plan rule 0.11, §4.1. The queue library: jobs are enqueued after commit by the outbox
+  // dispatcher and consumed by src/jobs/**; a service never touches a queue.
+  bullmq: {
+    regex: '^bullmq(/|$)',
+    message:
+      'bullmq is used only in src/jobs/** and src/messaging/outbox-dispatcher.ts. Enqueue through OutboxDispatcher.',
+  },
+  // The fifth SchoolId constructor and runAsSchool (src/tenancy/queue.mint.ts): job bodies only.
+  queueMint: {
+    regex: `(^|/)queue\\.mint${EXT}$`,
+    message: 'queue.mint is imported only by src/jobs/**: a job payload becomes a SchoolId nowhere else.',
+  },
+  // Job-payload resolution's one read of schools (named exception 3, widened).
+  schoolByIdRepository: {
+    regex: `(^|/)repositories/platform/school-by-id\\.repository${EXT}$`,
+    message: 'SchoolByIdRepository is imported only by src/tenancy/queue.mint.ts.',
+  },
+  // Nothing reaches a parent except through NotificationService (plan rule 0.11).
+  messagingDrivers: {
+    regex: '(^|/)messaging/drivers(/|$)',
+    message: 'Drivers are imported only inside src/messaging/**. Call NotificationService.',
+  },
 };
 
 // Exempt in the repository layer, which owns the client and the ambient transaction.
@@ -84,6 +106,18 @@ const REPOSITORY_IMPORTS = [
   'platformRepositories',
   'transactionHost',
   'transactionalAdapter',
+];
+
+// Exempt in the tenancy module, which defines the brands and the request context and registers
+// the transaction plugin over the guarded client.
+const TENANCY_IMPORTS = [
+  'schoolIdMint',
+  'scopeMint',
+  'repositoryInternals',
+  'cls',
+  'transactionHost',
+  'transactionalAdapter',
+  'sessionEstablisher',
 ];
 
 /** The full no-restricted-imports rule minus the named exemptions (or with narrowed entries). */
@@ -101,13 +135,21 @@ function restrictImports({ exempt = [], narrowed = [] } = {}) {
 // fan-out (CLAUDE.md named exceptions 2-4), each with the one platform repository it may import;
 // every other platform repository stays refused there. Each is added here by the slice that
 // writes it; adding one is a recorded decision, not a convenience.
+// `exempt` keeps the import exemptions the site's folder already has.
 const NAMED_EXCEPTION_SITES = {
   // Exception 2's spray detection: one platform_audit_log row per school per window (contract
   // slice-2 §3.1 step 6).
-  'src/modules/auth/login-spike.recorder.ts': 'platform-audit.repository',
+  'src/modules/auth/login-spike.recorder.ts': { repository: 'platform-audit.repository' },
   // Exception 3, the scheduler fan-out: the daily staged-upload sweep lists every school's id
   // (any status) and then works per school with ordinary scoped repositories.
-  'src/modules/documents/staged-upload.sweep.ts': 'school-fan-out.repository',
+  'src/modules/documents/staged-upload.sweep.ts': { repository: 'school-fan-out.repository' },
+  // Exception 3 widened to job-payload resolution (Phase 2 plan §4.1): the fifth SchoolId
+  // constructor reads the school a queue payload names. The only importer of
+  // school-by-id.repository; it lives in src/tenancy and keeps that folder's exemptions.
+  'src/tenancy/queue.mint.ts': {
+    repository: 'school-by-id.repository',
+    exempt: [...TENANCY_IMPORTS, 'schoolByIdRepository'],
+  },
 };
 
 /** The platform-repositories pattern with one repository file let through. */
@@ -458,20 +500,24 @@ export default tseslint.config(
     rules: restrictImports({ exempt: ['repositoryInternals'] }),
   },
   {
-    // The tenancy module defines the brands and the request context, and registers the
-    // transaction plugin over the guarded client.
     files: ['src/tenancy/**/*.ts'],
-    rules: restrictImports({
-      exempt: [
-        'schoolIdMint',
-        'scopeMint',
-        'repositoryInternals',
-        'cls',
-        'transactionHost',
-        'transactionalAdapter',
-        'sessionEstablisher',
-      ],
-    }),
+    rules: restrictImports({ exempt: TENANCY_IMPORTS }),
+  },
+  {
+    // Phase 2 plan §4.1: the worker's processors and scheduled jobs. The only users of the queue
+    // library and of queue.mint (fromQueuePayload, runAsSchool).
+    files: ['src/jobs/**/*.ts'],
+    rules: restrictImports({ exempt: ['bullmq', 'queueMint'] }),
+  },
+  {
+    // Plan rule 0.11: the drivers are internal to messaging.
+    files: ['src/messaging/**/*.ts'],
+    rules: restrictImports({ exempt: ['messagingDrivers'] }),
+  },
+  {
+    // Enqueues the jobs a transaction collected, after commit.
+    files: ['src/messaging/outbox-dispatcher.ts'],
+    rules: restrictImports({ exempt: ['messagingDrivers', 'bullmq'] }),
   },
   {
     files: ['src/tenancy/**/*.ts'],
@@ -492,15 +538,21 @@ export default tseslint.config(
     rules: restrictImports({ exempt: ['repositoryInternals'] }),
   },
   {
+    // The queue-payload resolution and runAsSchool are tested directly, as a job would call them.
+    files: ['test/jobs/**/*.ts'],
+    rules: restrictImports({ exempt: ['queueMint'] }),
+  },
+  {
     // Test support builds schools and tenant ids directly.
     files: ['test/support/**/*.ts'],
     rules: restrictImports({
       exempt: ['prisma', 'repositoryInternals', 'schoolIdMint', 'scopeMint'],
     }),
   },
-  ...Object.entries(NAMED_EXCEPTION_SITES).map(([site, repository]) => ({
+  ...Object.entries(NAMED_EXCEPTION_SITES).map(([site, { repository, exempt = [] }]) => ({
     files: [site],
     rules: restrictImports({
+      exempt,
       narrowed: [{ key: 'platformRepositories', ...platformRepositoriesExcept(repository) }],
     }),
   })),

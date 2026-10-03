@@ -82,6 +82,16 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...valid(), PLATFORM_ADMIN_PASSWORD: 'x'.repeat(12) })).not.toThrow();
   });
 
+  it('PLATFORM_ALERT_EMAIL is optional and validated as an email; WORKER is 0 or 1, default 0', () => {
+    expect(parseEnv(valid()).PLATFORM_ALERT_EMAIL).toBeUndefined();
+    expect(parseEnv({ ...valid(), PLATFORM_ALERT_EMAIL: '' }).PLATFORM_ALERT_EMAIL).toBeUndefined();
+    expect(() => parseEnv({ ...valid(), PLATFORM_ALERT_EMAIL: 'ops@asms.example' })).not.toThrow();
+    expect(() => parseEnv({ ...valid(), PLATFORM_ALERT_EMAIL: 'ops' })).toThrow(/PLATFORM_ALERT_EMAIL/);
+    expect(parseEnv(valid()).WORKER).toBe(false);
+    expect(parseEnv({ ...valid(), WORKER: '1' }).WORKER).toBe(true);
+    expect(() => parseEnv({ ...valid(), WORKER: 'yes' })).toThrow(/WORKER/);
+  });
+
   it('boots without the seed credentials: the running API never needs the seed password', () => {
     const absent = valid();
     delete absent.PLATFORM_ADMIN_EMAIL;

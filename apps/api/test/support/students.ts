@@ -9,6 +9,7 @@
 // Dates are `@db.Date` columns: pass 'YYYY-MM-DD' strings; they are stored as UTC midnight.
 import { randomBytes, randomInt } from 'node:crypto';
 import { FieldCipher } from '../../src/common/crypto/field-encryption';
+import { addDays, todayIn } from '../../src/common/school-clock';
 import { loadEnv, type Env } from '../../src/config/env';
 import type {
   AcademicYearStatus,
@@ -32,9 +33,13 @@ const testEnv = (): Env => (env ??= loadEnv());
 /** 'YYYY-MM-DD' as the Date Prisma writes to a `date` column (UTC midnight). */
 export const day = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
 
-/** Today's date (UTC) as 'YYYY-MM-DD', shifted by `offsetDays`. */
+/**
+ * Today in the test schools' timezone (Asia/Karachi, the schools default) as 'YYYY-MM-DD', shifted
+ * by `offsetDays`. Not the UTC date: between midnight and 05:00 in Karachi the two differ and the
+ * API, which reads the school clock, would disagree with the test.
+ */
 export function isoDay(offsetDays = 0): string {
-  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+  return addDays(todayIn('Asia/Karachi'), offsetDays).toISOString().slice(0, 10);
 }
 
 /** A short word unique to one call: keeps names apart under the per-school unique keys. */

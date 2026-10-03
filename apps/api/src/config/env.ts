@@ -79,6 +79,24 @@ const schema = z.object({
         `must be ${PLATFORM_PASSWORD_MIN}-${PLATFORM_PASSWORD_MAX} characters`,
       ),
   ),
+  // The one ops mailbox for platform alerts such as whatsapp_session_down (contracts/slice-9.md,
+  // decision 6). Optional until slice 9 sends the first alert.
+  PLATFORM_ALERT_EMAIL: optional(
+    z
+      .string()
+      .refine(
+        (value) =>
+          normaliseEmail(value).length <= 254 &&
+          isEmail(normaliseEmail(value), PLATFORM_EMAIL_OPTIONS),
+        'must be an email address',
+      ),
+  ),
+  // `1` only in the worker process (src/worker.ts sets it): queue consumers and scheduled jobs run
+  // there and never in the HTTP process (Phase 2 plan §2, §3).
+  WORKER: z
+    .enum(['0', '1'])
+    .default('0')
+    .transform((value) => value === '1'),
 });
 
 export type Env = Readonly<z.infer<typeof schema>>;

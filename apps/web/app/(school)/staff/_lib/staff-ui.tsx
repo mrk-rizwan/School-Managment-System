@@ -42,6 +42,7 @@ export const ROLE_LABELS: Record<SystemRole, string> = {
 export const TEACHER_ROLE_LABELS: Record<TeacherRole, string> = {
   class_teacher: 'Class teacher',
   subject_teacher: 'Subject teacher',
+  cover: 'Cover',
 };
 
 /**

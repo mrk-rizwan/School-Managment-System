@@ -1,3 +1,4 @@
+import type { IdempotentEndpoint } from '@asms/shared';
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
@@ -5,9 +6,6 @@ import type { PrismaTxAdapter } from './prisma';
 
 // The tenant table idempotency_keys (contracts/slice-6.md §6.3, R33, R82-R89). A row holds the
 // key, an HMAC of the request and the subject it created: no identity digits, no response body.
-
-/** Lower-case route key of an idempotent endpoint (CHECK idempotency_keys_endpoint_check). */
-export type IdempotentEndpoint = 'admissions';
 
 /** The unique index a racing second insert of the same key fails on (R89). */
 export const IDEMPOTENCY_KEY_UNIQUE = 'idempotency_keys_school_id_user_id_endpoint_key_key';

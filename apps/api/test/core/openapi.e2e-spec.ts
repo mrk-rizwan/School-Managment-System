@@ -1,5 +1,8 @@
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { buildOpenApiDocuments } from '../../src/openapi-documents';
+import { HealthModule } from '../../src/modules/health/health.module';
+import { PlatformModule } from '../../src/modules/platform/platform.module';
+import { buildOpenApiDocuments, schoolDocumentModules } from '../../src/openapi-documents';
+import { WebhooksModule } from '../../src/webhooks/webhooks.module';
 import { createTestApp } from './app';
 import { TestCoreModule } from './test.controller';
 
@@ -37,5 +40,15 @@ describe('OpenAPI helpers', () => {
     expect(Object.keys(platform.paths).every((p) => p.startsWith('/api/v1/platform/'))).toBe(true);
     expect(Object.keys(school.paths)).toContain('/api/v1/test/things');
     expect(Object.keys(school.paths).some((p) => p.startsWith('/api/v1/platform/'))).toBe(false);
+  });
+
+  it('the webhooks are in no document: WebhooksModule is outside the school bucket and the platform tree', () => {
+    const modules = schoolDocumentModules(app);
+    expect(modules).toContain(HealthModule);
+    expect(modules).not.toContain(WebhooksModule);
+    expect(modules).not.toContain(PlatformModule);
+    const { school, platform } = buildOpenApiDocuments(app);
+    const paths = [...Object.keys(school.paths), ...Object.keys(platform.paths)];
+    expect(paths.some((p) => p.startsWith('/api/v1/webhooks'))).toBe(false);
   });
 });

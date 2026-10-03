@@ -17,6 +17,10 @@ import { StaffModule } from './modules/people/staff/staff.module';
 import { StudentsModule } from './modules/people/students/students.module';
 import { AdmissionsModule } from './modules/people/admissions/admissions.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { MeModule } from './modules/me/me.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { DatabaseModule } from './repositories/database.module';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -42,6 +46,11 @@ import { TenancyModule } from './tenancy/tenancy.module';
     StudentsModule,
     AdmissionsModule,
     DocumentsModule,
+    // Phase 2 (empty until slices 9 and 10 fill them).
+    MessagingModule,
+    WebhooksModule,
+    CalendarModule,
+    MeModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

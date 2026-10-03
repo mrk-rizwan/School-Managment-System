@@ -728,7 +728,7 @@ Names are fixed now; later phases add screens, not keys. `noun.verb[.qualifier]`
 | Documents (3) | `document.view` `document.upload` `document.verify` | all | `document.view` `document.upload` | — |
 | Staff (6) | `staff.view` `staff.create` `staff.update` `staff.contract.manage` `staff.status.change` `staff.leave.approve` | all | `staff.view` | — |
 | Payroll (2) | `payroll.view` `payroll.run` | both | — | — |
-| Attendance (3) | `attendance.student.mark` `attendance.student.view_all` `attendance.staff.manage` | all | `attendance.student.view_all` | `attendance.student.mark` (own classes) |
+| Attendance (3) | `attendance.student.mark` `attendance.student.view_all` `attendance.staff.manage` | all | `attendance.student.view_all`; `attendance.student.mark` (all, **added by Phase 2 §1.2**, owner 2026-10-03: the gate records arrivals) | `attendance.student.mark` (own classes) |
 | Academics (9) | `assessment.define` `marks.enter` `marks.view_all` `result.approve` `result.publish` `diary.write` `remark.write` `timetable.manage` `certificate.issue` | all | `certificate.issue` | `marks.enter` `diary.write` `remark.write` (own classes) |
 | Finance (11) | `charge.create` `charge.campaign.send` `concession.grant` `payment.record` `payment.verify` `payment.void` `collection.handover.confirm` `expense.record` `expense.approve` `finance.report.view` `fee.statement.view` | all | `charge.create` `payment.record` `fee.statement.view` `expense.record` — **not** `payment.verify`, `concession.grant`, `finance.report.view` | — |
 | Comms (2) | `announcement.send.scope` `announcement.send.school` | both | `announcement.send.scope` | `announcement.send.scope` (own classes) |

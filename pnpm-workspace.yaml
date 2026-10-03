@@ -12,3 +12,8 @@ allowBuilds:
   '@parcel/watcher': false
   esbuild: true
   unrs-resolver: true
+  # firebase-admin's dependencies: client-SDK defaults, a version notice, an optional native
+  # accelerator with a pure-JS fallback. None is needed by the API.
+  '@firebase/util': false
+  msgpackr-extract: false
+  protobufjs: false

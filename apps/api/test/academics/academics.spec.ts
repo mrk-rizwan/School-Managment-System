@@ -49,7 +49,7 @@ describe('academic structure services', () => {
   const leave = (school: TestSchool, enrolmentId: bigint) =>
     testDb().enrolment.update({
       where: { schoolId_id: { schoolId: school.id, id: enrolmentId } },
-      data: { status: 'left', endedOn: new Date(new Date().toISOString().slice(0, 10)) },
+      data: { status: 'left', endedOn: addDays(todayIn('Asia/Karachi'), 0) },
     });
 
   const klass = async (academicYearId?: string, name = `C ${tag()}`) =>

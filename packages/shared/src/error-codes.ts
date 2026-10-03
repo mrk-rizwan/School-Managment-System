@@ -7,6 +7,8 @@ export const ErrorCode = {
   AUTH_REQUIRED: 'AUTH_REQUIRED',
   AUTH_FAILED: 'AUTH_FAILED',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
+  // Retired by Phase 2 slice 9 (contracts/slice-9.md §10: R80 lifted, a suspended school keeps
+  // working). Kept because a code is never removed or reused; no route sends it after slice 9.
   SCHOOL_SUSPENDED: 'SCHOOL_SUSPENDED',
   ORIGIN_REJECTED: 'ORIGIN_REJECTED',
   NOT_FOUND: 'NOT_FOUND',
@@ -96,6 +98,36 @@ export const ErrorCode = {
   GRANT_EXISTS: 'GRANT_EXISTS',
   // A grant or revoke aimed at a principal: principals are unrestricted peers (slice-7 §4.1).
   TARGET_IS_PRINCIPAL: 'TARGET_IS_PRINCIPAL',
+  // Phase 2 (phase-2-daily-operations.md §6.1). The HTTP status each is sent with follows it.
+  UPGRADE_REQUIRED: 'UPGRADE_REQUIRED', // 426, details.minimumVersion
+  WEBHOOK_SIGNATURE_INVALID: 'WEBHOOK_SIGNATURE_INVALID', // 401, no details
+  BEARER_SESSION_REQUIRED: 'BEARER_SESSION_REQUIRED', // 409
+  CONTACT_PHONE_MISSING: 'CONTACT_PHONE_MISSING', // 409
+  SMS_CAP_EXCEEDED: 'SMS_CAP_EXCEEDED', // 409, details { smsUnits, remaining, cap }
+  SMS_TOO_LONG: 'SMS_TOO_LONG', // 409
+  WHATSAPP_ALREADY_CONNECTED: 'WHATSAPP_ALREADY_CONNECTED', // 409
+  WHATSAPP_NUMBER_MISSING: 'WHATSAPP_NUMBER_MISSING', // 409
+  // contracts/slice-9.md §11
+  WHATSAPP_PROVIDER_MISMATCH: 'WHATSAPP_PROVIDER_MISMATCH', // 409, details.provider
+  WHATSAPP_VERIFICATION_FAILED: 'WHATSAPP_VERIFICATION_FAILED', // 409, details.reason
+  HOLIDAY_DATES_TAKEN: 'HOLIDAY_DATES_TAKEN', // 409, details { holidayId }
+  HOLIDAY_NOT_DRAFT: 'HOLIDAY_NOT_DRAFT', // 409
+  NOT_A_TEACHING_DAY: 'NOT_A_TEACHING_DAY', // 409
+  ATTENDANCE_LOCKED: 'ATTENDANCE_LOCKED', // 409
+  AMENDMENT_REASON_REQUIRED: 'AMENDMENT_REASON_REQUIRED', // 409, details.amendments
+  ROSTER_INCOMPLETE: 'ROSTER_INCOMPLETE', // 422, details.missing
+  STALE_STATUS: 'STALE_STATUS', // 409
+  ARRIVAL_NOT_ABSENT: 'ARRIVAL_NOT_ABSENT', // 409
+  DIARY_ENTRY_EXISTS: 'DIARY_ENTRY_EXISTS', // 409, details { entryId }
+  DIARY_ENTRY_LOCKED: 'DIARY_ENTRY_LOCKED', // 409
+  SUBJECT_NOT_ASSIGNED: 'SUBJECT_NOT_ASSIGNED', // 409
+  REMARK_SUPERSEDED: 'REMARK_SUPERSEDED', // 409, details { supersededById }
+  ANNOUNCEMENT_SENT: 'ANNOUNCEMENT_SENT', // 409
+  ANNOUNCEMENT_CANCELLED: 'ANNOUNCEMENT_CANCELLED', // 409
+  ANNOUNCEMENT_NO_RECIPIENTS: 'ANNOUNCEMENT_NO_RECIPIENTS', // 409
+  // slice 10 (contracts/slice-10.md §10)
+  CAPABILITY_NOT_HELD: 'CAPABILITY_NOT_HELD', // 409, details.capability: the target lacks it
+  ATTENDANCE_RECORDED_AFTER: 'ATTENDANCE_RECORDED_AFTER', // 409, details.lastRecordedOn
   // Client-side only: the web app's label for a failed response whose body was not the error
   // envelope (a proxy page, say). The API never sends it.
   UNEXPECTED_RESPONSE: 'UNEXPECTED_RESPONSE',

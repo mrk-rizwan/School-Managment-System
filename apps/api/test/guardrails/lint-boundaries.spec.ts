@@ -387,6 +387,85 @@ describe('lint boundaries (R61)', () => {
     ).toEqual([]);
   });
 
+  describe('Phase 2 boundaries (plan rule 0.11, §4.1)', () => {
+    /** The rules fired, and that one of them is the boundary named by `text`. */
+    const refusedFor = async (fixture: string, at: string, text: string) => {
+      const messages = await lintAs(fixture, at);
+      expect(new Set(rules(messages))).toEqual(new Set(['no-restricted-imports']));
+      expect(messages.map((m) => m.message)).toEqual(
+        expect.arrayContaining([expect.stringContaining(text)]),
+      );
+    };
+
+    it.each([
+      'src/modules/students/students.service.ts',
+      'src/messaging/notification.service.ts',
+      'src/webhooks/waha.controller.ts',
+      'src/tenancy/queue.mint.ts',
+    ])('refuses bullmq at %s', async (at) => {
+      await refusedFor('bullmq-import.ts', at, 'bullmq is used only in src/jobs/**');
+    });
+
+    it.each(['src/jobs/messaging.processor.ts', 'src/messaging/outbox-dispatcher.ts'])(
+      'allows bullmq at %s',
+      async (at) => {
+        expect(await lintAs('bullmq-import.ts', at)).toEqual([]);
+      },
+    );
+
+    it.each([
+      'src/modules/students/students.service.ts',
+      'src/messaging/notification.service.ts',
+      'src/webhooks/waha.controller.ts',
+      'src/tenancy/tenancy.module.ts',
+    ])('refuses queue.mint at %s', async (at) => {
+      await refusedFor('queue-mint-import.ts', at, 'queue.mint is imported only by src/jobs/**');
+    });
+
+    it('allows queue.mint in src/jobs', async () => {
+      expect(await lintAs('queue-mint-import.ts', 'src/jobs/messaging.processor.ts')).toEqual([]);
+    });
+
+    it.each([
+      'src/tenancy/tenancy.module.ts',
+      'src/tenancy/school-id.mint.ts',
+      'src/jobs/messaging.processor.ts',
+      'src/modules/platform/schools.service.ts',
+      'src/repositories/school-lookup.repository.ts',
+    ])('refuses school-by-id.repository at %s', async (at) => {
+      await refusedFor(
+        'school-by-id-import.ts',
+        at,
+        'SchoolByIdRepository is imported only by src/tenancy/queue.mint.ts',
+      );
+    });
+
+    it('allows school-by-id.repository in queue.mint.ts, with the tenancy exemptions kept', async () => {
+      expect(await lintAs('school-by-id-import.ts', 'src/tenancy/queue.mint.ts')).toEqual([]);
+      expect(await lintAs('cls-import.ts', 'src/tenancy/queue.mint.ts')).toEqual([]);
+      expect(await lintAs('school-id-mint-import.ts', 'src/tenancy/queue.mint.ts')).toEqual([]);
+      // Any other platform repository stays refused there.
+      expect(rules(await lintAs('fan-out-import.ts', 'src/tenancy/queue.mint.ts'))).toEqual([
+        'no-restricted-imports',
+      ]);
+    });
+
+    it.each([
+      'src/modules/attendance/attendance.service.ts',
+      'src/jobs/messaging.processor.ts',
+      'src/webhooks/waha.controller.ts',
+    ])('refuses a messaging driver at %s', async (at) => {
+      await refusedFor('messaging-driver-import.ts', at, 'Drivers are imported only inside src/messaging/**');
+    });
+
+    it.each(['src/messaging/notification.service.ts', 'src/messaging/outbox-dispatcher.ts'])(
+      'allows a messaging driver at %s',
+      async (at) => {
+        expect(await lintAs('messaging-driver-import.ts', at)).toEqual([]);
+      },
+    );
+  });
+
   it('refuses explicit any', async () => {
     expect(
       rules(await lintAs('explicit-any.ts', 'src/modules/students/students.service.ts')),

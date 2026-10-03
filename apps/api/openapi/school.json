@@ -1343,6 +1343,33 @@
           "CUSTOM_ROLE_IN_USE",
           "GRANT_EXISTS",
           "TARGET_IS_PRINCIPAL",
+          "UPGRADE_REQUIRED",
+          "WEBHOOK_SIGNATURE_INVALID",
+          "BEARER_SESSION_REQUIRED",
+          "CONTACT_PHONE_MISSING",
+          "SMS_CAP_EXCEEDED",
+          "SMS_TOO_LONG",
+          "WHATSAPP_ALREADY_CONNECTED",
+          "WHATSAPP_NUMBER_MISSING",
+          "WHATSAPP_PROVIDER_MISMATCH",
+          "WHATSAPP_VERIFICATION_FAILED",
+          "HOLIDAY_DATES_TAKEN",
+          "HOLIDAY_NOT_DRAFT",
+          "NOT_A_TEACHING_DAY",
+          "ATTENDANCE_LOCKED",
+          "AMENDMENT_REASON_REQUIRED",
+          "ROSTER_INCOMPLETE",
+          "STALE_STATUS",
+          "ARRIVAL_NOT_ABSENT",
+          "DIARY_ENTRY_EXISTS",
+          "DIARY_ENTRY_LOCKED",
+          "SUBJECT_NOT_ASSIGNED",
+          "REMARK_SUPERSEDED",
+          "ANNOUNCEMENT_SENT",
+          "ANNOUNCEMENT_CANCELLED",
+          "ANNOUNCEMENT_NO_RECIPIENTS",
+          "CAPABILITY_NOT_HELD",
+          "ATTENDANCE_RECORDED_AFTER",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
@@ -2994,7 +3021,8 @@
       "TeacherRole": {
         "enum": [
           "class_teacher",
-          "subject_teacher"
+          "subject_teacher",
+          "cover"
         ],
         "type": "string"
       },

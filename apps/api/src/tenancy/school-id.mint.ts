@@ -25,6 +25,16 @@ export function schoolIdFromLookup(school: { readonly id: bigint }): SchoolId {
   return brand(school.id);
 }
 
+/**
+ * The fifth constructor (Phase 2 plan §4.1; exception 3 widened to job-payload resolution): the
+ * school row SchoolByIdRepository.findById read for a queue job's payload. Called only by
+ * QueueTenancy.fromQueuePayload (./queue.mint.ts), after it has validated the payload and
+ * dropped an unknown or terminated school.
+ */
+export function schoolIdFromQueuePayload(school: { readonly id: bigint }): SchoolId {
+  return brand(school.id);
+}
+
 /** Exception 3: the scheduler fan-out, one job per active school. */
 export function schoolIdsForFanOut(schools: readonly { readonly id: bigint }[]): SchoolId[] {
   return schools.map((school) => brand(school.id));

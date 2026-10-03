@@ -235,7 +235,7 @@ describe('users administration', () => {
     });
 
     it('R14: office staff cannot act on a user holding capabilities the clerk lacks (target_exceeds_actor)', async () => {
-      // Office staff + teacher holds attendance.student.mark etc., which office staff alone lacks.
+      // A teacher holds marks.enter, diary.write and remark.write, which office staff alone lacks.
       const target = await createSchoolUser(db(), school, { systemRole: 'teacher' });
       const res = await post(`/users/${target.userId}/disable`, officeCookie, { reason: 'Too strong' }).expect(403);
       expect(reasonOf(res)).toBe('target_exceeds_actor');

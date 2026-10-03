@@ -76,45 +76,56 @@ model SchoolGroup {
 
 /// Non-tenant: the tenant itself. School-owned settings live in tenant tables, not here.
 model School {
-  id            BigInt       @id(map: "schools_pkey") @default(autoincrement())
-  name          String       @db.VarChar(200)
+  id               BigInt                 @id(map: "schools_pkey") @default(autoincrement())
+  name             String                 @db.VarChar(200)
   /// 3-12 lower-case ASCII letters/digits (CHECK schools_short_code_format_check), immutable after
   /// creation (trigger raising constraint schools_short_code_immutable).
-  shortCode     String       @map("short_code") @db.VarChar(12)
+  shortCode        String                 @map("short_code") @db.VarChar(12)
   /// New schools start as trial; nothing returns to trial (contract slice-1 §4.5).
-  status        SchoolStatus @default(trial)
-  schoolGroupId BigInt?      @map("school_group_id")
-  timezone      String       @default("Asia/Karachi") @db.VarChar(64)
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  status           SchoolStatus           @default(trial)
+  schoolGroupId    BigInt?                @map("school_group_id")
+  timezone         String                 @default("Asia/Karachi") @db.VarChar(64)
+  /// Set by the platform (owner, item 18); read-only to the school. CHECK 0-100000.
+  smsMonthlyCap    Int                    @default(500) @map("sms_monthly_cap")
+  whatsappProvider WhatsAppProviderChoice @default(platform_default) @map("whatsapp_provider")
+  smsProvider      SmsProviderChoice      @default(platform_default) @map("sms_provider")
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  schoolGroup            SchoolGroup?           @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  schoolGroup            SchoolGroup?             @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   platformAuditLogs      PlatformAuditLog[]
+  deliveryHealth         PlatformDeliveryHealth[]
   // Tenant back-relations: declared for the migration diff only, absent from the client (header).
-  schoolSettings         SchoolSettings[]       @ignore
-  schoolCounters         SchoolCounter[]        @ignore
-  academicYears          AcademicYear[]         @ignore
-  classes                Class[]                @ignore
-  sections               Section[]              @ignore
-  subjects               Subject[]              @ignore
-  guardians              Guardian[]             @ignore
-  staff                  Staff[]                @ignore
-  users                  User[]                 @ignore
-  sessions               Session[]              @ignore
-  userTokens             UserToken[]            @ignore
-  userRoles              UserRole[]             @ignore
-  auditLogs              AuditLog[]             @ignore
-  teacherAssignments     TeacherAssignment[]    @ignore
-  students               Student[]              @ignore
-  studentStatusChanges   StudentStatusChange[]  @ignore
-  studentGuardians       StudentGuardian[]      @ignore
-  enrolments             Enrolment[]            @ignore
-  studentDocuments       StudentDocument[]      @ignore
-  stagedUploads          StagedUpload[]         @ignore
-  idempotencyKeys        IdempotencyKey[]       @ignore
-  customRoles            CustomRole[]           @ignore
-  customRoleCapabilities CustomRoleCapability[] @ignore
-  userCapabilityGrants   UserCapabilityGrant[]  @ignore
+  schoolSettings         SchoolSettings[]         @ignore
+  schoolCounters         SchoolCounter[]          @ignore
+  academicYears          AcademicYear[]           @ignore
+  classes                Class[]                  @ignore
+  sections               Section[]                @ignore
+  subjects               Subject[]                @ignore
+  guardians              Guardian[]               @ignore
+  staff                  Staff[]                  @ignore
+  users                  User[]                   @ignore
+  sessions               Session[]                @ignore
+  userTokens             UserToken[]              @ignore
+  userRoles              UserRole[]               @ignore
+  auditLogs              AuditLog[]               @ignore
+  teacherAssignments     TeacherAssignment[]      @ignore
+  students               Student[]                @ignore
+  studentStatusChanges   StudentStatusChange[]    @ignore
+  studentGuardians       StudentGuardian[]        @ignore
+  enrolments             Enrolment[]              @ignore
+  studentDocuments       StudentDocument[]        @ignore
+  stagedUploads          StagedUpload[]           @ignore
+  idempotencyKeys        IdempotencyKey[]         @ignore
+  customRoles            CustomRole[]             @ignore
+  customRoleCapabilities CustomRoleCapability[]   @ignore
+  userCapabilityGrants   UserCapabilityGrant[]    @ignore
+  whatsappNumbers        WhatsAppNumber[]         @ignore
+  devices                Device[]                 @ignore
+  messages               Message[]                @ignore
+  messageDeliveries      MessageDelivery[]        @ignore
+  messageUsage           MessageUsage[]           @ignore
+  holidays               Holiday[]                @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
   @@index([schoolGroupId], map: "schools_school_group_id_idx")
@@ -203,13 +214,31 @@ model PlatformAuditLog {
 
 /// Tenant: one row per school, written by the platform in the transaction that creates the school.
 model SchoolSettings {
-  id                  BigInt   @id(map: "school_settings_pkey") @default(autoincrement())
-  schoolId            BigInt   @map("school_id")
+  id                        BigInt           @id(map: "school_settings_pkey") @default(autoincrement())
+  schoolId                  BigInt           @map("school_id")
   /// Day of the month fees fall due (rule 15). CHECK 1-28 in migration SQL: every month has it.
-  feeDueDay           Int      @default(10) @map("fee_due_day") @db.SmallInt
-  studentLoginEnabled Boolean  @default(false) @map("student_login_enabled")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  feeDueDay                 Int              @default(10) @map("fee_due_day") @db.SmallInt
+  studentLoginEnabled       Boolean          @default(false) @map("student_login_enabled")
+  // Phase 2 (plan §4.5, contracts/slice-9.md §4). CHECKs school_settings_*_check in migration SQL.
+  periodsPerDay             Int              @default(8) @map("periods_per_day") @db.SmallInt
+  /// 0 = Sunday ... 6 = Saturday; distinct, ascending, fewer than seven. Default `[0]`, written as
+  /// Postgres prints it: Prisma's `@default([0])` on a smallint list diffs as drift every time.
+  weeklyOffDays             Int[]            @default(dbgenerated("ARRAY[(0)::smallint]")) @map("weekly_off_days") @db.SmallInt
+  attendanceAmendWindowDays Int              @default(3) @map("attendance_amend_window_days") @db.SmallInt
+  /// School-local times.
+  registerDeadlineTime      DateTime         @default(dbgenerated("'10:00:00'::time without time zone")) @map("register_deadline_time") @db.Time(0)
+  absenceAlertTime          DateTime         @default(dbgenerated("'09:30:00'::time without time zone")) @map("absence_alert_time") @db.Time(0)
+  lateAdviceEnabled         Boolean          @default(false) @map("late_advice_enabled")
+  lateCountsAs              LateCountsAs     @default(present) @map("late_counts_as")
+  /// Required while late_counts_as = absent_after_cutoff.
+  lateCutoffTime            DateTime?        @map("late_cutoff_time") @db.Time(0)
+  leaveCountsAs             LeaveCountsAs    @default(excused) @map("leave_counts_as")
+  /// SMS-eligible types only; the default is register item 22's list.
+  smsAllowedTypes           MessageType[]    @default([absence_alert, late_advice, attendance_corrected, announcement_urgent, holiday_notice]) @map("sms_allowed_types")
+  remarkDefaultVisibility   RemarkVisibility @default(guardian) @map("remark_default_visibility")
+  remarkNotifyGuardians     Boolean          @default(false) @map("remark_notify_guardians")
+  createdAt                 DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   school School @relation(fields: [schoolId], references: [id], map: "school_settings_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
 
@@ -409,6 +438,7 @@ model Guardian {
   mergedFrom   Guardian[]        @relation("GuardianMerge")
   user         User?
   studentLinks StudentGuardian[]
+  messages     Message[]
 
   @@unique([schoolId, id], map: "guardians_school_id_id_key")
   @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
@@ -482,6 +512,7 @@ model Staff {
 
   school             School              @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   user               User?
+  messages           Message[]
   teacherAssignments TeacherAssignment[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
@@ -496,6 +527,8 @@ model Staff {
 enum TeacherAssignmentRole {
   class_teacher
   subject_teacher
+  /// A dated class-teacher scope for one section (Phase 2 R132): CHECK teacher_assignments_cover_check.
+  cover
 
   @@map("teacher_assignment_role")
 }
@@ -517,35 +550,44 @@ enum TeacherAssignmentRole {
 ///   classes_academic_year_immutable covers sections only). (school_id, section_id, class_id) ->
 ///   sections: the section is one of the class's.
 model TeacherAssignment {
-  id             BigInt                @id(map: "teacher_assignments_pkey") @default(autoincrement())
-  schoolId       BigInt                @map("school_id")
-  staffId        BigInt                @map("staff_id")
-  academicYearId BigInt                @map("academic_year_id")
-  classId        BigInt                @map("class_id")
-  sectionId      BigInt?               @map("section_id")
-  subjectId      BigInt?               @map("subject_id")
-  role           TeacherAssignmentRole
-  startsOn       DateTime              @map("starts_on") @db.Date
+  id                 BigInt                @id(map: "teacher_assignments_pkey") @default(autoincrement())
+  schoolId           BigInt                @map("school_id")
+  staffId            BigInt                @map("staff_id")
+  academicYearId     BigInt                @map("academic_year_id")
+  classId            BigInt                @map("class_id")
+  sectionId          BigInt?               @map("section_id")
+  subjectId          BigInt?               @map("subject_id")
+  role               TeacherAssignmentRole
+  startsOn           DateTime              @map("starts_on") @db.Date
   /// Inclusive last day; null = open-ended. CHECK teacher_assignments_dates_check: >= starts_on.
-  endsOn         DateTime?             @map("ends_on") @db.Date
-  voidedAt       DateTime?             @map("voided_at") @db.Timestamptz(3)
-  voidedBy       BigInt?               @map("voided_by")
-  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  endsOn             DateTime?             @map("ends_on") @db.Date
+  voidedAt           DateTime?             @map("voided_at") @db.Timestamptz(3)
+  /// cover only (CHECK teacher_assignments_covers_check): the class-teacher row being covered, in
+  /// the same section; null when the section has no class teacher. Frozen.
+  coversAssignmentId BigInt?               @map("covers_assignment_id")
+  voidedBy           BigInt?               @map("voided_by")
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school       School   @relation(fields: [schoolId], references: [id], map: "teacher_assignments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff        Staff    @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "teacher_assignments_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  class        Class    @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "teacher_assignments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  section      Section? @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "teacher_assignments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  subject      Subject? @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "teacher_assignments_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  voidedByUser User?    @relation(fields: [schoolId, voidedBy], references: [schoolId, id], map: "teacher_assignments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school           School              @relation(fields: [schoolId], references: [id], map: "teacher_assignments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff            Staff               @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "teacher_assignments_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class            Class               @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "teacher_assignments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section          Section?            @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "teacher_assignments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  subject          Subject?            @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "teacher_assignments_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser     User?               @relation(fields: [schoolId, voidedBy], references: [schoolId, id], map: "teacher_assignments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  coversAssignment TeacherAssignment?  @relation("CoverOf", fields: [schoolId, coversAssignmentId, sectionId], references: [schoolId, id, sectionId], map: "teacher_assignments_covers_assignment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  coveredBy        TeacherAssignment[] @relation("CoverOf")
 
   @@unique([schoolId, id], map: "teacher_assignments_school_id_id_key")
+  /// Target of the cover FK: a cover names a class-teacher row of its own section.
+  @@unique([schoolId, id, sectionId], map: "teacher_assignments_school_id_id_section_id_key")
   @@index([schoolId, staffId], map: "teacher_assignments_school_id_staff_id_idx")
   @@index([schoolId, classId, academicYearId], map: "teacher_assignments_school_id_class_id_academic_year_id_idx")
   @@index([schoolId, sectionId, classId], map: "teacher_assignments_school_id_section_id_class_id_idx")
   @@index([schoolId, subjectId], map: "teacher_assignments_school_id_subject_id_idx")
   @@index([schoolId, voidedBy], map: "teacher_assignments_school_id_voided_by_idx")
+  /// The cover FK's index (contracts/slice-10.md §12 item 3).
+  @@index([schoolId, coversAssignmentId, sectionId], map: "teacher_assignments_school_id_covers_assignment_id_idx")
   @@map("teacher_assignments")
 }
 
@@ -599,6 +641,11 @@ model User {
   capabilityGrantsEnded    UserCapabilityGrant[]  @relation("GrantRevokedBy")
   customRoleKeysAdded      CustomRoleCapability[] @relation("CustomRoleCapabilityAddedBy")
   customRoleKeysRemoved    CustomRoleCapability[] @relation("CustomRoleCapabilityRemovedBy")
+  devices                  Device[]
+  whatsappNumbersPaired    WhatsAppNumber[]       @relation("WhatsAppNumberPairedBy")
+  whatsappNumbersDisabled  WhatsAppNumber[]       @relation("WhatsAppNumberDisabledBy")
+  holidaysPublished        Holiday[]              @relation("HolidayPublishedBy")
+  holidaysCancelled        Holiday[]              @relation("HolidayCancelledBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -629,8 +676,9 @@ model Session {
   ip         String?        @db.Inet
   updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school School @relation(fields: [schoolId], references: [id], map: "sessions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  user   User   @relation(fields: [schoolId, userId], references: [schoolId, id], map: "sessions_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school School  @relation(fields: [schoolId], references: [id], map: "sessions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user   User    @relation(fields: [schoolId, userId], references: [schoolId, id], map: "sessions_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  device Device?
 
   @@unique([schoolId, id], map: "sessions_school_id_id_key")
   @@unique([tokenHash], map: "sessions_token_hash_key")
@@ -812,6 +860,7 @@ model Student {
   enrolments    Enrolment[]
   documents     StudentDocument[]
   user          User?
+  messages      Message[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -906,6 +955,9 @@ model Enrolment {
   section Section @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "enrolments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
+  /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
+  /// name a different child than its enrolment (Phase 2 plan §5).
+  @@unique([schoolId, id, studentId], map: "enrolments_school_id_id_student_id_key")
   @@index([schoolId, studentId], map: "enrolments_school_id_student_id_idx")
   @@index([schoolId, status, studentId], map: "enrolments_school_id_status_student_id_idx")
   @@index([schoolId, sectionId, status], map: "enrolments_school_id_section_id_status_idx")
@@ -1093,4 +1145,481 @@ model UserCapabilityGrant {
   @@index([schoolId, grantedBy], map: "user_capability_grants_school_id_granted_by_idx")
   @@index([schoolId, revokedBy], map: "user_capability_grants_school_id_revoked_by_idx")
   @@map("user_capability_grants")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2, slice 9: messaging (phase-2-daily-operations.md §4.1, §4.2, §5). Value sets mirror
+// packages/shared/src/messages.ts and devices.ts.
+// ---------------------------------------------------------------------------------------------
+
+enum MessageType {
+  absence_alert
+  late_advice
+  attendance_corrected
+  announcement_urgent
+  announcement_normal
+  holiday_notice
+  diary_posted
+  remark_posted
+  register_unrecorded
+  sms_cap_reached
+  messaging_test
+  whatsapp_session_down
+  cover_assigned
+
+  @@map("message_type")
+}
+
+enum MessagePriority {
+  urgent
+  normal
+  low
+  internal
+  platform
+
+  @@map("message_priority")
+}
+
+enum MessageChannel {
+  push
+  whatsapp
+  sms
+  email
+  in_app
+
+  @@map("message_channel")
+}
+
+enum MessageStatus {
+  queued
+  sending
+  sent
+  delivered
+  failed
+  suppressed
+
+  @@map("message_status")
+}
+
+/// Forward only: accepted -> delivered | failed; suppressed is terminal (trigger
+/// message_deliveries_forward_only). There is no "read" (plan rule 0.13).
+enum DeliveryStatus {
+  accepted
+  delivered
+  failed
+  suppressed
+
+  @@map("delivery_status")
+}
+
+enum SuppressionReason {
+  not_allowed
+  cap_reached
+  no_channel
+  backdated
+  subject_cancelled
+
+  @@map("suppression_reason")
+}
+
+/// Provider failures mapped to a code; provider text is never stored (R111, contracts/slice-9.md
+/// §2.1).
+enum DeliveryErrorCode {
+  timeout
+  provider_unavailable
+  rate_limited
+  auth_failed
+  rejected
+  invalid_number
+  not_on_whatsapp
+  outside_window
+  session_down
+  unregistered_device
+  dnd_blocked
+  expired
+  no_report
+  unknown
+
+  @@map("delivery_error_code")
+}
+
+/// Why a WhatsApp number's health check failed (contracts/slice-9.md §2.1, §7.8).
+enum WhatsAppErrorCode {
+  unreachable
+  logged_out
+  session_failed
+  token_rejected
+  number_mismatch
+  unknown
+
+  @@map("whatsapp_error_code")
+}
+
+enum WhatsAppProvider {
+  waha
+  cloud_api
+
+  @@map("whatsapp_provider")
+}
+
+/// schools.whatsapp_provider: a provider, or platform_settings.default_whatsapp_provider.
+enum WhatsAppProviderChoice {
+  waha
+  cloud_api
+  platform_default
+
+  @@map("whatsapp_provider_choice")
+}
+
+enum SmsProvider {
+  sendpk
+
+  @@map("sms_provider")
+}
+
+/// schools.sms_provider: a provider, or platform_settings.default_sms_provider.
+enum SmsProviderChoice {
+  sendpk
+  platform_default
+
+  @@map("sms_provider_choice")
+}
+
+enum WhatsAppStatus {
+  pending
+  connected
+  down
+  disabled
+
+  @@map("whatsapp_status")
+}
+
+enum DevicePlatform {
+  android
+  ios
+
+  @@map("device_platform")
+}
+
+enum DeviceUnregisteredReason {
+  sign_out
+  fcm_unregistered
+  replaced
+
+  @@map("device_unregistered_reason")
+}
+
+/// Non-tenant, exactly one row (id = 1, CHECK platform_settings_one_row_check), seeded by its
+/// migration and never deleted. Platform-wide defaults for schools on `platform_default`.
+model PlatformSettings {
+  id                      BigInt           @id(map: "platform_settings_pkey") @default(1)
+  defaultWhatsappProvider WhatsAppProvider @default(waha) @map("default_whatsapp_provider")
+  defaultSmsProvider      SmsProvider      @default(sendpk) @map("default_sms_provider")
+  createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("platform_settings")
+}
+
+/// Non-tenant despite its school_id (CLAUDE.md named exception 6, like platform_audit_log): the
+/// per-school, per-day, per-channel rollup written by the per-school job and the platform's only
+/// window onto messaging (R114). Counts, statuses and caps only; never a body, recipient or phone.
+model PlatformDeliveryHealth {
+  id                    BigInt             @id(map: "platform_delivery_health_pkey") @default(autoincrement())
+  schoolId              BigInt             @map("school_id")
+  day                   DateTime           @db.Date
+  channel               MessageChannel
+  accepted              Int                @default(0)
+  delivered             Int                @default(0)
+  failed                Int                @default(0)
+  suppressed            Int                @default(0)
+  /// Snapshot of the school's live number at computation; all three null when it has none (the
+  /// DTO's `none`). Days are Asia/Karachi calendar days: today, and yesterday until 01:00.
+  whatsappStatus        WhatsAppStatus?    @map("whatsapp_status")
+  whatsappLastHealthyAt DateTime?          @map("whatsapp_last_healthy_at") @db.Timestamptz(3)
+  whatsappLastErrorCode WhatsAppErrorCode? @map("whatsapp_last_error_code")
+  smsUsed               Int                @default(0) @map("sms_used")
+  smsCap                Int                @map("sms_cap")
+  computedAt            DateTime           @map("computed_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "platform_delivery_health_school_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, day, channel], map: "platform_delivery_health_school_id_day_channel_key")
+  @@map("platform_delivery_health")
+}
+
+/// Tenant: the school's own WhatsApp number, paired by the principal (owner's answer to item 17).
+/// One live row per school (partial index whatsapp_numbers_school_id_live_key); a lost SIM is a
+/// new row after disabling the old one, never a delete. provider, phone and cloud_phone_number_id
+/// are frozen; waha_session is frozen once set and never reused; a disabled row stays disabled.
+/// waha_session and cloud_phone_number_id are globally unique: a webhook correlates by them
+/// (named exception 5), so their indexes are allowlisted in NON_SCHOOL_LEADING_INDEXES.
+model WhatsAppNumber {
+  id                  BigInt             @id(map: "whatsapp_numbers_pkey") @default(autoincrement())
+  schoolId            BigInt             @map("school_id")
+  /// E.164 (CHECK whatsapp_numbers_phone_check).
+  phone               String             @db.VarChar(16)
+  provider            WhatsAppProvider
+  /// WAHA's session name, derived from the row id; null for the Cloud API.
+  wahaSession         String?            @map("waha_session") @db.VarChar(64)
+  /// Meta's phone-number id, in clear: an identifier, not a credential (contracts/slice-9.md
+  /// §13.4). Not a row id, so allowlisted in NON_FK_ID_COLUMNS. Cloud API only.
+  cloudPhoneNumberId  String?            @map("cloud_phone_number_id") @db.VarChar(32)
+  /// AES-256-GCM `v1:...`, AAD-bound to school, table and column; Cloud API only.
+  cloudAccessToken    String?            @map("cloud_access_token") @db.VarChar(2048)
+  status              WhatsAppStatus     @default(pending)
+  lastHealthyAt       DateTime?          @map("last_healthy_at") @db.Timestamptz(3)
+  lastErrorCode       WhatsAppErrorCode? @map("last_error_code")
+  /// Inbound messages are counted and ignored (the inbound workflow is unspecified).
+  inboundIgnoredCount Int                @default(0) @map("inbound_ignored_count")
+  /// paired_by is set at the pairing request, paired_at when the number is first connected
+  /// (contracts/slice-9.md §13.9; CHECK whatsapp_numbers_paired_check).
+  pairedAt            DateTime?          @map("paired_at") @db.Timestamptz(3)
+  pairedBy            BigInt?            @map("paired_by")
+  disabledAt          DateTime?          @map("disabled_at") @db.Timestamptz(3)
+  disabledBy          BigInt?            @map("disabled_by")
+  disabledReason      String?            @map("disabled_reason") @db.VarChar(500)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School @relation(fields: [schoolId], references: [id], map: "whatsapp_numbers_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  pairedByUser   User?  @relation("WhatsAppNumberPairedBy", fields: [schoolId, pairedBy], references: [schoolId, id], map: "whatsapp_numbers_paired_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  disabledByUser User?  @relation("WhatsAppNumberDisabledBy", fields: [schoolId, disabledBy], references: [schoolId, id], map: "whatsapp_numbers_disabled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "whatsapp_numbers_school_id_id_key")
+  @@unique([wahaSession], map: "whatsapp_numbers_waha_session_key")
+  @@unique([cloudPhoneNumberId], map: "whatsapp_numbers_cloud_phone_number_id_key")
+  @@index([schoolId, pairedBy], map: "whatsapp_numbers_school_id_paired_by_idx")
+  @@index([schoolId, disabledBy], map: "whatsapp_numbers_school_id_disabled_by_idx")
+  @@map("whatsapp_numbers")
+}
+
+/// Tenant: a phone's push registration, one per session (token rotation is an update). Liveness
+/// is the session's: push goes only where the session is live and not idle-expired (R115). The
+/// token is not unique: two parents may sign in on one phone. Only user_id is frozen: a password
+/// change rotates the session and moves the device to it (contracts/slice-9.md §13.6).
+model Device {
+  id                 BigInt                    @id(map: "devices_pkey") @default(autoincrement())
+  schoolId           BigInt                    @map("school_id")
+  userId             BigInt                    @map("user_id")
+  sessionId          BigInt                    @map("session_id")
+  platform           DevicePlatform
+  /// FCM registration token; never returned by the API (R173).
+  pushToken          String                    @map("push_token") @db.VarChar(512)
+  /// X-App-Version (CHECK devices_app_version_check).
+  appVersion         String                    @map("app_version") @db.VarChar(14)
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt         DateTime                  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  unregisteredAt     DateTime?                 @map("unregistered_at") @db.Timestamptz(3)
+  unregisteredReason DeviceUnregisteredReason? @map("unregistered_reason")
+  updatedAt          DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "devices_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user    User    @relation(fields: [schoolId, userId], references: [schoolId, id], map: "devices_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  session Session @relation(fields: [schoolId, sessionId], references: [schoolId, id], map: "devices_session_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "devices_school_id_id_key")
+  @@unique([schoolId, sessionId], map: "devices_school_id_session_id_key")
+  @@index([schoolId, userId], map: "devices_school_id_user_id_idx")
+  @@index([schoolId, pushToken], map: "devices_school_id_push_token_idx")
+  @@map("devices")
+}
+
+/// Tenant: one outbound message to one person (R105, R107), written in the sender's transaction
+/// and enqueued after commit. Exactly one of guardian_id, staff_id, student_id
+/// (CHECK messages_recipient_check); no phone number, no recipient_user_id. subject_id is
+/// polymorphic like audit_log's (allowlisted in NON_FK_ID_COLUMNS). R107 is three partial unique
+/// indexes, messages_subject_{guardian,staff,student}_key. The content columns are frozen.
+model Message {
+  id               BigInt             @id(map: "messages_pkey") @default(autoincrement())
+  schoolId         BigInt             @map("school_id")
+  type             MessageType
+  priority         MessagePriority
+  /// snake_case (CHECK messages_subject_type_check), e.g. holiday, attendance_alert.
+  subjectType      String             @map("subject_type") @db.VarChar(32)
+  subjectId        BigInt             @map("subject_id")
+  guardianId       BigInt?            @map("guardian_id")
+  staffId          BigInt?            @map("staff_id")
+  studentId        BigInt?            @map("student_id")
+  /// Rendered English body; never an identity number (CHECK messages_body_no_id_check).
+  body             String             @db.VarChar(2000)
+  /// `{school_id}/{ULID}.{jpg|png|pdf}` (CHECK messages_media_object_key_check).
+  mediaObjectKey   String?            @map("media_object_key") @db.VarChar(64)
+  channelPlan      MessageChannel[]   @map("channel_plan")
+  status           MessageStatus      @default(queued)
+  /// Set exactly when status = suppressed (CHECK messages_suppressed_check).
+  suppressedReason SuppressionReason? @map("suppressed_reason")
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set by the claim; a `sending` row claimed over 10 minutes ago is requeued by the outbox
+  /// sweep (contracts/slice-9.md §7.6, §13.1). Set whenever status = sending
+  /// (CHECK messages_claimed_check).
+  claimedAt        DateTime?          @map("claimed_at") @db.Timestamptz(3)
+  /// Set exactly when processing has ended (CHECK messages_finished_check).
+  finishedAt       DateTime?          @map("finished_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school     School            @relation(fields: [schoolId], references: [id], map: "messages_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  guardian   Guardian?         @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "messages_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff      Staff?            @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "messages_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student    Student?          @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "messages_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  deliveries MessageDelivery[]
+
+  @@unique([schoolId, id], map: "messages_school_id_id_key")
+  /// The per-school outbox sweep (R105).
+  @@index([schoolId, status, createdAt], map: "messages_school_id_status_created_at_idx")
+  @@index([schoolId, subjectType, subjectId], map: "messages_school_id_subject_type_subject_id_idx")
+  /// The inbox, resolved by person at read time (plan §4.2); also the FK indexes.
+  @@index([schoolId, guardianId, createdAt], map: "messages_school_id_guardian_id_created_at_idx")
+  @@index([schoolId, staffId, createdAt], map: "messages_school_id_staff_id_created_at_idx")
+  @@index([schoolId, studentId, createdAt], map: "messages_school_id_student_id_created_at_idx")
+  @@map("messages")
+}
+
+/// Tenant: one attempt on one channel (R108), unique per (message, channel, attempt). The raw
+/// provider reference is never stored in clear: provider_ref_hash is SHA-256 of
+/// `channel|providerRef`, globally unique per channel for webhook correlation (partial index
+/// message_deliveries_provider_ref_key, named exception 5); a pull provider's reference is kept
+/// encrypted in poll_ref only until a final status. Only status, delivered_at, failed_at and
+/// error_code change, only forward, and poll_ref only to NULL (trigger
+/// message_deliveries_forward_only).
+model MessageDelivery {
+  id               BigInt             @id(map: "message_deliveries_pkey") @default(autoincrement())
+  schoolId         BigInt             @map("school_id")
+  messageId        BigInt             @map("message_id")
+  channel          MessageChannel
+  /// 1 or more (CHECK message_deliveries_attempt_check).
+  attempt          Int                @db.SmallInt
+  status           DeliveryStatus
+  providerRefHash  String?            @map("provider_ref_hash") @db.Char(64)
+  /// AES-256-GCM `v1:...` (AAD `schoolId|message_deliveries|poll_ref`) of a pull provider's
+  /// reference (Sendpk), for the delivery poll; only on an accepted SMS attempt
+  /// (CHECK message_deliveries_poll_ref_check), cleared at a final status (contracts/slice-9.md
+  /// §13.3).
+  pollRef          String?            @map("poll_ref")
+  /// e.g. `+9230*****67`: never seven digits in a row (CHECK message_deliveries_to_masked_no_id_check).
+  toMasked         String?            @map("to_masked") @db.VarChar(32)
+  /// Only on a failed attempt (CHECK message_deliveries_error_code_check).
+  errorCode        DeliveryErrorCode? @map("error_code")
+  /// Why a leg was not sent (plan §4.2: "a suppression is a delivery row with a reason"). Set
+  /// exactly when status = suppressed (CHECK message_deliveries_suppressed_check).
+  suppressedReason SuppressionReason? @map("suppressed_reason")
+  segments         Int?               @db.SmallInt
+  attemptedAt      DateTime           @default(now()) @map("attempted_at") @db.Timestamptz(3)
+  deliveredAt      DateTime?          @map("delivered_at") @db.Timestamptz(3)
+  failedAt         DateTime?          @map("failed_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "message_deliveries_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  message Message @relation(fields: [schoolId, messageId], references: [schoolId, id], map: "message_deliveries_message_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "message_deliveries_school_id_id_key")
+  /// A crashed worker cannot write an attempt twice; also the message FK's index.
+  @@unique([schoolId, messageId, channel, attempt], map: "message_deliveries_attempt_key")
+  @@map("message_deliveries")
+}
+
+/// Tenant: sends per month per channel, the cap's counter (R109): SMS segments for `sms`, accepted
+/// legs otherwise (contracts/slice-9.md §13.8). Advanced atomically with
+/// INSERT ... ON CONFLICT DO UPDATE SET sent_count = sent_count + n WHERE sent_count + n <= cap.
+model MessageUsage {
+  id        BigInt         @id(map: "message_usage_pkey") @default(autoincrement())
+  schoolId  BigInt         @map("school_id")
+  /// `YYYY-MM` in the school's time zone (CHECK message_usage_year_month_check).
+  yearMonth String         @map("year_month") @db.Char(7)
+  channel   MessageChannel
+  sentCount Int            @default(0) @map("sent_count")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "message_usage_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+
+  @@unique([schoolId, id], map: "message_usage_school_id_id_key")
+  @@unique([schoolId, yearMonth, channel], map: "message_usage_school_id_year_month_channel_key")
+  @@map("message_usage")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2, slice 10: calendar (phase-2-daily-operations.md §5 "Calendar", contracts/slice-10.md),
+// and the school settings Phase 2 reads (plan §4.5). Value sets mirror packages/shared.
+// ---------------------------------------------------------------------------------------------
+
+enum HolidayKind {
+  public
+  school
+
+  @@map("holiday_kind")
+}
+
+enum HolidayStatus {
+  draft
+  published
+  cancelled
+
+  @@map("holiday_status")
+}
+
+/// Register item 23: how a late day counts in the attendance percentage.
+enum LateCountsAs {
+  present
+  half_day
+  absent_after_cutoff
+
+  @@map("late_counts_as")
+}
+
+enum LeaveCountsAs {
+  excused
+  absent
+
+  @@map("leave_counts_as")
+}
+
+/// A level: student implies guardian (register item 26).
+enum RemarkVisibility {
+  internal
+  guardian
+  student
+
+  @@map("remark_visibility")
+}
+
+/// Tenant: a closure range, one row however long (a ten-week break is one row and one notice).
+/// Live (draft or published) ranges never overlap within a school: EXCLUDE holidays_live_excl.
+/// starts_on, ends_on, kind and name are frozen once published (trigger holidays_published_frozen):
+/// a wrong date is cancel plus a new holiday. cancelled is final (holidays_cancelled_frozen).
+/// announcement_id names the slice-14 announcement that is the notice; it gains its foreign key
+/// with the announcements table (allowlisted in NON_FK_ID_COLUMNS until then) and stays null for
+/// holidays published before slice 14 (contracts/slice-10.md §4.7).
+model Holiday {
+  id             BigInt        @id(map: "holidays_pkey") @default(autoincrement())
+  schoolId       BigInt        @map("school_id")
+  startsOn       DateTime      @map("starts_on") @db.Date
+  /// Inclusive; equals starts_on for one day (the API fills it; CHECK holidays_dates_check).
+  endsOn         DateTime      @map("ends_on") @db.Date
+  name           String        @db.VarChar(100)
+  description    String?       @db.VarChar(500)
+  kind           HolidayKind
+  /// false: a teaching holiday on which staff still work (Phase 3 payroll's working days).
+  appliesToStaff Boolean       @default(true) @map("applies_to_staff")
+  status         HolidayStatus @default(draft)
+  /// Set together, exactly when published or cancelled from published (CHECK holidays_published_check).
+  publishedAt    DateTime?     @map("published_at") @db.Timestamptz(3)
+  publishedBy    BigInt?       @map("published_by")
+  /// Set together, exactly when cancelled (CHECK holidays_cancelled_check).
+  cancelledAt    DateTime?     @map("cancelled_at") @db.Timestamptz(3)
+  cancelledBy    BigInt?       @map("cancelled_by")
+  cancelReason   String?       @map("cancel_reason") @db.VarChar(500)
+  announcementId BigInt?       @map("announcement_id")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School @relation(fields: [schoolId], references: [id], map: "holidays_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  publishedByUser User?  @relation("HolidayPublishedBy", fields: [schoolId, publishedBy], references: [schoolId, id], map: "holidays_published_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  cancelledByUser User?  @relation("HolidayCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "holidays_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "holidays_school_id_id_key")
+  /// Status is an index column, not a partial predicate (Prisma casts enum conditions).
+  @@index([schoolId, status, startsOn], map: "holidays_school_id_status_starts_on_idx")
+  @@index([schoolId, publishedBy], map: "holidays_school_id_published_by_idx")
+  @@index([schoolId, cancelledBy], map: "holidays_school_id_cancelled_by_idx")
+  @@map("holidays")
 }

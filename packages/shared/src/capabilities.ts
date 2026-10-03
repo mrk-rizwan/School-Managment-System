@@ -141,7 +141,7 @@ export const SYSTEM_ROLES = ['principal', 'office_staff', 'teacher'] as const;
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
 /**
- * Role defaults, exactly the §7 table. Teacher defaults are scoped by the teacher's assignments
+ * Role defaults: the §7 table, plus attendance.student.mark for office staff (Phase 2 §1.2). Teacher defaults are scoped by the teacher's assignments
  * active today (plan §3.4, R53, R54); that scope is computed by the permission service from
  * assignment data and is deliberately not encoded here. Principal and office-staff defaults are
  * school-wide.
@@ -160,6 +160,9 @@ export const SYSTEM_ROLE_DEFAULTS: Readonly<Record<SystemRole, readonly Capabili
     C.DOCUMENT_VIEW,
     C.DOCUMENT_UPLOAD,
     C.STAFF_VIEW,
+    // Phase 2 §1.2 (owner, 2026-10-03): the office records a child's arrival at the gate. Held
+    // through this role it has `all` scope; a principal may revoke it per clerk.
+    C.ATTENDANCE_STUDENT_MARK,
     C.ATTENDANCE_STUDENT_VIEW_ALL,
     C.CERTIFICATE_ISSUE,
     C.CHARGE_CREATE,

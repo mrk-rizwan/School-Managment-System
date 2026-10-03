@@ -435,6 +435,11 @@ export class TeacherAssignmentsService {
 
 /** Role-dependent presence (contract §4.3), before any database read. */
 function assertShape(dto: CreateTeacherAssignmentDto): void {
+  // The database knows `cover` from the Phase 2 groundwork; its rules (contracts/slice-10.md §6)
+  // arrive with slice 10, which replaces this refusal.
+  if (dto.role === 'cover') {
+    throw fieldRefused('role', ErrorCode.INVALID_VALUE, 'Cover assignments are not available yet');
+  }
   if (dto.role === 'class_teacher') {
     if (!dto.sectionId) {
       throw fieldRefused('sectionId', ErrorCode.INVALID_VALUE, 'A class teacher needs a section');

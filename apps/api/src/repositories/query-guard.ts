@@ -14,6 +14,10 @@ export const NON_TENANT_MODELS: Readonly<Record<string, string>> = {
   PlatformUser: 'platform_users',
   PlatformSession: 'platform_sessions',
   PlatformAuditLog: 'platform_audit_log',
+  // Phase 2: platform-wide messaging defaults (one row), and the delivery-health rollup, which
+  // carries a school_id like platform_audit_log (CLAUDE.md named exception 6, plan §4.1).
+  PlatformSettings: 'platform_settings',
+  PlatformDeliveryHealth: 'platform_delivery_health',
 };
 
 const SCALAR_FIELD_ENUM = 'ScalarFieldEnum';
