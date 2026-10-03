@@ -6,6 +6,7 @@ import { Mailer } from '../../src/modules/auth/mailer';
 import { createTestApp } from '../core/app';
 import { createSchoolSession, createSchoolUser, type TestSchoolUser } from '../support/school-session';
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
+import { createStudent, linkGuardian } from '../support/students';
 import { createGuardianUser, FakeMailer, nextIp, ORIGIN, uniqueEmail } from './support';
 
 type ErrorBody = { error: { code: string; details: { reason?: string } | null } };
@@ -258,6 +259,9 @@ describe('users administration', () => {
         cnic: target.cnic,
         contactCapability: 'keypad',
       }).expect(201);
+      // Guardian issue-login needs a live link with can_login (contracts/slice-6.md §9).
+      const child = await createStudent(db(), school);
+      await linkGuardian(db(), school, child, { id: BigInt((guardian.body as { id: string }).id) }, { canLogin: true });
       const linked = await post(`/guardians/${(guardian.body as { id: string }).id}/issue-login`, officeCookie, {}).expect(403);
       expect(reasonOf(linked)).toBe('target_exceeds_actor');
       const row = await db().user.findFirst({ where: { schoolId: school.id, id: target.userId } });

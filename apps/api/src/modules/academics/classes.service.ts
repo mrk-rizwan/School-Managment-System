@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
-import { ApiException, notFound } from '../../common/errors/api-exception';
+import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { readLocked } from '../../common/locking';
 import { SchoolContext } from '../../common/school-context';
 import { toPage, type Page } from '../../common/pagination';
@@ -12,15 +12,10 @@ import {
   type ClassChanges,
   type ClassRecord,
 } from '../../repositories/class.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SectionRepository, type SectionRecord } from '../../repositories/section.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import {
-  classArchived,
-  fieldRefused,
-  yearClosed,
-  type ArchiveDto,
-  type Changes,
-} from './academics.shared';
+import { type ArchiveDto, type Changes, classArchived, yearClosed } from './academics.shared';
 import type {
   ClassDto,
   CopySectionsDto,
@@ -59,6 +54,7 @@ export class ClassesService {
     private readonly years: AcademicYearRepository,
     private readonly sections: SectionRepository,
     private readonly audit: AuditLogRepository,
+    private readonly enrolments: EnrolmentRepository,
   ) {}
 
   async list(query: ListClassesQueryDto): Promise<Page<ClassDto>> {
@@ -123,6 +119,8 @@ export class ClassesService {
     for (const yearId of yearIds) {
       await this.lockOpenYear(schoolId, yearId, yearNotFound);
     }
+    // Any enrolment of the class names one of its sections, and sections are never deleted, so
+    // this also refuses a class with enrolments (contracts/slice-6.md §9).
     if (movesYear && (await this.sections.existsForClass(schoolId, id))) {
       throw new ApiException(
         409,
@@ -244,12 +242,18 @@ export class ClassesService {
   }
 
   /**
-   * 409 CLASS_HAS_ACTIVE_ENROLMENTS while an active enrolment references the class. Enrolments
-   * arrive in slice 6, which implements this check here, inside archive's transaction and under
-   * the class's row lock. Until then no enrolment can exist.
+   * 409 CLASS_HAS_ACTIVE_ENROLMENTS while an active enrolment references the class. Inside
+   * archive's transaction and under the class's row lock; enrolling into the class locks it too
+   * (EnrolmentsService.lockTarget).
    */
-  assertNoActiveEnrolments(_schoolId: SchoolId, _classId: bigint): Promise<void> {
-    return Promise.resolve();
+  async assertNoActiveEnrolments(schoolId: SchoolId, classId: bigint): Promise<void> {
+    if (await this.enrolments.hasActiveInClass(schoolId, classId)) {
+      throw new ApiException(
+        409,
+        ErrorCode.CLASS_HAS_ACTIVE_ENROLMENTS,
+        'This class still has students enrolled.',
+      );
+    }
   }
 
   private lockClass(schoolId: SchoolId, id: bigint): Promise<ClassRecord> {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode, type AcademicYearStatus } from '@asms/shared';
-import { ApiException, notFound } from '../../common/errors/api-exception';
+import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { readLocked } from '../../common/locking';
 import { SchoolContext } from '../../common/school-context';
 import { toPage, type Page } from '../../common/pagination';
@@ -10,14 +10,9 @@ import {
   type AcademicYearRecord,
 } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import {
-  fieldRefused,
-  fromDateString,
-  toDateString,
-  yearClosed,
-  type Changes,
-} from './academics.shared';
+import { type Changes, fromDateString, toDateString, yearClosed } from './academics.shared';
 import type {
   AcademicYearDto,
   CreateAcademicYearDto,
@@ -71,6 +66,7 @@ export class AcademicYearsService {
     private readonly context: SchoolContext,
     private readonly years: AcademicYearRepository,
     private readonly audit: AuditLogRepository,
+    private readonly enrolments: EnrolmentRepository,
   ) {}
 
   async list(query: ListAcademicYearsQueryDto): Promise<Page<AcademicYearDto>> {
@@ -159,11 +155,17 @@ export class AcademicYearsService {
 
   /**
    * R44: 409 ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS while any enrolment in the year is `active`.
-   * Enrolments arrive in slice 6, which implements this check here, inside close's transaction
-   * and under the year's row lock. Until then no enrolment can exist, so there is nothing to find.
+   * Inside close's transaction and under the year's row lock; enrolling into a class of the year
+   * locks the year too (EnrolmentsService.lockTarget), so none can slip in between.
    */
-  assertNoActiveEnrolments(_schoolId: SchoolId, _yearId: bigint): Promise<void> {
-    return Promise.resolve();
+  async assertNoActiveEnrolments(schoolId: SchoolId, yearId: bigint): Promise<void> {
+    if (await this.enrolments.hasActiveInYear(schoolId, yearId)) {
+      throw new ApiException(
+        409,
+        ErrorCode.ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS,
+        'This academic year still has active enrolments.',
+      );
+    }
   }
 
   private async transition(

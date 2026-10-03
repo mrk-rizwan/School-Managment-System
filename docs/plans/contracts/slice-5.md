@@ -92,7 +92,8 @@ returns an empty page for an existing guardian (`404` otherwise); slice 6 fills 
 | `address` | optional, 1–500 |
 
 `null` is accepted as "not given" for the optional fields. Status `active`. **201**
-`GuardianDetailDto`. Errors: `422` · `409 GUARDIAN_CNIC_EXISTS` with `details: { guardianId }` —
+`GuardianDetailDto`. A body with a `cnic` string spends the identity-probe budget (§3.6) → `429`.
+Errors: `422` · `409 GUARDIAN_CNIC_EXISTS` with `details: { guardianId }` —
 the existing row, resolved to its survivor if merged (from constraint
 `guardians_school_id_cnic_hash_key`; the race loser gets the same answer).
 
@@ -107,7 +108,8 @@ family phone serves several guardians; R32).
 Fields as create; absent = unchanged, `null` clears (`fullName` and `contactCapability` →
 `null` is `422`). Guardian `merged` → `409 GUARDIAN_MERGED`. `cnic` present (set, change or clear)
 while a login exists for this guardian → `409 GUARDIAN_CNIC_LOCKED` (as R24 for staff: the CNIC
-is the username). New CNIC already on another guardian → `409 GUARDIAN_CNIC_EXISTS`. Clearing
+is the username). New CNIC already on another guardian → `409 GUARDIAN_CNIC_EXISTS`; a body with a
+`cnic` string spends the identity-probe budget (§3.6) → `429`. Clearing
 `phone` while primary contact on a live link → `409 GUARDIAN_IS_PRIMARY_CONTACT` (R30; code
 reserved, check added in slice 6). Concurrent edits: optimistic retry as slice 1, then `409
 CONCURRENT_UPDATE`. **200** `GuardianDetailDto`.
@@ -120,7 +122,7 @@ CONCURRENT_UPDATE`. **200** `GuardianDetailDto`.
 | `phone` | optional, `normalisePhone` |
 
 Exactly one of the two → else `422` (`INVALID_VALUE` on the body root, `path: ''`).
-**Throttle per user: 30/min and 300/hour** (it is a CNIC existence oracle) → `429` + `Retry-After`.
+**Throttled by the per-user **identity-probe budget** (`slice-6.md` §3.4): 30/min and 300/hour in one bucket shared by every route that can reveal whether a CNIC or B-Form exists** (it is a CNIC existence oracle) → `429` + `Retry-After`.
 Not audited; logged without the digits.
 
 Behaviour: CNIC → by `cnic_hash`; phone → exact `phone` match. Each hit whose `merged_into_id` is
@@ -214,7 +216,7 @@ Reused: `USER_DISABLED`, `SELF_ACTION_FORBIDDEN` (slice 2), `CONCURRENT_UPDATE`,
 1. Lookup accepts any of `student.create` / `guardian.manage` through the multi-key
    `@RequireCapability` of slice 2.
 2. Lookup takes exactly one of `cnic` / `phone`, returns survivors with `resolvedFromId`, at most
-   20 with a `truncated` flag; throttled 30/min and 300/hour per user.
+   20 with a `truncated` flag; throttled by the shared per-user identity-probe budget (`slice-6.md` §3.4).
 3. CNIC edits are refused once the guardian has a login (`GUARDIAN_CNIC_LOCKED`), mirroring R24.
 4. Issue-login's link precondition (`can_login`) lands in slice 6; slice 5 requires only an
    active guardian with a CNIC and no existing login.

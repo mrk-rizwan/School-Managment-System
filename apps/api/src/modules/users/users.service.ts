@@ -22,6 +22,7 @@ import { PermissionsService } from '../access/permissions.service';
 import { LoginKeys, SchoolLoginLockout } from '../auth/login-limits';
 import { Mailer, type MailMessage } from '../auth/mailer';
 import type { ListUsersQueryDto, OfficeResetDto, ReasonDto, UserDto } from './users.dto';
+import { identityAad } from '../../common/identity';
 
 /** `alice@example.com` → `a***@example.com`. */
 export function maskEmail(email: string): string {
@@ -34,7 +35,7 @@ export function toUserDto(user: UserRecord): UserDto {
     id: user.id.toString(),
     staffId: user.staffId?.toString() ?? null,
     guardianId: user.guardianId?.toString() ?? null,
-    studentId: null,
+    studentId: user.studentId?.toString() ?? null,
     fullName: user.fullName,
     systemRoles: user.systemRoles,
     status: user.status,
@@ -151,7 +152,10 @@ export class UsersService {
     };
   }
 
-  /** The default password: the decrypted 13 digits of the linked identity number (contract §5.4). */
+  /**
+   * The default password: the decrypted 13 digits of the linked identity number, staff CNIC,
+   * guardian CNIC or student B-Form (contract §5.4).
+   */
   private async defaultPassword(schoolId: SchoolId, userId: bigint): Promise<string> {
     const missing = () =>
       new ApiException(
@@ -162,7 +166,7 @@ export class UsersService {
     const found = await this.users.findIdentityCiphertext(schoolId, userId);
     if (!found) throw missing();
     try {
-      const digits = this.cipher.decrypt(found.ciphertext, `${schoolId}|${found.table}|cnic`);
+      const digits = this.cipher.decrypt(found.ciphertext, identityAad(schoolId, found));
       if (!/^[0-9]{13}$/.test(digits)) throw missing();
       return digits;
     } catch (error) {

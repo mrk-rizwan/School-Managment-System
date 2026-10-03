@@ -1,0 +1,577 @@
+'use client';
+
+import { Capability, ErrorCode } from '@asms/shared';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createColumnHelper } from '@tanstack/react-table';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
+import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { FormField, FormRootError, applyApiError, type FormFieldOption } from '@/components/form-field';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { unwrap } from '@/lib/api/client';
+import { ApiError } from '@/lib/api/errors';
+import { academics } from '@/lib/api/school-academics-contract';
+import {
+  staffApi,
+  type ClassTeacherConflict,
+  type CreateTeacherAssignmentBody,
+  type StaffDto,
+  type TeacherAssignmentDto,
+  type TeacherRole,
+} from '@/lib/api/school-staff-contract';
+import { OPTIONS_LIMIT, RowActions, academicsKeys, formatDay } from '../../academics/_lib/academics-ui';
+import { useYearOptions } from '../../academics/classes/class-dialogs';
+import { useCapabilities } from '../../academics/_lib/hooks';
+import {
+  TEACHER_ROLE_LABELS,
+  optionalDateSchema,
+  schoolToday,
+  staffErrorMessage,
+  staffKeys,
+} from '../_lib/staff-ui';
+
+/** contracts/slice-4.md §4 and §8. The whole tab needs class.manage (§1). */
+const LIMIT = 25;
+const NO_ROWS: TeacherAssignmentDto[] = [];
+
+export function AssignmentsTab({ staff }: { staff: StaffDto }) {
+  const { can } = useCapabilities();
+  const canWrite = can(Capability.CLASS_MANAGE);
+  const toggleId = useId();
+  const [page, setPage] = useState(1);
+  const [includeEnded, setIncludeEnded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [ending, setEnding] = useState<TeacherAssignmentDto | null>(null);
+  const today = schoolToday();
+
+  const query = { page, limit: LIMIT, includeEnded, sort: '-startsOn' } as const;
+  const assignments = useQuery({
+    queryKey: [...staffKeys.assignments(staff.id), query],
+    queryFn: () =>
+      unwrap(
+        staffApi.GET('/api/v1/staff/{id}/teacher-assignments', {
+          params: { path: { id: staff.id }, query },
+        }),
+      ),
+    placeholderData: keepPreviousData,
+  });
+
+  const columns = useMemo(() => {
+    const column = createColumnHelper<DataTableFeatures, TeacherAssignmentDto>();
+    return [
+      column.display({
+        id: 'class',
+        header: 'Class',
+        cell: (info) => {
+          const a = info.row.original;
+          return (
+            <span className="grid">
+              <span className="font-medium">
+                {a.className} {a.sectionName ?? <span className="font-normal text-muted-foreground">· all sections</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">{a.academicYearName}</span>
+            </span>
+          );
+        },
+      }),
+      column.display({
+        id: 'role',
+        header: 'Teaches',
+        cell: (info) => {
+          const a = info.row.original;
+          return a.role === 'class_teacher' ? TEACHER_ROLE_LABELS.class_teacher : (a.subjectName ?? TEACHER_ROLE_LABELS.subject_teacher);
+        },
+      }),
+      column.display({
+        id: 'dates',
+        header: 'Dates',
+        cell: (info) => {
+          const a = info.row.original;
+          return (
+            <span className="tabular-nums">
+              {formatDay(a.startsOn)} – {a.endsOn ? formatDay(a.endsOn) : 'open'}
+            </span>
+          );
+        },
+      }),
+      column.display({
+        id: 'state',
+        header: 'Status',
+        cell: (info) => <AssignmentState assignment={info.row.original} today={today} />,
+      }),
+      column.display({
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        cell: (info) => {
+          const a = info.row.original;
+          const live = a.voidedAt === null && (a.endsOn === null || a.endsOn >= today);
+          if (!canWrite || !live) return null;
+          return (
+            <RowActions
+              label={`${a.className} ${a.sectionName ?? ''}`.trim()}
+              actions={[
+                {
+                  // §4.4: a row that has not begun (or began today) is withdrawn, never ended.
+                  label: a.startsOn < today ? 'End assignment' : 'Withdraw assignment',
+                  destructive: true,
+                  onSelect: () => setEnding(a),
+                },
+              ]}
+            />
+          );
+        },
+      }),
+    ];
+  }, [canWrite, today]);
+
+  const result = assignments.data;
+  const notTeacher = !staff.systemRoles.includes('teacher');
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">Teaching assignments</h2>
+        <div className="flex items-center gap-4">
+          <div className="flex h-8 items-center gap-2">
+            <input
+              id={toggleId}
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={includeEnded}
+              onChange={(event) => {
+                setIncludeEnded(event.target.checked);
+                setPage(1);
+              }}
+            />
+            <Label htmlFor={toggleId}>Show ended and withdrawn</Label>
+          </div>
+          {canWrite && staff.status === 'active' && (
+            <Button size="sm" onClick={() => setAdding(true)}>
+              Add assignment
+            </Button>
+          )}
+        </div>
+      </div>
+      {staff.status === 'active' && notTeacher && (
+        <p className="text-sm text-muted-foreground">
+          {staff.fullName} does not hold the teacher role. Assignments can be added now; they give
+          access to the class only once the teacher role is given.
+        </p>
+      )}
+      <DataTable
+        columns={columns}
+        data={result?.data ?? NO_ROWS}
+        getRowId={(row) => row.id}
+        page={result?.page ?? page}
+        limit={result?.limit ?? LIMIT}
+        total={result?.total ?? 0}
+        onPageChange={setPage}
+        isLoading={assignments.isPending || assignments.isPlaceholderData}
+        error={assignments.error}
+        onRetry={() => void assignments.refetch()}
+        emptyTitle={includeEnded ? 'No assignments yet' : 'No current assignments'}
+        emptyDescription="A class teacher keeps one section's register; a subject teacher teaches one subject to a class."
+      />
+      {adding && <AddAssignmentDialog staff={staff} onClose={() => setAdding(false)} />}
+      <EndAssignmentDialog staff={staff} assignment={ending} today={today} onClose={() => setEnding(null)} />
+    </section>
+  );
+}
+
+function AssignmentState({ assignment: a, today }: { assignment: TeacherAssignmentDto; today: string }) {
+  if (a.voidedAt) return <span className="text-muted-foreground">Withdrawn</span>;
+  if (a.endsOn && a.endsOn < today) return <span className="text-muted-foreground">Ended</span>;
+  if (a.activeToday) return <Badge variant="secondary">Active today</Badge>;
+  if (a.startsOn > today) return <Badge variant="outline">Starts {formatDay(a.startsOn)}</Badge>;
+  return <span className="text-muted-foreground">Not active</span>;
+}
+
+// ---- Add (§4.3) ----
+
+const addSchema = z
+  .object({
+    role: z.string().refine((v) => v === 'class_teacher' || v === 'subject_teacher', 'Choose a role.'),
+    /** Only filters the class list: the API takes the year from the class. */
+    academicYearId: z.string().min(1, 'Choose a session.'),
+    classId: z.string().min(1, 'Choose a class.'),
+    /** '' = every section (subject teacher only). */
+    sectionId: z.string(),
+    subjectId: z.string(),
+    startsOn: optionalDateSchema,
+    endsOn: optionalDateSchema,
+  })
+  .superRefine((v, ctx) => {
+    if (v.role === 'class_teacher' && !v.sectionId) {
+      ctx.addIssue({ code: 'custom', path: ['sectionId'], message: 'A class teacher keeps one section.' });
+    }
+    if (v.role === 'subject_teacher' && !v.subjectId) {
+      ctx.addIssue({ code: 'custom', path: ['subjectId'], message: 'Choose a subject.' });
+    }
+    if (v.endsOn && v.startsOn && v.endsOn < v.startsOn) {
+      ctx.addIssue({ code: 'custom', path: ['endsOn'], message: 'The last day cannot be before the first.' });
+    }
+  });
+type AddValues = z.input<typeof addSchema>;
+
+const ROLE_OPTIONS: FormFieldOption[] = [
+  { value: '', label: 'Choose…' },
+  { value: 'class_teacher', label: TEACHER_ROLE_LABELS.class_teacher },
+  { value: 'subject_teacher', label: TEACHER_ROLE_LABELS.subject_teacher },
+];
+
+function AddAssignmentDialog({ staff, onClose }: { staff: StaffDto; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const today = schoolToday();
+  // The body that hit CLASS_TEACHER_EXISTS, and who holds the section: the second step asks
+  // before replacing them (§4.3, decision 3).
+  const [conflict, setConflict] = useState<{
+    body: CreateTeacherAssignmentBody;
+    conflicts: ClassTeacherConflict[];
+  } | null>(null);
+
+  const years = useYearOptions();
+  const openYears = (years.data?.data ?? []).filter((y) => y.status !== 'closed');
+  const defaultYear = openYears.find((y) => y.status === 'active') ?? openYears[0];
+
+  const form = useForm<AddValues>({
+    resolver: zodResolver(addSchema),
+    defaultValues: {
+      role: '',
+      academicYearId: defaultYear?.id ?? '',
+      classId: '',
+      sectionId: '',
+      subjectId: '',
+      startsOn: '',
+      endsOn: '',
+    },
+  });
+  const [role, yearId, classId] = useWatch({
+    control: form.control,
+    name: ['role', 'academicYearId', 'classId'],
+  });
+
+  // The years arrive after the form mounts: pick the default once they do.
+  useEffect(() => {
+    if (!form.getValues('academicYearId') && defaultYear) form.setValue('academicYearId', defaultYear.id);
+  }, [defaultYear, form]);
+  // A class belongs to one year and a section to one class: clear what no longer fits.
+  useEffect(() => {
+    form.setValue('classId', '');
+  }, [yearId, form]);
+  useEffect(() => {
+    form.setValue('sectionId', '');
+  }, [classId, form]);
+
+  const classQuery = { academicYearId: yearId, status: 'active', limit: OPTIONS_LIMIT, sort: 'sortOrder' } as const;
+  const classes = useQuery({
+    queryKey: [...academicsKeys.classes, 'options', classQuery],
+    queryFn: () => unwrap(academics.GET('/api/v1/classes', { params: { query: classQuery } })),
+    enabled: yearId !== '',
+  });
+  const sectionQuery = { limit: OPTIONS_LIMIT, sort: 'name' } as const;
+  const sections = useQuery({
+    queryKey: [...academicsKeys.sections(classId), 'options'],
+    queryFn: () =>
+      unwrap(
+        academics.GET('/api/v1/classes/{id}/sections', {
+          params: { path: { id: classId }, query: sectionQuery },
+        }),
+      ),
+    enabled: classId !== '',
+  });
+  const subjectQuery = { limit: OPTIONS_LIMIT, sort: 'name' } as const;
+  const subjects = useQuery({
+    queryKey: [...academicsKeys.subjects, 'options'],
+    queryFn: () => unwrap(academics.GET('/api/v1/subjects', { params: { query: subjectQuery } })),
+    enabled: role === 'subject_teacher',
+  });
+
+  const create = useMutation({
+    mutationFn: (body: CreateTeacherAssignmentBody) =>
+      unwrap(
+        staffApi.POST('/api/v1/staff/{id}/teacher-assignments', {
+          params: { path: { id: staff.id } },
+          body,
+        }),
+      ),
+    onSuccess: (row) => {
+      toast.success(
+        `${staff.fullName} assigned to ${row.className}${row.sectionName ? ` ${row.sectionName}` : ''}.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: staffKeys.assignments(staff.id) });
+      onClose();
+    },
+    onError: (error, body) => {
+      if (error instanceof ApiError && error.code === ErrorCode.CLASS_TEACHER_EXISTS && !body.replaceCurrent) {
+        const conflicts = (error.details as { conflicts?: ClassTeacherConflict[] } | null)?.conflicts ?? [];
+        setConflict({ body, conflicts });
+        return;
+      }
+      // A resubmit after a lost response: the assignment exists, which is what was wanted.
+      if (error instanceof ApiError && error.code === ErrorCode.ASSIGNMENT_EXISTS) {
+        toast.info('This assignment already exists.');
+        void queryClient.invalidateQueries({ queryKey: staffKeys.assignments(staff.id) });
+        onClose();
+        return;
+      }
+      setConflict(null);
+      applyApiError(form, error);
+    },
+  });
+
+  const onSubmit = form.handleSubmit((values) => {
+    const teacherRole = values.role as TeacherRole;
+    create.mutate({
+      role: teacherRole,
+      classId: values.classId,
+      sectionId: values.sectionId || null,
+      ...(teacherRole === 'subject_teacher' && { subjectId: values.subjectId }),
+      ...(values.startsOn && { startsOn: values.startsOn }),
+      ...(values.endsOn && { endsOn: values.endsOn }),
+    });
+  });
+
+  const options = (rows: { id: string; name: string }[] | undefined, empty: string): FormFieldOption[] => [
+    { value: '', label: empty },
+    ...(rows ?? []).map((r) => ({ value: r.id, label: r.name })),
+  ];
+  const liveSections = sections.data?.data.filter((s) => s.archivedAt === null);
+  const liveSubjects = subjects.data?.data.filter((s) => s.archivedAt === null);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !create.isPending && onClose()}>
+      <DialogContent showCloseButton={!create.isPending}>
+        {conflict ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>This section already has a class teacher</DialogTitle>
+              <DialogDescription>A section has one class teacher at a time.</DialogDescription>
+            </DialogHeader>
+            <ul className="grid gap-1 text-sm">
+              {conflict.conflicts.map((c) => (
+                <li key={c.assignmentId}>
+                  <span className="font-medium">{c.staffFullName}</span>, from {formatDay(c.startsOn)}
+                  {c.endsOn ? ` to ${formatDay(c.endsOn)}` : ''}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm">
+              Replacing ends their assignment the day before {staff.fullName} starts, or withdraws it if
+              it has not begun.
+            </p>
+            {create.error && !(create.error instanceof ApiError && create.error.code === ErrorCode.CLASS_TEACHER_EXISTS) && (
+              <Alert variant="destructive">
+                <AlertDescription>{staffErrorMessage(create.error)}</AlertDescription>
+              </Alert>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={create.isPending}
+                onClick={() => {
+                  create.reset();
+                  setConflict(null);
+                }}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                disabled={create.isPending}
+                onClick={() => create.mutate({ ...conflict.body, replaceCurrent: true })}
+              >
+                {create.isPending ? 'Working…' : 'Replace class teacher'}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form noValidate onSubmit={onSubmit} className="grid gap-4">
+            <DialogHeader>
+              <DialogTitle>Add a teaching assignment</DialogTitle>
+              <DialogDescription>
+                For {staff.fullName}. It counts from its first day; it cannot start in the past.
+              </DialogDescription>
+            </DialogHeader>
+            <FormRootError form={form} />
+            <FormField control={form.control} name="role" label="Role" options={ROLE_OPTIONS} />
+            <FormField
+              control={form.control}
+              name="academicYearId"
+              label="Session"
+              options={options(openYears, years.isPending ? 'Loading…' : 'Choose…')}
+            />
+            <FormField
+              control={form.control}
+              name="classId"
+              label="Class"
+              disabled={!yearId}
+              options={options(classes.data?.data, classes.isFetching ? 'Loading…' : 'Choose…')}
+            />
+            <FormField
+              control={form.control}
+              name="sectionId"
+              label="Section"
+              disabled={!classId}
+              hint={role === 'subject_teacher' ? 'Leave as every section to teach the whole class.' : undefined}
+              options={options(
+                liveSections,
+                role === 'subject_teacher' ? 'Every section' : sections.isFetching ? 'Loading…' : 'Choose…',
+              )}
+            />
+            {role === 'subject_teacher' && (
+              <FormField
+                control={form.control}
+                name="subjectId"
+                label="Subject"
+                options={options(liveSubjects, subjects.isFetching ? 'Loading…' : 'Choose…')}
+              />
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DateField form={form} name="startsOn" label="First day (optional)" min={today} hint="Blank: today, or the session's first day." />
+              <DateField form={form} name="endsOn" label="Last day (optional)" min={today} hint="Blank: until ended." />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={create.isPending} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={create.isPending}>
+                {create.isPending ? 'Saving…' : 'Add assignment'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** A date input with a `min` (FormField does not pass one through). */
+function DateField({
+  form,
+  name,
+  label,
+  min,
+  hint,
+}: {
+  form: UseFormReturn<AddValues>;
+  name: 'startsOn' | 'endsOn';
+  label: string;
+  min: string;
+  hint: string;
+}) {
+  const id = useId();
+  const error = form.formState.errors[name]?.message;
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="date"
+        min={min}
+        {...form.register(name)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={`${id}-note`}
+      />
+      <p id={`${id}-note`} className={error ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
+        {error ?? hint}
+      </p>
+    </div>
+  );
+}
+
+// ---- End (§4.4) ----
+
+function EndAssignmentDialog({
+  staff,
+  assignment,
+  today,
+  onClose,
+}: {
+  staff: StaffDto;
+  assignment: TeacherAssignmentDto | null;
+  today: string;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const dateId = useId();
+  const [lastDay, setLastDay] = useState('');
+  const started = assignment !== null && assignment.startsOn < today;
+  const close = () => {
+    setLastDay('');
+    end.reset();
+    onClose();
+  };
+  const end = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      unwrap(
+        staffApi.POST('/api/v1/teacher-assignments/{id}/end', {
+          params: { path: { id } },
+          body: { ...(lastDay && { endsOn: lastDay }), ...(reason && { reason }) },
+        }),
+      ),
+    onSuccess: (row) => {
+      toast.success(row.voidedAt ? 'Assignment withdrawn.' : 'Assignment ended.');
+      void queryClient.invalidateQueries({ queryKey: staffKeys.assignments(staff.id) });
+      close();
+    },
+  });
+
+  const name = assignment ? `${assignment.className}${assignment.sectionName ? ` ${assignment.sectionName}` : ''}` : '';
+  return (
+    <ConfirmWithReasonDialog
+      open={assignment !== null}
+      onOpenChange={(open) => !open && close()}
+      title={started ? `End assignment: ${name}` : `Withdraw assignment: ${name}`}
+      description={
+        started
+          ? 'With no last day it stops counting from today. History is kept. A reason is optional.'
+          : 'It has not begun, so it is withdrawn and never counts. History is kept. A reason is optional.'
+      }
+      confirmLabel={started || lastDay ? 'End assignment' : 'Withdraw'}
+      minLength={0}
+      maxLength={500}
+      destructive
+      pending={end.isPending}
+      onConfirm={(reason) => assignment && end.mutate({ id: assignment.id, reason })}
+    >
+      <div className="grid gap-1.5">
+        <Label htmlFor={dateId}>Last day (optional)</Label>
+        <Input
+          id={dateId}
+          type="date"
+          min={assignment && assignment.startsOn > today ? assignment.startsOn : today}
+          max={assignment?.endsOn ?? undefined}
+          value={lastDay}
+          disabled={end.isPending}
+          onChange={(event) => setLastDay(event.target.value)}
+          aria-describedby={`${dateId}-hint`}
+        />
+        <p id={`${dateId}-hint`} className="text-xs text-muted-foreground">
+          A planned last day, today or later. Leave blank to stop now.
+        </p>
+      </div>
+      {end.error && (
+        <Alert variant="destructive">
+          <AlertDescription>{staffErrorMessage(end.error)}</AlertDescription>
+        </Alert>
+      )}
+    </ConfirmWithReasonDialog>
+  );
+}

@@ -58,11 +58,11 @@ the flags only).
 `sectionId`, `sectionName`, `rollNo` (integer | null), `status`, `startedOn`, `endedOn` (date |
 null).
 
-`StatusChangeDto`: `id`, `fromStatus` (null for admission), `toStatus`, `reason`, `effectiveOn`,
-`changedBy` (user id), `changedByName`, `createdAt`.
+`StatusChangeDto`: `id`, `fromStatus` (null for admission), `toStatus`, `reason` (string | null —
+null for the admission row), `effectiveOn`, `changedBy` (user id), `changedByName`, `createdAt`.
 
 `StudentDocumentDto`: `id`, `studentId`, `type`, `mime`, `sizeBytes`, `uploadedBy`,
-`uploadedByName`, `createdAt`. The object key never leaves the server.
+`uploadedByName` (string | null — null when the uploader has no staff name), `createdAt`. The object key never leaves the server.
 
 ---
 
@@ -85,7 +85,11 @@ null).
 
 ### 3.4 `POST /students/lookup`
 
-`{ bForm: CnicField }`. Throttle per user **30/min, 300/hour** → `429`. Not audited; logged without
+`{ bForm: CnicField }`. Throttle per user **30/min, 300/hour** → `429`. This is the per-user
+**identity-probe budget**, one bucket shared by every route that can reveal whether an identity
+number exists: this lookup, `POST /guardians/lookup`, `POST /admissions`, `PATCH /students/:id`
+when the body carries a `bForm` string, and `POST /guardians`, `PATCH /guardians/:id`, `POST
+/staff`, `PATCH /staff/:id` when the body carries a `cnic` string. Spreading probes across routes gains nothing. Not audited; logged without
 digits. By `b_form_hash`. **200** `{ data: [{ student: StudentDto, readmissible: boolean }],
 truncated: false }` — at most one hit (unique); `readmissible` = status `withdrawn | transferred |
 alumni` (R26). A miss is `data: []`.
@@ -102,7 +106,8 @@ alumni` (R26). A miss is `data: []`.
 
 `null` on the first three → `422`. `bForm` present while a user has `student_id = :id` → `409
 STUDENT_BFORM_LOCKED`. Taken in this school → `409 STUDENT_BFORM_EXISTS` `details: { studentId }`
-(R25; constraint `students_school_id_b_form_hash_key`). **200** `StudentDetailDto`.
+(R25; constraint `students_school_id_b_form_hash_key`). A body with a `bForm` string spends the
+identity-probe budget (§3.4) → `429` once it is spent. **200** `StudentDetailDto`.
 
 ### 3.6 `POST /students/:id/change-status`
 
@@ -198,8 +203,12 @@ ignored; SVG, HTML, GIF refused). Images re-encoded by `sharp` (`limitInputPixel
 `failOn: 'error'`, first frame, EXIF stripped, same format); decode failure or pixel bomb → `415`
 `details.reason = 'image_rejected'`; output > 5 MB → `413`. At most 4 re-encodes at once per
 process; a wait over 10 s → `503 SERVICE_UNAVAILABLE`. Stored once at `{schoolId}/{ulid}.{ext}`
-(ext from the sniffed type), private bucket, SSE; then `staged_uploads` row (`expires_at = now +
-24 h`); if the insert fails the object is deleted best-effort. **201** `{ id, mime, sizeBytes,
+(ext from the sniffed type), private bucket, SSE. The `staged_uploads` row (`expires_at = now +
+24 h`) is inserted **first**, then the object is written, so no crash between the two can leave an
+object without a row for the sweep to find. If the write fails the row is expired at once
+(`expires_at` = `created_at` + 1 ms, the earliest the CHECK allows: unusable, and the first sweep
+past the grace period deletes the object if it landed, then the row); if even that fails, the row
+expires in 24 hours. **201** `{ id, mime, sizeBytes,
 expiresAt }`. **No read endpoint for staged content** (R41).
 
 ### 6.2 Documents
@@ -243,7 +252,11 @@ Shape refusals (`422`): not exactly one `isPrimaryContact`; no `isFeePayer`; a r
 upload unusable (R91); `photo` not an image.
 
 Order:
-1. Guard (`student.create`) — before any key lookup (R85).
+1. Guard (`student.create`) — before any key lookup (R85). Then the identity-probe budget (§3.4):
+   every admission spends one. Then, when any guardian is a `newGuardian` or has `canLogin: true`,
+   the caller must also hold `guardian.manage` (as `POST /guardians` and the link routes require)
+   → `403 PERMISSION_DENIED`; linking an existing guardian without a login needs `student.create`
+   only.
 2. Validation (`422`, nothing stored, R87).
 3. `requestHash = HMAC-SHA256(IDENTITY_HASH_KEY, 'admissions|' + canonical JSON)` of the
    normalised body without `acknowledgedDuplicateStudentIds`. No digits are stored (R82).
@@ -251,7 +264,12 @@ Order:
    different hash → `409 IDEMPOTENCY_KEY_REUSED` (R83). A key is per user: another user's equal key
    is independent (R84).
 5. `@Transactional()`: **first statement** inserts the key row (`response_status 201`,
-   `subject_type 'student'`, `subject_id` set before commit). Then:
+   `subject_type 'student'`, `subject_id` set before commit). Then the references, in this order:
+   guardians (`guardianId` unknown → `422 REFERENCE_NOT_FOUND`; merged → `409 GUARDIAN_MERGED`;
+   locked in id order), staged uploads (`422`), then the target section, class and year, locked
+   in that order (as §5; an unknown `classId` → `422 REFERENCE_NOT_FOUND` on
+   `enrolment.classId`). Guardians are locked before the section: no other path locks a section,
+   class or year and then a guardian, so the order cannot deadlock. Then:
    - **Duplicate check:** existing students with the same normalised name (case-insensitive),
      same `date_of_birth`, and a live link to the submitted primary guardian (only when it is a
      `guardianId`). Matches not in `acknowledgedDuplicateStudentIds` → `409
@@ -265,7 +283,11 @@ Order:
    - Admission number `UPDATE school_counters … RETURNING` (R34); student `active`; new guardians;
      links; enrolment; documents consumed; status row (`from null`); audit; key `subject_id`.
 6. Key-insert conflict (R89), caught **outside** the transaction, fresh read: same hash → replay;
-   else `409 IDEMPOTENCY_KEY_REUSED`.
+   else `409 IDEMPOTENCY_KEY_REUSED`. A B-Form, guardian CNIC or roll-number unique violation
+   (a concurrent write after the in-transaction check) is likewise re-read outside the
+   transaction and answered as the in-transaction refusal, with its details
+   (`STUDENT_BFORM_EXISTS { studentId, readmissible }`, `GUARDIAN_CNIC_EXISTS { guardianId }`,
+   `ROLL_NO_TAKEN { enrolmentId }`). Readmission does the same for `ROLL_NO_TAKEN`.
 
 **201** `AdmissionResultDto { student: StudentDetailDto, enrolment: EnrolmentDto, guardianLinks:
 GuardianLinkDto[], documents: StudentDocumentDto[], loginOffers: { student: boolean, guardians: [{
@@ -302,7 +324,7 @@ Reused: `USERNAME_IN_USE` (slice 4), `ILLEGAL_STATUS_TRANSITION`, `IDENTITY_NUMB
 
 | Action | Subject | Reason | Metadata |
 |---|---|---|---|
-| `student.admitted` | student | — | `{ enrolmentId, classId, sectionId, newGuardianIds, linkedGuardianIds, documentCount, acknowledgedDuplicateStudentIds }` |
+| `student.admitted` | student | — | `{ enrolmentId, classId, sectionId, newGuardianIds, linkedGuardianIds, documentCount, acknowledgedDuplicateStudentIds }` — the three id lists are **comma-joined strings** (`''` when empty), because audit metadata holds scalars, not arrays |
 | `guardian.created` | guardian | — | as slice 5 (one per new guardian) |
 | `student.readmitted` | student | required | `{ enrolmentId, classId, sectionId, fromStatus }` |
 | `student.updated` | student | — | `{ changes }`; `bForm` as `{ changed: true }` |

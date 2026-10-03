@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, Length, ValidateBy } from 'class-validator';
+import { IsIn, IsOptional, IsString, Length } from 'class-validator';
 import {
   CONTACT_CAPABILITIES,
   GUARDIAN_STATUSES,
@@ -13,6 +13,7 @@ import {
   EmailField,
   IfPresent,
   NameField,
+  NoIdentityNumber,
   PhoneField,
   QueryBoolean,
   TextField,
@@ -31,21 +32,6 @@ const DATE_TIME = { type: String, format: 'date-time' } as const;
 const FullName = (): PropertyDecorator => NameField(2, 200);
 const Address = (): PropertyDecorator => TextField(1, 500);
 const Capability = (): PropertyDecorator => IsIn(CONTACT_CAPABILITIES);
-
-/**
- * `q` on the guardian list must not be a CNIC: spaces and dashes are removed first, so
- * `35201 1234567 1` is refused too. Finding by CNIC is POST /guardians/lookup.
- */
-const NotACnic = (): PropertyDecorator =>
-  ValidateBy({
-    name: 'noIdentityNumber',
-    validator: {
-      validate: (value: unknown) =>
-        typeof value === 'string' && !/[0-9]{13}/.test(value.replace(/[\s-]/g, '')),
-      defaultMessage: () =>
-        '$property must not be a CNIC: use POST /guardians/lookup to find by CNIC',
-    },
-  });
 
 // ------------------------------------------------------------------------------------ responses
 
@@ -198,7 +184,10 @@ export class ListGuardiansQueryDto extends PageQueryDto {
   @Transform(trim)
   @IsString()
   @Length(2, 100)
-  @NotACnic()
+  @NoIdentityNumber({
+    ignoreSeparators: true,
+    message: '$property must not be a CNIC: use POST /guardians/lookup to find by CNIC',
+  })
   q?: string;
 
   @ApiPropertyOptional({ enum: GUARDIAN_SORTS, enumName: 'GuardianSort', default: 'fullName' })

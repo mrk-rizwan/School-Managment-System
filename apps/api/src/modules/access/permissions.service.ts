@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Capability, SYSTEM_ROLE_DEFAULTS, type SystemRole } from '@asms/shared';
+import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { UserRepository, type UserStatusValue } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { Scope } from '../../tenancy/scope';
 import { scopeAll, scopeSections } from '../../tenancy/scope.mint';
+import { SchoolClock } from '../../common/school-clock';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -15,7 +17,7 @@ export interface Capacities {
   staff: boolean;
   /** guardian_id set (plan §6 stance). */
   guardian: boolean;
-  /** Always false until slice 6 adds users.student_id. */
+  /** student_id set, the student `active`, and student login enabled for the school (slice 6). */
   student: boolean;
 }
 
@@ -43,12 +45,16 @@ const ORDER = new Map(ALL_CAPABILITIES.map((key, i) => [key, i]));
 const SCHOOL_WIDE_ROLES: readonly SystemRole[] = ['principal', 'office_staff'];
 
 /**
- * Effective permissions (plan §3.4, contract slice-2 §1.1). Slice 2 computes from system roles
- * only; slice 7 adds custom roles and grants, slice 4 adds teacher assignment scope.
+ * Effective permissions (plan §3.4, contract slice-2 §1.1). Computed from system roles; teacher
+ * scope comes from assignments (slice 4); slice 7 adds custom roles and grants.
  */
 @Injectable()
 export class PermissionsService {
-  constructor(private readonly users: UserRepository) {}
+  constructor(
+    private readonly users: UserRepository,
+    private readonly assignments: TeacherAssignmentRepository,
+    private readonly clock: SchoolClock,
+  ) {}
 
   /** The user's access, or null if the user does not exist in this school. */
   async load(schoolId: SchoolId, userId: bigint): Promise<UserAccess | null> {
@@ -68,7 +74,13 @@ export class PermissionsService {
       status: row.status,
       staffId: row.staffId,
       guardianId: row.guardianId,
-      capacities: { staff, guardian: row.guardianId !== null, student: false },
+      capacities: {
+        staff,
+        guardian: row.guardianId !== null,
+        // contracts/slice-6.md §9: no capability; the role only (rule 13, roles are fixed).
+        student:
+          row.studentId !== null && row.studentStatus === 'active' && row.studentLoginEnabled,
+      },
       systemRoles: row.systemRoles,
       capabilities,
     };
@@ -111,37 +123,46 @@ export class PermissionsService {
   /**
    * A refusal (null) or the row scope the capability gives (plan §3.4, R79): school-wide when it
    * comes from the principal or office-staff defaults; the teacher's sections when it comes only
-   * from the teacher default. Teacher assignments arrive in slice 4, so until then a
-   * teacher-only capability scopes to no rows (an empty list means no rows, never no filter).
-   * Returns a promise so slice 4 can read assignments without changing the signature.
+   * from the teacher default (contracts/slice-4.md §1). An empty section list means no rows,
+   * never no filter.
    */
-  can(_schoolId: SchoolId, access: UserAccess, capability: Capability): Promise<Scope | null> {
-    if (!access.capacities.staff || !access.capabilities.has(capability)) {
-      return Promise.resolve(null);
-    }
-    const schoolWide = access.systemRoles.some(
-      (role) => SCHOOL_WIDE_ROLES.includes(role) && SYSTEM_ROLE_DEFAULTS[role].includes(capability),
-    );
-    return Promise.resolve(schoolWide ? scopeAll() : scopeSections([]));
+  can(schoolId: SchoolId, access: UserAccess, capability: Capability): Promise<Scope | null> {
+    return this.canAny(schoolId, access, [capability]);
   }
 
   /**
    * Any-of over several capabilities (@RequireCapability with more than one key): a refusal
-   * (null) when none is held, else the widest scope — school-wide if any one gives it, otherwise
-   * the union of the section lists.
+   * (null) when none is held, else the widest scope: school-wide if any held key comes from a
+   * school-wide role, otherwise the teacher's sections (read once).
    */
   async canAny(
     schoolId: SchoolId,
     access: UserAccess,
     capabilities: readonly Capability[],
   ): Promise<Scope | null> {
-    let sections: bigint[] | null = null;
-    for (const capability of capabilities) {
-      const scope = await this.can(schoolId, access, capability);
-      if (scope === null) continue;
-      if (scope.kind === 'all') return scope;
-      sections = [...(sections ?? []), ...scope.ids];
-    }
-    return sections === null ? null : scopeSections([...new Set(sections)]);
+    // R59: no staff capacity, no capability, whatever rows are stored.
+    if (!access.capacities.staff) return null;
+    const held = capabilities.filter((key) => access.capabilities.has(key));
+    if (held.length === 0) return null;
+    const schoolWide = held.some((key) =>
+      access.systemRoles.some(
+        (role) => SCHOOL_WIDE_ROLES.includes(role) && SYSTEM_ROLE_DEFAULTS[role].includes(key),
+      ),
+    );
+    return schoolWide ? scopeAll() : scopeSections(await this.teacherSections(schoolId, access));
+  }
+
+  /**
+   * R53, R54: the sections of the caller's teacher assignments active today in the school's time
+   * zone, computed per request (R69). History follows the section: the rows are read by date, so
+   * a teacher reassigned from tomorrow keeps the section today and loses it tomorrow.
+   */
+  private async teacherSections(schoolId: SchoolId, access: UserAccess): Promise<bigint[]> {
+    if (access.staffId === null) return [];
+    return this.assignments.activeSectionIds(
+      schoolId,
+      access.staffId,
+      await this.clock.today(schoolId),
+    );
   }
 }

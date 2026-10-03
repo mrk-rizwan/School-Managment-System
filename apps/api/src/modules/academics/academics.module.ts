@@ -3,6 +3,7 @@ import { SchoolContext } from '../../common/school-context';
 import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassRepository } from '../../repositories/class.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SectionRepository } from '../../repositories/section.repository';
 import { SubjectRepository } from '../../repositories/subject.repository';
 import { AcademicYearsController } from './academic-years.controller';
@@ -28,6 +29,7 @@ import { SubjectsService } from './subjects.service';
     SectionRepository,
     SubjectRepository,
     AuditLogRepository,
+    EnrolmentRepository,
   ],
 })
 export class AcademicsModule {}

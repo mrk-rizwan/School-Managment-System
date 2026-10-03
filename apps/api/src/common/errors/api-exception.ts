@@ -21,6 +21,12 @@ export interface FieldError {
   message: string;
 }
 
+/** 422 with one field error (an id in a body that does not resolve, a value refused in context). */
+export const fieldRefused = (path: string, code: ErrorCode, message: string): ApiException =>
+  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
+    fields: [{ path, code, message }],
+  });
+
 /** 404 for a row absent from the caller's school: never "exists elsewhere" (tenant isolation). */
 export const notFound = (): ApiException =>
   new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');

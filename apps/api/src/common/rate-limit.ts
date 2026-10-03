@@ -1,9 +1,18 @@
-import type { Logger } from '@nestjs/common';
-import type { ThrottlerStorage } from '@nestjs/throttler';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Inject,
+  Injectable,
+  Logger,
+  mixin,
+  type Type,
+} from '@nestjs/common';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ErrorCode } from '@asms/shared';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ApiException } from './errors/api-exception';
+import { SchoolContext } from './school-context';
 
 // The rate limits and lockouts of the auth routes and the guardian lookup. Every counter lives in
 // Redis through the throttler's own storage, so it holds across API processes. Redis unreachable
@@ -48,6 +57,76 @@ export async function enforceRateLimits(
     throw new ApiException(429, ErrorCode.RATE_LIMITED, 'Too many requests. Try again shortly.');
   }
 }
+
+/**
+ * A route guard counting `perMinute` and `perHour` hits per school user under `${name}-minute`
+ * and `${name}-hour`. Guards built with the same name share one bucket, whichever route they
+ * guard. `applies` decides whether a request counts at all (default: every request). Runs after
+ * the access guard, so it is only reached with a session. Call once per guard, at module level.
+ */
+export function perUserThrottle(
+  name: string,
+  perMinute: number,
+  perHour: number,
+  applies: (req: Request) => boolean = () => true,
+): Type<CanActivate> {
+  @Injectable()
+  class PerUserThrottleGuard implements CanActivate {
+    private readonly logger = new Logger(`${name}-throttle`);
+
+    constructor(
+      @Inject(ThrottlerStorage) private readonly storage: ThrottlerStorage,
+      private readonly context: SchoolContext,
+    ) {}
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+      const http = context.switchToHttp();
+      if (!applies(http.getRequest<Request>())) return true;
+      const { schoolId, userId } = this.context.actor();
+      const key = `${schoolId}:${userId}`;
+      await enforceRateLimits(
+        this.storage,
+        http.getResponse<Response>(),
+        [
+          { name: `${name}-minute`, key, limit: perMinute, ttlMs: MINUTE_MS },
+          { name: `${name}-hour`, key, limit: perHour, ttlMs: HOUR_MS },
+        ],
+        this.logger,
+      );
+      return true;
+    }
+  }
+  // mixin: a unique class name per guard, so two guards from this factory never share a token.
+  return mixin(PerUserThrottleGuard);
+}
+
+/**
+ * One per-user budget for every route that can tell its caller whether an identity number (a
+ * B-Form or a CNIC) exists in the school: the lookups, admission and a B-Form patch
+ * (contracts/slice-5.md §3.6, slice-6.md §3.4). 30 a minute and 300 an hour in all, so spreading
+ * probes across routes gains nothing.
+ */
+export const identityProbeThrottle = (applies?: (req: Request) => boolean): Type<CanActivate> =>
+  perUserThrottle('identity-probe', 30, 300, applies);
+
+/** Lookups and admission count every request. */
+export const IdentityProbeThrottleGuard = identityProbeThrottle();
+
+/** True when the JSON body has `field` as a string (a value to check, not a clearing null). */
+export const bodyHasString =
+  (field: string) =>
+  (req: Request): boolean => {
+    const body: unknown = req.body;
+    return (
+      typeof body === 'object' &&
+      body !== null &&
+      field in body &&
+      typeof Reflect.get(body, field) === 'string'
+    );
+  };
+
+/** Guardian and staff create and patch: only a body carrying a CNIC can answer *_CNIC_EXISTS. */
+export const CnicProbeThrottleGuard = identityProbeThrottle(bodyHasString('cnic'));
 
 /** `failures` consecutive failures for one key lock it for `durationMs`. */
 export interface LockoutPolicy {

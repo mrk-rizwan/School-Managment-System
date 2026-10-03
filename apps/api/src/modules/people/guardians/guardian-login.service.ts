@@ -5,16 +5,18 @@ import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
 import { ApiException } from '../../../common/errors/api-exception';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
-import { identityHash } from '../../../common/identity';
+import { guardianCnicAad, identityHash } from '../../../common/identity';
 import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
 import { GuardianLoginRepository } from '../../../repositories/guardian-login.repository';
+import { StudentGuardianRepository } from '../../../repositories/student-guardian.repository';
 import { UserRepository, type UserCredentialRow } from '../../../repositories/user.repository';
 import { PermissionsService } from '../../access/permissions.service';
 import type { UserDto } from '../../users/users.dto';
 import { toUserDto } from '../../users/users.service';
 import { SchoolContext, type Actor } from '../../../common/school-context';
-import { cnicAad, guardianMerged, GuardiansService } from './guardians.service';
+import type { SchoolId } from '../../../tenancy/school-id';
+import { guardianMerged, GuardiansService } from './guardians.service';
 
 // POST /guardians/:id/issue-login (contracts/slice-5.md §3.7; R21, R22, R27, R77). The username
 // is the guardian's CNIC, stored only as its HMAC; the default password is the same digits.
@@ -45,6 +47,7 @@ export class GuardianLoginService {
     private readonly audit: AuditLogRepository,
     private readonly encryption: FieldEncryption,
     private readonly passwords: PasswordHasher,
+    private readonly links: StudentGuardianRepository,
     @Inject(ENV) env: Env,
   ) {
     this.hashKey = env.IDENTITY_HASH_KEY;
@@ -83,9 +86,9 @@ export class GuardianLoginService {
       );
     }
     if (guardian.userId !== null) throw loginExists();
-    this.assertLoginLink();
+    await this.assertLoginLink(schoolId, guardianId);
 
-    const digits = this.encryption.decrypt(guardian.cnic, cnicAad(schoolId));
+    const digits = this.encryption.decrypt(guardian.cnic, guardianCnicAad(schoolId));
     const usernameHash = identityHash(digits, this.hashKey);
     const found = await this.users.findCredentialsByUsernameHash(schoolId, usernameHash);
     // R99: the existing user is locked and read again before anything is decided about it.
@@ -93,6 +96,14 @@ export class GuardianLoginService {
 
     let userId: bigint;
     if (existing) {
+      // A student's login is never shared (R40): its B-Form username collides with this CNIC.
+      if (existing.studentId !== null) {
+        throw new ApiException(
+          409,
+          ErrorCode.USERNAME_IN_USE,
+          'This CNIC is already the username of a student login.',
+        );
+      }
       // R22: the person already has a login (a teacher who is also a parent): link, never a second.
       await this.assertMayChange(actor, existing);
       if ((await this.logins.linkGuardian(schoolId, existing.id, guardianId)) !== 1) {
@@ -120,11 +131,16 @@ export class GuardianLoginService {
     return toUserDto(user);
   }
 
-  /**
-   * Slice 6 adds: no live student_guardians link with can_login → 409 GUARDIAN_NO_LOGIN_LINK.
-   * Until then the CNIC is the only precondition (contract §3.7 step 4).
-   */
-  private assertLoginLink(): void {}
+  /** Contract slice-5 §3.7 step 4: a live student_guardians link with can_login is required. */
+  private async assertLoginLink(schoolId: SchoolId, guardianId: bigint): Promise<void> {
+    if (!(await this.links.hasLiveLoginLink(schoolId, guardianId))) {
+      throw new ApiException(
+        409,
+        ErrorCode.GUARDIAN_NO_LOGIN_LINK,
+        'Allow login on one of this guardian’s student links first.',
+      );
+    }
+  }
 
   /** Target rules on the existing user: USER_DISABLED, then contracts/slice-2.md §5.3 (R10, R12, R14). */
   private async assertMayChange(actor: Actor, target: UserCredentialRow): Promise<void> {

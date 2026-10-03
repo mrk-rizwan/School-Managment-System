@@ -11,11 +11,11 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1, **slices 0, 1, 2, 3 and 5 done** (2026-10-03): scaffold and isolation
-  guardrails; platform console and school record; school logins, sessions, users, settings;
-  academic structure; guardians. **Next: wave B = slices 4 (staff, assignments) and 6 (students,
-  enrolment, admission) in parallel.** Paused by the product owner after the wave-A commit, to
-  resume about two hours later.
+- **Phase:** Phase 1, **slices 0–6 done** (2026-10-03): scaffold and isolation guardrails;
+  platform console and school record; school logins, sessions, users, settings; academic
+  structure; guardians; staff and teacher assignments; students, enrolment, admission, documents.
+  **Next: wave C = slices 7 (custom roles, grants, effective-permissions screen) and 8 (phase
+  close with the full `phase-gate`).** Project progress 24.5 / 155 days ≈ 15.8 %.
 - **CI status unknown:** the auto-sync pushes to GitHub, but the repo is private and this machine
   has no GitHub login, so nobody here has seen an Actions run. The product owner must check.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
@@ -52,18 +52,20 @@ slice 0 are not counted.
 
 1. **Confirm GitHub Actions is green** on the latest push. The repo is private and this machine
    has no GitHub login, so the product owner checks the Actions tab; a failure is fixed first.
-2. **Start of wave B, small clean-ups left from wave A** (one agent, before the slices): migrate
-   `users.dto.ts`, `principal.dto.ts`, `auth/dto.ts`, `platform/auth/dto.ts` and
-   `school-settings.dto.ts` to `src/common/fields.ts`; `user.repository.ts` to the shared
-   `escapeLike`; the local `notFound` copies to `common/errors/api-exception.ts`; web academics and
-   guardians screens to the status lists now in `@asms/shared`; fold
-   `SchoolSettingsRepository.lock` into `readLocked`; map Postgres 40P01 (deadlock) to 409
-   `CONCURRENT_UPDATE` in `prisma-errors.ts` as a safety net.
-3. **Wave B: slices 4 and 6.** Before the first handler that consumes a `Scope` (slice 4's
-   teacher reads), the type-aware lint rule in the slice-0 residual-risk statement must exist.
-   Services read scope with `scopeOf(session)` (the guard binds it). Slice 4's staff "issue login"
-   must reuse wave A's reset-on-link rule when it links an existing login.
-4. Wave C: slices 7 and 8 (full `phase-gate` at 8).
+2. **Wave C: slices 7 and 8** (full `phase-gate` at 8). Slice 7 replaces the `it.todo` grants
+   stub in the API suite. Before it starts, decide whether the remaining quality items below go
+   into its groundwork.
+3. Small leftovers from the wave-B review (not defects): download of a stored object can be
+   truncated mid-stream by an S3 error after headers are sent; an object written after a crash
+   between row insert and put is still covered by the sweep, but a periodic bucket-prefix
+   reconcile would make storage provably clean; two pg "client already executing a query"
+   warnings appear in the full run (believed test-side `Promise.all` on the raw client — confirm;
+   staff has no no-overlapping-queries test); one mocked Playwright staff test failed once under
+   load and passed on re-run.
+4. Product owner, new from wave B: (a) may admission, readmission and change-class dates fall
+   outside the academic year's dates? Today they are not checked; (b) a person whose CNIC equals
+   their former student B-Form cannot be given a staff or guardian login (the username is taken
+   by the student login) — accept, or decide how a former student becomes staff/parent.
 5. Product owner: register item 30 (privileged capabilities on a default password); whether a
    linked principal login should get a one-time random password instead of the CNIC default
    (wave-A security residual: the clerk who planted the login knows the default); schema-freeze
@@ -88,6 +90,55 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Wave B: slices 4 and 6 (Opus 5.5) — DONE
+
+**Built in parallel** after the groundwork commit (`c03e730`: schema for slices 4 and 6,
+contracts `docs/plans/contracts/slice-4.md` and `slice-6.md`, the `asms/no-brand-in-request` lint
+rule that closes the slice-0 residual risk, wave-A clean-ups). Five build agents: slice 4 API,
+slice 6 API part A (students, enrolment, links, logins), part B (admission, readmission,
+documents, uploads), staff web, students-and-admission web; then one agent swapped the web to
+the generated API types.
+- **Slice 4:** staff records (encrypted CNIC, status changes, leaving ends role assignments),
+  staff issue-login reusing wave A's reset-on-link, system-role assignment, teacher assignments
+  (class teacher one per class at a time, subject teachers, ending with a reason). Teacher row
+  scope comes from assignments active today in the school's timezone (`common/school-clock.ts`).
+- **Slice 6:** students (encrypted B-Form, status transitions in `@asms/shared`), enrolments
+  (roll numbers, change class/section), guardian links (primary contact, fee payer, login flag),
+  student logins, the admission wizard (one transaction: student, guardians found by CNIC or new,
+  enrolment, staged documents; idempotency key), readmission, documents in S3-compatible storage
+  with staged uploads and a scheduled sweep (scheduler fan-out, named exception 3).
+- **Web:** staff list/detail/create with assignments; students list/detail (enrolments, guardians,
+  documents, status history), admission wizard, readmit form. A lost session mid-wizard opens a
+  sign-in dialog in place instead of redirecting (`useSuppressSessionRedirects`), and a sign-in
+  as a different user abandons the form.
+
+**Reviews and what they changed**
+- `security-reviewer`: **PASS**, one medium and three low, all fixed. Medium: B-Form/CNIC
+  existence probes were throttled only on the lookup route; admission, student patch, and
+  guardian and staff create/patch revealed the same thing unthrottled. Now every one of them
+  spends one shared per-user `identity-probe` budget (30/min, 300/h; `common/rate-limit.ts`),
+  with tests. Low: the platform could link a student login as principal (now 409
+  `USERNAME_IN_USE`); an upload object could be orphaned (row now written before the object, and
+  a failed write expires the row for the sweep); the sweep's lint exemption now allows only the
+  fan-out repository; admission creating a guardian or enabling a guardian login now needs
+  `guardian.manage`.
+- Correctness (no high findings): roll-number race now returns `details.enrolmentId` (admission
+  and readmission); admission refusal order matches contract §6.3; teacher-assignment race
+  fallback used the wrong default start date; a missing stored object is logged by document id.
+  `enrolments_class_id_fkey` is deliberately left unmapped (cannot fire; a 500 would mean a bug).
+- Quality: one throttle factory replacing three guards; `IsCalendarDate`, `NoIdentityNumber`,
+  `identityAad` and `fieldRefused` each exist once in `common/`; student and staff enums in
+  `@asms/shared`; StudentLoginRepository removed; `ScheduleModule` registered in `AppModule`.
+- Contracts amended to match the code: slice-4 §1 lock order; slice-6 §2 nullable fields, §3.4
+  shared budget, §6.1 upload order, §6.3 refusal order, §8 audit id lists as comma-joined
+  strings; slice-5 §3.6 shared budget.
+- The two login-throttle tests that failed when runs overlapped now use random usernames.
+
+**Final results:** lint and typecheck clean in all three packages; API 58 suites / 761 tests
+(1 `it.todo` for slice-7 grants); web build; Playwright 97/97 including
+`e2e/students-real.spec.ts` against the real API (teacher sees only their section's student);
+pre-commit hook clean.
 
 ## 2026-10-03 — Wave A: slices 2, 3 and 5 (Opus 5.5) — DONE
 

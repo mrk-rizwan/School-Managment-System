@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { RouteAccessGuard } from './common/auth/route-access';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
@@ -26,6 +27,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
     EnvModule,
     LoggingModule,
     ThrottlingModule,
+    // The scheduler, once for the app: cron jobs live in their feature modules.
+    ScheduleModule.forRoot(),
     DatabaseModule,
     TenancyModule,
     HealthModule,

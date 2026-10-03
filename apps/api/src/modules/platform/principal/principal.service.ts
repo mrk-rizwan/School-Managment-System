@@ -4,7 +4,7 @@ import { ErrorCode } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
 import { ApiException, notFound } from '../../../common/errors/api-exception';
-import { identityHash } from '../../../common/identity';
+import { identityHash, staffCnicAad } from '../../../common/identity';
 import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
@@ -14,19 +14,13 @@ import { UserRoleRepository } from '../../../repositories/user-role.repository';
 import { SessionRepository } from '../../../repositories/session.repository';
 import { UserTokenRepository } from '../../../repositories/user-token.repository';
 import { UserRepository } from '../../../repositories/user.repository';
-import type { SchoolId } from '../../../tenancy/school-id';
 import { fromPlatformSchool } from '../../../tenancy/school-id.mint';
+import { todayIn } from '../../../common/school-clock';
 import { Mailer, type MailMessage } from '../../auth/mailer';
+import { resetOnStaffLink } from '../../people/staff/reset-on-staff-link';
 import type { IssuedPrincipalLoginDto, IssuePrincipalLoginDto } from './principal.dto';
 
 const conflict = (code: ErrorCode, message: string) => new ApiException(409, code, message);
-
-
-/** Today's date in the school's time zone, as a DATE value (midnight UTC of that day). */
-function todayIn(timezone: string): Date {
-  const day = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
-  return new Date(`${day}T00:00:00.000Z`);
-}
 
 /**
  * The platform issuing a school's principal login (contract slice-2 §7; CLAUDE.md exception 1,
@@ -105,6 +99,10 @@ export class PrincipalLoginService {
       if (foundUser.status === 'disabled') {
         throw conflict(ErrorCode.USER_DISABLED, 'This person’s login is disabled.');
       }
+      // A student's login is never shared (R40): its B-Form username collides with this CNIC.
+      if (foundUser.studentId !== null) {
+        throw conflict(ErrorCode.USERNAME_IN_USE, 'This CNIC is already the username of a student login.');
+      }
       // Before the confirmation check, so a resubmit after a timeout still reads as done.
       if (await this.roles.hasLivePrincipalRole(schoolId, foundUser.id)) {
         throw conflict(ErrorCode.ALREADY_PRINCIPAL, 'This person is already a principal of the school.');
@@ -127,7 +125,7 @@ export class PrincipalLoginService {
     } else {
       staffId = await this.staff.create(schoolId, {
         fullName: dto.fullName,
-        cnic: this.cipher.encrypt(dto.cnic, `${schoolId}|staff|cnic`),
+        cnic: this.cipher.encrypt(dto.cnic, staffCnicAad(schoolId)),
         cnicHash: hash,
         phone: dto.phone,
         designation: 'Principal',
@@ -147,7 +145,13 @@ export class PrincipalLoginService {
     if (foundUser) {
       userId = foundUser.id;
       if (foundUser.staffId === null) await this.users.linkStaff(schoolId, userId, staffId);
-      await this.resetOnStaffLink(schoolId, userId, defaultHash, now, platformUserId);
+      const { users, sessions, tokens, audit } = this;
+      await resetOnStaffLink({ users, sessions, tokens, audit }, schoolId, userId, {
+        defaultHash,
+        now,
+        actor,
+        capacity: 'principal',
+      });
     } else {
       userId = await this.users.create(schoolId, { usernameHash: hash, passwordHash: defaultHash, staffId });
     }
@@ -190,31 +194,5 @@ export class PrincipalLoginService {
       result: { userId: userId.toString(), staffId: staffId.toString(), fullName, linkedExistingUser },
       outbox,
     };
-  }
-
-  /**
-   * An existing login gaining the principal role returns to the state of a fresh one, so nobody
-   * who knew or set its password, email or sessions beforehand keeps a way in (wave-A security
-   * fix 1): every session revoked, every outstanding token voided, the password back to the
-   * default digits, the email cleared. Same transaction as the role insert.
-   */
-  private async resetOnStaffLink(
-    schoolId: SchoolId,
-    userId: bigint,
-    defaultHash: string,
-    now: Date,
-    platformUserId: bigint,
-  ): Promise<void> {
-    await this.users.setDefaultPassword(schoolId, userId, defaultHash, now, true);
-    await this.sessions.revokeAllForUser(schoolId, userId, now);
-    await this.tokens.voidOutstanding(schoolId, userId, now);
-    await this.audit.record(schoolId, {
-      actorUserId: null,
-      actorPlatformUserId: platformUserId,
-      action: 'user.reset_on_staff_link',
-      subjectType: 'user',
-      subjectId: userId,
-      metadata: { capacity: 'principal' },
-    });
   }
 }

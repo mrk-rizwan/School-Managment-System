@@ -143,6 +143,60 @@ describe('database error mapper', () => {
     });
   });
 
+  it('maps the slice 4 and slice 6 constraints to their codes', () => {
+    const unique = (index: string) =>
+      adapterError('P2002', 'X', { originalCode: '23505', constraint: { index } });
+    const cases: [string, ErrorCode, string][] = [
+      ['staff_school_id_cnic_hash_key', ErrorCode.STAFF_CNIC_EXISTS, 'cnic'],
+      ['user_roles_school_id_user_id_system_role_key', ErrorCode.ROLE_ALREADY_ASSIGNED, 'systemRole'],
+      ['students_school_id_b_form_hash_key', ErrorCode.STUDENT_BFORM_EXISTS, 'bForm'],
+      ['student_guardians_live_pair_key', ErrorCode.GUARDIAN_LINK_EXISTS, 'guardianId'],
+      ['enrolments_section_roll_no_key', ErrorCode.ROLL_NO_TAKEN, 'rollNo'],
+      ['users_school_id_student_id_key', ErrorCode.LOGIN_ALREADY_EXISTS, 'studentId'],
+    ];
+    for (const [index, code, field] of cases) {
+      expect(mapDatabaseError(unique(index))).toMatchObject({ status: 409, code, details: { field } });
+    }
+    // ON UPDATE RESTRICT from classes to teacher_assignments: the class's year is frozen.
+    const yearFrozen = adapterError('P2003', 'Class', {
+      originalCode: '23503',
+      kind: 'ForeignKeyConstraintViolation',
+      constraint: { index: 'teacher_assignments_class_id_fkey' },
+    });
+    expect(mapDatabaseError(yearFrozen)).toMatchObject({
+      status: 409,
+      code: ErrorCode.CLASS_YEAR_IMMUTABLE,
+    });
+  });
+
+  it('reads an exclusion constraint (23P01) from the message and maps the class-teacher one', () => {
+    const exclusion = (name: string, originalCode = '23P01') =>
+      adapterError('P2039', 'TeacherAssignment', {
+        originalCode,
+        originalMessage: `conflicting key value violates exclusion constraint "${name}"`,
+        kind: 'postgres',
+        detail: `Key (school_id, section_id, daterange(starts_on, ends_on, '[]'::text))=(${SECRET}) conflicts with existing key.`,
+      });
+    const classTeacher = exclusion('teacher_assignments_class_teacher_excl');
+    expect(summariseDatabaseError(classTeacher)).toEqual({
+      prismaCode: 'P2039',
+      constraint: 'teacher_assignments_class_teacher_excl',
+    });
+    expect(mapDatabaseError(classTeacher)).toMatchObject({
+      status: 409,
+      code: ErrorCode.CLASS_TEACHER_EXISTS,
+      details: { field: 'sectionId' },
+    });
+    expect(JSON.stringify(mapDatabaseError(classTeacher))).not.toContain(SECRET);
+    // Another exclusion constraint is named but unmapped; the message pattern alone, without
+    // SQLSTATE 23P01, is not trusted.
+    expect(mapDatabaseError(exclusion('some_other_excl'))).toBeUndefined();
+    expect(
+      summariseDatabaseError(exclusion('teacher_assignments_class_teacher_excl', '23514'))
+        ?.constraint,
+    ).toBeNull();
+  });
+
   it('leaves unmapped constraints and unnamed errors to the 500 path', () => {
     expect(mapDatabaseError(FOREIGN_KEY)).toBeUndefined();
     expect(mapDatabaseError(UNNAMED_CHECK)).toBeUndefined();

@@ -1,27 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, ValidateBy } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { ACADEMIC_YEAR_STATUSES, type AcademicYearStatus } from '@asms/shared';
-import { IfPresent, NameField } from '../../common/fields';
+import { IfPresent, IsCalendarDate, NameField } from '../../common/fields';
 import { PageQueryDto } from '../../common/pagination';
 
 // contracts/slice-3.md §2.
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-/** `YYYY-MM-DD` and a real calendar date (no 2026-02-30). */
-const IsCalendarDate = (): PropertyDecorator =>
-  ValidateBy({
-    name: 'isCalendarDate',
-    validator: {
-      validate: (value: unknown) => {
-        if (typeof value !== 'string' || !DATE_PATTERN.test(value)) return false;
-        const date = new Date(`${value}T00:00:00.000Z`);
-        // An impossible day is either Invalid Date or rolled into the next month.
-        return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-      },
-      defaultMessage: () => '$property must be a real date in the form YYYY-MM-DD',
-    },
-  });
 
 export class AcademicYearDto {
   @ApiProperty({ type: String, pattern: '^[1-9][0-9]{0,18}$' })

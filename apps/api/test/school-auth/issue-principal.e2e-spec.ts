@@ -7,6 +7,7 @@ import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
 import { createSchoolSession, createSchoolUser, randomIdentityDigits, testIdentityHash } from '../support/school-session';
 import { closeTestDb, createSchool, testDb } from '../support/schools';
+import { createStudent, linkGuardian } from '../support/students';
 import { createGuardianUser, FakeMailer, nextIp, ORIGIN, sessionCookieOf, setCookies, tokenFrom, uniqueEmail } from './support';
 
 type Issued = { userId: string; staffId: string; fullName: string; linkedExistingUser: boolean };
@@ -119,6 +120,9 @@ describe('issue principal login', () => {
 
     const who = person();
     const guardian = await asOffice('/guardians', { fullName: 'Planted Parent', cnic: who.cnic, contactCapability: 'whatsapp' }).expect(201);
+    // Guardian issue-login needs a live link with can_login (contracts/slice-6.md §9).
+    const child = await createStudent(db(), school);
+    await linkGuardian(db(), school, child, { id: BigInt((guardian.body as { id: string }).id) }, { canLogin: true });
     await asOffice(`/guardians/${(guardian.body as { id: string }).id}/issue-login`, {}).expect(201);
     const login = await anon('/auth/login', { schoolCode: school.shortCode, username: who.cnic, password: who.cnic }).expect(200);
     const firstCookie = sessionCookieOf(login);
@@ -176,6 +180,24 @@ describe('issue principal login', () => {
     const disabledParent = await createGuardianUser(db(), school, { userStatus: 'disabled' });
     const res = await issue(school, { ...person(), cnic: disabledParent.cnic, reason: 'Disabled one' }).expect(409);
     expect(codeOf(res)).toBe('USER_DISABLED');
+  });
+
+  it('refuses to link a student login (USERNAME_IN_USE); nothing is written', async () => {
+    const school = await createSchool();
+    const digits = randomIdentityDigits();
+    const student = await createStudent(db(), school, { bForm: digits });
+    await db().user.create({
+      data: {
+        schoolId: school.id,
+        usernameHash: testIdentityHash(digits),
+        passwordHash: '$argon2id$v=19$m=19456,t=2,p=1$dGVzdHNhbHQ$dGVzdC1vbmx5LW5vdC1hLWhhc2g', // pragma: allowlist secret
+        studentId: student.id,
+      },
+    });
+    const res = await issue(school, { ...person(), cnic: digits, confirmLinkExisting: true }).expect(409);
+    expect(codeOf(res)).toBe('USERNAME_IN_USE');
+    expect(await db().staff.count({ where: { schoolId: school.id } })).toBe(0);
+    expect(await db().userRole.count({ where: { schoolId: school.id } })).toBe(0);
   });
 
   it('R77: two racing issues for one person create one user; the loser gets a refusal, not 500', async () => {

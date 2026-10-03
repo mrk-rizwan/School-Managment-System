@@ -14,6 +14,7 @@ import { SubjectsService } from '../../src/modules/academics/subjects.service';
 import { AcademicYearRepository } from '../../src/repositories/academic-year.repository';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
 import { ClassRepository } from '../../src/repositories/class.repository';
+import { EnrolmentRepository } from '../../src/repositories/enrolment.repository';
 import { SectionRepository } from '../../src/repositories/section.repository';
 import { SubjectRepository } from '../../src/repositories/subject.repository';
 import { RequestContextService } from '../../src/tenancy/request-context';
@@ -57,6 +58,7 @@ export async function createAcademics(): Promise<Academics> {
       SectionRepository,
       SubjectRepository,
       AuditLogRepository,
+      EnrolmentRepository,
     ],
   })
     .overrideProvider(RequestContextService)

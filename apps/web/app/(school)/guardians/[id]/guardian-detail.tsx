@@ -382,12 +382,15 @@ function IssueLoginDialog({
   );
 }
 
-// ---- Students (§3.3; rows arrive with slice 6) ----
+// ---- Students (§3.3, filled by slice 6: contracts/slice-6.md §9) ----
 
 const STUDENTS_LIMIT = 25;
 const NO_STUDENTS: GuardianStudentDto[] = [];
 
 function GuardianStudents({ guardianId }: { guardianId: string }) {
+  const { can } = useCapabilities();
+  // The student record is scoped by student.view; without it the name is plain text.
+  const canOpenStudent = can(Capability.STUDENT_VIEW);
   const [page, setPage] = useState(1);
   const query = { page, limit: STUDENTS_LIMIT, sort: 'studentFullName' } as const;
   const students = useQuery({
@@ -406,7 +409,17 @@ function GuardianStudents({ guardianId }: { guardianId: string }) {
     return [
       column.accessor('studentFullName', {
         header: 'Student',
-        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+        cell: (info) =>
+          canOpenStudent ? (
+            <Link
+              href={`/students/${info.row.original.studentId}`}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {info.getValue()}
+            </Link>
+          ) : (
+            <span className="font-medium">{info.getValue()}</span>
+          ),
       }),
       column.accessor('admissionNo', { header: 'Admission no.' }),
       column.display({
@@ -426,12 +439,14 @@ function GuardianStudents({ guardianId }: { guardianId: string }) {
             <span className="flex flex-wrap gap-1">
               {link.isPrimaryContact && <Badge variant="secondary">Primary contact</Badge>}
               {link.isFeePayer && <Badge variant="outline">Fee payer</Badge>}
+              {link.canLogin && <Badge variant="outline">May log in</Badge>}
+              {link.linkEndedAt && <Badge variant="ghost">Link ended</Badge>}
             </span>
           );
         },
       }),
     ];
-  }, []);
+  }, [canOpenStudent]);
 
   const result = students.data;
   return (

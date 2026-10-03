@@ -21,6 +21,7 @@ import { describeApiError } from '@/lib/api/errors';
 import {
   guardiansApi,
   type GuardianLookupBody,
+  type GuardianLookupHitDto,
   type GuardianLookupResultDto,
 } from '@/lib/api/school-guardians-contract';
 import { describeStudents, formatIdentityInput } from './guardians-ui';
@@ -30,29 +31,52 @@ export function lookupGuardians(body: GuardianLookupBody) {
   return unwrap(guardiansApi.POST('/api/v1/guardians/lookup', { body }));
 }
 
-/** The hits of a lookup: survivors only, each with its students and a note when merged. */
-export function LookupHits({ result }: { result: GuardianLookupResultDto }) {
+/**
+ * The hits of a lookup: survivors only, each with its students and a note when merged.
+ * `action` adds a control to each hit (the admission wizard's "Link"); `linkNames: false` shows
+ * names as text, for screens that must not navigate away mid-task.
+ */
+export function LookupHits({
+  result,
+  action,
+  linkNames = true,
+}: {
+  result: GuardianLookupResultDto;
+  action?: (hit: GuardianLookupHitDto) => React.ReactNode;
+  linkNames?: boolean;
+}) {
   return (
     <ul className="grid gap-2" aria-label="Guardians found">
-      {result.data.map(({ guardian, resolvedFromId, students }) => {
+      {result.data.map((hit) => {
+        const { guardian, resolvedFromId, students } = hit;
         const family = describeStudents(students);
         return (
-          <li key={guardian.id} className="rounded-lg border p-3 text-sm">
-            <Link
-              href={`/guardians/${guardian.id}`}
-              className="font-medium underline-offset-4 hover:underline"
-            >
-              {guardian.fullName}
-            </Link>
-            {family && <span className="text-muted-foreground"> — {family}</span>}
-            <p className="mt-1 text-xs text-muted-foreground">
-              {[guardian.cnicMasked, guardian.phone].filter(Boolean).join(' · ')}
-            </p>
-            {resolvedFromId && (
+          <li
+            key={guardian.id}
+            className="flex flex-wrap items-start justify-between gap-2 rounded-lg border p-3 text-sm"
+          >
+            <div className="min-w-0">
+              {linkNames ? (
+                <Link
+                  href={`/guardians/${guardian.id}`}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {guardian.fullName}
+                </Link>
+              ) : (
+                <span className="font-medium">{guardian.fullName}</span>
+              )}
+              {family && <span className="text-muted-foreground"> — {family}</span>}
               <p className="mt-1 text-xs text-muted-foreground">
-                The matching record was merged into this one.
+                {[guardian.cnicMasked, guardian.phone].filter(Boolean).join(' · ')}
               </p>
-            )}
+              {resolvedFromId && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The matching record was merged into this one.
+                </p>
+              )}
+            </div>
+            {action?.(hit)}
           </li>
         );
       })}

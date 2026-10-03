@@ -1,6 +1,35 @@
 import { Module } from '@nestjs/common';
+import { SchoolContext } from '../../common/school-context';
+import { StorageModule } from '../../common/storage/storage.module';
+import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { StagedUploadRepository } from '../../repositories/staged-upload.repository';
+import { StudentDocumentRepository } from '../../repositories/student-document.repository';
+import { StudentRepository } from '../../repositories/student.repository';
+import { DocumentsController } from './documents.controller';
+import { DocumentsService } from './documents.service';
+import { STAGED_UPLOAD_SWEEP_PROVIDERS } from './staged-upload.sweep';
+import { SingleFileInterceptor, UploadThrottleGuard } from './upload-request';
+import { reencodeLimitProvider, UploadsService } from './uploads.service';
 
-// Owned by the slice 6 part B (uploads, staged files, student documents; contracts/slice-6.md) agent. Registered in AppModule by the main thread so the
-// parallel agents never edit app.module.ts.
-@Module({})
+/**
+ * Uploads, student documents and the staged-upload sweep (contracts/slice-6.md §6.1-§6.2). The
+ * scheduler is registered once, in AppModule; the sweep is its first job.
+ */
+@Module({
+  imports: [StorageModule],
+  controllers: [DocumentsController],
+  providers: [
+    SchoolContext,
+    DocumentsService,
+    UploadsService,
+    reencodeLimitProvider,
+    ...STAGED_UPLOAD_SWEEP_PROVIDERS,
+    SingleFileInterceptor,
+    UploadThrottleGuard,
+    AuditLogRepository,
+    StagedUploadRepository,
+    StudentDocumentRepository,
+    StudentRepository,
+  ],
+})
 export class DocumentsModule {}

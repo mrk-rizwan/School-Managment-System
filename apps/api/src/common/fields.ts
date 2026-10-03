@@ -62,13 +62,38 @@ export const IfPresentNotNull = (): PropertyDecorator =>
 /**
  * Free text must not carry an identity number, plain or dashed. The audit tables refuse one
  * (CHECK *_no_id_check), so it is refused here as a 422 rather than reaching them as a 500.
+ *
+ * `ignoreSeparators` is the stricter check for `q` on a list: spaces, dashes and `+` are removed
+ * first, so `35201 1234567 1` is refused too (identity numbers never travel in a URL, §3.6).
  */
-export const NoIdentityNumber = (): PropertyDecorator =>
+export const NoIdentityNumber = ({
+  ignoreSeparators = false,
+  message = '$property must not contain an identity number',
+}: { ignoreSeparators?: boolean; message?: string } = {}): PropertyDecorator =>
   ValidateBy({
     name: 'noIdentityNumber',
     validator: {
-      validate: (value: unknown) => typeof value === 'string' && !containsIdentityNumber(value),
-      defaultMessage: () => '$property must not contain an identity number',
+      validate: (value: unknown) =>
+        typeof value === 'string' &&
+        !(ignoreSeparators
+          ? /[0-9]{13}/.test(value.replace(/[\s+-]/g, ''))
+          : containsIdentityNumber(value)),
+      defaultMessage: () => message,
+    },
+  });
+
+/** `YYYY-MM-DD` and a real calendar date (no 2026-02-30). */
+export const IsCalendarDate = (): PropertyDecorator =>
+  ValidateBy({
+    name: 'isCalendarDate',
+    validator: {
+      validate: (value: unknown) => {
+        if (typeof value !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) return false;
+        const date = new Date(`${value}T00:00:00.000Z`);
+        // An impossible day is either Invalid Date or rolled into the next month.
+        return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+      },
+      defaultMessage: () => '$property must be a real date in the form YYYY-MM-DD',
     },
   });
 

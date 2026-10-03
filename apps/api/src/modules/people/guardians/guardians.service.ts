@@ -4,17 +4,22 @@ import { ErrorCode } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { ApiException, notFound } from '../../../common/errors/api-exception';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
-import { identityHash, maskIdentityNumber } from '../../../common/identity';
+import { guardianCnicAad, identityHash, maskIdentityNumber } from '../../../common/identity';
 import { readLocked } from '../../../common/locking';
 import { toPage, type Page } from '../../../common/pagination';
 import { SchoolContext, type Actor } from '../../../common/school-context';
 import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository, type AuditEntry } from '../../../repositories/audit-log.repository';
+import { EnrolmentRepository } from '../../../repositories/enrolment.repository';
 import {
   GuardianRepository,
   type GuardianRecord,
   type GuardianWrite,
 } from '../../../repositories/guardian.repository';
+import {
+  StudentGuardianRepository,
+  type GuardianStudentLink,
+} from '../../../repositories/student-guardian.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
 import type {
   CreateGuardianDto,
@@ -22,6 +27,7 @@ import type {
   GuardianDto,
   GuardianLookupDto,
   GuardianLookupHitDto,
+  GuardianLookupStudentDto,
   GuardianLookupResultDto,
   GuardianStudentDto,
   ListGuardiansQueryDto,
@@ -42,9 +48,6 @@ const LOOKUP_SCAN = 100;
 /** Merge hops followed on lookup (R31); a longer chain is a data fault. */
 const MAX_MERGE_DEPTH = 5;
 
-/** Field-encryption AAD for guardians.cnic (§3.6). */
-export const cnicAad = (schoolId: SchoolId): string => `${schoolId}|guardians|cnic`;
-
 export const guardianMerged = () =>
   new ApiException(
     409,
@@ -64,6 +67,8 @@ export class GuardiansService {
     private readonly guardians: GuardianRepository,
     private readonly audit: AuditLogRepository,
     private readonly encryption: FieldEncryption,
+    private readonly links: StudentGuardianRepository,
+    private readonly enrolments: EnrolmentRepository,
     @Inject(ENV) env: Env,
   ) {
     this.hashKey = env.IDENTITY_HASH_KEY;
@@ -98,13 +103,39 @@ export class GuardiansService {
     return this.toDetailDto(schoolId, await this.require(schoolId, id));
   }
 
-  /** The shape is fixed now; slice 6 brings student_guardians and fills the query. */
+  /**
+   * The guardian's links (live, or all with includeEnded) with each student's current class and
+   * section. Unscoped: guardian.manage is school-wide (contracts/slice-6.md §9).
+   */
   async students(
     id: bigint,
     query: ListGuardianStudentsQueryDto,
   ): Promise<Page<GuardianStudentDto>> {
-    await this.require(this.context.schoolId, id);
-    return toPage([], query, 0);
+    const schoolId = this.context.schoolId;
+    await this.require(schoolId, id);
+    const { rows, total } = await this.links.listForGuardian(schoolId, id, {
+      includeEnded: query.includeEnded ?? false,
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+    });
+    const current = await this.currentPlacement(schoolId, rows);
+    return toPage(
+      rows.map((row) => ({
+        linkId: row.id.toString(),
+        studentId: row.studentId.toString(),
+        studentFullName: row.studentFullName,
+        admissionNo: row.admissionNo,
+        relationship: row.relationship,
+        isPrimaryContact: row.isPrimaryContact,
+        isFeePayer: row.isFeePayer,
+        canLogin: row.canLogin,
+        className: current.get(row.studentId)?.className ?? null,
+        sectionName: current.get(row.studentId)?.sectionName ?? null,
+        linkEndedAt: row.endedAt,
+      })),
+      query,
+      total,
+    );
   }
 
   async create(dto: CreateGuardianDto): Promise<GuardianDetailDto> {
@@ -154,11 +185,13 @@ export class GuardiansService {
     }
     const scanTruncated = hits.length > LOOKUP_SCAN;
 
-    const bySurvivor = new Map<bigint, GuardianLookupHitDto>();
-    for (const { hit, survivor } of await this.resolveSurvivors(
+    const resolved = await this.resolveSurvivors(schoolId, hits.slice(0, LOOKUP_SCAN));
+    const students = await this.liveStudents(
       schoolId,
-      hits.slice(0, LOOKUP_SCAN),
-    )) {
+      resolved.map((r) => r.survivor.id),
+    );
+    const bySurvivor = new Map<bigint, GuardianLookupHitDto>();
+    for (const { hit, survivor } of resolved) {
       const resolvedFromId = hit.id === survivor.id ? null : hit.id.toString();
       const existing = bySurvivor.get(survivor.id);
       // A direct hit on the survivor wins over reaching it through a merged row.
@@ -166,7 +199,7 @@ export class GuardiansService {
       bySurvivor.set(survivor.id, {
         guardian: this.toDto(schoolId, survivor),
         resolvedFromId,
-        students: [],
+        students: students.get(survivor.id) ?? [],
       });
     }
     const data = [...bySurvivor.values()].sort(
@@ -201,7 +234,7 @@ export class GuardiansService {
       cnicMasked:
         row.cnic === null
           ? null
-          : maskIdentityNumber(this.encryption.decrypt(row.cnic, cnicAad(schoolId))),
+          : maskIdentityNumber(this.encryption.decrypt(row.cnic, guardianCnicAad(schoolId))),
       hasCnic: row.cnic !== null,
       phone: row.phone,
       hasPhone: row.phone !== null,
@@ -228,7 +261,7 @@ export class GuardiansService {
     if (cnic) await this.assertCnicFree(schoolId, cnic, null);
     const row = await this.guardians.create(schoolId, {
       fullName: dto.fullName,
-      cnic: cnic && this.encryption.encrypt(cnic.digits, cnicAad(schoolId)),
+      cnic: cnic && this.encryption.encrypt(cnic.digits, guardianCnicAad(schoolId)),
       cnicHash: cnic?.hash ?? null,
       phone: dto.phone ?? null,
       email: dto.email ?? null,
@@ -283,7 +316,7 @@ export class GuardiansService {
       changes.contactCapability = { from: row.contactCapability, to: dto.contactCapability };
     }
     if (dto.phone !== undefined && dto.phone !== row.phone) {
-      if (dto.phone === null) this.assertPhoneClearable();
+      if (dto.phone === null) await this.assertPhoneClearable(schoolId, id);
       data.phone = dto.phone;
       changes.phone = { changed: true };
     }
@@ -297,7 +330,7 @@ export class GuardiansService {
     }
     if (cnic !== undefined && (cnic?.hash ?? null) !== row.cnicHash) {
       if (cnic) await this.assertCnicFree(schoolId, cnic, row.id);
-      data.cnic = cnic && this.encryption.encrypt(cnic.digits, cnicAad(schoolId));
+      data.cnic = cnic && this.encryption.encrypt(cnic.digits, guardianCnicAad(schoolId));
       data.cnicHash = cnic?.hash ?? null;
       changes.cnic = { changed: true };
     }
@@ -316,9 +349,47 @@ export class GuardiansService {
 
   /**
    * R30 (contract §3.5): clearing the phone of a primary contact on a live link is refused with
-   * GUARDIAN_IS_PRIMARY_CONTACT. Links arrive in slice 6, which adds the check here.
+   * GUARDIAN_IS_PRIMARY_CONTACT. Decided under the guardian's row lock, which a link becoming
+   * primary also takes (GuardianLinksService), so the two cannot interleave.
    */
-  private assertPhoneClearable(): void {}
+  private async assertPhoneClearable(schoolId: SchoolId, id: bigint): Promise<void> {
+    if (await this.links.isLivePrimaryContact(schoolId, id)) {
+      throw new ApiException(
+        409,
+        ErrorCode.GUARDIAN_IS_PRIMARY_CONTACT,
+        'This guardian is a primary contact: make another guardian primary before removing the phone.',
+      );
+    }
+  }
+
+  /** Each student's active enrolment (class and section names), one batched read. */
+  private async currentPlacement(schoolId: SchoolId, rows: readonly GuardianStudentLink[]) {
+    const active = await this.enrolments.activeForStudents(schoolId, [
+      ...new Set(rows.map((r) => r.studentId)),
+    ]);
+    return new Map(active.map((e) => [e.studentId, e]));
+  }
+
+  /** The live links of each guardian, for the lookup's `students` field (contract slice-5 §3.6). */
+  private async liveStudents(
+    schoolId: SchoolId,
+    guardianIds: readonly bigint[],
+  ): Promise<Map<bigint, GuardianLookupStudentDto[]>> {
+    const links = await this.links.liveForGuardians(schoolId, [...new Set(guardianIds)]);
+    const current = await this.currentPlacement(schoolId, links);
+    const byGuardian = new Map<bigint, GuardianLookupStudentDto[]>();
+    for (const link of links) {
+      const list = byGuardian.get(link.guardianId) ?? [];
+      list.push({
+        studentId: link.studentId.toString(),
+        fullName: link.studentFullName,
+        className: current.get(link.studentId)?.className ?? null,
+        relationship: link.relationship,
+      });
+      byGuardian.set(link.guardianId, list);
+    }
+    return byGuardian;
+  }
 
   /** Refuses a CNIC already on another guardian, pointing at that guardian's survivor. */
   private async assertCnicFree(

@@ -1,8 +1,15 @@
 // Slice 3 behaviour at the service layer (contracts/slice-3.md), on the real database. The HTTP
 // surface (access decorators, validation, envelopes) is in academics.e2e-spec.ts.
 import { ErrorCode } from '@asms/shared';
-import { closeTestDb, testDb } from '../support/schools';
+import { closeTestDb, testDb, type TestSchool } from '../support/schools';
+import { createSchoolUser } from '../support/school-session';
+import { createStudent, createTeacherAssignment, enrol, type TestSection } from '../support/students';
+import { addDays, todayIn } from '../../src/common/school-clock';
 import { actAsNewSchool, auditFor, createAcademics, refusal, tag, type Academics } from './support';
+
+/** The test school's today (Asia/Karachi, the schema default) shifted by days, as YYYY-MM-DD. */
+const schoolDay = (offset: number): string =>
+  addDays(todayIn('Asia/Karachi'), offset).toISOString().slice(0, 10);
 
 describe('academic structure services', () => {
   let a: Academics;
@@ -24,6 +31,25 @@ describe('academic structure services', () => {
       startsOn: '2026-04-01',
       endsOn: '2027-03-31',
       ...body,
+    });
+
+  /** A section of a new class, with one student enrolled in it (active unless given). */
+  const enrolled = async (school: TestSchool, status: 'active' | 'left' = 'active') => {
+    const c = await klass();
+    const s = await a.sections.create(BigInt(c.id), { name: `S ${tag()}` });
+    const section = {
+      id: BigInt(s.id),
+      classId: BigInt(c.id),
+      academicYearId: BigInt(c.academicYearId),
+    };
+    const student = await createStudent(testDb(), school);
+    const enrolment = await enrol(testDb(), school, student, section, { status });
+    return { klass: c, section: s, yearId: c.academicYearId, enrolment };
+  };
+  const leave = (school: TestSchool, enrolmentId: bigint) =>
+    testDb().enrolment.update({
+      where: { schoolId_id: { schoolId: school.id, id: enrolmentId } },
+      data: { status: 'left', endedOn: new Date(new Date().toISOString().slice(0, 10)) },
     });
 
   const klass = async (academicYearId?: string, name = `C ${tag()}`) =>
@@ -172,11 +198,20 @@ describe('academic structure services', () => {
       expect(await refusal(a.years.close(BigInt(id)))).toMatchObject({ status: 404 });
     });
 
-    // R44. Enrolments arrive in slice 6, which must make this pass inside
-    // AcademicYearsService.assertNoActiveEnrolments.
-    it.todo(
-      'R44: close is refused with 409 ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS while any enrolment in the year is active',
-    );
+    it('R44: close is refused with 409 ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS while any enrolment in the year is active', async () => {
+      const school = await actAsNewSchool(a);
+      const { yearId, enrolment } = await enrolled(school);
+      const id = BigInt(yearId);
+      await a.years.activate(id);
+      expect(await refusal(a.years.close(id))).toMatchObject({
+        status: 409,
+        code: ErrorCode.ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS,
+      });
+      expect((await a.years.get(id)).status).toBe('active');
+      // A left enrolment does not hold the year open.
+      await leave(school, enrolment.id);
+      await expect(a.years.close(id)).resolves.toMatchObject({ status: 'closed' });
+    });
   });
 
   describe('classes', () => {
@@ -345,10 +380,28 @@ describe('academic structure services', () => {
       ).toBe(0);
     });
 
-    // Slice 6 makes this pass inside ClassesService.assertNoActiveEnrolments.
-    it.todo(
-      'archive is refused with 409 CLASS_HAS_ACTIVE_ENROLMENTS while an active enrolment references the class',
-    );
+    it('archive is refused with 409 CLASS_HAS_ACTIVE_ENROLMENTS while an active enrolment references the class', async () => {
+      const school = await actAsNewSchool(a);
+      const { klass: c, enrolment } = await enrolled(school);
+      expect(await refusal(a.classes.archive(BigInt(c.id), {}))).toMatchObject({
+        status: 409,
+        code: ErrorCode.CLASS_HAS_ACTIVE_ENROLMENTS,
+      });
+      await leave(school, enrolment.id);
+      await expect(a.classes.archive(BigInt(c.id), {})).resolves.toMatchObject({
+        status: 'archived',
+      });
+    });
+
+    it('a class with enrolments keeps its year (409 CLASS_YEAR_IMMUTABLE)', async () => {
+      const school = await actAsNewSchool(a);
+      const { klass: c, enrolment } = await enrolled(school);
+      await leave(school, enrolment.id);
+      const other = await year();
+      expect(
+        await refusal(a.classes.update(BigInt(c.id), { academicYearId: other.id })),
+      ).toMatchObject({ status: 409, code: ErrorCode.CLASS_YEAR_IMMUTABLE });
+    });
   });
 
   describe('copy-sections', () => {
@@ -516,13 +569,47 @@ describe('academic structure services', () => {
       });
     });
 
-    // Slices 4 and 6 make these pass inside SectionsService.assertSectionUnused.
-    it.todo(
-      'archive is refused with 409 SECTION_IN_USE while an active enrolment references the section',
-    );
-    it.todo(
-      'archive is refused with 409 SECTION_IN_USE while a teacher assignment not yet ended references it',
-    );
+    it('archive is refused with 409 SECTION_IN_USE while an active enrolment references the section', async () => {
+      const school = await actAsNewSchool(a);
+      const { section, enrolment } = await enrolled(school);
+      expect(await refusal(a.sections.archive(BigInt(section.id), {}))).toMatchObject({
+        status: 409,
+        code: ErrorCode.SECTION_IN_USE,
+      });
+      await leave(school, enrolment.id);
+      const archived = await a.sections.archive(BigInt(section.id), {});
+      expect(archived.archivedAt).not.toBeNull();
+    });
+
+    // Slice 4 makes this pass inside SectionsService.assertSectionUnused.
+    // Slice 4 (contracts/slice-4.md §4.5): a not-yet-begun assignment blocks too; an ended or
+    // voided one does not.
+    it('archive is refused with 409 SECTION_IN_USE while a teacher assignment not yet ended references it', async () => {
+      const school = await actAsNewSchool(a);
+      const c = await klass();
+      const teacher = await createSchoolUser(testDb(), school, { systemRole: 'teacher' });
+      const section = async () => {
+        const s = await a.sections.create(BigInt(c.id), { name: `S ${tag()}` });
+        const row = { id: BigInt(s.id), schoolId: school.id, classId: BigInt(c.id), academicYearId: BigInt(c.academicYearId) };
+        return { id: s.id, row };
+      };
+      const [current, upcoming, ended, voided] = [await section(), await section(), await section(), await section()];
+      const assign = (s: { row: TestSection }, opts: { startsOn: string; endsOn?: string; voidedBy?: bigint }) =>
+        createTeacherAssignment(testDb(), school, teacher, { role: 'class_teacher', section: s.row, ...opts });
+      await assign(current, { startsOn: schoolDay(-10) });
+      await assign(upcoming, { startsOn: schoolDay(30) });
+      await assign(ended, { startsOn: schoolDay(-30), endsOn: schoolDay(-1) });
+      await assign(voided, { startsOn: schoolDay(0), voidedBy: school.userId });
+      for (const s of [current, upcoming]) {
+        expect(await refusal(a.sections.archive(BigInt(s.id), {}))).toMatchObject({
+          status: 409,
+          code: ErrorCode.SECTION_IN_USE,
+        });
+      }
+      for (const s of [ended, voided]) {
+        expect((await a.sections.archive(BigInt(s.id), {})).archivedAt).not.toBeNull();
+      }
+    });
   });
 
   describe('subjects', () => {

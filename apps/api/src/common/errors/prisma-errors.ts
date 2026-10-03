@@ -21,6 +21,9 @@ const PRISMA_CODE = /^P\d{4}$/;
 // field for SQLSTATE 23514, but forwards DETAIL.
 const DETAIL_CONSTRAINT = /^constraint: (\S+)$/;
 const CHECK_MESSAGE = /violates check constraint "([^"]+)"/;
+// SQLSTATE 23P01 (an EXCLUDE constraint): the adapter forwards no constraint field and Prisma
+// reports P2039; the name is only in the message, `... violates exclusion constraint "<name>"`.
+const EXCLUSION_MESSAGE = /violates exclusion constraint "([^"]+)"/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -42,17 +45,23 @@ const adapterCause = (error: unknown): unknown =>
  * The constraint a Prisma error names, read from the shapes measured on Prisma 7.10 + adapter-pg:
  * - P2002 / P2003: `meta.driverAdapterError.cause.constraint.index`;
  * - P2039 (SQLSTATE 23514, CHECK or trigger): `cause.detail` matching `constraint: <name>`, else
- *   `cause.originalMessage` matching `violates check constraint "<name>"`.
+ *   `cause.originalMessage` matching `violates check constraint "<name>"`;
+ * - P2039 with `cause.originalCode` 23P01 (EXCLUDE): `cause.originalMessage` matching
+ *   `violates exclusion constraint "<name>"`.
  * Undefined when `error` is not a Prisma known-request error.
  */
 export function summariseDatabaseError(error: unknown): DatabaseErrorSummary | undefined {
   const prismaCode = prismaCodeOf(error);
   if (prismaCode === undefined) return undefined;
   const cause = adapterCause(error);
+  const message = str(field(cause, 'originalMessage')) ?? '';
+  const exclusion =
+    str(field(cause, 'originalCode')) === '23P01' ? EXCLUSION_MESSAGE.exec(message)?.[1] : undefined;
   const constraint =
     str(field(field(cause, 'constraint'), 'index')) ??
     DETAIL_CONSTRAINT.exec(str(field(cause, 'detail')) ?? '')?.[1] ??
-    CHECK_MESSAGE.exec(str(field(cause, 'originalMessage')) ?? '')?.[1] ??
+    CHECK_MESSAGE.exec(message)?.[1] ??
+    exclusion ??
     null;
   return { prismaCode, constraint };
 }
@@ -101,6 +110,40 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     taken(ErrorCode.SUBJECT_NAME_TAKEN, 'name', 'A subject of that name already exists.'),
   subjects_school_id_code_key: () =>
     taken(ErrorCode.SUBJECT_CODE_TAKEN, 'code', 'A subject with that code already exists.'),
+  // Slice 4 (contracts/slice-4.md §6). The services catch the first three outside their
+  // transaction and answer with the contract's details (the existing row's id, the conflicting
+  // class teachers), read in a fresh statement; these entries are the fallback.
+  staff_school_id_cnic_hash_key: () =>
+    taken(ErrorCode.STAFF_CNIC_EXISTS, 'cnic', 'A staff member with this CNIC already exists.'),
+  teacher_assignments_class_teacher_excl: () =>
+    taken(
+      ErrorCode.CLASS_TEACHER_EXISTS,
+      'sectionId',
+      'The section already has a class teacher for those dates.',
+    ),
+  user_roles_school_id_user_id_system_role_key: () =>
+    taken(ErrorCode.ROLE_ALREADY_ASSIGNED, 'systemRole', 'The user already holds that role.'),
+  // ON UPDATE RESTRICT: a class's year cannot change while an assignment names the class, even
+  // before it has a section. An assignment insert locks its class first, so never hits this.
+  teacher_assignments_class_id_fkey: () =>
+    taken(
+      ErrorCode.CLASS_YEAR_IMMUTABLE,
+      'academicYearId',
+      'The academic year of a class cannot change once teachers are assigned to it.',
+    ),
+  // Slice 6 (contracts/slice-6.md), here so the slice-6 services need not edit this file.
+  students_school_id_b_form_hash_key: () =>
+    taken(ErrorCode.STUDENT_BFORM_EXISTS, 'bForm', 'A student with this B-Form already exists.'),
+  student_guardians_live_pair_key: () =>
+    taken(
+      ErrorCode.GUARDIAN_LINK_EXISTS,
+      'guardianId',
+      'This guardian is already linked to the student.',
+    ),
+  enrolments_section_roll_no_key: () =>
+    taken(ErrorCode.ROLL_NO_TAKEN, 'rollNo', 'That roll number is taken in the section.'),
+  users_school_id_student_id_key: () =>
+    taken(ErrorCode.LOGIN_ALREADY_EXISTS, 'studentId', 'This student already has a login.'),
 };
 
 /**

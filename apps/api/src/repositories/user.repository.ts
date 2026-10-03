@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
-import type { SystemRole } from '@asms/shared';
+import type { StaffStatus, SystemRole } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
-import { Prisma } from './generated/prisma/client';
+import { Prisma, type StudentStatus } from './generated/prisma/client';
 import { escapeLike, type PrismaTxAdapter } from './prisma';
 
 export type UserStatusValue = 'active' | 'disabled';
-export type StaffStatusValue = 'active' | 'suspended' | 'left';
+export type StudentStatusValue = StudentStatus;
 
 /** What the permission service needs to derive capacities and capabilities (contract §1.1). */
 export interface UserAccessRow {
@@ -14,7 +14,12 @@ export interface UserAccessRow {
   status: UserStatusValue;
   staffId: bigint | null;
   guardianId: bigint | null;
-  staffStatus: StaffStatusValue | null;
+  staffStatus: StaffStatus | null;
+  studentId: bigint | null;
+  /** The linked student's status; null without a student link. */
+  studentStatus: StudentStatusValue | null;
+  /** school_settings.student_login_enabled, read only for a student login (else false). */
+  studentLoginEnabled: boolean;
   /** Live (not ended) system-role rows. */
   systemRoles: SystemRole[];
 }
@@ -32,13 +37,21 @@ export interface UserCredentialRow {
   officeResetAt: Date | null;
   staffId: bigint | null;
   guardianId: bigint | null;
+  studentId: bigint | null;
 }
+
+/** An identity number's field-encryption envelope and where it lives (its AAD). */
+export type IdentityCiphertext = { ciphertext: string } & (
+  | { table: 'staff' | 'guardians'; column: 'cnic' }
+  | { table: 'students'; column: 'b_form' }
+);
 
 /** A user as the users screen and /me show it. */
 export interface UserRecord {
   id: bigint;
   staffId: bigint | null;
   guardianId: bigint | null;
+  studentId: bigint | null;
   fullName: string;
   systemRoles: SystemRole[];
   status: UserStatusValue;
@@ -76,6 +89,7 @@ const CREDENTIAL_SELECT = {
   officeResetAt: true,
   staffId: true,
   guardianId: true,
+  studentId: true,
 } as const satisfies Prisma.UserSelect;
 
 // Scalars only. Relations are read by separate, sequential statements (namesAndRoles below):
@@ -85,6 +99,7 @@ const RECORD_SELECT = {
   id: true,
   staffId: true,
   guardianId: true,
+  studentId: true,
   status: true,
   email: true,
   emailVerifiedAt: true,
@@ -120,7 +135,7 @@ function orderBy(sort: UserSort): Prisma.Sql {
   }
 }
 
-/** The filters of a users page as SQL predicates on `u`, `s` (staff) and `g` (guardians). */
+/** The filters of a users page as SQL predicates on `u`, `s` (staff), `g` (guardians), `st` (students). */
 function listFilters(query: UserListQuery): Prisma.Sql[] {
   const and: Prisma.Sql[] = [];
   if (query.status !== undefined) and.push(Prisma.sql`u.status::text = ${query.status}`);
@@ -130,11 +145,12 @@ function listFilters(query: UserListQuery): Prisma.Sql[] {
     and.push(query.hasEmail ? Prisma.sql`u.email IS NOT NULL` : Prisma.sql`u.email IS NULL`);
   if (query.kind === 'staff') and.push(Prisma.sql`u.staff_id IS NOT NULL`);
   if (query.kind === 'guardian') and.push(Prisma.sql`u.guardian_id IS NOT NULL`);
-  // Students have no login column until slice 6: the filter matches nothing.
-  if (query.kind === 'student') and.push(Prisma.sql`false`);
+  if (query.kind === 'student') and.push(Prisma.sql`u.student_id IS NOT NULL`);
   if (query.q !== undefined) {
     const pattern = `%${escapeLike(query.q)}%`;
-    and.push(Prisma.sql`(s.full_name ILIKE ${pattern} OR g.full_name ILIKE ${pattern})`);
+    and.push(
+      Prisma.sql`(s.full_name ILIKE ${pattern} OR g.full_name ILIKE ${pattern} OR st.full_name ILIKE ${pattern})`,
+    );
   }
   return and;
 }
@@ -147,9 +163,10 @@ export class UserRepository {
   async findAccess(schoolId: SchoolId, id: bigint): Promise<UserAccessRow | null> {
     const row = await this.txHost.tx.user.findFirst({
       where: { schoolId, id },
-      select: { id: true, status: true, staffId: true, guardianId: true },
+      select: { id: true, status: true, staffId: true, guardianId: true, studentId: true },
     });
     if (!row) return null;
+    // Sequential statements, each only when its link is set (§3.3).
     const staff =
       row.staffId === null
         ? null
@@ -157,12 +174,32 @@ export class UserRepository {
             where: { schoolId, id: row.staffId },
             select: { status: true },
           });
+    const student =
+      row.studentId === null
+        ? null
+        : await this.txHost.tx.student.findFirst({
+            where: { schoolId, id: row.studentId },
+            select: { status: true },
+          });
+    const settings =
+      row.studentId === null
+        ? null
+        : await this.txHost.tx.schoolSettings.findFirst({
+            where: { schoolId },
+            select: { studentLoginEnabled: true },
+          });
     const roles = await this.txHost.tx.userRole.findMany({
       where: { schoolId, userId: row.id, endedAt: null },
       select: { systemRole: true },
       orderBy: { id: 'asc' },
     });
-    return { ...row, staffStatus: staff?.status ?? null, systemRoles: liveSystemRoles(roles) };
+    return {
+      ...row,
+      staffStatus: staff?.status ?? null,
+      studentStatus: student?.status ?? null,
+      studentLoginEnabled: settings?.studentLoginEnabled ?? false,
+      systemRoles: liveSystemRoles(roles),
+    };
   }
 
   findCredentialsByUsernameHash(
@@ -203,18 +240,19 @@ export class UserRepository {
   /**
    * A page of users. Raw SQL (listed in RAW_SQL_FILES, isolation-tested in
    * test/school-auth/repositories.e2e-spec.ts) because the default sort is the displayed name,
-   * COALESCE(staff, guardian), which Prisma cannot order by. Every join and the WHERE carry the
-   * school; the page's rows are then read through the scoped client.
+   * COALESCE(staff, guardian, student), which Prisma cannot order by. Every join and the WHERE
+   * carry the school; the page's rows are then read through the scoped client.
    */
   async list(schoolId: SchoolId, query: UserListQuery): Promise<{ rows: UserRecord[]; total: number }> {
     const from = Prisma.sql`
       FROM users u
       LEFT JOIN staff s ON s.school_id = u.school_id AND s.id = u.staff_id
       LEFT JOIN guardians g ON g.school_id = u.school_id AND g.id = u.guardian_id
+      LEFT JOIN students st ON st.school_id = u.school_id AND st.id = u.student_id
      WHERE ${Prisma.join([Prisma.sql`u.school_id = ${schoolId}`, ...listFilters(query)], ' AND ')}`;
     // Sequential, not Promise.all (§3.3).
     const page = await this.txHost.tx.$queryRaw<{ id: bigint }[]>`
-      SELECT u.id, COALESCE(s.full_name, g.full_name) AS display_name
+      SELECT u.id, COALESCE(s.full_name, g.full_name, st.full_name) AS display_name
       ${from}
       ORDER BY ${orderBy(query.sort)}, u.id ASC
       LIMIT ${query.take} OFFSET ${query.skip}`;
@@ -237,8 +275,8 @@ export class UserRepository {
   }
 
   /**
-   * Full names (staff, else guardian) and live system roles for a page of users: three
-   * sequential statements, whatever the page size.
+   * Full names (staff, else guardian, else student) and live system roles for a page of users:
+   * at most four sequential statements, whatever the page size.
    */
   private async withNamesAndRoles(schoolId: SchoolId, rows: RecordRow[]): Promise<UserRecord[]> {
     const ids = (pick: (row: RecordRow) => bigint | null) =>
@@ -262,6 +300,14 @@ export class UserRepository {
             where: { schoolId, id: { in: guardianIds } },
             select: { id: true, fullName: true },
           });
+    const studentIds = ids((row) => row.studentId);
+    const students =
+      studentIds.length === 0
+        ? []
+        : await this.txHost.tx.student.findMany({
+            where: { schoolId, id: { in: studentIds } },
+            select: { id: true, fullName: true },
+          });
     const roles = await this.txHost.tx.userRole.findMany({
       where: { schoolId, userId: { in: rows.map((row) => row.id) }, endedAt: null },
       select: { userId: true, systemRole: true },
@@ -269,19 +315,28 @@ export class UserRepository {
     });
     const staffNames = new Map(staff.map((r) => [r.id, r.fullName]));
     const guardianNames = new Map(guardians.map((r) => [r.id, r.fullName]));
+    const studentNames = new Map(students.map((r) => [r.id, r.fullName]));
     return rows.map((row) => ({
       ...row,
       fullName:
         (row.staffId === null ? undefined : staffNames.get(row.staffId)) ??
         (row.guardianId === null ? undefined : guardianNames.get(row.guardianId)) ??
+        (row.studentId === null ? undefined : studentNames.get(row.studentId)) ??
         '',
       systemRoles: liveSystemRoles(roles.filter((r) => r.userId === row.id)),
     }));
   }
 
+  /**
+   * A new login: default password, active, linked to a staff member or a student. A student's
+   * login is never linked to anything else (R40); a guardian's is GuardianLoginRepository's.
+   */
   async create(
     schoolId: SchoolId,
-    data: { usernameHash: string; passwordHash: string; staffId: bigint },
+    data: { usernameHash: string; passwordHash: string } & (
+      | { staffId: bigint }
+      | { studentId: bigint }
+    ),
   ): Promise<bigint> {
     const row = await this.txHost.tx.user.create({
       data: {
@@ -290,7 +345,7 @@ export class UserRepository {
         passwordHash: data.passwordHash,
         passwordIsDefault: true,
         status: 'active',
-        staffId: data.staffId,
+        ...('staffId' in data ? { staffId: data.staffId } : { studentId: data.studentId }),
       },
       select: { id: true },
     });
@@ -361,29 +416,36 @@ export class UserRepository {
 
   /**
    * The encrypted identity number of the person behind the login, by priority staff CNIC, then
-   * guardian CNIC (students arrive in slice 6). AAD is `schoolId|<table>|cnic` (plan §3.6).
+   * guardian CNIC, then student B-Form. AAD is `schoolId|<table>|<column>` (plan §3.6).
    */
   async findIdentityCiphertext(
     schoolId: SchoolId,
     id: bigint,
-  ): Promise<{ ciphertext: string; table: 'staff' | 'guardians' } | null> {
+  ): Promise<IdentityCiphertext | null> {
     const row = await this.txHost.tx.user.findFirst({
       where: { schoolId, id },
-      select: { staffId: true, guardianId: true },
+      select: { staffId: true, guardianId: true, studentId: true },
     });
     if (row && row.staffId !== null) {
       const staff = await this.txHost.tx.staff.findFirst({
         where: { schoolId, id: row.staffId },
         select: { cnic: true },
       });
-      if (staff?.cnic) return { ciphertext: staff.cnic, table: 'staff' };
+      if (staff?.cnic) return { ciphertext: staff.cnic, table: 'staff', column: 'cnic' };
     }
     if (row && row.guardianId !== null) {
       const guardian = await this.txHost.tx.guardian.findFirst({
         where: { schoolId, id: row.guardianId },
         select: { cnic: true },
       });
-      if (guardian?.cnic) return { ciphertext: guardian.cnic, table: 'guardians' };
+      if (guardian?.cnic) return { ciphertext: guardian.cnic, table: 'guardians', column: 'cnic' };
+    }
+    if (row && row.studentId !== null) {
+      const student = await this.txHost.tx.student.findFirst({
+        where: { schoolId, id: row.studentId },
+        select: { bForm: true },
+      });
+      if (student?.bForm) return { ciphertext: student.bForm, table: 'students', column: 'b_form' };
     }
     return null;
   }

@@ -10,6 +10,7 @@ import {
   randomIdentityDigits,
 } from '../support/school-session';
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
+import { createStudent, linkGuardian } from '../support/students';
 
 const BASE = '/api/v1/guardians';
 const ORIGIN = new URL(loadEnv().APP_URL).origin;
@@ -94,6 +95,33 @@ describe('guardians (e2e)', () => {
     app = await createTestApp({ logStream: { write: (line: string) => void logs.push(line) } });
     school = await createSchool();
     office = await sessionFor(school, 'office_staff');
+  });
+
+  // A fresh office user per test: CNIC writes spend the per-user identity-probe budget.
+  beforeEach(async () => {
+    office = await sessionFor(school, 'office_staff');
+  });
+
+  it('create and patch with a CNIC spend the identity-probe budget; a patch without one does not', async () => {
+    const target = await createGuardian({ cnic: null, phone: '03001112233' });
+    for (let i = 0; i < 15; i++) await createGuardian();
+    for (let i = 0; i < 15; i++) {
+      expect(
+        (await send('patch', `${BASE}/${target.id}`, { cnic: randomIdentityDigits() })).status,
+      ).toBe(200);
+    }
+    const create = await send('post', BASE, {
+      fullName: 'Ahmed Khan',
+      cnic: randomIdentityDigits(),
+      contactCapability: 'whatsapp',
+    });
+    expect(create.status).toBe(429);
+    expect(errorOf(create).code).toBe('RATE_LIMITED');
+    const patched = await send('patch', `${BASE}/${target.id}`, { cnic: randomIdentityDigits() });
+    expect(patched.status).toBe(429);
+    expect((await send('patch', `${BASE}/${target.id}`, { fullName: 'Ahmed Raza' })).status).toBe(
+      200,
+    );
   });
 
   afterAll(async () => {
@@ -343,6 +371,11 @@ describe('guardians (e2e)', () => {
   it('issue-login creates the parent login once; then the CNIC is locked', async () => {
     const digits = randomIdentityDigits();
     const created = await createGuardian({ cnic: digits });
+    // Contract slice-6 §9: a live link with can_login is required first.
+    const noLink = await send('post', `${BASE}/${created.id}/issue-login`, undefined);
+    expect(errorOf(noLink).code).toBe('GUARDIAN_NO_LOGIN_LINK');
+    const student = await createStudent(db, school);
+    await linkGuardian(db, school, student, { id: BigInt(created.id) }, { canLogin: true });
     const res = await send('post', `${BASE}/${created.id}/issue-login`, undefined);
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({

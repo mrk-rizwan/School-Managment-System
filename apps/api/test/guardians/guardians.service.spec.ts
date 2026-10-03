@@ -13,8 +13,10 @@ import { GuardianLoginService } from '../../src/modules/people/guardians/guardia
 import type { CreateGuardianDto } from '../../src/modules/people/guardians/guardians.dto';
 import { GuardiansService } from '../../src/modules/people/guardians/guardians.service';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
+import { EnrolmentRepository } from '../../src/repositories/enrolment.repository';
 import { GuardianLoginRepository } from '../../src/repositories/guardian-login.repository';
 import { GuardianRepository } from '../../src/repositories/guardian.repository';
+import { StudentGuardianRepository } from '../../src/repositories/student-guardian.repository';
 import { UserRepository } from '../../src/repositories/user.repository';
 import { AccessModule } from '../../src/modules/access/access.module';
 import { RequestContextService } from '../../src/tenancy/request-context';
@@ -34,6 +36,7 @@ import {
   testDb,
   type TestSchool,
 } from '../support/schools';
+import { createClassWithSection, createStudent, enrol, linkGuardian } from '../support/students';
 
 const PAGE = { page: 1, limit: 50 } as const;
 
@@ -78,10 +81,30 @@ describe('guardians (service)', () => {
     actAs(actor);
     return service;
   };
-  const loginsBy = (actor: Actor): GuardianLoginService => {
-    actAs(actor);
-    return logins;
-  };
+  /**
+   * Issue-login as `actor`, first giving the guardian (when it is the actor's school's) a live
+   * link with can_login, which slice 6 made a precondition (GUARDIAN_NO_LOGIN_LINK). The tests of
+   * that precondition call `logins` directly.
+   */
+  const loginsBy = (actor: Actor): Pick<GuardianLoginService, 'issueLogin'> => ({
+    issueLogin: async (guardianId: bigint) => {
+      await allowLogin(actor.schoolId, guardianId);
+      actAs(actor);
+      return logins.issueLogin(guardianId);
+    },
+  });
+
+  /** A student linked to the guardian with can_login, unless one is already live. */
+  async function allowLogin(schoolId: SchoolId, guardianId: bigint): Promise<void> {
+    if (!(await db.guardian.findFirst({ where: { schoolId, id: guardianId } }))) return;
+    const live = await db.studentGuardian.findFirst({
+      where: { schoolId, guardianId, canLogin: true, endedAt: null },
+    });
+    if (live) return;
+    const school = { id: schoolId, shortCode: '' };
+    const student = await createStudent(db, school);
+    await linkGuardian(db, school, student, { id: guardianId }, { canLogin: true });
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -94,6 +117,8 @@ describe('guardians (service)', () => {
         GuardianLoginRepository,
         UserRepository,
         AuditLogRepository,
+        StudentGuardianRepository,
+        EnrolmentRepository,
       ],
     })
       .overrideProvider(RequestContextService)
@@ -563,9 +588,102 @@ describe('guardians (service)', () => {
     expect((await repo.findById(school.id, BigInt(created.id)))?.fullName).toBe('Ahmed Khan');
   });
 
-  it.todo(
-    'PATCH clearing the phone of a primary contact on a live link is 409 GUARDIAN_IS_PRIMARY_CONTACT (slice 6, R30)',
-  );
+  it('R30: PATCH clearing the phone of a primary contact on a live link is 409 GUARDIAN_IS_PRIMARY_CONTACT', async () => {
+    const school = await createSchool();
+    const actor = await staffActor(school);
+    const primary = await by(actor).create(guardianInput());
+    const secondary = await by(actor).create(guardianInput());
+    const student = await createStudent(db, school);
+    const link = await linkGuardian(db, school, student, { id: BigInt(primary.id) });
+    await linkGuardian(
+      db,
+      school,
+      student,
+      { id: BigInt(secondary.id) },
+      { isPrimaryContact: false },
+    );
+
+    expect(await caught(by(actor).update(BigInt(primary.id), { phone: null }))).toMatchObject({
+      status: 409,
+      code: 'GUARDIAN_IS_PRIMARY_CONTACT',
+    });
+    expect((await by(actor).get(BigInt(primary.id))).phone).toBe(primary.phone);
+    // Not primary: the phone may go. Ended links do not count either.
+    await expect(by(actor).update(BigInt(secondary.id), { phone: null })).resolves.toMatchObject({
+      phone: null,
+    });
+    await db.studentGuardian.update({
+      where: { schoolId_id: { schoolId: school.id, id: link.id } },
+      data: { endedAt: new Date(), isPrimaryContact: false },
+    });
+    await expect(by(actor).update(BigInt(primary.id), { phone: null })).resolves.toMatchObject({
+      phone: null,
+    });
+  });
+
+  it('GET :id/students lists live links (all with includeEnded) with class and section', async () => {
+    const school = await createSchool();
+    const actor = await staffActor(school);
+    const guardian = await by(actor).create(guardianInput());
+    const gid = { id: BigInt(guardian.id) };
+    const { section } = await createClassWithSection(db, school);
+    const zara = await createStudent(db, school, { fullName: 'Zara Enrolled' });
+    const ali = await createStudent(db, school, { fullName: 'Ali Ended' });
+    await enrol(db, school, zara, section);
+    const live = await linkGuardian(db, school, zara, gid, {
+      relationship: 'mother',
+      canLogin: true,
+    });
+    const ended = await linkGuardian(db, school, ali, gid, { endedAt: new Date() });
+
+    const page = await by(school.id).students(gid.id, PAGE);
+    expect(page.total).toBe(1);
+    expect(page.data).toEqual([
+      {
+        linkId: live.id.toString(),
+        studentId: zara.id.toString(),
+        studentFullName: 'Zara Enrolled',
+        admissionNo: zara.admissionNo,
+        relationship: 'mother',
+        isPrimaryContact: true,
+        isFeePayer: true,
+        canLogin: true,
+        className: expect.any(String),
+        sectionName: expect.any(String),
+        linkEndedAt: null,
+      },
+    ]);
+    const all = await by(school.id).students(gid.id, { ...PAGE, includeEnded: true });
+    expect(all.data.map((r) => r.linkId)).toEqual([ended.id.toString(), live.id.toString()]);
+    expect(all.data[0]).toMatchObject({ className: null, sectionName: null });
+  });
+
+  it('lookup fills students with the survivor’s live links', async () => {
+    const school = await createSchool();
+    const actor = await staffActor(school);
+    const input = guardianInput();
+    const guardian = await by(actor).create(input);
+    const student = await createStudent(db, school, { fullName: 'Linked Child' });
+    await linkGuardian(
+      db,
+      school,
+      student,
+      { id: BigInt(guardian.id) },
+      { relationship: 'father' },
+    );
+    const other = await createStudent(db, school);
+    await linkGuardian(db, school, other, { id: BigInt(guardian.id) }, { endedAt: new Date() });
+
+    const result = await by(school.id).lookup({ cnic: input.cnic ?? '' });
+    expect(result.data[0]?.students).toEqual([
+      {
+        studentId: student.id.toString(),
+        fullName: 'Linked Child',
+        className: null,
+        relationship: 'father',
+      },
+    ]);
+  });
 
   // ----------------------------------------------------------------------------- issue-login
 
@@ -728,5 +846,49 @@ describe('guardians (service)', () => {
     ).toBe(1);
   });
 
-  it.todo('issue-login without a live can_login link is 409 GUARDIAN_NO_LOGIN_LINK (slice 6)');
+  it('issue-login without a live can_login link is 409 GUARDIAN_NO_LOGIN_LINK', async () => {
+    const school = await createSchool();
+    const actor = await staffActor(school);
+    const created = await by(actor).create(guardianInput());
+    const id = BigInt(created.id);
+    const student = await createStudent(db, school);
+    const noLogin = await linkGuardian(db, school, student, { id }, { canLogin: false });
+    // An ended link with can_login does not count either.
+    const other = await createStudent(db, school);
+    await linkGuardian(db, school, other, { id }, { canLogin: true, endedAt: new Date() });
+    actAs(actor);
+    expect(await caught(logins.issueLogin(id))).toMatchObject({
+      status: 409,
+      code: 'GUARDIAN_NO_LOGIN_LINK',
+    });
+    await db.studentGuardian.update({
+      where: { schoolId_id: { schoolId: school.id, id: noLogin.id } },
+      data: { canLogin: true },
+    });
+    actAs(actor);
+    await expect(logins.issueLogin(id)).resolves.toMatchObject({ guardianId: created.id });
+  });
+
+  it('issue-login refuses linking onto a student login: 409 USERNAME_IN_USE', async () => {
+    const school = await createSchool();
+    const actor = await staffActor(school);
+    const digits = randomIdentityDigits();
+    const student = await createStudent(db, school, { bForm: digits });
+    await db.user.create({
+      data: {
+        schoolId: school.id,
+        usernameHash: testIdentityHash(digits),
+        passwordHash: await passwords.hash(digits),
+        studentId: student.id,
+      },
+    });
+    const created = await by(actor).create(guardianInput({ cnic: digits }));
+    expect(await caught(loginsBy(actor).issueLogin(BigInt(created.id)))).toMatchObject({
+      status: 409,
+      code: 'USERNAME_IN_USE',
+    });
+    expect(await db.user.count({ where: { schoolId: school.id, guardianId: { not: null } } })).toBe(
+      0,
+    );
+  });
 });

@@ -1,5 +1,6 @@
 // School login, logout and /me (contract slice-2 §3.1, §3.2, §4.1): R1, R11, R16 (logs), R64,
 // R65, R81, plus the cookie and body shape of a session.
+import { randomBytes, randomInt } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import request from 'supertest';
@@ -44,6 +45,10 @@ describe('school login, logout and /me', () => {
     await closeTestDb();
   });
 
+  // Fresh per test, like nextIp(): the limits live in Redis, which outlives a run, so fixed values
+  // would start a rerun (or a parallel run) with spent counters.
+  const randomUsername = () => String(randomInt(1e12, 1e13));
+  const randomCode = () => `t${randomBytes(5).toString('hex')}`;
   const login = (body: object, ip = nextIp()) =>
     http().post('/api/v1/auth/login').set('Origin', ORIGIN).set('X-Forwarded-For', ip).send(body);
   const sessionCookie = sessionCookieOf;
@@ -164,7 +169,7 @@ describe('school login, logout and /me', () => {
 
     it('throttles 5/min per school code + username + IP with 429 and Retry-After, whether or not the account exists', async () => {
       const ip = nextIp();
-      const body = { schoolCode: 'nosuchschool', username: '9876543210987', password: 'x' };
+      const body = { schoolCode: randomCode(), username: randomUsername(), password: 'x' };
       for (let i = 0; i < 5; i++) await login(body, ip).expect(401);
       const res = await login(body, ip).expect(429);
       expect((res.body as ErrorBody).error.code).toBe('RATE_LIMITED');
@@ -172,17 +177,18 @@ describe('school login, logout and /me', () => {
     });
 
     it('throttles 10/min per username across schools and IPs', async () => {
-      const body = (code: string) => ({ schoolCode: code, username: '5550001112223', password: 'x' });
-      for (let i = 0; i < 10; i++) await login(body(`code${i}x`)).expect(401);
-      await login(body('codezz')).expect(429);
+      const username = randomUsername();
+      const body = () => ({ schoolCode: randomCode(), username, password: 'x' });
+      for (let i = 0; i < 10; i++) await login(body()).expect(401);
+      await login(body()).expect(429);
     });
 
     it('throttles 30/min per IP', async () => {
       const ip = nextIp();
       for (let i = 0; i < 30; i++) {
-        await login({ schoolCode: `ip${i}x`, username: `${1000000000000 + i}`, password: 'x' }, ip).expect(401);
+        await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(401);
       }
-      await login({ schoolCode: 'ipzzx', username: '1999999999999', password: 'x' }, ip).expect(429);
+      await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(429);
     });
 
     it('R65: login without the app Origin is 403 ORIGIN_REJECTED', async () => {

@@ -41,8 +41,24 @@ No rows → `scopeSections([])` → **no rows returned, never no filter**. Held 
 office default (later: custom role or grant) → `scopeAll()`; both → the widest (`canAny` already
 does this). Computed per request (R69). Services read it with `scopeOf(session)`.
 
-Lock order everywhere in this slice: `school_settings` (only when a principal may be lost) → target
-`users` row → `staff` row → `teacher_assignments` rows.
+Lock order in this slice: `school_settings` (only when a principal may be lost) → target `users`
+row → `staff` row → `teacher_assignments` rows. **One exception, by design: issue-login (§3.6)
+locks the `staff` row first and then the user found by CNIC hash**, because that user is not known
+until the staff row's CNIC is read, and the staff lock is what serialises racing issue-logins.
+Amended 2026-10-03 to match the code; the wave-B audit found no deadlock path, for these reasons:
+
+- A status change (§3.5) locks a user before the staff row only when that user already has
+  `staff_id` = the staff row. Issue-login proceeds only when no user has that `staff_id`, and in
+  this slice a `staff_id` is written only by issue-login, under the staff lock, so the two cannot
+  hold each other's next lock. (The platform's principal issue, slice 1, also links a staff row,
+  but it locks the school row and the user and takes no staff lock, so it closes no cycle.) A
+  login that appears after the status change's first read is locked *after* the staff row
+  (`staff` → `users`), the same order as issue-login.
+- A status change of another staff member may hold the found user (it carries that member's
+  `staff_id`) while issue-login waits on it; that status change never wants this staff row, so
+  the wait ends and issue-login then refuses `LOGIN_ALREADY_EXISTS`.
+- The user-account actions (slice-2 §5) lock `school_settings` and/or one `users` row and no
+  `staff` row.
 
 ---
 
@@ -105,7 +121,9 @@ always null until slice 7), `assignedBy` (string | null — null for platform-is
 | `designation` | optional, `NameField(1, 100)` or `null` |
 | `joinedOn` | optional date, ≤ today + 366 days |
 
-Created `active`, no login, no roles. **201** `StaffDto`. Errors: `422` · `409 STAFF_CNIC_EXISTS`
+Created `active`, no login, no roles. A body with a `cnic` string spends the per-user identity-probe
+budget (`slice-6.md` §3.4: 30/min, 300/hour, shared with the lookups) → `429`. **201** `StaffDto`.
+Errors: `422` · `409 STAFF_CNIC_EXISTS`
 `details: { staffId }` for any status (R20) — constraint `staff_school_id_cnic_hash_key`; the race
 loser gets the same answer (existing id read in a fresh statement). Retry-safety: with a CNIC a
 resubmit returns the pointer; without one the button is disabled in flight (as guardians).
@@ -115,7 +133,8 @@ resubmit returns the pointer; without one the button is disabled in flight (as g
 Fields as create; absent = unchanged, `null` clears (`fullName`, `phone` → `null` is `422`). Any
 status may be edited. **`cnic` present (set, change or clear) while a user has `staff_id = :id` →
 `409 STAFF_CNIC_LOCKED`** (R24; the CNIC is the username). New CNIC on another staff row → `409
-STAFF_CNIC_EXISTS`. Optimistic retry then `409 CONCURRENT_UPDATE`. **200** `StaffDto`.
+STAFF_CNIC_EXISTS`; a body with a `cnic` string spends the identity-probe budget → `429`. Optimistic
+retry then `409 CONCURRENT_UPDATE`. **200** `StaffDto`.
 
 ### 3.5 `POST /staff/:id/change-status`
 

@@ -5,6 +5,7 @@ import { RequireCapability } from '../../../common/auth/route-access';
 import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { ApiPaginated, type Page } from '../../../common/pagination';
+import { CnicProbeThrottleGuard, IdentityProbeThrottleGuard } from '../../../common/rate-limit';
 import { NoQueryDto } from '../../../common/validation';
 import { UserDto } from '../../users/users.dto';
 import { GuardianLoginService } from './guardian-login.service';
@@ -20,7 +21,6 @@ import {
   UpdateGuardianDto,
 } from './guardians.dto';
 import { GuardiansService } from './guardians.service';
-import { GuardianLookupThrottleGuard } from './lookup-throttle.guard';
 
 // contracts/slice-5.md. Common to every route: 401, 403 PERMISSION_DENIED / SCHOOL_SUSPENDED /
 // ORIGIN_REJECTED, 429.
@@ -44,6 +44,7 @@ export class GuardiansController {
 
   @Post()
   @RequireCapability(Capability.GUARDIAN_MANAGE)
+  @UseGuards(CnicProbeThrottleGuard)
   @ApiCreatedResponse({ type: GuardianDetailDto })
   @ApiErrors(...COMMON, 409, 422)
   create(@Body() body: CreateGuardianDto, @Query() _query: NoQueryDto): Promise<GuardianDetailDto> {
@@ -54,7 +55,7 @@ export class GuardiansController {
   @Post('lookup')
   @HttpCode(200)
   @RequireCapability(Capability.STUDENT_CREATE, Capability.GUARDIAN_MANAGE)
-  @UseGuards(GuardianLookupThrottleGuard)
+  @UseGuards(IdentityProbeThrottleGuard)
   @ApiOkResponse({ type: GuardianLookupResultDto })
   @ApiErrors(...COMMON, 422)
   lookup(
@@ -87,6 +88,7 @@ export class GuardiansController {
 
   @Patch(':id')
   @RequireCapability(Capability.GUARDIAN_MANAGE)
+  @UseGuards(CnicProbeThrottleGuard)
   @ApiIdParam()
   @ApiOkResponse({ type: GuardianDetailDto })
   @ApiErrors(...COMMON, 404, 409, 422)

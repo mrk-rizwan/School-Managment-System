@@ -14,12 +14,6 @@ export class ArchiveDto {
 
 // ----------------------------------------------------------------------------------- errors
 
-/** 422 with one field error (an id in a body that does not resolve, a value refused in context). */
-export const fieldRefused = (path: string, code: ErrorCode, message: string): ApiException =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code, message }],
-  });
-
 export const yearClosed = (): ApiException =>
   new ApiException(
     409,

@@ -105,6 +105,9 @@ describe('lint boundaries (R61)', () => {
     ['created-school-row-import.ts', 'src/modules/platform/schools.service.ts'],
     ['created-school-row-import.ts', 'src/modules/students/students.service.ts'],
     ['created-school-row-import.ts', 'src/repositories/students.repository.ts'],
+    // A named exception site may import its one platform repository, no other.
+    ['platform-repository-import.ts', 'src/modules/documents/staged-upload.sweep.ts'],
+    ['fan-out-import.ts', 'src/modules/auth/login-spike.recorder.ts'],
   ])('refuses %s at %s', async (fixture, virtualPath) => {
     expect(rules(await lintAs(fixture, virtualPath))).toEqual(['no-restricted-imports']);
   });
@@ -118,6 +121,7 @@ describe('lint boundaries (R61)', () => {
     ['created-school-row-import.ts', 'src/repositories/platform/school.repository.ts'],
     ['legitimate-repository.ts', 'src/repositories/students.repository.ts'],
     ['app-module-import.ts', 'src/app.module.ts'],
+    ['fan-out-import.ts', 'src/modules/documents/staged-upload.sweep.ts'],
   ])('allows %s at %s', async (fixture, virtualPath) => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });

@@ -12,7 +12,8 @@ import {
   createSchoolUser,
   randomIdentityDigits,
 } from '../support/school-session';
-import { closeTestDb, createSchool, testDb } from '../support/schools';
+import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
+import { createStudent, linkGuardian } from '../support/students';
 import { tag } from './support';
 
 const API = '/api/v1';
@@ -65,6 +66,11 @@ describe('no overlapping statements in a transaction (academics, guardians)', ()
     return res.body as Record<string, unknown>;
   };
   const idOf = (body: Record<string, unknown>): string => String(body.id);
+  /** Guardian issue-login needs a live link with can_login (contracts/slice-6.md §9). */
+  const allowLogin = async (school: TestSchool, guardianId: string): Promise<void> => {
+    const student = await createStudent(testDb(), school);
+    await linkGuardian(testDb(), school, student, { id: BigInt(guardianId) }, { canLogin: true });
+  };
 
   it('the wrapper sees an overlap (the checks below are not vacuous)', async () => {
     // A select loading several relations: Prisma issues their queries concurrently.
@@ -139,7 +145,9 @@ describe('no overlapping statements in a transaction (academics, guardians)', ()
   });
 
   it('guardian create, list, read, PATCH, lookup and issue-login run without one', async () => {
-    const cookie = await signIn();
+    const own = await createSchool();
+    const ownUser = await createSchoolUser(testDb(), own, { systemRole: 'principal' });
+    const cookie = (await createSchoolSession(testDb(), own, ownUser)).cookie;
     const cnic = randomIdentityDigits();
     const guardian = idOf(
       await call('post', '/guardians', cookie, 201, {
@@ -172,6 +180,7 @@ describe('no overlapping statements in a transaction (academics, guardians)', ()
     });
     await call('post', '/guardians/lookup', cookie, 200, { cnic });
     await call('post', '/guardians/lookup', cookie, 200, { phone: '03001234567' });
+    await allowLogin(own, guardian);
     await call('post', `/guardians/${guardian}/issue-login`, cookie, 201);
 
     // Linking onto an existing login (R22): the user is read, locked and permission-checked.
@@ -186,6 +195,7 @@ describe('no overlapping statements in a transaction (academics, guardians)', ()
         contactCapability: 'whatsapp',
       }),
     );
+    await allowLogin(school, linked);
     await call('post', `/guardians/${linked}/issue-login`, principalCookie, 201);
 
     expect(overlaps).toBe(0);

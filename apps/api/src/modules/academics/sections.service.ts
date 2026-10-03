@@ -7,8 +7,11 @@ import { SchoolContext } from '../../common/school-context';
 import { toPage, type Page } from '../../common/pagination';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassRepository } from '../../repositories/class.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SectionRepository, type SectionRecord } from '../../repositories/section.repository';
+import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import type { SchoolId } from '../../tenancy/school-id';
+import { SchoolClock } from '../../common/school-clock';
 import type { ArchiveDto, Changes } from './academics.shared';
 import { ClassesService } from './classes.service';
 import {
@@ -30,6 +33,10 @@ export class SectionsService {
     private readonly classes: ClassRepository,
     private readonly classesService: ClassesService,
     private readonly audit: AuditLogRepository,
+    private readonly enrolments: EnrolmentRepository,
+    // Slice 4; both from the global AccessModule.
+    private readonly assignments: TeacherAssignmentRepository,
+    private readonly clock: SchoolClock,
   ) {}
 
   async listForClass(classId: bigint, query: ListSectionsQueryDto): Promise<Page<SectionDto>> {
@@ -131,12 +138,25 @@ export class SectionsService {
 
   /**
    * 409 SECTION_IN_USE while an active enrolment (slice 6) or a teacher assignment not yet ended
-   * (`ends_on IS NULL OR ends_on >= today`, slice 4) references the section. Those slices
-   * implement it here, inside archive's transaction and under the section's row lock. Until then
-   * neither can exist.
+   * (`ends_on IS NULL OR ends_on >= today`, slice 4) references the section. Inside archive's
+   * transaction and under the section's row lock; enrolling into a section locks it too
+   * (EnrolmentsService.lockTarget), so neither can slip in between.
    */
-  assertSectionUnused(_schoolId: SchoolId, _sectionId: bigint): Promise<void> {
-    return Promise.resolve();
+  async assertSectionUnused(schoolId: SchoolId, sectionId: bigint): Promise<void> {
+    if (await this.enrolments.hasActiveInSection(schoolId, sectionId)) throw sectionInUse();
+    await this.assertNoLiveAssignments(schoolId, sectionId);
+  }
+
+  /**
+   * contracts/slice-4.md §4.5: a live teacher assignment on the section not ended before today.
+   * An assignment insert locks the section's class first and archive holds that lock here, so
+   * none can slip in between.
+   */
+  private async assertNoLiveAssignments(schoolId: SchoolId, sectionId: bigint): Promise<void> {
+    const today = await this.clock.today(schoolId);
+    if (await this.assignments.existsNotEndedOnSection(schoolId, sectionId, today)) {
+      throw sectionInUse();
+    }
   }
 
   private lock(schoolId: SchoolId, id: bigint): Promise<SectionRecord> {
@@ -146,6 +166,9 @@ export class SectionsService {
     );
   }
 }
+
+const sectionInUse = () =>
+  new ApiException(409, ErrorCode.SECTION_IN_USE, 'This section is still in use.');
 
 const archived = () =>
   new ApiException(409, ErrorCode.SECTION_ARCHIVED, 'An archived section cannot be changed.');

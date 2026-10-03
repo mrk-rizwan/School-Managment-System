@@ -1,0 +1,266 @@
+import { Injectable } from '@nestjs/common';
+import { TransactionHost } from '@nestjs-cls/transactional';
+import type { SchoolId } from '../tenancy/school-id';
+import type { Scope } from '../tenancy/scope';
+import type { ContactCapability, GuardianRelationship, Prisma } from './generated/prisma/client';
+import type { PrismaTxAdapter } from './prisma';
+import { studentInScope } from './student.repository';
+
+// contracts/slice-6.md §4 (rule 9). The tenant table student_guardians. A link is live while
+// ended_at is null; ending sets it, nothing is deleted. Exactly one live primary contact per
+// student is the partial unique student_guardians_primary_key (R28); one live link per pair is
+// student_guardians_live_pair_key. student_id and guardian_id never change (trigger).
+//
+// Shared interface (slice 6B's admission and readmission call these inside their transaction;
+// keep the signatures stable):
+//   create(schoolId, data: GuardianLinkCreate): Promise<GuardianLinkRecord>
+//   liveForStudent(schoolId, studentId): Promise<GuardianLinkRecord[]>
+//   views(schoolId, rows): Promise<GuardianLinkView[]>
+
+export interface GuardianLinkRecord {
+  id: bigint;
+  studentId: bigint;
+  guardianId: bigint;
+  relationship: GuardianRelationship;
+  isPrimaryContact: boolean;
+  isFeePayer: boolean;
+  canLogin: boolean;
+  endedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** The guardian side of a link, as GuardianLinkDto shows it. */
+export interface LinkedGuardian {
+  fullName: string;
+  phone: string | null;
+  /** Ciphertext, AAD `schoolId|guardians|cnic`. */
+  cnic: string | null;
+  contactCapability: ContactCapability;
+  address: string | null;
+  userId: bigint | null;
+}
+
+export interface GuardianLinkView extends GuardianLinkRecord {
+  guardian: LinkedGuardian;
+}
+
+/** A link seen from the guardian, with the student's name (GET /guardians/:id/students). */
+export interface GuardianStudentLink extends GuardianLinkRecord {
+  studentFullName: string;
+  admissionNo: string;
+}
+
+export interface GuardianLinkCreate {
+  studentId: bigint;
+  guardianId: bigint;
+  relationship: GuardianRelationship;
+  isPrimaryContact: boolean;
+  isFeePayer: boolean;
+  canLogin: boolean;
+}
+
+export type GuardianLinkChanges = Partial<
+  Pick<GuardianLinkRecord, 'relationship' | 'isPrimaryContact' | 'isFeePayer' | 'canLogin'>
+>;
+
+const SELECT = {
+  id: true,
+  studentId: true,
+  guardianId: true,
+  relationship: true,
+  isPrimaryContact: true,
+  isFeePayer: true,
+  canLogin: true,
+  endedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.StudentGuardianSelect;
+
+const live = (includeEnded: boolean) => (includeEnded ? {} : { endedAt: null });
+
+@Injectable()
+export class StudentGuardianRepository {
+  constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
+
+  /**
+   * A live link. A second live link of the pair fails student_guardians_live_pair_key; a second
+   * live primary fails student_guardians_primary_key (clear the current one first).
+   */
+  create(schoolId: SchoolId, data: GuardianLinkCreate): Promise<GuardianLinkRecord> {
+    return this.txHost.tx.studentGuardian.create({
+      data: { schoolId, ...data },
+      select: SELECT,
+    });
+  }
+
+  /** Scoped through the link's student (contract §1): out of scope reads as absent. */
+  findById(schoolId: SchoolId, scope: Scope, id: bigint): Promise<GuardianLinkRecord | null> {
+    return this.txHost.tx.studentGuardian.findFirst({
+      where: { schoolId, id, student: { is: studentInScope(scope) } },
+      select: SELECT,
+    });
+  }
+
+  findLivePair(
+    schoolId: SchoolId,
+    studentId: bigint,
+    guardianId: bigint,
+  ): Promise<GuardianLinkRecord | null> {
+    return this.txHost.tx.studentGuardian.findFirst({
+      where: { schoolId, studentId, guardianId, endedAt: null },
+      select: SELECT,
+    });
+  }
+
+  /** The student's live links, oldest first (R28 and R29 are decided over these). */
+  liveForStudent(schoolId: SchoolId, studentId: bigint): Promise<GuardianLinkRecord[]> {
+    return this.txHost.tx.studentGuardian.findMany({
+      where: { schoolId, studentId, endedAt: null },
+      select: SELECT,
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  /** Primary contact first, then by guardian name. The caller has checked the student's scope. */
+  async listForStudent(
+    schoolId: SchoolId,
+    studentId: bigint,
+    query: { includeEnded: boolean; skip: number; take: number },
+  ): Promise<{ rows: GuardianLinkView[]; total: number }> {
+    const where = { schoolId, studentId, ...live(query.includeEnded) };
+    const rows = await this.txHost.tx.studentGuardian.findMany({
+      where,
+      select: SELECT,
+      orderBy: [{ isPrimaryContact: 'desc' }, { guardian: { fullName: 'asc' } }, { id: 'asc' }],
+      skip: query.skip,
+      take: query.take,
+    });
+    const total = await this.txHost.tx.studentGuardian.count({ where });
+    return { rows: await this.views(schoolId, rows), total };
+  }
+
+  /** The guardian side of each link: one statement whatever the number of links. */
+  async views(schoolId: SchoolId, rows: GuardianLinkRecord[]): Promise<GuardianLinkView[]> {
+    if (rows.length === 0) return [];
+    const guardians = await this.txHost.tx.guardian.findMany({
+      where: { schoolId, id: { in: [...new Set(rows.map((r) => r.guardianId))] } },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        cnic: true,
+        contactCapability: true,
+        address: true,
+        user: { select: { id: true } },
+      },
+    });
+    const byId = new Map(
+      guardians.map(({ id, user, ...g }) => [id, { ...g, userId: user?.id ?? null }]),
+    );
+    return rows.flatMap((row) => {
+      const guardian = byId.get(row.guardianId);
+      return guardian ? [{ ...row, guardian }] : [];
+    });
+  }
+
+  /** Plain flags. The caller holds the student's row lock. */
+  update(schoolId: SchoolId, id: bigint, data: GuardianLinkChanges): Promise<GuardianLinkRecord> {
+    return this.txHost.tx.studentGuardian.update({
+      where: { schoolId_id: { schoolId, id } },
+      data,
+      select: SELECT,
+    });
+  }
+
+  /** Clears the live primary contact of the student, before another link takes it. */
+  async clearPrimary(schoolId: SchoolId, studentId: bigint): Promise<number> {
+    const { count } = await this.txHost.tx.studentGuardian.updateMany({
+      where: { schoolId, studentId, isPrimaryContact: true, endedAt: null },
+      data: { isPrimaryContact: false },
+    });
+    return count;
+  }
+
+  /** Sets ended_at on a live link. Returns rows changed (0 when already ended). */
+  async end(schoolId: SchoolId, id: bigint, endedAt: Date): Promise<number> {
+    const { count } = await this.txHost.tx.studentGuardian.updateMany({
+      where: { schoolId, id, endedAt: null },
+      data: { endedAt },
+    });
+    return count;
+  }
+
+  // -------------------------------------------------------------- guardian seams (slice 5)
+
+  /** A live link of the guardian with can_login (gates guardian issue-login). */
+  async hasLiveLoginLink(schoolId: SchoolId, guardianId: bigint): Promise<boolean> {
+    const row = await this.txHost.tx.studentGuardian.findFirst({
+      where: { schoolId, guardianId, canLogin: true, endedAt: null },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  /** The guardian is the primary contact on some live link (R30: the phone must stay). */
+  async isLivePrimaryContact(schoolId: SchoolId, guardianId: bigint): Promise<boolean> {
+    const row = await this.txHost.tx.studentGuardian.findFirst({
+      where: { schoolId, guardianId, isPrimaryContact: true, endedAt: null },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  /**
+   * The guardian's links with each student's name, by student name. Unscoped: GET
+   * /guardians/:id/students is `guardian.manage`, school-wide (contract §9).
+   */
+  async listForGuardian(
+    schoolId: SchoolId,
+    guardianId: bigint,
+    query: { includeEnded: boolean; skip: number; take: number },
+  ): Promise<{ rows: GuardianStudentLink[]; total: number }> {
+    const where = { schoolId, guardianId, ...live(query.includeEnded) };
+    const rows = await this.txHost.tx.studentGuardian.findMany({
+      where,
+      select: SELECT,
+      orderBy: [{ student: { fullName: 'asc' } }, { id: 'asc' }],
+      skip: query.skip,
+      take: query.take,
+    });
+    const total = await this.txHost.tx.studentGuardian.count({ where });
+    return { rows: await this.withStudents(schoolId, rows), total };
+  }
+
+  /** The live links of several guardians, with student names (guardian lookup). */
+  async liveForGuardians(
+    schoolId: SchoolId,
+    guardianIds: readonly bigint[],
+  ): Promise<GuardianStudentLink[]> {
+    if (guardianIds.length === 0) return [];
+    const rows = await this.txHost.tx.studentGuardian.findMany({
+      where: { schoolId, guardianId: { in: [...guardianIds] }, endedAt: null },
+      select: SELECT,
+      orderBy: [{ student: { fullName: 'asc' } }, { id: 'asc' }],
+    });
+    return this.withStudents(schoolId, rows);
+  }
+
+  private async withStudents(
+    schoolId: SchoolId,
+    rows: GuardianLinkRecord[],
+  ): Promise<GuardianStudentLink[]> {
+    if (rows.length === 0) return [];
+    const students = await this.txHost.tx.student.findMany({
+      where: { schoolId, id: { in: [...new Set(rows.map((r) => r.studentId))] } },
+      select: { id: true, fullName: true, admissionNo: true },
+    });
+    const byId = new Map(students.map((s) => [s.id, s]));
+    return rows.flatMap((row) => {
+      const student = byId.get(row.studentId);
+      return student
+        ? [{ ...row, studentFullName: student.fullName, admissionNo: student.admissionNo }]
+        : [];
+    });
+  }
+}

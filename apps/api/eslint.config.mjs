@@ -98,13 +98,23 @@ function restrictImports({ exempt = [], narrowed = [] } = {}) {
 }
 
 // Files that legitimately call the pre-auth school lookup, session resolution or the scheduler
-// fan-out (CLAUDE.md named exceptions 2-4). Each is added here by the slice that writes it;
-// adding one is a recorded decision, not a convenience.
-const NAMED_EXCEPTION_SITES = [
+// fan-out (CLAUDE.md named exceptions 2-4), each with the one platform repository it may import;
+// every other platform repository stays refused there. Each is added here by the slice that
+// writes it; adding one is a recorded decision, not a convenience.
+const NAMED_EXCEPTION_SITES = {
   // Exception 2's spray detection: one platform_audit_log row per school per window (contract
   // slice-2 §3.1 step 6).
-  'src/modules/auth/login-spike.recorder.ts',
-];
+  'src/modules/auth/login-spike.recorder.ts': 'platform-audit.repository',
+  // Exception 3, the scheduler fan-out: the daily staged-upload sweep lists every school's id
+  // (any status) and then works per school with ordinary scoped repositories.
+  'src/modules/documents/staged-upload.sweep.ts': 'school-fan-out.repository',
+};
+
+/** The platform-repositories pattern with one repository file let through. */
+const platformRepositoriesExcept = (file) => ({
+  ...IMPORTS.platformRepositories,
+  regex: `(^|/)repositories/platform(/(?!${file.replaceAll('.', '\\.')}${EXT}$)|$)`,
+});
 
 // Files allowed tagged $queryRaw / $executeRaw. Each must have its own isolation test.
 // Tests may use raw SQL freely; they are not application code.
@@ -488,14 +498,12 @@ export default tseslint.config(
       exempt: ['prisma', 'repositoryInternals', 'schoolIdMint', 'scopeMint'],
     }),
   },
-  ...(NAMED_EXCEPTION_SITES.length > 0
-    ? [
-        {
-          files: NAMED_EXCEPTION_SITES,
-          rules: restrictImports({ exempt: ['platformRepositories'] }),
-        },
-      ]
-    : []),
+  ...Object.entries(NAMED_EXCEPTION_SITES).map(([site, repository]) => ({
+    files: [site],
+    rules: restrictImports({
+      narrowed: [{ key: 'platformRepositories', ...platformRepositoriesExcept(repository) }],
+    }),
+  })),
   ...(RAW_SQL_FILES.length > 0
     ? [{ files: RAW_SQL_FILES, rules: restrictSyntaxWith(REPOSITORY_LAYER, 'raw') }]
     : []),
