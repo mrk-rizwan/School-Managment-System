@@ -25,7 +25,7 @@ writes the production code.** Do not start application code in a planning sessio
   (`--maxWorkers=2 --workerIdleMemoryLimit=1024MB`; 955/955 locally in 200 s). GitHub CLI is now
   installed at `~/bin/gh.exe` (on PATH; device-code login as `mrk-rizwan`, config in
   `~/.config/gh` — set `GH_CONFIG_DIR=$HOME/.config/gh` in Git Bash), so CI results are readable
-  from this machine with `gh run list` / `gh run view <id> --log-failed`. The next push's result is recorded below.
+  from this machine with `gh run list` / `gh run view <id> --log-failed`. **CI green on `4dc5819` (run 37143282348, every step including Playwright) — Phase 1 formally closed, 2026-10-03.**
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
 - **Phase 1 is unblocked** on decisions. One question is open and does not block: register
