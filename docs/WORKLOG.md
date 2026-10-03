@@ -19,10 +19,12 @@ writes the production code.** Do not start application code in a planning sessio
   2026-10-03, reviewed by four specialists, findings folded in). **Next: Opus executes wave D
   (slices 9 + 10) after the groundwork commit** — but read the plan's §1.2 first: seven owner
   answers gate specific slices, and the Phase 1 CI run is still unconfirmed.
-- **CI not yet seen green.** The workflow now starts object storage (Chainguard MinIO, pinned by
-  digest) for the document suites; nothing else was missing. The repo is private and this machine
-  has no GitHub login: **the product owner must open the Actions run for the Phase 1 commit and
-  record the result here.** A failure there is fixed before Phase 2 code starts.
+- **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
+  was **red** — the API test process ran out of heap on the runner after 17 of 72 suites (local
+  Node allows 4.3 GB, the runner's 2 GB). Fixed by running Jest with two recycled workers
+  (`--maxWorkers=2 --workerIdleMemoryLimit=1024MB`; 955/955 locally in 200 s). GitHub CLI is now
+  installed locally (device-code login as `mrk-rizwan`, config in `~/.config/gh`), so CI results
+  are readable from this machine with `gh run list`. The next push's result is recorded below.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
 - **Phase 1 is unblocked** on decisions. One question is open and does not block: register
