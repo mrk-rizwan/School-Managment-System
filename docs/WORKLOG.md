@@ -11,21 +11,22 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1, **slices 0–7 done** (2026-10-03): scaffold and isolation guardrails;
-  platform console and school record; school logins, sessions, users, settings; academic
-  structure; guardians; staff and teacher assignments; students, enrolment, admission, documents;
-  custom roles, grants and the permissions screen. **Slice 8 (phase close) in progress:** docs
-  sweep, performance review and web consolidation done; still to run: R16/R57 scans, the
-  whole-phase `security-reviewer`, `phase-gate`. Project progress 29.25 / 155 days ≈ 18.9 %.
-- **CI status unknown:** the auto-sync pushes to GitHub, but the repo is private and this machine
-  has no GitHub login, so nobody here has seen an Actions run. The product owner must check.
+- **Phase:** **Phase 1 (Foundation) complete** (2026-10-03), slices 0–8: scaffold and isolation
+  guardrails; platform console and school record; school logins, sessions, users, settings;
+  academic structure; guardians; staff and teacher assignments; students, enrolment, admission,
+  documents; custom roles, grants and the permissions screen; phase close. Project progress
+  30 / 155 days ≈ 19.4 %. **Next: plan Phase 2 (Fable)** — read "What Phase 2 inherits" below and
+  settle the schema-freeze register items first.
+- **CI not yet seen green.** The workflow now starts object storage (Chainguard MinIO, pinned by
+  digest) for the document suites; nothing else was missing. The repo is private and this machine
+  has no GitHub login: **the product owner must open the Actions run for the Phase 1 commit and
+  record the result here.** A failure there is fixed before Phase 2 code starts.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
 - **Phase 1 is unblocked** on decisions. One question is open and does not block: register
   item 30.
-- **`docs/plans/phase-1-foundation.md` is the approved plan for the TypeScript stack**
-  (rewritten and reviewed 2026-10-02). About 30 working days, nine slices, rules R1–R104. It is
-  what the Opus session executes, starting at slice 0.
+- **`docs/plans/phase-1-foundation.md`** was the approved Phase 1 plan (30 days, nine slices,
+  rules R1–R104) and is now complete; every rule except R15 has a named test.
 - Tenant isolation: application-layer scoping, RLS dropped (2026-10-02 final entry), now with
   eight controls in `CLAUDE.md` including a query guard and a schema guard.
 
@@ -51,31 +52,35 @@ slice 0 are not counted.
 
 ## Left to do (ordered)
 
-1. **Confirm GitHub Actions is green** on the latest push. The repo is private and this machine
-   has no GitHub login, so the product owner checks the Actions tab; a failure is fixed first.
-2. **Wave C: slices 7 and 8** (full `phase-gate` at 8). Slice 7 replaces the `it.todo` grants
-   stub in the API suite. Before it starts, decide whether the remaining quality items below go
-   into its groundwork.
-3. Small leftovers from the wave-B review (not defects): download of a stored object can be
-   truncated mid-stream by an S3 error after headers are sent; an object written after a crash
-   between row insert and put is still covered by the sweep, but a periodic bucket-prefix
-   reconcile would make storage provably clean; two pg "client already executing a query"
-   warnings appear in the full run (believed test-side `Promise.all` on the raw client — confirm;
-   staff has no no-overlapping-queries test); one mocked Playwright staff test failed once under
-   load and passed on re-run; in the wave-C run `students-real.spec.ts` failed once at the second
-   admission's confirmation under `--workers 2` and passed alone and in a full re-run (125/125).
-   If it recurs, read its trace first.
-4. Product owner, new from wave B: (a) may admission, readmission and change-class dates fall
-   outside the academic year's dates? Today they are not checked; (b) a person whose CNIC equals
-   their former student B-Form cannot be given a staff or guardian login (the username is taken
-   by the student login) — accept, or decide how a former student becomes staff/parent.
-5. Product owner: register item 30 (privileged capabilities on a default password); whether a
-   linked principal login should get a one-time random password instead of the CNIC default
-   (wave-A security residual: the clerk who planted the login knows the default); schema-freeze
-   items 7–13 and 23–26 before the end of Phase 1; whether a guardian whose children have all left
-   keeps a login (part of item 11); CNIC correction after a login exists; numeric reset code or
-   emailed link.
-6. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+1. **Product owner: open GitHub Actions for the Phase 1 close commit** and record the result in
+   "Current state". The repo is private and this machine has no GitHub login. A failure is fixed
+   before any Phase 2 code.
+2. **Product owner: settle the schema-freeze register items 7–13 and 21–26** (partial payment,
+   sibling discount, concession scope, proration, exit states, staff leave, grace/retention,
+   results approval unit, SMS allow list, late arrival, late-payment charge, banking, remark
+   visibility). Phase 1 was meant to close them and did not; Phase 3's schema cannot freeze
+   without 7–13.
+3. **Fable: plan Phase 2** (daily operations: attendance, diary, notices, WhatsApp/SMS drivers,
+   first React Native app) from "What Phase 2 inherits" below and the register.
+4. Product owner, decisions taken provisionally by the main thread — confirm or overturn:
+   (a) principals are unrestricted peers (grants/revokes on a principal refused);
+   (b) the login-spike recorder as part of named exception 2 (CLAUDE.md);
+   (c) issue-login reason optional with a fixed fallback;
+   (d) identity-probe budget 30/min, 300/h per user (about 50 admissions an hour per clerk);
+   (e) object storage on Chainguard's MinIO image (chosen by the owner 2026-10-03 — recorded).
+5. Product owner, open questions: register item 30 (privileged capabilities inert on a default
+   password — security review recommends yes, with an "add and verify email, then change password"
+   path); one-time random password for principals (closes the default-password residual);
+   admission/readmission/change-class dates outside the academic year; a former student whose
+   CNIC equals their B-Form (review recommends an audited "retire student login" action, never a
+   link); a guardian whose children have all left (part of 11); CNIC correction after a login
+   exists; numeric reset code vs emailed link; email every principal when the principal role is
+   added or removed.
+6. Small leftovers, not defects (also listed under "What Phase 2 inherits"): S3 mid-stream
+   truncation, no bucket reconcile, pg "already executing a query" warnings, the
+   `students-real.spec.ts` flake under two workers; and grant-screen guidance on
+   delegating `class.manage` + `staff.create` + `user.account.manage` together is not written yet.
+7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
 
@@ -156,6 +161,45 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Slice 8: Phase 1 close (Opus 5.5) — DONE
+
+**Whole-phase `security-reviewer`: FAIL → fixed → PASS.** Tenant isolation found sound (no path
+from one school's session or job to another's data). Blocking finding F1: a teacher given
+`class.manage` could assign themselves to every section and widen their own row scope — now
+refused unless the actor holds `role.manage` (test `test/staff/assignments.e2e-spec.ts` "F1 / R74").
+Low fixes, each with a proving test: F2 every default-password login audited
+(`user.login_on_default_password {afterOfficeReset}`, replacing `user.login_after_office_reset`);
+F3 identity-probe budget spent per identity number (an admission costs up to 5); F4 no raw error
+objects in logs (`failureLog`); F5 permissions loaded only after the password verifies, and not
+for a locked, disabled or terminated-school account (`test/school-auth/login.service.spec.ts`);
+F7 student-linked repository methods take the branded `Scope`. F6 is the edge-proxy deployment
+requirement (no test possible here). Rate limits stop charging later limits once one refuses.
+
+**Rule coverage (`test-engineer`):** every R1–R104 except R15 has a named test. New: R16 identity
+scans over audit tables, captured logs, responses and the built web bundle; R57 audit table over
+every mutating route (a new unclassified route fails); R62 isolation-coverage guard; R92 mail
+failure; R99 office-reset races; R104 ciphertext binding. Two defects found and fixed: issue-login
+audit rows had no reason (R57 — now an optional reason with a fixed fallback per path, strings in
+`packages/shared/src/logins.ts`), and a CNIC-shaped placeholder shipped in the web bundle (now
+`#####-#######-#`).
+
+**`phase-gate` (first run): FAIL on evidence, not code.** Closed: CI could not reach object
+storage (and Docker Hub no longer serves `minio/minio` — **owner chose Chainguard's MinIO, pinned
+by digest**, in compose and CI; older checkouts chown the volume once, see README); tablet width
+(`apps/web/e2e/responsive.spec.ts`, every route at 768 px, no page-level overflow); F5 proofs;
+`code-auditor` on the close-out diff (four lows, fixed); "What Phase 2 inherits" written below.
+**Fresh clone verified** (into `D:smsf`, dev stack stopped): README followed literally to a
+signed-in principal on the default password — about 5 minutes with a cold `pnpm install`. One
+README addition from it: clone into a short path on Windows (260-character limit).
+
+**Results:** lint and typecheck clean; API 72 suites / 955 tests; web build; Playwright 157/157;
+hook clean.
+
+**Main-thread decisions in this slice, for the owner to confirm:** principals are unrestricted
+peers (slice 7); issue-login reason is optional with a fixed fallback; the identity-probe budget
+(30/min, 300/h per user) caps one clerk at about 50 admissions an hour — raise it before
+admission season if that is too low.
 
 ## 2026-10-03 — Wave C part 1: slice 7 and slice-8 preparation (Opus 5.5) — DONE
 

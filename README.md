@@ -28,6 +28,10 @@ cd School-Managment-System
 git config core.hooksPath .githooks
 ```
 
+**On Windows, clone into a short path** such as `D:sms`. A deep folder (a long user temp
+directory, say) pushes paths inside `node_modules` past Windows' 260-character limit and
+`pnpm` fails with "The system cannot find the path specified".
+
 The last line is **required once per clone**. It enables the pre-commit guard in `.githooks/`,
 which refuses commits containing `.env` files, credentials, private keys, build output, logs,
 uploaded student documents or files over 1 MB. Git does not enable repository hooks on its own.
