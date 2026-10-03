@@ -7,8 +7,9 @@ R1–R104), which is complete; nothing from it is restated unless Phase 2 change
 **Reviewed** by `business-rules`, `security-reviewer`, `data-architect` and `api-designer` on
 2026-10-03; their findings are folded in (the first draft's alert timing, roster rule, holiday
 shape, parent scope, worker tenancy, webhook exception and endpoint naming were all changed).
-**Status:** approved for execution **once the owner answers the seven items in §1 marked "cannot
-default"**; slice 9 and 10 groundwork may start before that.
+**Status:** approved for execution. The owner answered §1.2 on 2026-10-03 (answers recorded there);
+one clarification (office staff marking student attendance) is outstanding and blocks only the
+arrivals route in slice 11.
 
 Phase 2 delivers what the client deck calls *daily operations*: **the register, the diary, notices,
 the channels that reach parents, and the first mobile app.** At the end a teacher marks attendance
@@ -75,18 +76,18 @@ questions that cannot be defaulted because they are commercial, procurement or s
 | — | Bearer session lifetimes | Guardian and student sessions: **30 d idle / 180 d absolute**. **Staff: 14 d idle / 90 d absolute** (a lost teacher phone writes registers and reads rosters); chosen per session from the capacities at login — a teacher-parent gets the staff values. Cookie sessions keep Phase 1's values | Slice 9 |
 | 30 | Privileged capabilities on a default password | Not needed by Phase 2; still open | — |
 
-### 1.2 Cannot default — needs the owner's answer before the named slice
+### 1.2 Owner's answers of 2026-10-03 (were "cannot default"; now settled)
 
-| # | Question | Why it cannot default | Blocks |
+| # | Question | Answer | Consequence in this plan |
 |---|---|---|---|
-| 17 | **One WhatsApp number per school** (the plan's design: a platform-owned `whatsapp_numbers` row per school; a platform-wide number is the same table with one row shared) — **who provides the SIM for each pilot school**, and the school's WhatsApp account has two-step verification enabled with the SIM held by the school, not a staff member | Procurement | Slice 9's first real delivery; slice 17 |
-| 18 | **Monthly SMS allowance per school** (`sms_monthly_cap`; the code default of 500 is for development only). The deck told the client "a monthly allowance agreed in advance" | Commercial term; feeds Phase 3's subscription plan | Slice 9's production value |
-| 13 | **What a suspended school still sends.** Phase 1 R80 makes a suspended school read-only, so registers cannot even be recorded. Options: (a) registers and absence alerts, SMS included, continue under suspension as a named R80 exemption; (b) nothing continues and the school is told so at suspension. A child's absence going unreported because a subscription lapsed is a safety call, not a default | Safety | Slice 9's R113 |
-| — | **SMS gateway provider.** The driver is written to a generic contract (send, delivery-report webhook); the owner picks a Pakistani gateway with per-message delivery reports and a sender ID. Many offer no request signature — then its reports are accepted only from its published addresses at the edge proxy and treated as advisory (R172) | Vendor and cost | Slice 17 (one real send on staging) |
-| — | **WhatsApp via WAHA.** WAHA automates WhatsApp Web; **numbers used this way can be banned.** The driver interface is the mitigation (the WhatsApp Business Cloud API is a second driver behind it). Also: WAHA Core runs one session per container, WAHA Plus several — more than one pilot school on one host needs Plus or one container per school. Owner accepts the pilot risk, or chooses the Business API from the start (per-conversation pricing, verified business) | Risk acceptance and cost | Slice 9's first real driver |
-| — | **Who turns "absent" into "late" at the gate.** The deck's slide 8 has the office recording the arrival; office staff hold no `attendance.student.mark` by default (Phase 1 §7). The plan builds `POST /attendance-arrivals` under that capability; the owner says whether the office-staff default gains `attendance.student.mark` (all scope) or each school grants it per clerk | Capability-default change | Slice 11 |
-| — | **How much a cover teacher gets.** The deck says "access to that class for the specified dates". The plan's `cover` assignment confers the **same section scope as a class teacher**: register, diary (any subject), remarks, `student.view` (guardian phone numbers included), section-scoped announcements. Owner confirms, or narrows to attendance only | Scope breadth | Slice 10 |
-| — | **Push and store accounts.** A Firebase project (FCM) in the owner's Google account; a **Google Play developer account** ($25 one-off) for the internal-testing track; **Android only in Phase 2** (iOS needs an Apple developer account, a Mac and its own review; deferred) | Accounts | Slice 15 |
+| 17 | WhatsApp number per school | **The principal provides and pairs the school's own number.** | `whatsapp_numbers` is a **tenant table**; pairing (QR), status and disable are school routes under `school.settings.manage`; the platform sees status only through the `platform_delivery_health` rollup. Exception 6 shrinks to the rollup table. |
+| 18 | Monthly SMS allowance | **The platform admin sets each school's limit in settings.** | `sms_monthly_cap` lives on the school record, written by `PATCH /platform/schools/:id` (platform session, audited) and read-only to the school (`GET /school/settings` shows it). The code default (500) applies until set. |
+| 13 | What a suspended school still sends | **Nothing is disturbed until the platform terminates the school.** | Suspension no longer suppresses anything: registers, alerts, WhatsApp and SMS continue; `suppressed:school_suspended` is removed from the enum; R113 becomes "terminated → dropped; suspended → unchanged". **This also lifts Phase 1 R80's read-only rule for suspended schools** (the owner's words: "not to disturb anything"); slice 9 removes the `SCHOOL_SUSPENDED` write refusal and keeps `suspended` as a platform-visible flag and a school-console banner. Item 13's grace window stays open only as a reporting question. |
+| — | SMS gateway provider | **Options requested; one or two cheap providers may be connected.** | `research-scout` report attached to `WORKLOG.md`; the driver stays generic and the first adapter is built once the owner picks from it. Two providers means a per-school or platform-default `sms_provider` setting, same pattern as WhatsApp below. |
+| — | WAHA vs WhatsApp Business API | **Both, selectable per school by the platform admin, with a platform-wide default that can be changed for all schools at once.** | Slice 9 builds **both drivers**: `WahaDriver` and `CloudApiDriver` (Meta Graph API; needs a Meta Business account, app and verified number per school — set-up steps in the contract). `schools.whatsapp_provider` (`waha|cloud_api|platform_default`) and a platform setting `default_whatsapp_provider`; `PATCH /platform/schools/:id` and a new `PATCH /platform/settings`. Adds about 2 days to slice 9 (now ≈ 9). |
+| — | Office staff marking **student** attendance | **Clarification pending** — the question was misread as teacher attendance. It is about *student* attendance: may office staff, by default, change a child's mark from absent to late when the child arrives at the gate? | Until answered, `POST /attendance-arrivals` is built under `attendance.student.mark` (principal by default; a school can grant it to a clerk). If the answer is yes, the office-staff default gains that key with `all` scope — a one-line change in `packages/shared`. |
+| — | Cover teacher's access | **All** — full class-teacher scope for the section and dates. | R132 stands as written. |
+| — | Push and store accounts | **The owner creates the Firebase project** (Google account `devjourtechnologiesteam`, second profile) and the Google Play developer account; Android only in Phase 2. | The service-account JSON goes into `.env` as `FCM_SERVICE_ACCOUNT_JSON` (base64) and never into git — the pre-commit hook blocks service-account JSON. |
 
 ---
 
@@ -111,10 +112,10 @@ asms/
         me/              NEW routes under /me/*: inbox, calendar, devices, children/*, student/*, staff/*
       repositories/platform/
         school-by-id.repository.ts      NEW, importable only from tenancy/queue.mint.ts
-        whatsapp-number.repository.ts   NEW, platform-owned table
         delivery-health.repository.ts   NEW, non-tenant rollup written by the per-school job
+      repositories/whatsapp-number.repository.ts   NEW, tenant table (the school pairs its own number)
       tenancy/queue.mint.ts   NEW: the fifth SchoolId constructor; runAsSchool()
-  apps/web/              school screens for every slice; platform: WhatsApp pairing, delivery health
+  apps/web/              school screens for every slice incl. WhatsApp pairing; platform: delivery health, per-school provider and SMS cap
   apps/mobile/           NEW: Expo (React Native), one role-aware app, Android
   packages/shared/       message types, attendance enums, categories, error codes, app-version floor
   docker-compose.yml     + waha (profile, private network, no published port)
@@ -142,7 +143,7 @@ beyond a short notice.
 | Queue | **BullMQ** on the existing Redis (`maxmemory-policy noeviction` already set). Queues `messaging`, `attendance`, `scheduled`. Job payload: `{ schoolId: string, ...ids }` — validated by zod on receipt (§4.1); never a body, a phone number or a name. Deterministic job ids (`message:<id>`). Repeatable jobs replace `@nestjs/schedule` crons. **Redis is not a system of record**: every job is re-derivable from Postgres rows, the outbox sweep re-enqueues anything lost, and a replayed job finds its row already claimed (R105). |
 | Worker | `apps/api/src/worker.ts`, same Nest modules, `WORKER=1`. `concurrency` set explicitly per queue. Every job body runs inside `runAsSchool(schoolId, fn)` in `src/tenancy/` — the only place the worker may open a CLS context — so concurrent jobs for two schools never share a transaction or tenant (test: interleaved jobs for A and B; each repository call sees only its own context). Health endpoint on its own port; graceful shutdown drains in-flight jobs. |
 | Push | **Firebase Cloud Messaging** via `firebase-admin`. `FCM_SERVICE_ACCOUNT_JSON` (base64); absent → `LogPushDriver` only when `NODE_ENV !== production` (R112). Push payload: `{ type, subjectType, subjectId, messageId }`, a title and the rendered body — never an identity number, phone number or token (R173). |
-| WhatsApp | **WAHA** (self-hosted, Docker, pinned by digest) behind `WhatsAppDriver`. One session per school number. Media is sent to WAHA as **bytes** (base64 or multipart), never as a URL the API would have to serve (R43 stands; R148). The webhook receives delivery status and session status; inbound messages are **counted and ignored** (the inbound workflow is unspecified). **Deployment requirements (DoD):** private compose network, no published port, only the API reaches it; `WHATSAPP_API_KEY` random; dashboard and swagger off (`WAHA_DASHBOARD_ENABLED=false`, `WHATSAPP_SWAGGER_ENABLED=false`); non-root, read-only root FS; the session and files volume **encrypted**, in encrypted backups, excluded from log shipping; log level `info` (debug prints message content); inbound media download off; files lifetime 24 h; message store purged every 7 days; the pairing QR shown once to a platform admin, never stored or logged, the action audited. `WAHA_URL`, `WAHA_API_KEY`, `WAHA_WEBHOOK_SECRET`. Compose profile `whatsapp`, off by default. |
+| WhatsApp | **Two drivers behind one `WhatsAppDriver` interface, selected per school** (`schools.whatsapp_provider`, platform default): **WAHA** (self-hosted, Docker, pinned by digest; one session per school number) and the **WhatsApp Business Cloud API** (Meta Graph API: `META_APP_SECRET`, per-school access token and phone-number id stored encrypted; template messages for the first contact, free-form inside the 24-hour window; webhook for status). The rest of this row is WAHA's deployment. Media is sent to WAHA as **bytes** (base64 or multipart), never as a URL the API would have to serve (R43 stands; R148). The webhook receives delivery status and session status; inbound messages are **counted and ignored** (the inbound workflow is unspecified). **Deployment requirements (DoD):** private compose network, no published port, only the API reaches it; `WHATSAPP_API_KEY` random; dashboard and swagger off (`WAHA_DASHBOARD_ENABLED=false`, `WHATSAPP_SWAGGER_ENABLED=false`); non-root, read-only root FS; the session and files volume **encrypted**, in encrypted backups, excluded from log shipping; log level `info` (debug prints message content); inbound media download off; files lifetime 24 h; message store purged every 7 days; the pairing QR shown once to a platform admin, never stored or logged, the action audited. `WAHA_URL`, `WAHA_API_KEY`, `WAHA_WEBHOOK_SECRET`. Compose profile `whatsapp`, off by default. |
 | SMS | `SmsDriver` interface: `send(to, text) → providerRef`, `parseDeliveryReport(req)`. `LogSmsDriver` in development and tests; one real adapter when the owner names the provider (§1.2). `SMS_PROVIDER`, `SMS_API_KEY`, `SMS_SENDER_ID`, `SMS_WEBHOOK_SECRET`. |
 | Email | Phase 1's `Mailer` becomes the fourth driver, unchanged behaviour. Staff with a verified email get email as the fallback for internal notices when they have no device. |
 | HTTP | `rawBody: true` on the Nest app (webhook HMAC over raw bytes); `426 UPGRADE_REQUIRED` added to the exception filter and the §3.9 status map. |
@@ -198,13 +199,15 @@ through `fromQueuePayload`. An unknown reference is `204` and a counter, never a
 webhook handlers never mint a `SchoolId` and never call a scoped repository. Recorded in
 `CLAUDE.md` with slice 9.
 
-**Named exception 6 — platform-owned messaging tables.** `whatsapp_numbers` (the platform
-provisions the SIM, pairs the session and disables it) and `platform_delivery_health` (a per-day
-rollup written by the per-school job) are **non-tenant tables carrying a `school_id` column**, like
-`platform_audit_log`. The platform reads and writes them through `repositories/platform/**`; the
-school reads its own WhatsApp status through a single-predicate read (`school_id = schoolId`),
-the `OwnSchoolRepository` pattern. The platform never reads `messages` or `message_deliveries`.
-This keeps exception 1's "exactly two operations inside a school" intact. Recorded with slice 9.
+**Named exception 6 — the delivery-health rollup.** `platform_delivery_health` (a per-day rollup
+written by the per-school job) is a **non-tenant table carrying a `school_id` column**, like
+`platform_audit_log`. The platform reads it through `repositories/platform/**` and never reads
+`messages`, `message_deliveries` or `whatsapp_numbers`. `whatsapp_numbers` is an ordinary tenant
+table: the principal pairs the school's own number (owner's answer to item 17). The platform's
+per-school knobs (`sms_monthly_cap`, `whatsapp_provider`, `sms_provider`) are columns on
+`schools`, written by `PATCH /platform/schools/:id` — the existing platform operation on the
+school record, not a new one — and read by the school through `OwnSchoolRepository`. This keeps
+exception 1's "exactly two operations inside a school" intact. Recorded with slice 9.
 
 ### 4.2 The notification service
 
@@ -217,7 +220,9 @@ The partial unique index per (subject, person) makes a retry idempotent (R107). 
 `messaging` processor claims the row, tries the channels in plan order, writes a
 `message_deliveries` row per attempt, retries with backoff, falls to the next channel after the
 type's attempt budget, and stops at the first channel that reports accepted. Delivery-status
-webhooks (WAHA, SMS) move a delivery forward; FCM reports accepted only.
+webhooks (WAHA, Cloud API, SMS) move a delivery forward; FCM reports accepted only. A suspended
+school is treated exactly like an active one (owner's answer to item 13); only a terminated school
+is dropped.
 
 **Message types (code table, `packages/shared/src/messages.ts`):**
 
@@ -316,7 +321,7 @@ The Phase 1 DTO grows additively; one audit action `school_settings.updated { ch
 | `lateAdviceEnabled` | false | R126 |
 | `lateCountsAs` / `lateCutoffTime` | present / null | R128, item 23 |
 | `leaveCountsAs` | excused | R128 |
-| `smsMonthlyCap` (0–10000) | 500 (development) | R109, item 18 |
+| `smsMonthlyCap` | read-only here; set by the platform on the school record (item 18) | R109 |
 | `smsAllowedTypes` (`MessageType[]`) | §1.1 item 22 | R109 |
 | `remarkDefaultVisibility` | guardian | R140, item 26 |
 | `remarkNotifyGuardians` | false | R140 |
@@ -425,12 +430,18 @@ exists in Phase 2**. `data-architect` reviews each migration's SQL before it is 
   for any past date is reconstructible from `started_on`/`ended_on`.
 
 **Messaging (slice 9)**
-- `whatsapp_numbers` *(non-tenant, platform-owned; exception 6)*: `school_id`, `phone` (E.164
-  CHECK), `waha_session varchar(64)` derived from the row id (never reused), `status`
-  (`pending|connected|down|disabled`), `last_healthy_at`, `last_error_code` (enum), `inbound_
-  ignored_count`, `paired_at/by`, `disabled_at/by/reason`. `whatsapp_numbers_school_id_live_key
-  UNIQUE (school_id) WHERE status <> 'disabled'` (a lost SIM is replaced without a delete);
-  `UNIQUE (waha_session)` global, allowlisted in `NON_SCHOOL_LEADING_INDEXES`.
+- `whatsapp_numbers` *(tenant)*: `phone` (E.164 CHECK), `provider` (`waha|cloud_api`, frozen),
+  `waha_session varchar(64)` derived from the row id (never reused; null for Cloud API),
+  `cloud_phone_number_id` and `cloud_access_token` (encrypted, AAD-bound; null for WAHA), `status`
+  (`pending|connected|down|disabled`), `last_healthy_at`, `last_error_code` (enum),
+  `inbound_ignored_count`, `paired_at/by`, `disabled_at/by/reason`. `whatsapp_numbers_school_id_
+  live_key UNIQUE (school_id) WHERE status <> 'disabled'` (a lost SIM is replaced without a
+  delete); `UNIQUE (waha_session)` and `UNIQUE (cloud_phone_number_id)` global (webhook
+  correlation, exception 5), allowlisted in `NON_SCHOOL_LEADING_INDEXES`.
+- `schools` *(non-tenant, existing)* gains `sms_monthly_cap int default 500`, `whatsapp_provider`
+  (`waha|cloud_api|platform_default`, default `platform_default`), `sms_provider` (same shape);
+  `platform_settings` *(non-tenant, new, one row)*: `default_whatsapp_provider`,
+  `default_sms_provider`.
 - `platform_delivery_health` *(non-tenant; exception 6)*: `school_id`, `day`, `channel`,
   `accepted`, `delivered`, `failed`, `suppressed`, `whatsapp_status`, `sms_used`, `sms_cap`,
   `computed_at`. `UNIQUE (school_id, day, channel)`. Written by the per-school rollup job; the
@@ -448,7 +459,7 @@ exists in Phase 2**. `data-architect` reviews each migration's SQL before it is 
   **`guardian_id`, `staff_id`, `student_id` nullable composite FKs with `messages_recipient_check`
   (exactly one)**, `body varchar(2000)` (`messages_body_no_id_check`), `media_object_key` nullable,
   `channel_plan message_channel[]`, `status` (`queued|sending|sent|delivered|failed|suppressed`),
-  `suppressed_reason` (enum `not_allowed|cap_reached|no_channel|school_suspended|backdated`),
+  `suppressed_reason` (enum `not_allowed|cap_reached|no_channel|backdated`),
   `created_at`, `finished_at`. Indexes `(school_id, status, created_at)` (the per-school sweep),
   `(school_id, subject_type, subject_id)`, and `(school_id, guardian_id, created_at)` /
   `(…staff_id…)` / `(…student_id…)` (the inbox). **R107 as constraints:** `messages_subject_
@@ -602,7 +613,7 @@ New error codes: `UPGRADE_REQUIRED` 426 · `WEBHOOK_SIGNATURE_INVALID` 401 ·
 `SUBJECT_ARCHIVED`, `PERMISSION_DENIED` with `details.reason ∈ {audience_requires_school,
 not_author}`.
 
-### Slice 9 — Messaging core, worker, bearer sessions, devices (≈ 7 days)
+### Slice 9 — Messaging core, worker, bearer sessions, devices (≈ 9 days)
 
 **Goal:** a message written by any service reaches a phone through the right channel, every
 attempt is logged, and nothing is lost if a process dies. No user-facing feature yet beyond a
@@ -615,8 +626,11 @@ attempt is logged, and nothing is lost if a process dies. No user-facing feature
   the segment-length test, `NotificationService`, routing (R106), `messages`,
   `message_deliveries`, `message_usage`, caps (R109), the phone pattern in the R16 scanner and
   the new `redact` paths.
-- 9.3 Drivers: `PushDriver` (FCM + log), `WhatsAppDriver` (WAHA + fake; media as bytes),
-  `SmsDriver` (log + one real adapter if the provider is named), `EmailDriver` (Phase 1 Mailer).
+- 9.3 Drivers: `PushDriver` (FCM + log), `WhatsAppDriver` with **two implementations** — WAHA
+  and the Cloud API — plus a fake, selected per school from `schools.whatsapp_provider` falling
+  back to `platform_settings.default_whatsapp_provider` (media as bytes on WAHA, by upload id on
+  the Cloud API), `SmsDriver` (log + adapters for the one or two providers the owner picks from
+  the research report, selected the same way), `EmailDriver` (Phase 1 Mailer).
   Webhooks: `POST /webhooks/waha`, `POST /webhooks/sms` under a sixth access decorator
   **`@Webhook('waha' | 'sms')`** (R172): HMAC over the **raw bytes** with that provider's secret,
   `timingSafeEqual`, a 5-minute timestamp window where the provider sends one; zod picks only the
@@ -624,9 +638,12 @@ attempt is logged, and nothing is lost if a process dies. No user-facing feature
   WEBHOOK_SIGNATURE_INVALID` with no details; the response never echoes the body; signed requests
   3,000/min, unsigned 10/min per IP; **excluded from both OpenAPI documents** (a third module
   bucket) and documented in `contracts/slice-9.md`. Exception 5 (§4.1) recorded in `CLAUDE.md`.
-- 9.4 `whatsapp_numbers` (platform-owned), WAHA session lifecycle (create, QR pairing shown to the
-  platform admin, health check every 5 minutes, `down` → fallback routing + one
-  `whatsapp_session_down` email per transition, R112); `platform_delivery_health` rollup.
+- 9.4 `whatsapp_numbers` (tenant), WAHA session lifecycle (create, **QR pairing shown to the
+  principal** on the messaging settings screen, health check every 5 minutes, `down` → fallback
+  routing + one `whatsapp_session_down` email to the platform per transition, R112); Cloud API
+  onboarding (the principal enters the phone-number id and token the school obtained from Meta;
+  the API verifies them with one Graph call); `platform_delivery_health` rollup;
+  `PATCH /platform/schools/:id` gains the cap and providers; `PATCH /platform/settings`.
 - 9.5 Bearer sessions: `POST /auth/login { …, channel? }` returns `bearerToken` in the body only for
   that channel (R153); per-channel and per-capacity lifetimes (R154); `MeService.mint` takes the
   channel from the presented session so **`POST /me/change-password` rotates on the same channel**
@@ -634,9 +651,11 @@ attempt is logged, and nothing is lost if a process dies. No user-facing feature
   R170); `POST /me/devices`; `POST /me/sessions/revoke-others` (kill a lost phone from another
   sign-in) and `POST /users/:id/sign-out-everywhere` (office, audited, no password reset) (R169);
   logout revokes the session's device (R159). `X-App-Version` floor (R161).
-- 9.6 Suspended-school behaviour (R113, per the owner's §1.2 answer), the §4.5 settings fields,
-  platform screens **WhatsApp pairing** and **Delivery health**, school screen **Messaging
-  settings** (cap, allow list, usage, test message).
+- 9.6 Lift R80 (suspended schools are no longer read-only; banner only), the §4.5 settings
+  fields, platform screens **Delivery health** and the per-school **messaging knobs** (cap,
+  providers) on the school record plus **Platform settings** (defaults for all schools), school
+  screen **Messaging settings** (WhatsApp pairing or Cloud API details, allow list, usage, cap
+  read-only, test message).
 
 | Method and path | Access | Request | Response | Errors / notes |
 |---|---|---|---|---|
@@ -650,12 +669,14 @@ attempt is logged, and nothing is lost if a process dies. No user-facing feature
 | `GET\|PATCH /school/settings` | `school.settings.manage` | adds §4.5 fields | `200 SchoolSettingsDto` | one resource, one audit action |
 | `POST /messaging/test` | `school.settings.manage` | `{ channel: 'whatsapp'\|'sms'\|'push' }` | `200 { messageId }` | to the caller's **staff** phone; counts against the cap; `409 CONTACT_PHONE_MISSING`, `SMS_CAP_EXCEEDED`; 5/min per user |
 | `GET /messaging/usage` | `school.settings.manage` | `NoQueryDto` | `{ months: [{ yearMonth, byChannel: [{ channel, count }] }], cap, remaining }` | this and last month |
-| `GET /messaging/whatsapp` | `school.settings.manage` | — | `{ status, lastHealthyAt, phoneMasked }` | single-predicate read of the platform-owned row |
+| `GET /messaging/whatsapp` | `school.settings.manage` | — | `WhatsAppNumberDto { provider, phoneMasked, status, lastHealthyAt, lastErrorCode, inboundIgnoredCount, pairedAt }` | the school's own row |
+| `POST /messaging/whatsapp/pair` | `school.settings.manage` | `{ phone?: PhoneField }` (WAHA, first pairing) | `200 { qr: data URI, expiresAt }` | `409 WHATSAPP_ALREADY_CONNECTED`, `WHATSAPP_NUMBER_MISSING`; QR never logged; audited |
+| `POST /messaging/whatsapp/connect-cloud-api` | `school.settings.manage` | `{ phone, phoneNumberId, accessToken }` | `200 WhatsAppNumberDto` | token stored encrypted, verified with one Graph call; `409 WHATSAPP_ALREADY_CONNECTED`; audited; never logged |
+| `POST /messaging/whatsapp/disable` | `school.settings.manage` | `{ reason: 3–500 }` | `200 WhatsAppNumberDto` | already disabled → `200`, no audit |
+| `PATCH /platform/schools/:id` | `@PlatformSession()` | adds `smsMonthlyCap?: 0–100000`, `whatsappProvider?`, `smsProvider?` | `200 SchoolDto` | audited with the changes (item 18, WhatsApp provider per school) |
+| `GET\|PATCH /platform/settings` | `@PlatformSession()` | `{ defaultWhatsappProvider?, defaultSmsProvider? }` | `200 PlatformSettingsDto` | changes every school on `platform_default` at once; audited |
 | `GET /platform/messaging/health` | `@PlatformSession()` | paginated; `whatsappStatus?`, `q`; sort `name`, `-name`, `-failed24h`, `-smsUsed` | `{ schoolId, name, shortCode, whatsapp: { status, lastHealthyAt, lastErrorCode }, last24h: [{ channel, accepted, delivered, failed, suppressed }], sms: { used, cap } }` | from `platform_delivery_health` only (R114) |
-| `GET /platform/schools/:id/whatsapp` | `@PlatformSession()` | — | `WhatsAppNumberDto { schoolId, phoneMasked, status, lastHealthyAt, lastErrorCode, inboundIgnoredCount, pairedAt }` | — |
-| `POST /platform/schools/:id/whatsapp/pair` | `@PlatformSession()` | `{ phone?: PhoneField }` (first pairing) | `200 { qr: data URI, expiresAt }` | `409 WHATSAPP_ALREADY_CONNECTED`, `WHATSAPP_NUMBER_MISSING`; QR never logged; audited |
-| `POST /platform/schools/:id/whatsapp/disable` | `@PlatformSession()` | `{ reason: 3–500 }` | `200 WhatsAppNumberDto` | already disabled → `200`, no audit |
-| `POST /webhooks/waha`, `POST /webhooks/sms` | `@Webhook(provider)` | raw provider body + signature header | `204` on any verified body | `401 WEBHOOK_SIGNATURE_INVALID`; `429` per IP; in no OpenAPI document |
+| `POST /webhooks/waha`, `POST /webhooks/meta`, `POST /webhooks/sms/:provider` | `@Webhook(provider)` | raw provider body + signature header | `204` on any verified body | `401 WEBHOOK_SIGNATURE_INVALID`; `429` per IP; in no OpenAPI document |
 
 Tests: R105–R115, R153–R155, R159, R161, R169–R173; routing matrix by capability × priority
 (table-driven, every cell); cap reached mid-batch; WAHA down → SMS; webhook replay and forged
@@ -952,7 +973,7 @@ unrecorded section and records it. Jest for the register tap cycle and the deriv
 | Item | Phase 2 stance |
 |---|---|
 | 7–11 (money, exit states, retention) | No money tables. R164 keeps an ended link's child out of the parent's scope; retention of a departed family's access is item 11. |
-| 13 | Per the owner's §1.2 answer; until then suspended = read-only plus `suppressed:school_suspended` on WhatsApp/SMS. |
+| 13 | Settled by the owner: nothing changes under suspension until termination (R80 lifted in slice 9). The grace window before *termination* is still the platform's manual decision. |
 | 12 staff leave | `cover` role only. No leave requests, entitlements or payroll effect. |
 | 14, 15, 21 (results, promotion, approval unit) | Untouched; Phase 4 reads attendance from `attendance_day_status`, not raw marks. |
 | 24, 25 (late payment, banking) | Untouched. |
@@ -999,12 +1020,13 @@ unrecorded section and records it. Jest for the register tap cycle and the deriv
   fallback and emails the platform once per transition (school name and id only). In production a
   missing driver credential fails boot; in development it selects the log driver.
 - R113 The worker resolves `schoolId` only through `fromQueuePayload` (zod-validated, unbranded
-  platform read, brand applied in the mint file), which drops a terminated school; every job body
-  runs in `runAsSchool`; for a suspended school the §1.2 answer applies (default:
-  `suppressed:school_suspended` on WhatsApp and SMS, push continues).
+  platform read, brand applied in the mint file), which drops a terminated school and treats a
+  suspended school exactly as an active one (owner's answer to item 13); every job body runs in
+  `runAsSchool`. Slice 9 also lifts Phase 1 R80: a suspended school is no longer read-only — the
+  flag shows on the platform console and as a banner in the school console, nothing else.
 - R114 The platform's delivery-health view reads only `platform_delivery_health` and shows
   counts, statuses and mapped error codes per school, never a message body, a recipient or a
-  phone number.
+  phone number; the platform never reads a school's `whatsapp_numbers` row.
 - R115 A push goes only to a device whose session is live and not idle-expired (checked by join at
   send time); logout, revocation, disable, office reset, sign-out-everywhere and staff leaving all
   stop push to that device within one request.
@@ -1218,8 +1240,8 @@ All of `CLAUDE.md`'s Definition of Done, read literally, plus:
 - Exactly one worker instance, the WAHA container with its persistent encrypted session volume
   and health check, and the edge-proxy allow-list for an unsigned SMS provider are documented
   deployment requirements.
-- `CLAUDE.md` records the fifth `SchoolId` constructor, exceptions 3 (widened), 5 and 6, and the
-  amendment of R37.
+- `CLAUDE.md` records the fifth `SchoolId` constructor, exceptions 3 (widened), 5 and 6, the
+  amendment of R37, the lifting of R80, and the owner's §1.2 answers as settled rules.
 - `WORKLOG.md` says what Phase 3 inherits and what was deferred, with register numbers.
 
 ---

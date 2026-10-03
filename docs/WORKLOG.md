@@ -67,13 +67,15 @@ slice 0 are not counted.
    migration) → wave D (slices 9 + 10) → wave E (11, 12, 13, 15 in parallel) → wave F (14, 16)
    → wave G (17). Slices 9 and 10 need no owner answer to start; see §1.2 for what each later
    slice waits on.
-3a. **Product owner, Phase 2 §1.2 — cannot default:** (17) who provides each pilot school's
-   WhatsApp SIM; (18) the monthly SMS allowance per school; (13) whether registers and absence
-   alerts, SMS included, continue when a school is suspended; the SMS gateway provider; accepting
-   WAHA's ban risk vs the WhatsApp Business API; whether office staff gain
-   `attendance.student.mark` by default (the gate recording arrivals); how much a cover teacher
-   gets (full class-teacher scope, or attendance only); Firebase project, Google Play account,
-   Android-only for Phase 2.
+3a. **Owner answered Phase 2 §1.2 on 2026-10-03** (recorded in the plan): the principal pairs
+   the school's own WhatsApp number; the platform admin sets each school's SMS cap; **nothing is
+   disturbed under suspension until termination** (this lifts Phase 1 R80's read-only rule —
+   slice 9 removes it); SMS provider options researched (`research-scout` report below) and one
+   or two will be connected; **both** WAHA and the WhatsApp Business API, selectable per school
+   with a platform default; cover teacher gets full class-teacher scope; the owner creates the
+   Firebase project and the Play account; Android only. **Still open:** whether office staff may,
+   by default, change a *student's* mark from absent to late at the gate (the question was
+   misread as teacher attendance). Blocks only slice 11's arrivals default.
 4. Product owner, decisions taken provisionally by the main thread — confirm or overturn:
    (a) principals are unrestricted peers (grants/revokes on a principal refused);
    (b) the login-spike recorder as part of named exception 2 (CLAUDE.md);
