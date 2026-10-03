@@ -15,8 +15,10 @@ writes the production code.** Do not start application code in a planning sessio
   guardrails; platform console and school record; school logins, sessions, users, settings;
   academic structure; guardians; staff and teacher assignments; students, enrolment, admission,
   documents; custom roles, grants and the permissions screen; phase close. Project progress
-  30 / 155 days ≈ 19.4 %. **Next: plan Phase 2 (Fable)** — read "What Phase 2 inherits" below and
-  settle the schema-freeze register items first.
+  30 / 155 days ≈ 19.4 %. **Phase 2 is planned** (`docs/plans/phase-2-daily-operations.md`,
+  2026-10-03, reviewed by four specialists, findings folded in). **Next: Opus executes wave D
+  (slices 9 + 10) after the groundwork commit** — but read the plan's §1.2 first: seven owner
+  answers gate specific slices, and the Phase 1 CI run is still unconfirmed.
 - **CI not yet seen green.** The workflow now starts object storage (Chainguard MinIO, pinned by
   digest) for the document suites; nothing else was missing. The repo is private and this machine
   has no GitHub login: **the product owner must open the Actions run for the Phase 1 commit and
@@ -60,8 +62,18 @@ slice 0 are not counted.
    results approval unit, SMS allow list, late arrival, late-payment charge, banking, remark
    visibility). Phase 1 was meant to close them and did not; Phase 3's schema cannot freeze
    without 7–13.
-3. **Fable: plan Phase 2** (daily operations: attendance, diary, notices, WhatsApp/SMS drivers,
-   first React Native app) from "What Phase 2 inherits" below and the register.
+3. **Opus: execute Phase 2** from `docs/plans/phase-2-daily-operations.md`. Order: groundwork
+   commit (§6.1 shared enums, error codes, message-type table; the `cover` enum value in its own
+   migration) → wave D (slices 9 + 10) → wave E (11, 12, 13, 15 in parallel) → wave F (14, 16)
+   → wave G (17). Slices 9 and 10 need no owner answer to start; see §1.2 for what each later
+   slice waits on.
+3a. **Product owner, Phase 2 §1.2 — cannot default:** (17) who provides each pilot school's
+   WhatsApp SIM; (18) the monthly SMS allowance per school; (13) whether registers and absence
+   alerts, SMS included, continue when a school is suspended; the SMS gateway provider; accepting
+   WAHA's ban risk vs the WhatsApp Business API; whether office staff gain
+   `attendance.student.mark` by default (the gate recording arrivals); how much a cover teacher
+   gets (full class-teacher scope, or attendance only); Firebase project, Google Play account,
+   Android-only for Phase 2.
 4. Product owner, decisions taken provisionally by the main thread — confirm or overturn:
    (a) principals are unrestricted peers (grants/revokes on a principal refused);
    (b) the login-spike recorder as part of named exception 2 (CLAUDE.md);
@@ -161,6 +173,58 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Phase 2 plan written and reviewed (Fable 5.1) — DONE
+
+`docs/plans/phase-2-daily-operations.md`: nine slices (9–17), about 40 days, rules R105–R175,
+schema, endpoint tables with shapes and codes, the decisions it needs. Scope: messaging core with
+a worker and four drivers (push, WhatsApp via WAHA, SMS, email), calendar and holidays, student
+attendance (registers, corrections with history, arrivals, alerts, derived day status, rollups),
+staff attendance, diary and remarks, announcements with the shared audience picker, and the first
+mobile app (Expo, Android) with offline registers.
+
+**Reviews and what they changed** (all four ran on the first draft; the file is the second):
+- `business-rules`: the absence alert would have sent "absent" at 8:35 in the deck's own
+  example and never corrected it → alerts at a clock time (09:30) with a floor, sent only if every
+  recorded period is still absent, corrected on any later change, reversals capped; the
+  percentage changed meaning between daily and period modes → the day is the unit in both; the
+  derived-status precedence hid a mid-day absence → reordered with `partial`; a section change
+  edited in place made past rosters unreconstructible → section change becomes close/open (R37
+  amended, R174); a holiday reached parents twice → the announcement is the notice; holidays
+  declared after registers were recorded → R167; nobody but the principal could record an arrival
+  → `POST /attendance-arrivals` (R168); the submit body had no reason while the trigger demanded
+  one → reason on submit, `STALE_STATUS` on amend; seven "defaults" were really owner decisions
+  → §1.2.
+- `security-reviewer`: the worker's school lookup would have let any module mint a tenant from a
+  string → a one-method platform repository importable only from the queue mint, zod-validated
+  payloads, a scoped conditional claim per job, `runAsSchool`; an ended guardian link kept access
+  → removed on the next request (R164); guardian scope ignored `can_login` → fixed (R163);
+  password change minted a cookie for a phone → rotation on the caller's channel; WAHA message
+  ids embed the phone number and the scanner misses 12-digit numbers → hashed references, phone
+  pattern in the scanner, mapped error codes; a bearer token could be minted from the browser →
+  refused with `Origin` or a cookie (R170); staff bearer lifetimes shortened (14 d/90 d); device
+  revoke and office sign-out-everywhere (R169); webhook hardening as rules (R172); WAHA deployment
+  requirements; uploads capability (R171); dated role-aware scope (R175).
+- `data-architect`: holidays as single dates made a summer break 70 rows and 70 notices → date
+  ranges with an exclusion constraint; array-of-id columns dodged the schema guard → join tables
+  and the guard regex extended; `recipient_kind/id` → three nullable FKs with a CHECK (changing
+  this later rewrites every message); the marks table at ~4.8 M rows/school-year → lean (no
+  `student_id`, `marked_by`, year; four indexes), one-statement upsert, trigger-written history
+  via `set_config(…, true)`; a boolean dirty flag lost updates → version pair; the section summary
+  cannot serve report cards → per-enrolment `attendance_day_status`; `whatsapp_numbers` →
+  platform-owned (exception 6); a webhook's provider-ref lookup → named exception 5; `cover`'s
+  enum value must be its own migration; `devices.push_token` must not be unique.
+- `api-designer`: the mobile app could not log in under the Phase 1 Origin rule → the check now
+  applies only to requests with neither `Authorization` nor `X-App-Version`; two idempotency
+  mechanisms → the slice-6 header only; `PUT` → `POST /sections/:id/submit-register`; every
+  `@RequireCapacity` route under `/me/<capacity>/*` (R78 snapshot); `MeDto` gains `capacities` and
+  `assignments`; full request/response/error tables per slice; the groundwork list of 23 error
+  codes and 22 enums (§6.1).
+
+**Decisions the plan takes provisionally (owner to confirm or overturn):** `late_counts_as`
+default present with an optional cutoff; amendment window 3 days (the deck said end of day);
+remarks default guardian-visible, on enquiry; bearer lifetimes 30/180 d guardians, 14/90 d staff;
+office staff do not read the diary by default.
 
 ## 2026-10-03 — Slice 8: Phase 1 close (Opus 5.5) — DONE
 
