@@ -189,7 +189,7 @@ storage (and Docker Hub no longer serves `minio/minio` — **owner chose Chaingu
 by digest**, in compose and CI; older checkouts chown the volume once, see README); tablet width
 (`apps/web/e2e/responsive.spec.ts`, every route at 768 px, no page-level overflow); F5 proofs;
 `code-auditor` on the close-out diff (four lows, fixed); "What Phase 2 inherits" written below.
-**Fresh clone verified** (into `D:smsf`, dev stack stopped): README followed literally to a
+**Fresh clone verified** (into `D:\asmsf`, dev stack stopped): README followed literally to a
 signed-in principal on the default password — about 5 minutes with a cold `pnpm install`. One
 README addition from it: clone into a short path on Windows (260-character limit).
 
