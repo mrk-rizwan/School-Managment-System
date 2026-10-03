@@ -224,7 +224,7 @@ transaction, a cap-reached retry loop, allow-list check at attempt time. Refacto
 - The seed script stopped compiling when `failureLog` moved into an import chain carrying
   pino types; `failureLog` now lives in `common/errors/failure-log.ts`.
 
-**Results:** lint and typecheck clean; API 100 suites / 1,298 tests (2 skipped — real-provider
+**CI green on `578c210` (run 37157788364).** **Results:** lint and typecheck clean; API 100 suites / 1,298 tests (2 skipped — real-provider
 contract tests, run only with `RUN_DRIVER_TESTS=1`); web build; Playwright 192/192 including
 the real-API specs; hook clean.
 
