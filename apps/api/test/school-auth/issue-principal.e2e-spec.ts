@@ -172,6 +172,27 @@ describe('issue principal login', () => {
     expect(codeOf(await issue(other, { ...person(), cnic: suspended.cnic }).expect(409))).toBe('STAFF_NOT_ACTIVE');
   });
 
+  it('linking a staff login ends its grant and revoke rows with no school-user ender (slice-7 §4.4)', async () => {
+    const school = await createSchool();
+    const boss = await createSchoolUser(db(), school, { systemRole: 'principal' });
+    const clerk = await createSchoolUser(db(), school, { systemRole: 'office_staff' });
+    for (const [capabilityKey, effect] of [['payment.verify', 'grant'], ['payment.record', 'revoke']] as const) {
+      await db().userCapabilityGrant.create({
+        data: { schoolId: school.id, userId: clerk.userId, capabilityKey, effect, grantedBy: boss.userId, reason: 'Test setup' },
+      });
+    }
+    await issue(school, { ...person(), cnic: clerk.cnic, confirmLinkExisting: true, reason: 'Second head' }).expect(201);
+    const rows = await db().userCapabilityGrant.findMany({ where: { schoolId: school.id, userId: clerk.userId } });
+    expect(rows.map((r) => [r.revokedAt !== null, r.revokedBy, r.endReason])).toEqual([
+      [true, null, 'became principal'],
+      [true, null, 'became principal'],
+    ]);
+    const audit = await db().auditLog.findFirst({
+      where: { schoolId: school.id, subjectId: clerk.userId, action: 'user.principal_login_issued' },
+    });
+    expect(audit?.metadata).toMatchObject({ linkedExistingUser: true, grantsEnded: 2 });
+  });
+
   it('refuses a disabled login (USER_DISABLED) and a current principal (ALREADY_PRINCIPAL)', async () => {
     const school = await createSchool();
     const existing = await createSchoolUser(db(), school, { systemRole: 'principal' });

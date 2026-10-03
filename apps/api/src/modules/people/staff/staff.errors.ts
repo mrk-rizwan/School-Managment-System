@@ -5,8 +5,17 @@ import { ApiException } from '../../../common/errors/api-exception';
 export const selfForbidden = (): ApiException =>
   new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot do this to your own account.');
 
-export const staffNotActive = (): ApiException =>
-  new ApiException(409, ErrorCode.STAFF_NOT_ACTIVE, 'This staff member is not active.');
+/**
+ * `reason` is given where the contract names one (slice-7 §4.1, R49): `no_staff_role` is an
+ * active staff record whose login holds no live role row.
+ */
+export const staffNotActive = (reason?: 'staff_not_active' | 'no_staff_role'): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.STAFF_NOT_ACTIVE,
+    reason === 'no_staff_role' ? 'This user holds no staff role.' : 'This staff member is not active.',
+    reason === undefined ? undefined : { reason },
+  );
 
 export const loginExists = (): ApiException =>
   new ApiException(409, ErrorCode.LOGIN_ALREADY_EXISTS, 'This staff member already has a login.');

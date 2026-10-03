@@ -8,12 +8,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { PageHeader } from '@/components/app-shell';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
-import {
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  isPermissionDenied,
-} from '@/components/page-states';
+import { QueryStates } from '@/components/page-states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
@@ -49,33 +44,17 @@ export function SchoolSettings() {
     queryFn: () => unwrap(school.GET('/api/v1/school/settings')),
   });
 
-  let body: React.ReactNode;
-  if (settings.isPending) body = <Frame><LoadingState rows={3} /></Frame>;
-  else if (settings.error) {
-    body = (
-      <Frame>
-        {isPermissionDenied(settings.error) ? (
-          <NoPermissionState />
-        ) : (
-          <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
-        )}
-      </Frame>
-    );
-  } else {
-    // Keyed by the last update so the form restarts from the saved values.
-    body = <SettingsForm key={settings.data.updatedAt} settings={settings.data} />;
-  }
-
   return (
     <>
       <PageHeader title="School settings" description="Settings that apply to the whole school." />
-      <div className="max-w-2xl">{body}</div>
+      <div className="max-w-2xl">
+        <QueryStates query={settings} loadingRows={3}>
+          {/* Keyed by the last update so the form restarts from the saved values. */}
+          {(data) => <SettingsForm key={data.updatedAt} settings={data} />}
+        </QueryStates>
+      </div>
     </>
   );
-}
-
-function Frame({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-lg border bg-card">{children}</div>;
 }
 
 function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {

@@ -11,7 +11,6 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -21,13 +20,7 @@ import { PageHeader } from '@/components/app-shell';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  isPermissionDenied,
-} from '@/components/page-states';
+import { BackLink, QueryStates } from '@/components/page-states';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,21 +38,19 @@ import {
   type StudentStatus,
   type UpdateStudentBody,
 } from '@/lib/api/school-students-contract';
+import { formatDate, formatDay, todayInSchool } from '@/lib/format';
+import { schoolKeys, useCapabilities } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
-import { formatDay } from '../../academics/_lib/academics-ui';
-import { useCapabilities } from '../../academics/_lib/hooks';
-import { formatIdentityInput, fullNameSchema, optionalCnicSchema } from '../../guardians/_lib/guardians-ui';
+import { formatIdentityInput, nameSchema, optionalCnicSchema } from '@/lib/validation';
 import {
-  GENDER_LABELS,
-  STUDENT_STATUS_LABELS,
-  StudentStatusBadge,
   dateOfBirthProblem,
-  formatInstant,
+  GENDER_LABELS,
+  IssueStudentLoginDialog,
   placeLabel,
+  STUDENT_STATUS_LABELS,
   studentsKeys,
-  todayInSchool,
+  StudentStatusBadge,
 } from '../_lib/students-ui';
-import { IssueStudentLoginDialog } from '../_lib/issue-login-dialog';
 import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
@@ -76,96 +67,80 @@ export function StudentDetail({ id }: { id: string }) {
     queryFn: () => unwrap(studentsApi.GET('/api/v1/students/{id}', { params: { path: { id } } })),
   });
 
-  const back = (
-    <Link
-      href="/students"
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeftIcon className="size-4" />
-      Students
-    </Link>
-  );
-  const frame = (children: React.ReactNode) => (
-    <>
-      {back}
-      <div className="rounded-lg border bg-card">{children}</div>
-    </>
-  );
-
-  if (student.isPending) return frame(<LoadingState rows={5} />);
-  if (student.error) {
-    if (isPermissionDenied(student.error)) return frame(<NoPermissionState />);
-    // Absent, another school's, or outside a teacher's sections: one answer (§1).
-    const notFound = student.error instanceof ApiError && student.error.status === 404;
-    return frame(
-      notFound ? (
-        <EmptyState title="Student not found" description="Find them in the students list." />
-      ) : (
-        <ErrorState error={student.error} onRetry={() => void student.refetch()} />
-      ),
-    );
-  }
-
-  const data = student.data;
-  const tabs: { value: Tab; label: string }[] = [
-    { value: 'details', label: 'Details' },
-    { value: 'guardians', label: 'Guardians' },
-    { value: 'enrolments', label: 'Enrolment history' },
-    ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
-    { value: 'history', label: 'Status history' },
-  ];
-  const place = placeLabel(data.current);
-
   return (
     <>
-      {back}
-      <div className="flex items-start gap-4">
-        {data.photoDocumentId && <StudentPhoto key={data.photoDocumentId} documentId={data.photoDocumentId} />}
-        <div className="min-w-0 flex-1">
-          <PageHeader
-            title={data.fullName}
-            description={[`Admission no. ${data.admissionNo}`, place].filter(Boolean).join(' · ')}
-            actions={<StudentStatusBadge status={data.status} />}
-          />
-        </div>
-      </div>
-      <div role="tablist" aria-label="Student record" className="mb-6 flex flex-wrap gap-1 border-b">
-        {tabs.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            id={`tab-${value}`}
-            aria-selected={tab === value}
-            aria-controls={`panel-${value}`}
-            onClick={() => setTab(value)}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
-              tab === value
-                ? 'border-primary font-medium text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === 'details' && (
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            {/* Keyed by the last update so the form restarts from the saved values. */}
-            <DetailsCard key={data.updatedAt} student={data} />
-            <div className="grid gap-6">
-              <StatusCard student={data} />
-              <LoginCard student={data} />
-            </div>
-          </div>
-        )}
-        {tab === 'guardians' && <GuardianLinksTab student={data} />}
-        {tab === 'enrolments' && <EnrolmentsTab student={data} />}
-        {tab === 'documents' && <DocumentsTab student={data} />}
-        {tab === 'history' && <StatusHistory studentId={data.id} />}
-      </div>
+      <BackLink href="/students">Students</BackLink>
+      {/* Absent, another school's, or outside a teacher's sections: one answer, 404 (§1). */}
+      <QueryStates
+        query={student}
+        notFound={{
+          title: 'Student not found',
+          description: 'Find them in the students list.',
+        }}
+      >
+        {(data) => {
+          const tabs: { value: Tab; label: string }[] = [
+            { value: 'details', label: 'Details' },
+            { value: 'guardians', label: 'Guardians' },
+            { value: 'enrolments', label: 'Enrolment history' },
+            ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
+            { value: 'history', label: 'Status history' },
+          ];
+          const place = placeLabel(data.current);
+
+          return (
+            <>
+              <div className="flex items-start gap-4">
+                {data.photoDocumentId && <StudentPhoto key={data.photoDocumentId} documentId={data.photoDocumentId} />}
+                <div className="min-w-0 flex-1">
+                  <PageHeader
+                    title={data.fullName}
+                    description={[`Admission no. ${data.admissionNo}`, place].filter(Boolean).join(' · ')}
+                    actions={<StudentStatusBadge status={data.status} />}
+                  />
+                </div>
+              </div>
+              <div role="tablist" aria-label="Student record" className="mb-6 flex flex-wrap gap-1 border-b">
+                {tabs.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    id={`tab-${value}`}
+                    aria-selected={tab === value}
+                    aria-controls={`panel-${value}`}
+                    onClick={() => setTab(value)}
+                    className={cn(
+                      '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+                      tab === value
+                        ? 'border-primary font-medium text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+                {tab === 'details' && (
+                  <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    {/* Keyed by the last update so the form restarts from the saved values. */}
+                    <DetailsCard key={data.updatedAt} student={data} />
+                    <div className="grid gap-6">
+                      <StatusCard student={data} />
+                      <LoginCard student={data} />
+                    </div>
+                  </div>
+                )}
+                {tab === 'guardians' && <GuardianLinksTab student={data} />}
+                {tab === 'enrolments' && <EnrolmentsTab student={data} />}
+                {tab === 'documents' && <DocumentsTab student={data} />}
+                {tab === 'history' && <StatusHistory studentId={data.id} />}
+              </div>
+            </>
+          );
+        }}
+      </QueryStates>
     </>
   );
 }
@@ -191,7 +166,7 @@ function StudentPhoto({ documentId }: { documentId: string }) {
 // ---- Details (§3.5) ----
 
 const editSchema = z.object({
-  fullName: fullNameSchema,
+  fullName: nameSchema(2, 200),
   gender: z.string().refine((v) => (GENDERS as readonly string[]).includes(v), 'Choose a gender.'),
   dateOfBirth: z.string().superRefine((v, ctx) => {
     const problem = dateOfBirthProblem(v);
@@ -439,7 +414,6 @@ function ChangeStatusDialog({
       : effectiveOn < student.admittedOn
         ? 'The date cannot be before the admission date.'
         : null;
-  const fieldError = change.error instanceof ApiError ? change.error.fieldErrors[0]?.message : undefined;
   const leaving = status === 'withdrawn' || status === 'transferred';
 
   return (
@@ -496,7 +470,7 @@ function ChangeStatusDialog({
       )}
       {change.error && !isAlreadyDone(change.error) && (
         <Alert variant="destructive">
-          <AlertDescription>{fieldError ?? describeApiError(change.error)}</AlertDescription>
+          <AlertDescription>{describeApiError(change.error)}</AlertDescription>
         </Alert>
       )}
     </ConfirmWithReasonDialog>
@@ -512,7 +486,7 @@ function LoginCard({ student }: { student: StudentDetailDto }) {
   // answers STUDENT_LOGIN_DISABLED when it is off.
   const canReadSettings = can(Capability.SCHOOL_SETTINGS_MANAGE);
   const settings = useQuery({
-    queryKey: ['school', 'settings'],
+    queryKey: schoolKeys.settings,
     queryFn: () => unwrap(school.GET('/api/v1/school/settings')),
     enabled: canReadSettings,
   });
@@ -551,7 +525,6 @@ function LoginCard({ student }: { student: StudentDetailDto }) {
 // ---- Status history (§3.3) ----
 
 const HISTORY_LIMIT = 25;
-const NO_CHANGES: StatusChangeDto[] = [];
 
 function StatusHistory({ studentId }: { studentId: string }) {
   const [page, setPage] = useState(1);
@@ -586,23 +559,18 @@ function StatusHistory({ studentId }: { studentId: string }) {
         cell: (info) => <span className="whitespace-normal">{info.getValue() ?? '—'}</span>,
       }),
       column.accessor('changedByName', { header: 'By' }),
-      column.accessor('createdAt', { header: 'Recorded', cell: (info) => formatInstant(info.getValue()) }),
+      column.accessor('createdAt', { header: 'Recorded', cell: (info) => formatDate(info.getValue()) }),
     ];
   }, []);
 
-  const result = changes.data;
   return (
     <DataTable
       columns={columns}
-      data={result?.data ?? NO_CHANGES}
+      query={changes}
       getRowId={(row) => row.id}
-      page={result?.page ?? page}
-      limit={result?.limit ?? HISTORY_LIMIT}
-      total={result?.total ?? 0}
+      page={page}
+      limit={HISTORY_LIMIT}
       onPageChange={setPage}
-      isLoading={changes.isPending || changes.isPlaceholderData}
-      error={changes.error}
-      onRetry={() => void changes.refetch()}
       emptyTitle="No status changes"
     />
   );

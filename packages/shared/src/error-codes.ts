@@ -89,6 +89,13 @@ export const ErrorCode = {
   ENROLMENT_NOT_ACTIVE: 'ENROLMENT_NOT_ACTIVE',
   ROLL_NO_TAKEN: 'ROLL_NO_TAKEN',
   CLASS_IN_OTHER_YEAR: 'CLASS_IN_OTHER_YEAR',
+  // slice 7: custom roles, grants
+  CUSTOM_ROLE_KEY_TAKEN: 'CUSTOM_ROLE_KEY_TAKEN',
+  CUSTOM_ROLE_ARCHIVED: 'CUSTOM_ROLE_ARCHIVED',
+  CUSTOM_ROLE_IN_USE: 'CUSTOM_ROLE_IN_USE',
+  GRANT_EXISTS: 'GRANT_EXISTS',
+  // A grant or revoke aimed at a principal: principals are unrestricted peers (slice-7 §4.1).
+  TARGET_IS_PRINCIPAL: 'TARGET_IS_PRINCIPAL',
   // Client-side only: the web app's label for a failed response whose body was not the error
   // envelope (a proxy page, say). The API never sends it.
   UNEXPECTED_RESPONSE: 'UNEXPECTED_RESPONSE',

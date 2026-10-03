@@ -6,7 +6,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import { useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
-import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { DataTable, type DataTableFeatures, RowActions } from '@/components/data-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,19 +22,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { unwrap } from '@/lib/api/client';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { describeApiError } from '@/lib/api/errors';
 import {
   studentsApi,
   type EnrolmentDto,
   type StudentDetailDto,
 } from '@/lib/api/school-students-contract';
-import { RowActions, formatDay } from '../../academics/_lib/academics-ui';
-import { useCapabilities } from '../../academics/_lib/hooks';
-import { PlacementSelects, useSections, type Placement } from '../_lib/placement';
-import { ENROLMENT_STATUS_LABELS, studentsKeys, todayInSchool } from '../_lib/students-ui';
+import { formatDay, todayInSchool } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
+import { useSections } from '../../academics/_lib/options';
+import { PlacementSelects, type Placement } from '../_lib/placement';
+import { ENROLMENT_STATUS_LABELS, studentsKeys } from '../_lib/students-ui';
 
 const LIMIT = 25;
-const NO_ROWS: EnrolmentDto[] = [];
 
 /** contracts/slice-6.md §5 (R37–R39). Only the active enrolment can be changed. */
 export function EnrolmentsTab({ student }: { student: StudentDetailDto }) {
@@ -112,21 +112,16 @@ export function EnrolmentsTab({ student }: { student: StudentDetailDto }) {
     ];
   }, [canManage]);
 
-  const result = enrolments.data;
   const close = () => setAction(null);
   return (
     <>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={enrolments}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={enrolments.isPending || enrolments.isPlaceholderData}
-        error={enrolments.error}
-        onRetry={() => void enrolments.refetch()}
         emptyTitle="No enrolments"
       />
       {canManage && (
@@ -151,9 +146,6 @@ export function EnrolmentsTab({ student }: { student: StudentDetailDto }) {
     </>
   );
 }
-
-const errorText = (error: unknown) =>
-  (error instanceof ApiError ? error.fieldErrors[0]?.message : undefined) ?? describeApiError(error);
 
 /** PATCH /enrolments/:id — an integer 1–9999, or blank to clear (R37). */
 function RollNoDialog({
@@ -233,7 +225,7 @@ function RollNoForm({
       </div>
       {save.error && (
         <Alert variant="destructive">
-          <AlertDescription>{errorText(save.error)}</AlertDescription>
+          <AlertDescription>{describeApiError(save.error)}</AlertDescription>
         </Alert>
       )}
       <DialogFooter>
@@ -307,7 +299,7 @@ function ChangeSectionDialog({
       </div>
       {change.error && (
         <Alert variant="destructive">
-          <AlertDescription>{errorText(change.error)}</AlertDescription>
+          <AlertDescription>{describeApiError(change.error)}</AlertDescription>
         </Alert>
       )}
     </ConfirmWithReasonDialog>
@@ -399,7 +391,7 @@ function ChangeClassDialog({
       )}
       {change.error && (
         <Alert variant="destructive">
-          <AlertDescription>{errorText(change.error)}</AlertDescription>
+          <AlertDescription>{describeApiError(change.error)}</AlertDescription>
         </Alert>
       )}
     </ConfirmWithReasonDialog>

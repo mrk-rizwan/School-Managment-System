@@ -128,6 +128,7 @@ async function mockGuardiansApi(page: Page, state: MockState) {
           studentId: null,
           fullName: found.fullName,
           systemRoles: [],
+          customRoleNames: [],
           status: 'active',
           emailMasked: null,
           hasEmail: false,
@@ -210,6 +211,17 @@ test('a user without guardian.manage gets the no-permission state', async ({ pag
 });
 
 // ---- Create ----
+
+test('create: a user without guardian.manage gets the no-permission state, not the form', async ({
+  page,
+}) => {
+  await mockGuardiansApi(page, { me: TEACHER_ME });
+  await page.goto('/guardians/new');
+  await expect(page.getByText('You do not have access')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New guardian' })).toBeVisible();
+  await expect(page.getByLabel('Full name')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add guardian' })).toHaveCount(0);
+});
 
 test('create: contact capability is required; a shared phone is shown before creating', async ({
   page,

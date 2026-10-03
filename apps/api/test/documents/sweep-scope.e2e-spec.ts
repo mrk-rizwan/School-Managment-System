@@ -138,8 +138,28 @@ describe('staged uploads, scope and isolation (e2e)', () => {
           await db.school.update({ where: { id: school.id }, data: { status } });
         }
       }
-      const result = await app.get(StagedUploadSweep).sweepAll(new Date());
-      expect(result.deleted).toBeGreaterThanOrEqual(3);
+      // The shared test database holds every school any suite ever made, so sweeping them all
+      // grows without bound. The fan-out itself is real; only the per-school sweep of schools not
+      // made here is stubbed, and every school the fan-out lists must still be visited once.
+      const sweep = app.get(StagedUploadSweep);
+      const ours = new Set(rows.map((row) => row.school.id));
+      const realSweepSchool = sweep.sweepSchool.bind(sweep);
+      const visit = jest
+        .spyOn(sweep, 'sweepSchool')
+        .mockImplementation((schoolId, now) =>
+          ours.has(schoolId) ? realSweepSchool(schoolId, now) : Promise.resolve({ deleted: 0, failed: 0 }),
+        );
+      let result: { deleted: number; failed: number };
+      let visited: bigint[];
+      try {
+        result = await sweep.sweepAll(new Date());
+      } finally {
+        visited = visit.mock.calls.map(([schoolId]) => schoolId);
+        visit.mockRestore();
+      }
+      expect(new Set(visited).size).toBe(visited.length);
+      for (const id of ours) expect(visited).toContain(id);
+      expect(result).toEqual({ deleted: 3, failed: 0 });
       for (const { school, id, objectKey } of rows) {
         expect(await rowExists(school, id)).toBe(false);
         expect(await exists(objectKey)).toBe(false);

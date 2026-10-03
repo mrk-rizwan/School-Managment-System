@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../../common/auth/school-session';
-import { ApiException, notFound } from '../../../common/errors/api-exception';
+import { ApiException, concurrentUpdate, notFound } from '../../../common/errors/api-exception';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
+import { CapabilityGrantRepository } from '../../../repositories/capability-grant.repository';
 import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { SessionRepository } from '../../../repositories/session.repository';
 import { StaffRepository } from '../../../repositories/staff.repository';
@@ -17,10 +18,20 @@ import { denied, lastPrincipal, selfForbidden } from './staff.errors';
 import { StaffService } from './staff.service';
 import { TeacherAssignmentsService } from './teacher-assignments.service';
 
+/** end_reason of the grant rows R17 ends. */
+export const STAFF_LEFT = 'staff left';
+
+/** Attempts when a login is issued to the staff member between the read and the staff lock. */
+const ATTEMPTS = 3;
+
+/** Thrown inside the transaction to roll it back (releasing its locks) and start again. */
+class LoginChangedDuringLock extends Error {}
+
 /**
  * POST /staff/:id/change-status (contracts/slice-4.md §3.5; R12, R14, R17-R19, R70, R72-R74).
  * Lock order: school_settings (when leaving) -> the target's user row -> staff row -> assignments.
  */
+
 @Injectable()
 export class StaffStatusService {
   constructor(
@@ -28,6 +39,7 @@ export class StaffStatusService {
     private readonly staff: StaffRepository,
     private readonly users: UserRepository,
     private readonly roles: UserRoleRepository,
+    private readonly grants: CapabilityGrantRepository,
     private readonly sessions: SessionRepository,
     private readonly settings: SchoolSettingsRepository,
     private readonly assignments: TeacherAssignmentsService,
@@ -41,7 +53,15 @@ export class StaffStatusService {
     id: bigint,
     dto: ChangeStaffStatusDto,
   ): Promise<StaffDto> {
-    await this.apply(session, id, dto);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.apply(session, id, dto);
+        break;
+      } catch (error) {
+        if (!(error instanceof LoginChangedDuringLock)) throw error;
+        if (attempt >= ATTEMPTS) throw concurrentUpdate();
+      }
+    }
     return this.staffService.read(session.schoolId, id);
   }
 
@@ -57,13 +77,12 @@ export class StaffStatusService {
     if (leaving) await this.settings.lock(schoolId);
     const before = await this.staff.findById(schoolId, id);
     if (!before) throw notFound();
-    let user = before.userId === null ? null : await this.users.lock(schoolId, before.userId);
+    const user = before.userId === null ? null : await this.users.lock(schoolId, before.userId);
     const staff = await this.staffService.lock(schoolId, id);
     // A login issued between the read and the staff lock (issue-login holds the staff lock while
-    // it creates one, so it has committed by now): lock it too.
-    if (staff.userId !== null && staff.userId !== user?.id) {
-      user = await this.users.lock(schoolId, staff.userId);
-    }
+    // it creates one, so it has committed by now). Locking it now would take a user row after a
+    // staff row, against the lock order: roll back and start again with the login in the read.
+    if (staff.userId !== null && staff.userId !== user?.id) throw new LoginChangedDuringLock();
 
     // R74: nobody changes their own staff status.
     if (actor.staffId === id) throw selfForbidden();
@@ -87,9 +106,17 @@ export class StaffStatusService {
     let rolesEnded = 0;
     let assignmentsEnded = 0;
     let sessionsRevoked = 0;
+    let grantsEnded = 0;
     if (to === 'left') {
-      // R17. Grants ended with reason "staff left" arrive with slice 7 (GrantsRepository.endAllForUser).
-      if (user) rolesEnded = await this.roles.endAllForUser(schoolId, user.id, actor.userId, now);
+      // R17: roles, grants and revokes end (contracts/slice-7.md §4.3); re-hire restores none (R19).
+      if (user) {
+        rolesEnded = await this.roles.endAllForUser(schoolId, user.id, actor.userId, now);
+        grantsEnded = await this.grants.endAllForUser(schoolId, user.id, {
+          revokedBy: actor.userId,
+          endReason: STAFF_LEFT,
+          now,
+        });
+      }
       assignmentsEnded = await this.assignments.endAllForStaff(
         schoolId,
         id,
@@ -111,7 +138,7 @@ export class StaffStatusService {
       subjectType: 'staff',
       subjectId: id,
       reason: dto.reason,
-      metadata: { from, to, rolesEnded, assignmentsEnded, sessionsRevoked },
+      metadata: { from, to, rolesEnded, assignmentsEnded, sessionsRevoked, grantsEnded },
     });
   }
 

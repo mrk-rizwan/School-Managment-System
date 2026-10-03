@@ -24,12 +24,13 @@ import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { platform, type CreateSchoolBody, type SchoolDto } from '@/lib/api/platform-contract';
 import { platformKeys } from '@/lib/platform-session';
-import { schoolNameSchema, useTimezoneOptions } from '../school-ui';
+import { nameSchema } from '@/lib/validation';
+import { useTimezoneOptions } from '../school-ui';
 
 // contracts/slice-1.md §4.2. The API repeats every rule; these only save a round trip.
 const FEE_DUE_DAY_MESSAGE = `Enter a day from ${MIN_FEE_DUE_DAY} to ${MAX_FEE_DUE_DAY}.`;
 const schema = z.object({
-  name: schoolNameSchema,
+  name: nameSchema(2, 200),
   shortCode: z
     .string()
     .trim()

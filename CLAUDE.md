@@ -79,7 +79,7 @@ Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3,
 
 11. **One campus per school.** The school is the tenant and `school_id` is the tenant key. There is no campus dimension on any table. A group of schools under one owner is separate tenants; a nullable `school_group_id` on the school record is the only trace of it.
 12. **Login identity is the CNIC.** Username is the person's CNIC digits with dashes removed, for guardians and staff. The **default password is the same digits**; the user may change the password at any time. The username does not change. The office creates every account at admission or hiring; **nobody self-registers.** A person who is both staff and guardian has one login carrying both capability sets. At admission the office must search existing guardians by CNIC and link, never create a duplicate; `merged_into_id` exists on the guardian table from the first migration. Security conditions that come with this choice and are not optional: the CNIC is stored encrypted and looked up through an indexed hash, and **the username is stored only as that hash, never in clear**; it is never written to a log line or a URL; login is rate-limited and locks after repeated failures; the office can see which accounts still use the default password. **Students** log in with their own national identity number (the 13-digit B-Form / CRC number) with dashes removed, same default-password rule; a student with no number recorded has no login until the office enters one. **First login prompts a password change but does not force it.** **Password reset** is by a code sent to the account's email address; the user must enter an email before they can change their password, so every changed password has a reset path. Users with no email (keypad-phone guardians) are reset by the office to the default, which is the stated fallback. The office can see which accounts have no email and which still use the default password.
-13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can($capability, $subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list (51 keys) and the system-role defaults are in `docs/plans/phase-1-foundation.md` §6 and live in code.
+13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can(capability, subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list (51 keys) and the system-role defaults are in `docs/plans/phase-1-foundation.md` §6 and live in code.
 14. **Attendance is stored per period.** Each class carries a setting for whether staff record it daily or per period; a daily mark is stored as the day's single period. The offline idempotency key is `UNIQUE (school_id, enrolment_id, date, period)`.
 15. **Sessions and money settings.** The principal defines academic years (sessions) and assigns each class to one, so a school may run, for example, an April session and a September session side by side. Fee due day defaults to the 10th of the month and is changeable per school. Currency is PKR. **Amounts are whole rupees**: stored as integers, no paisa, displayed without decimals.
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
@@ -116,7 +116,7 @@ signature but never the query itself:
    `src/repositories/`) throws if a tenant-model operation has no defined `schoolId` in its
    `where` or `data`, if any `where` value is `undefined` (Prisma drops it silently and returns
    the school's first row), or if `findUnique` is used. Its compatibility with interactive
-   transactions is verified in slice 0; the stated fallback is a mandatory `tenantWhere()` helper.
+   transactions was verified in slice 0 (`transaction-atomicity.spec.ts`); no fallback was needed.
 6. **Writes use scalar foreign keys, never `connect`**, so the composite foreign key rejects
    another school's id in the database. Raw-unsafe queries, `as SchoolId` and `any` are banned by
    lint. Since slice 0 the API's lint is **type-aware**: an untyped value (`req.body`) cannot flow
@@ -139,13 +139,14 @@ trusted.
 
 ### The named exceptions — code that legitimately runs without a school
 
-Four things must query without a `SchoolId`. They are the whole list; adding a fourth is a
+Four things must query without a `SchoolId`. They are the whole list; adding a fifth is a
 decision recorded here, not a convenience.
 
 1. **The platform module** (platform admins managing schools). Its repositories live in
    `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
    `platform_users`, `platform_sessions`, `platform_audit_log`), and may be imported only from
-   `src/modules/platform/**`. Enforced by the same ESLint rule. **The platform acts inside a
+   `src/modules/platform/**`, plus the two sites named under exceptions 2 and 3 (each limited
+   by ESLint `NAMED_EXCEPTION_SITES` to one platform repository). Enforced by the same ESLint rule. **The platform acts inside a
    school for exactly two operations:** creating the school, which writes its first
    `school_settings` row and its counters in the same transaction (the tenant comes into being),
    and issuing a principal's login, which is refused while the school already has an active
@@ -157,9 +158,14 @@ decision recorded here, not a convenience.
    predicate is `id = schoolId`; school-owned settings and counters live in tenant tables, not on
    `schools`.
 2. **The pre-auth school lookup** at login and forgot-password: one method,
-   `SchoolLookupRepository.findByCode(code)`, returning `id`, `shortCode`, `status` and nothing else.
-3. **The scheduler fan-out**: one method listing active school ids, used only to enqueue one job
-   per school. The job itself carries a `SchoolId` and uses ordinary repositories.
+   `SchoolLookupRepository.findByCode(code)`, returning `id`, `shortCode`, `status` and nothing else. Its companion is the login-spray alarm
+   (`src/modules/auth/login-spike.recorder.ts`), which may only write a row to
+   `platform_audit_log` through `PlatformAuditRepository` (added in wave A, 2026-10-03; awaiting
+   the product owner's confirmation as part of this exception).
+3. **The scheduler fan-out**: one method, `SchoolFanOutRepository.listAllForFanOut()`, listing
+   every school's id whatever its status (suspended and terminated schools still need their
+   staged uploads swept, R41/R90). A scheduled job iterates them and works per school with
+   ordinary scoped repositories; a job that serves only live schools filters on status itself.
 4. **Session resolution**: one method, `SessionRepository.findActiveByTokenHash(hash)`, because the
    session token is what establishes the tenant. It returns the session with its `schoolId` and
    `userId`; everything after it is scoped. Reset and email-verification links carry the school

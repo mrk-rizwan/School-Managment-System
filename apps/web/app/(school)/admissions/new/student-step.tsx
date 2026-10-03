@@ -18,13 +18,13 @@ import {
   type Gender,
   type StudentLookupResultDto,
 } from '@/lib/api/school-students-contract';
-import { formatIdentityInput, fullNameSchema } from '../../guardians/_lib/guardians-ui';
+import { todayInSchool } from '@/lib/format';
+import { formatIdentityInput, nameSchema } from '@/lib/validation';
 import {
-  GENDER_LABELS,
-  STUDENT_STATUS_LABELS,
   dateOfBirthProblem,
+  GENDER_LABELS,
   placeLabel,
-  todayInSchool,
+  STUDENT_STATUS_LABELS,
 } from '../../students/_lib/students-ui';
 import type { Guard, StudentDraft } from './wizard-types';
 import { NotesField } from '../../students/_lib/notes-field';
@@ -163,7 +163,7 @@ function BFormCheck({ onChecked, guard }: { onChecked: (bForm: string | null) =>
 }
 
 const schema = z.object({
-  fullName: fullNameSchema,
+  fullName: nameSchema(2, 200),
   gender: z.string().refine((v) => (GENDERS as readonly string[]).includes(v), 'Choose a gender.'),
   dateOfBirth: z.string().superRefine((v, ctx) => {
     const problem = dateOfBirthProblem(v);

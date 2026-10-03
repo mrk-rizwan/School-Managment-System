@@ -44,6 +44,7 @@ const user = (id: string, fullName: string, extra: Partial<UserDto> = {}): UserD
   studentId: null,
   fullName,
   systemRoles: ['teacher'],
+  customRoleNames: [],
   status: 'active',
   emailMasked: 'k***@example.test',
   hasEmail: true,
@@ -437,6 +438,28 @@ test.describe('user accounts', () => {
         passwordIsDefault: 'true',
         hasEmail: 'false',
       });
+  });
+
+  test('an identity number typed into the search is never sent as q, dashed or not', async ({
+    page,
+  }) => {
+    const requests = await mockSchoolApi(page, { me: PRINCIPAL_ME, users: [user('u1', 'Kamran Teacher')] });
+    const sentQ = () =>
+      requests
+        .filter((r) => new URL(r.url()).pathname === '/api/v1/users')
+        .map((r) => new URL(r.url()).searchParams.get('q'));
+    await open(page, '/users');
+    const search = page.getByLabel('Search');
+    await search.fill('Kamran');
+    await expect.poll(() => sentQ().at(-1)).toBe('Kamran');
+
+    for (const cnic of ['35201-1234567-1', '35201 1234567 1', '+92 35201-1234567-1']) {
+      await search.fill(cnic);
+      await expect(page.getByText('Search by name. Identity numbers are not searchable.')).toBeVisible();
+    }
+    // Nothing typed above reaches the query, not even once the debounce has settled.
+    await page.waitForTimeout(600);
+    expect(sentQ().filter((q) => q !== null && /\d/.test(q))).toEqual([]);
   });
 
   test('office reset requires the keep-or-clear choice and a reason', async ({ page }) => {

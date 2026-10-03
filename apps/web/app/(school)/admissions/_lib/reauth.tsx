@@ -21,7 +21,7 @@ import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { school, type MeDto } from '@/lib/api/school-contract';
 import { schoolKeys, useSchoolMe } from '@/lib/school-session';
-import { formatIdentityInput } from '../../guardians/_lib/guardians-ui';
+import { formatIdentityInput } from '@/lib/validation';
 
 /** Thrown when the user gives up signing in again, or signs in as someone else. */
 export class ReauthAbandoned extends Error {

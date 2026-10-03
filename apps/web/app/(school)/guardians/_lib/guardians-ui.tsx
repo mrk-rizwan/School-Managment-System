@@ -1,11 +1,10 @@
 'use client';
 
-import { CONTACT_CAPABILITIES, IDENTITY_INPUT_PATTERN, normalisePhone } from '@asms/shared';
+import { CONTACT_CAPABILITIES, normalisePhone } from '@asms/shared';
 import { useId } from 'react';
-import { useController, useWatch, type Control, type FieldValues, type Path } from 'react-hook-form';
+import { useController, type Control, type FieldValues, type Path } from 'react-hook-form';
 import { z } from 'zod';
-import { FormField } from '@/components/form-field';
-import { Badge } from '@/components/ui/badge';
+import { FormField, PhoneField } from '@/components/form-field';
 import type { ContactCapability } from '@/lib/api/school-guardians-contract';
 
 // Pieces shared by the guardian list, lookup, create and detail screens (contracts/slice-5.md).
@@ -24,28 +23,8 @@ export const CONTACT_CAPABILITY_LABELS: Record<ContactCapability, string> = {
   keypad: 'Keypad phone',
 };
 
-/** Formats CNIC digits as they are typed: 35201-1234567-1. Anything but digits is dropped. */
-export function formatIdentityInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 13);
-  if (digits.length <= 5) return digits;
-  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
-}
-
-// ---- Form rules (§3.4). The API repeats every one; these only save a round trip. ----
-
-export const fullNameSchema = z
-  .string()
-  .trim()
-  .min(2, 'Use at least 2 characters.')
-  .max(200, 'Use at most 200 characters.')
-  .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.');
-
-/** Blank, or 13 digits dashed as 5-7-1. */
-export const optionalCnicSchema = z
-  .string()
-  .trim()
-  .refine((v) => v === '' || IDENTITY_INPUT_PATTERN.test(v), 'Enter all 13 digits, as 35201-1234567-1.');
+// ---- Form rules (§3.4). The API repeats every one; these only save a round trip. The name,
+// CNIC and blank-to-null rules are shared (lib/validation.ts). ----
 
 export const contactFieldsSchema = z.object({
   phone: z
@@ -66,13 +45,7 @@ export const contactFieldsSchema = z.object({
 });
 export type ContactFieldValues = z.input<typeof contactFieldsSchema>;
 
-/** `''` becomes null: the API reads null as "not given" on create and "clear" on edit. */
-export const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim());
-
-/**
- * Phone, email, contact capability and address: the fields create and edit share. The phone
- * preview shows what the server is expected to store; the server's answer is authoritative.
- */
+/** Phone, email, contact capability and address: the fields create and edit share. */
 export function ContactFields<T extends FieldValues & ContactFieldValues>({
   control,
   disabled,
@@ -80,25 +53,9 @@ export function ContactFields<T extends FieldValues & ContactFieldValues>({
   control: Control<T>;
   disabled?: boolean;
 }) {
-  const phone = (useWatch({ control, name: 'phone' as Path<T> }) as string | undefined) ?? '';
-  const normalised = phone.trim() ? normalisePhone(phone) : null;
   return (
     <>
-      <FormField
-        control={control}
-        name={'phone' as Path<T>}
-        label="Mobile phone (optional)"
-        type="tel"
-        inputMode="tel"
-        autoComplete="off"
-        maxLength={20}
-        disabled={disabled}
-        hint={
-          normalised
-            ? `Will be saved as ${normalised}.`
-            : 'Pakistani numbers such as 0300 1234567, or international with +.'
-        }
-      />
+      <PhoneField control={control} name={'phone' as Path<T>} label="Mobile phone (optional)" disabled={disabled} />
       <ContactCapabilityField control={control} disabled={disabled} />
       <FormField
         control={control}
@@ -176,11 +133,6 @@ function ContactCapabilityField<T extends FieldValues>({
       )}
     </fieldset>
   );
-}
-
-/** "No CNIC" / "No phone" flags of the list (§2). */
-export function MissingBadge({ children }: { children: React.ReactNode }) {
-  return <Badge variant="outline">{children}</Badge>;
 }
 
 /** "father of Ali, Class 5" for each live link of a lookup hit. */

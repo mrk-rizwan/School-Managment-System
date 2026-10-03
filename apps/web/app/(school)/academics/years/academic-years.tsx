@@ -5,12 +5,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { PlusIcon } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { DataTable, SortHeader, type DataTableFeatures } from '@/components/data-table';
+import {
+  DataTable,
+  type DataTableFeatures,
+  type RowAction,
+  RowActions,
+  SortHeader,
+} from '@/components/data-table';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
+import { FilterSelect } from '@/components/list-filters';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,10 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
 import { unwrap } from '@/lib/api/client';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { ApiError, describeApiError, toastApiError } from '@/lib/api/errors';
 import {
   academics,
   type AcademicYearDto,
@@ -33,41 +38,26 @@ import {
   type AcademicYearStatus,
   type UpdateAcademicYearBody,
 } from '@/lib/api/school-academics-contract';
-import { useCapabilities } from '../_lib/hooks';
-import {
-  RowActions,
-  YEAR_STATUS_LABELS,
-  YearStatusBadge,
-  academicsKeys,
-  formatDay,
-  nameSchema,
-  toastApiError,
-  type RowAction,
-} from '../_lib/academics-ui';
+import { formatDay } from '@/lib/format';
+import { useListPage } from '@/lib/hooks';
+import { useCapabilities } from '@/lib/school-session';
+import { nameSchema } from '@/lib/validation';
+import { academicsKeys, YEAR_STATUS_LABELS, YearStatusBadge } from '../_lib/academics-ui';
 
 const LIMIT = 25;
-const NO_ROWS: AcademicYearDto[] = [];
 
 /** contracts/slice-3.md §2: several years may be active at once; closed is final. */
 export function AcademicYears() {
   const queryClient = useQueryClient();
   const { can } = useCapabilities();
   const canManage = can(Capability.ACADEMIC_YEAR_MANAGE);
-  const [page, setPage] = useState(1);
   const [status, setStatus] = useState<AcademicYearStatus | ''>('');
   const [sort, setSort] = useState<AcademicYearSort>('-startsOn');
-  const statusId = useId();
   // null: closed; 'new': create; a year: edit.
   const [editing, setEditing] = useState<AcademicYearDto | 'new' | null>(null);
   const [closing, setClosing] = useState<AcademicYearDto | null>(null);
 
-  // A filter or sort change starts again at page 1.
-  const filterKey = `${status}|${sort}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
+  const [page, setPage] = useListPage([status, sort]);
 
   const query: AcademicYearListQuery = { page, limit: LIMIT, sort, ...(status && { status }) };
   const years = useQuery({
@@ -123,25 +113,17 @@ export function AcademicYears() {
     ];
   }, [sort, canManage, activate]);
 
-  const result = years.data;
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="grid w-full gap-1.5 sm:w-44">
-          <Label htmlFor={statusId}>Status</Label>
-          <NativeSelect
-            id={statusId}
-            value={status}
-            onChange={(event) => setStatus(event.target.value as AcademicYearStatus | '')}
-          >
-            <option value="">All statuses</option>
-            {ACADEMIC_YEAR_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {YEAR_STATUS_LABELS[s]}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <FilterSelect label="Status" value={status} onChange={setStatus} className="sm:w-44">
+          <option value="">All statuses</option>
+          {ACADEMIC_YEAR_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {YEAR_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </FilterSelect>
         {canManage && (
           <Button onClick={() => setEditing('new')}>
             <PlusIcon />
@@ -151,15 +133,11 @@ export function AcademicYears() {
       </div>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={years}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={years.isPending || years.isPlaceholderData}
-        error={years.error}
-        onRetry={() => void years.refetch()}
         emptyTitle={status ? 'No academic years match' : 'No academic years yet'}
         emptyDescription={
           status

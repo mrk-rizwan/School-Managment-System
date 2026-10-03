@@ -38,6 +38,7 @@ export function toUserDto(user: UserRecord): UserDto {
     studentId: user.studentId?.toString() ?? null,
     fullName: user.fullName,
     systemRoles: user.systemRoles,
+    customRoleNames: user.customRoleNames,
     status: user.status,
     emailMasked: user.email === null ? null : maskEmail(user.email),
     hasEmail: user.email !== null,

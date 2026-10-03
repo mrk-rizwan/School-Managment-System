@@ -3,7 +3,6 @@
 import { Capability, ErrorCode, normaliseIdentityDigits } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -11,43 +10,37 @@ import { toast } from 'sonner';
 import { PageHeader } from '@/components/app-shell';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  isPermissionDenied,
-} from '@/components/page-states';
+import { BackLink, QueryStates } from '@/components/page-states';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { unwrap } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/errors';
+import { ApiError, refusalMessage } from '@/lib/api/errors';
 import {
   staffApi,
   type StaffDto,
   type StaffStatus,
   type UpdateStaffBody,
 } from '@/lib/api/school-staff-contract';
-import { useSchoolMe } from '@/lib/school-session';
+import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
-import { useCapabilities } from '../../academics/_lib/hooks';
-import { blankToNull, formatIdentityInput } from '../../guardians/_lib/guardians-ui';
+import { blankToNull, formatIdentityInput } from '@/lib/validation';
 import {
   STAFF_STATUS_LABELS,
   StaffMoreFields,
   StaffStatusBadge,
-  staffErrorMessage,
   staffFieldsSchema,
   staffKeys,
   type StaffFieldValues,
 } from '../_lib/staff-ui';
+import { accessKeys } from '../../custom-roles/_lib/custom-roles-ui';
 import { AssignmentsTab } from './assignments-tab';
+import { PermissionsTab } from './permissions-tab';
 import { LoginAndRolesTab } from './roles-tab';
 
-type Tab = 'details' | 'roles' | 'assignments';
+type Tab = 'details' | 'roles' | 'assignments' | 'permissions';
 
 /** contracts/slice-4.md §3.2, §3.4, §3.5 and §8. */
 export function StaffDetail({ id }: { id: string }) {
@@ -60,97 +53,87 @@ export function StaffDetail({ id }: { id: string }) {
     queryFn: () => unwrap(staffApi.GET('/api/v1/staff/{id}', { params: { path: { id } } })),
   });
 
-  const back = (
-    <Link
-      href="/staff"
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeftIcon className="size-4" />
-      Staff
-    </Link>
-  );
-  const frame = (children: React.ReactNode) => (
-    <>
-      {back}
-      <div className="rounded-lg border bg-card">{children}</div>
-    </>
-  );
-
-  if (staff.isPending) return frame(<LoadingState rows={5} />);
-  if (staff.error) {
-    if (isPermissionDenied(staff.error)) return frame(<NoPermissionState />);
-    const notFound = staff.error instanceof ApiError && staff.error.status === 404;
-    return frame(
-      notFound ? (
-        <EmptyState title="Staff member not found" description="Find them in the staff list." />
-      ) : (
-        <ErrorState error={staff.error} onRetry={() => void staff.refetch()} />
-      ),
-    );
-  }
-
-  const data = staff.data;
-  // R74: nobody changes their own status or roles; the controls are hidden on one's own record.
-  const isSelf = data.userId !== null && data.userId === me.data?.id;
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'details', label: 'Details' },
-    { id: 'roles', label: 'Login and roles' },
-    // GET …/teacher-assignments needs class.manage (§1).
-    ...(can(Capability.CLASS_MANAGE) ? [{ id: 'assignments' as const, label: 'Teaching assignments' }] : []),
-  ];
-
   return (
     <>
-      {back}
-      <PageHeader
-        title={data.fullName}
-        description={data.designation ?? 'Staff member'}
-        actions={
-          <>
-            <StaffStatusBadge status={data.status} />
-            {can(Capability.STAFF_STATUS_CHANGE) && !isSelf && (
-              <Button variant="outline" onClick={() => setStatusOpen(true)}>
-                Change status
-              </Button>
-            )}
-          </>
-        }
-      />
-      {isSelf && (
-        <Alert className="mb-6">
-          <AlertDescription>
-            This is your own record. Another member of staff changes your status and roles.
-          </AlertDescription>
-        </Alert>
-      )}
-      <div role="tablist" aria-label="Staff member" className="mb-6 flex gap-1 border-b">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`staff-tab-${t.id}`}
-            aria-selected={tab === t.id}
-            aria-controls={`staff-panel-${t.id}`}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
-              tab === t.id
-                ? 'border-primary font-medium text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`staff-panel-${tab}`} aria-labelledby={`staff-tab-${tab}`}>
-        {/* Keyed by the last update so the form restarts from the saved values. */}
-        {tab === 'details' && <EditStaffForm key={data.updatedAt} staff={data} />}
-        {tab === 'roles' && <LoginAndRolesTab staff={data} isSelf={isSelf} />}
-        {tab === 'assignments' && <AssignmentsTab staff={data} />}
-      </div>
-      <ChangeStatusDialog staff={data} open={statusOpen} onOpenChange={setStatusOpen} />
+      <BackLink href="/staff">Staff</BackLink>
+      <QueryStates
+        query={staff}
+        notFound={{
+          title: 'Staff member not found',
+          description: 'Find them in the staff list.',
+        }}
+      >
+        {(data) => {
+          // R74: nobody changes their own status or roles; the controls are hidden on one's own
+          // record.
+          const isSelf = data.userId !== null && data.userId === me.data?.id;
+          const tabs: { id: Tab; label: string }[] = [
+            { id: 'details', label: 'Details' },
+            { id: 'roles', label: 'Login and roles' },
+            // GET …/teacher-assignments needs class.manage (§1).
+            ...(can(Capability.CLASS_MANAGE) ? [{ id: 'assignments' as const, label: 'Teaching assignments' }] : []),
+            // GET …/permissions needs role.manage, never on one's own login (slice-7 §9, R47, R55).
+            ...(can(Capability.ROLE_MANAGE) && data.userId && !isSelf
+              ? [{ id: 'permissions' as const, label: 'Permissions' }]
+              : []),
+          ];
+
+          return (
+            <>
+              <PageHeader
+                title={data.fullName}
+                description={data.designation ?? 'Staff member'}
+                actions={
+                  <>
+                    <StaffStatusBadge status={data.status} />
+                    {can(Capability.STAFF_STATUS_CHANGE) && !isSelf && (
+                      <Button variant="outline" onClick={() => setStatusOpen(true)}>
+                        Change status
+                      </Button>
+                    )}
+                  </>
+                }
+              />
+              {isSelf && (
+                <Alert className="mb-6">
+                  <AlertDescription>
+                    This is your own record. Another member of staff changes your status and roles.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div role="tablist" aria-label="Staff member" className="mb-6 flex gap-1 border-b">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    id={`staff-tab-${t.id}`}
+                    aria-selected={tab === t.id}
+                    aria-controls={`staff-panel-${t.id}`}
+                    onClick={() => setTab(t.id)}
+                    className={cn(
+                      '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+                      tab === t.id
+                        ? 'border-primary font-medium text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <div role="tabpanel" id={`staff-panel-${tab}`} aria-labelledby={`staff-tab-${tab}`}>
+                {/* Keyed by the last update so the form restarts from the saved values. */}
+                {tab === 'details' && <EditStaffForm key={data.updatedAt} staff={data} />}
+                {tab === 'roles' && <LoginAndRolesTab staff={data} isSelf={isSelf} />}
+                {tab === 'assignments' && <AssignmentsTab staff={data} />}
+                {tab === 'permissions' && data.userId && <PermissionsTab staff={data} userId={data.userId} />}
+              </div>
+              <ChangeStatusDialog staff={data} open={statusOpen} onOpenChange={setStatusOpen} />
+            </>
+          );
+        }}
+      </QueryStates>
     </>
   );
 }
@@ -344,6 +327,8 @@ function ChangeStatusDialog({
     onSuccess: (updated) => {
       queryClient.setQueryData(staffKeys.detail(updated.id), updated);
       void queryClient.invalidateQueries({ queryKey: staffKeys.all });
+      // Leaving ends grants and revokes, and status decides whether anything is in force.
+      void queryClient.invalidateQueries({ queryKey: accessKeys.allPermissions });
       toast.success(`${updated.fullName}: status changed to ${STAFF_STATUS_LABELS[updated.status]}.`);
       close();
     },
@@ -402,7 +387,7 @@ function ChangeStatusDialog({
       )}
       {change.error && (
         <Alert variant="destructive">
-          <AlertDescription>{staffErrorMessage(change.error)}</AlertDescription>
+          <AlertDescription>{refusalMessage(change.error, 'record')}</AlertDescription>
         </Alert>
       )}
     </ConfirmWithReasonDialog>

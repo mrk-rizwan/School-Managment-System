@@ -1,5 +1,6 @@
 import { ErrorCode } from '@asms/shared';
-import { AlertCircleIcon, InboxIcon, LockIcon } from 'lucide-react';
+import { AlertCircleIcon, ArrowLeftIcon, InboxIcon, LockIcon } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api/errors';
@@ -94,4 +95,72 @@ export function NoPermissionState({
 /** True when the API refused on permission grounds: show NoPermissionState, not ErrorState. */
 export function isPermissionDenied(error: unknown): boolean {
   return error instanceof ApiError && error.code === ErrorCode.PERMISSION_DENIED;
+}
+
+/** The link back to the list (or record) a screen was opened from, above its header. */
+export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeftIcon className="size-4" />
+      {children}
+    </Link>
+  );
+}
+
+/** The bordered card a state is shown in when it stands in for a whole screen. */
+export function StateCard({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-lg border bg-card">{children}</div>;
+}
+
+/** The part of a TanStack Query result `QueryStates` reads. */
+type ScreenQuery<T> = {
+  data: T | undefined;
+  isPending: boolean;
+  error: unknown;
+  refetch: () => unknown;
+};
+
+/**
+ * A screen built on one query: loading, no permission, not found (a 404, when `notFound` is
+ * given) and failed, each in a StateCard; `children` renders the data once it is there.
+ */
+export function QueryStates<T>({
+  query,
+  notFound,
+  noPermission,
+  loadingRows = 5,
+  children,
+}: {
+  query: ScreenQuery<T>;
+  notFound?: { title: string; description: string };
+  /** The sentence under "You do not have access", when the default does not fit. */
+  noPermission?: string;
+  loadingRows?: number;
+  children: (data: T) => React.ReactNode;
+}) {
+  if (query.isPending) {
+    return (
+      <StateCard>
+        <LoadingState rows={loadingRows} />
+      </StateCard>
+    );
+  }
+  if (query.error || query.data === undefined) {
+    const { error } = query;
+    return (
+      <StateCard>
+        {isPermissionDenied(error) ? (
+          <NoPermissionState description={noPermission} />
+        ) : notFound && error instanceof ApiError && error.status === 404 ? (
+          <EmptyState title={notFound.title} description={notFound.description} />
+        ) : (
+          <ErrorState error={error} onRetry={() => void query.refetch()} />
+        )}
+      </StateCard>
+    );
+  }
+  return children(query.data);
 }

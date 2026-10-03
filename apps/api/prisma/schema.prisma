@@ -88,30 +88,33 @@ model School {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  schoolGroup          SchoolGroup?          @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  platformAuditLogs    PlatformAuditLog[]
+  schoolGroup            SchoolGroup?           @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  platformAuditLogs      PlatformAuditLog[]
   // Tenant back-relations: declared for the migration diff only, absent from the client (header).
-  schoolSettings       SchoolSettings[]      @ignore
-  schoolCounters       SchoolCounter[]       @ignore
-  academicYears        AcademicYear[]        @ignore
-  classes              Class[]               @ignore
-  sections             Section[]             @ignore
-  subjects             Subject[]             @ignore
-  guardians            Guardian[]            @ignore
-  staff                Staff[]               @ignore
-  users                User[]                @ignore
-  sessions             Session[]             @ignore
-  userTokens           UserToken[]           @ignore
-  userRoles            UserRole[]            @ignore
-  auditLogs            AuditLog[]            @ignore
-  teacherAssignments   TeacherAssignment[]   @ignore
-  students             Student[]             @ignore
-  studentStatusChanges StudentStatusChange[] @ignore
-  studentGuardians     StudentGuardian[]     @ignore
-  enrolments           Enrolment[]           @ignore
-  studentDocuments     StudentDocument[]     @ignore
-  stagedUploads        StagedUpload[]        @ignore
-  idempotencyKeys      IdempotencyKey[]      @ignore
+  schoolSettings         SchoolSettings[]       @ignore
+  schoolCounters         SchoolCounter[]        @ignore
+  academicYears          AcademicYear[]         @ignore
+  classes                Class[]                @ignore
+  sections               Section[]              @ignore
+  subjects               Subject[]              @ignore
+  guardians              Guardian[]             @ignore
+  staff                  Staff[]                @ignore
+  users                  User[]                 @ignore
+  sessions               Session[]              @ignore
+  userTokens             UserToken[]            @ignore
+  userRoles              UserRole[]             @ignore
+  auditLogs              AuditLog[]             @ignore
+  teacherAssignments     TeacherAssignment[]    @ignore
+  students               Student[]              @ignore
+  studentStatusChanges   StudentStatusChange[]  @ignore
+  studentGuardians       StudentGuardian[]      @ignore
+  enrolments             Enrolment[]            @ignore
+  studentDocuments       StudentDocument[]      @ignore
+  stagedUploads          StagedUpload[]         @ignore
+  idempotencyKeys        IdempotencyKey[]       @ignore
+  customRoles            CustomRole[]           @ignore
+  customRoleCapabilities CustomRoleCapability[] @ignore
+  userCapabilityGrants   UserCapabilityGrant[]  @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
   @@index([schoolGroupId], map: "schools_school_group_id_idx")
@@ -576,21 +579,26 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school                   School                @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff                    Staff?                @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  guardian                 Guardian?             @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  student                  Student?              @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school                   School                 @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff                    Staff?                 @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian                 Guardian?              @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student                  Student?               @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   sessions                 Session[]
   tokens                   UserToken[]
-  roles                    UserRole[]            @relation("UserRoleHolder")
-  rolesAssigned            UserRole[]            @relation("UserRoleAssignedBy")
-  rolesEnded               UserRole[]            @relation("UserRoleEndedBy")
+  roles                    UserRole[]             @relation("UserRoleHolder")
+  rolesAssigned            UserRole[]             @relation("UserRoleAssignedBy")
+  rolesEnded               UserRole[]             @relation("UserRoleEndedBy")
   auditLogs                AuditLog[]
   studentStatusChanges     StudentStatusChange[]
   studentDocuments         StudentDocument[]
   stagedUploads            StagedUpload[]
   idempotencyKeys          IdempotencyKey[]
   teacherAssignmentsVoided TeacherAssignment[]
+  capabilityGrants         UserCapabilityGrant[]  @relation("GrantHolder")
+  capabilityGrantsMade     UserCapabilityGrant[]  @relation("GrantGrantedBy")
+  capabilityGrantsEnded    UserCapabilityGrant[]  @relation("GrantRevokedBy")
+  customRoleKeysAdded      CustomRoleCapability[] @relation("CustomRoleCapabilityAddedBy")
+  customRoleKeysRemoved    CustomRoleCapability[] @relation("CustomRoleCapabilityRemovedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -658,33 +666,36 @@ model UserToken {
   @@map("user_tokens")
 }
 
-/// Tenant: role assignments. Ended, never deleted. One live row per (user, system role): partial
-/// index user_roles_school_id_user_id_system_role_key. systemRole is nullable because slice 7 adds
-/// custom_role_id (with its FK to custom_roles) and replaces CHECK user_roles_one_role_check with
-/// num_nonnulls(system_role, custom_role_id) = 1; until then the CHECK requires system_role.
+/// Tenant: role assignments. Ended, never deleted. Exactly one of system_role / custom_role_id
+/// (CHECK user_roles_one_role_check). One live row per (user, system role) and per (user, custom
+/// role): partial indexes user_roles_school_id_user_id_system_role_key and
+/// user_roles_school_id_user_id_custom_role_key.
 model UserRole {
-  id         BigInt      @id(map: "user_roles_pkey") @default(autoincrement())
-  schoolId   BigInt      @map("school_id")
-  userId     BigInt      @map("user_id")
-  systemRole SystemRole? @map("system_role")
+  id           BigInt      @id(map: "user_roles_pkey") @default(autoincrement())
+  schoolId     BigInt      @map("school_id")
+  userId       BigInt      @map("user_id")
+  systemRole   SystemRole? @map("system_role")
+  customRoleId BigInt?     @map("custom_role_id")
   /// Null only for a principal role issued by the platform (issue-principal-login), whose actor is
   /// in audit_log.actor_platform_user_id (CHECK user_roles_assigned_by_check).
-  assignedBy BigInt?     @map("assigned_by")
-  assignedAt DateTime    @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  assignedBy   BigInt?     @map("assigned_by")
+  assignedAt   DateTime    @default(now()) @map("assigned_at") @db.Timestamptz(3)
   /// ended_at and ended_by are set together (CHECK user_roles_ended_check).
-  endedAt    DateTime?   @map("ended_at") @db.Timestamptz(3)
-  endedBy    BigInt?     @map("ended_by")
-  updatedAt  DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  endedAt      DateTime?   @map("ended_at") @db.Timestamptz(3)
+  endedBy      BigInt?     @map("ended_by")
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school         School @relation(fields: [schoolId], references: [id], map: "user_roles_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  user           User   @relation("UserRoleHolder", fields: [schoolId, userId], references: [schoolId, id], map: "user_roles_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  assignedByUser User?  @relation("UserRoleAssignedBy", fields: [schoolId, assignedBy], references: [schoolId, id], map: "user_roles_assigned_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  endedByUser    User?  @relation("UserRoleEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "user_roles_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school         School      @relation(fields: [schoolId], references: [id], map: "user_roles_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user           User        @relation("UserRoleHolder", fields: [schoolId, userId], references: [schoolId, id], map: "user_roles_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assignedByUser User?       @relation("UserRoleAssignedBy", fields: [schoolId, assignedBy], references: [schoolId, id], map: "user_roles_assigned_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser    User?       @relation("UserRoleEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "user_roles_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  customRole     CustomRole? @relation(fields: [schoolId, customRoleId], references: [schoolId, id], map: "user_roles_custom_role_id_fkey", onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([schoolId, id], map: "user_roles_school_id_id_key")
   @@index([schoolId, userId], map: "user_roles_school_id_user_id_idx")
   @@index([schoolId, assignedBy], map: "user_roles_school_id_assigned_by_idx")
   @@index([schoolId, endedBy], map: "user_roles_school_id_ended_by_idx")
+  @@index([schoolId, customRoleId], map: "user_roles_school_id_custom_role_id_idx")
   @@map("user_roles")
 }
 
@@ -896,6 +907,7 @@ model Enrolment {
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   @@index([schoolId, studentId], map: "enrolments_school_id_student_id_idx")
+  @@index([schoolId, status, studentId], map: "enrolments_school_id_status_student_id_idx")
   @@index([schoolId, sectionId, status], map: "enrolments_school_id_section_id_status_idx")
   @@index([schoolId, academicYearId, status], map: "enrolments_school_id_academic_year_id_status_idx")
   @@index([schoolId, classId, academicYearId], map: "enrolments_school_id_class_id_academic_year_id_idx")
@@ -988,4 +1000,97 @@ model IdempotencyKey {
   /// R84: per user, per endpoint. Also the index behind the user FK.
   @@unique([schoolId, userId, endpoint, key], map: "idempotency_keys_school_id_user_id_endpoint_key_key")
   @@map("idempotency_keys")
+}
+
+// ---------------------------------------------------------------------------------- slice 7
+
+enum CustomRoleStatus {
+  active
+  /// Contributes nothing (R52). Refused while any user_roles row holds it (R96).
+  archived
+
+  @@map("custom_role_status")
+}
+
+enum GrantEffect {
+  grant
+  /// Removes a role default only, never a grant (R50).
+  revoke
+
+  @@map("grant_effect")
+}
+
+/// Tenant: school-defined roles (rule 13, contracts/slice-7.md §3). Never deleted; archived.
+/// key unique among active roles (partial index custom_roles_school_id_key_key).
+model CustomRole {
+  id        BigInt           @id(map: "custom_roles_pkey") @default(autoincrement())
+  schoolId  BigInt           @map("school_id")
+  key       String           @db.VarChar(32)
+  name      String           @db.VarChar(100)
+  status    CustomRoleStatus @default(active)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school       School                 @relation(fields: [schoolId], references: [id], map: "custom_roles_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  capabilities CustomRoleCapability[]
+  userRoles    UserRole[]
+
+  @@unique([schoolId, id], map: "custom_roles_school_id_id_key")
+  @@map("custom_roles")
+}
+
+/// Tenant: a custom role's capability keys. Removing a key ends the row (removed_at), never
+/// deletes it. Never role.manage (CHECK custom_role_capabilities_no_role_manage_check, R45).
+model CustomRoleCapability {
+  id            BigInt    @id(map: "custom_role_capabilities_pkey") @default(autoincrement())
+  schoolId      BigInt    @map("school_id")
+  customRoleId  BigInt    @map("custom_role_id")
+  capabilityKey String    @map("capability_key") @db.VarChar(64)
+  addedBy       BigInt    @map("added_by")
+  addedAt       DateTime  @default(now()) @map("added_at") @db.Timestamptz(3)
+  /// removed_at and removed_by are set together (CHECK custom_role_capabilities_removed_check).
+  removedAt     DateTime? @map("removed_at") @db.Timestamptz(3)
+  removedBy     BigInt?   @map("removed_by")
+
+  school        School     @relation(fields: [schoolId], references: [id], map: "custom_role_capabilities_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  customRole    CustomRole @relation(fields: [schoolId, customRoleId], references: [schoolId, id], map: "custom_role_capabilities_custom_role_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  addedByUser   User       @relation("CustomRoleCapabilityAddedBy", fields: [schoolId, addedBy], references: [schoolId, id], map: "custom_role_capabilities_added_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  removedByUser User?      @relation("CustomRoleCapabilityRemovedBy", fields: [schoolId, removedBy], references: [schoolId, id], map: "custom_role_capabilities_removed_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "custom_role_capabilities_school_id_id_key")
+  @@index([schoolId, customRoleId], map: "custom_role_capabilities_school_id_custom_role_id_idx")
+  @@index([schoolId, addedBy], map: "custom_role_capabilities_school_id_added_by_idx")
+  @@index([schoolId, removedBy], map: "custom_role_capabilities_school_id_removed_by_idx")
+  @@map("custom_role_capabilities")
+}
+
+/// Tenant: per-user grant and revoke rows (rule 13, R45-R51). Append-only except ending: trigger
+/// user_capability_grants_end_only refuses DELETE, TRUNCATE, any change but the end columns, and
+/// any change to an ended row. Never role.manage (CHECK, R75). One live row per (user, key,
+/// effect): partial index user_capability_grants_live_key.
+model UserCapabilityGrant {
+  id            BigInt      @id(map: "user_capability_grants_pkey") @default(autoincrement())
+  schoolId      BigInt      @map("school_id")
+  userId        BigInt      @map("user_id")
+  capabilityKey String      @map("capability_key") @db.VarChar(64)
+  effect        GrantEffect
+  grantedBy     BigInt      @map("granted_by")
+  /// Never holds an identity number (CHECK user_capability_grants_reason_no_id_check).
+  reason        String      @db.VarChar(500)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// revoked_at, revoked_by and end_reason are set together (CHECK user_capability_grants_revoked_check).
+  revokedAt     DateTime?   @map("revoked_at") @db.Timestamptz(3)
+  revokedBy     BigInt?     @map("revoked_by")
+  endReason     String?     @map("end_reason") @db.VarChar(500)
+
+  school        School @relation(fields: [schoolId], references: [id], map: "user_capability_grants_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user          User   @relation("GrantHolder", fields: [schoolId, userId], references: [schoolId, id], map: "user_capability_grants_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  grantedByUser User   @relation("GrantGrantedBy", fields: [schoolId, grantedBy], references: [schoolId, id], map: "user_capability_grants_granted_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  revokedByUser User?  @relation("GrantRevokedBy", fields: [schoolId, revokedBy], references: [schoolId, id], map: "user_capability_grants_revoked_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "user_capability_grants_school_id_id_key")
+  @@index([schoolId, userId], map: "user_capability_grants_school_id_user_id_idx")
+  @@index([schoolId, grantedBy], map: "user_capability_grants_school_id_granted_by_idx")
+  @@index([schoolId, revokedBy], map: "user_capability_grants_school_id_revoked_by_idx")
+  @@map("user_capability_grants")
 }

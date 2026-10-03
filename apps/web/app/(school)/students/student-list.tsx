@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, STUDENT_STATUSES, containsIdentityNumber, normaliseIdentityDigits } from '@asms/shared';
+import { Capability, STUDENT_STATUSES, normaliseIdentityDigits } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { PlusIcon, SearchIcon } from 'lucide-react';
@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
 import { DataTable, SortHeader, type DataTableFeatures } from '@/components/data-table';
+import { FilterSelect, SearchField } from '@/components/list-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -20,7 +21,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
 import { unwrap } from '@/lib/api/client';
 import { describeApiError } from '@/lib/api/errors';
 import {
@@ -30,38 +30,29 @@ import {
   type StudentSort,
   type StudentStatus,
 } from '@/lib/api/school-students-contract';
-import { formatDay } from '../academics/_lib/academics-ui';
-import { useCapabilities, useDebounced } from '../academics/_lib/hooks';
-import { formatIdentityInput } from '../guardians/_lib/guardians-ui';
+import { formatDay } from '@/lib/format';
+import { useListPage } from '@/lib/hooks';
+import { useListSearch } from '@/lib/list-search';
+import { useCapabilities } from '@/lib/school-session';
+import { formatIdentityInput } from '@/lib/validation';
 import { NO_PLACEMENT, PlacementSelects, type Placement } from './_lib/placement';
 import {
-  STUDENT_STATUS_LABELS,
-  StudentStatusBadge,
   placeLabel,
+  STUDENT_STATUS_LABELS,
   studentsKeys,
+  StudentStatusBadge,
 } from './_lib/students-ui';
 
 const LIMIT = 25;
-const NO_ROWS: StudentDto[] = [];
 type Flag = '' | 'true' | 'false';
 
 /**
- * `q` is sent only when the API would accept it (contracts/slice-6.md §3.1): 2–100 characters
- * and never a B-Form number, which goes to the POST lookup instead.
+ * contracts/slice-6.md §3.1 and §10. A teacher sees only their sections: the API scopes the rows.
+ * `q` is sent only when the API would accept it; a B-Form number goes to the POST lookup instead.
  */
-function searchTerm(raw: string): { q?: string; identity?: boolean; hint?: string } {
-  const q = raw.trim();
-  if (q.length === 0) return {};
-  if (containsIdentityNumber(q.replace(/[\s-]/g, ''))) return { identity: true };
-  if (q.length < 2) return { hint: 'Type at least 2 characters to search.' };
-  return { q: q.slice(0, 100) };
-}
-
-/** contracts/slice-6.md §3.1 and §10. A teacher sees only their sections: the API scopes the rows. */
 export function StudentList() {
   const { can } = useCapabilities();
   const canAdmit = can(Capability.STUDENT_CREATE);
-  const [page, setPage] = useState(1);
   const [sort, setSort] = useState<StudentSort>('fullName');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StudentStatus | ''>('active');
@@ -69,20 +60,9 @@ export function StudentList() {
   const [hasLogin, setHasLogin] = useState<Flag>('');
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupDigits, setLookupDigits] = useState<string | undefined>();
-  const ids = { search: useId(), status: useId(), login: useId() };
-
-  // The identity check runs on the live text, so 13 digits are never sent, not even debounced.
-  const live = searchTerm(search);
-  const debounced = searchTerm(useDebounced(search));
-  const q = live.identity ? undefined : debounced.q;
-
+  const { q, identity, hint } = useListSearch(search);
   const { academicYearId, classId, sectionId } = placement;
-  const filterKey = [sort, q, status, academicYearId, classId, sectionId, hasLogin].join('|');
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
+  const [page, setPage] = useListPage([sort, q, status, academicYearId, classId, sectionId, hasLogin]);
 
   const query: StudentListQuery = {
     page,
@@ -173,8 +153,6 @@ export function StudentList() {
   }, [sort]);
 
   const filtered = Boolean(q || status !== 'active' || academicYearId || hasLogin);
-  const result = students.data;
-  const hint = live.identity ? null : debounced.hint;
 
   return (
     <>
@@ -197,63 +175,40 @@ export function StudentList() {
         }
       />
       <div className="mb-4 flex flex-wrap items-start gap-3">
-        <div className="grid w-full gap-1.5 sm:w-64">
-          <Label htmlFor={ids.search}>Search</Label>
-          <div className="relative">
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              id={ids.search}
-              type="search"
-              value={search}
-              maxLength={100}
-              autoComplete="off"
-              placeholder="Name or admission no."
-              className="pl-8"
-              aria-describedby={hint || live.identity ? `${ids.search}-hint` : undefined}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-          {live.identity ? (
-            <p id={`${ids.search}-hint`} className="text-xs text-muted-foreground">
-              That looks like a B-Form number.{' '}
-              {canAdmit ? (
-                <button
-                  type="button"
-                  className="font-medium text-foreground underline underline-offset-4"
-                  onClick={openLookupWithSearch}
-                >
-                  Use Find by B-Form
-                </button>
-              ) : (
-                'Search by name or admission number.'
-              )}
-            </p>
-          ) : (
-            hint && (
-              <p id={`${ids.search}-hint`} className="text-xs text-muted-foreground">
-                {hint}
-              </p>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Name or admission no."
+          className="sm:w-64"
+          hint={
+            identity ? (
+              <>
+                That looks like a B-Form number.{' '}
+                {canAdmit ? (
+                  <button
+                    type="button"
+                    className="font-medium text-foreground underline underline-offset-4"
+                    onClick={openLookupWithSearch}
+                  >
+                    Use Find by B-Form
+                  </button>
+                ) : (
+                  'Search by name or admission number.'
+                )}
+              </>
+            ) : (
+              hint
             )
-          )}
-        </div>
-        <div className="grid w-full gap-1.5 sm:w-36">
-          <Label htmlFor={ids.status}>Status</Label>
-          <NativeSelect
-            id={ids.status}
-            value={status}
-            onChange={(event) => setStatus(event.target.value as StudentStatus | '')}
-          >
-            <option value="">Any</option>
-            {STUDENT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STUDENT_STATUS_LABELS[s]}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+          }
+        />
+        <FilterSelect label="Status" value={status} onChange={setStatus} className="sm:w-36">
+          <option value="">Any</option>
+          {STUDENT_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {STUDENT_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </FilterSelect>
         <PlacementSelects
           value={placement}
           onChange={setPlacement}
@@ -261,30 +216,19 @@ export function StudentList() {
           includeClosedYears
           compact
         />
-        <div className="grid w-full gap-1.5 sm:w-36">
-          <Label htmlFor={ids.login}>Login</Label>
-          <NativeSelect
-            id={ids.login}
-            value={hasLogin}
-            onChange={(event) => setHasLogin(event.target.value as Flag)}
-          >
-            <option value="">Any</option>
-            <option value="true">Has login</option>
-            <option value="false">No login</option>
-          </NativeSelect>
-        </div>
+        <FilterSelect label="Login" value={hasLogin} onChange={setHasLogin} className="sm:w-36">
+          <option value="">Any</option>
+          <option value="true">Has login</option>
+          <option value="false">No login</option>
+        </FilterSelect>
       </div>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={students}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={students.isPending || students.isPlaceholderData}
-        error={students.error}
-        onRetry={() => void students.refetch()}
         emptyTitle={filtered ? 'No students match' : 'No students yet'}
         emptyDescription={
           filtered ? 'Try a different search or filter.' : 'Students are added by admission.'

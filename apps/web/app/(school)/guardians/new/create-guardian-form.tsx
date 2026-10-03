@@ -1,9 +1,8 @@
 'use client';
 
-import { ErrorCode, normaliseIdentityDigits, normalisePhone } from '@asms/shared';
+import { Capability, ErrorCode, normaliseIdentityDigits, normalisePhone } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -12,6 +11,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { PageHeader } from '@/components/app-shell';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
+import { BackLink, NoPermissionState, StateCard } from '@/components/page-states';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
@@ -22,26 +22,39 @@ import {
   type CreateGuardianBody,
   type GuardianLookupResultDto,
 } from '@/lib/api/school-guardians-contract';
+import { useCapabilities } from '@/lib/school-session';
+import { blankToNull, formatIdentityInput, nameSchema, optionalCnicSchema } from '@/lib/validation';
 import { LookupHits, lookupGuardians } from '../_lib/guardian-lookup';
-import {
-  ContactFields,
-  blankToNull,
-  contactFieldsSchema,
-  formatIdentityInput,
-  fullNameSchema,
-  guardiansKeys,
-  optionalCnicSchema,
-} from '../_lib/guardians-ui';
+import { ContactFields, contactFieldsSchema, guardiansKeys } from '../_lib/guardians-ui';
 
-const schema = contactFieldsSchema.extend({ fullName: fullNameSchema, cnic: optionalCnicSchema });
+const schema = contactFieldsSchema.extend({ fullName: nameSchema(2, 200), cnic: optionalCnicSchema });
 type Values = z.input<typeof schema>;
 
-/**
- * contracts/slice-5.md §3.4, §6. Without an idempotency key, the guards against a duplicate are:
- * a CNIC can exist once (the API answers with the existing record), and a phone is looked up
- * first so the office sees who already uses it. Submit is disabled while either call runs.
- */
+const TITLE = 'New guardian';
+
+/** contracts/slice-5.md §3.4, §6; without guardian.manage, the no-permission state (plan §9). */
 export function CreateGuardianForm() {
+  const { can } = useCapabilities();
+  if (!can(Capability.GUARDIAN_MANAGE)) {
+    return (
+      <>
+        <BackLink href="/guardians">Guardians</BackLink>
+        <PageHeader title={TITLE} />
+        <StateCard>
+          <NoPermissionState />
+        </StateCard>
+      </>
+    );
+  }
+  return <GuardianForm />;
+}
+
+/**
+ * Without an idempotency key, the guards against a duplicate are: a CNIC can exist once (the API
+ * answers with the existing record), and a phone is looked up first so the office sees who
+ * already uses it. Submit is disabled while either call runs.
+ */
+function GuardianForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   // The guardian already holding the CNIC, after GUARDIAN_CNIC_EXISTS.
@@ -128,15 +141,9 @@ export function CreateGuardianForm() {
 
   return (
     <>
-      <Link
-        href="/guardians"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-        Guardians
-      </Link>
+      <BackLink href="/guardians">Guardians</BackLink>
       <PageHeader
-        title="New guardian"
+        title={TITLE}
         description="A guardian with neither CNIC nor phone can be recorded, but cannot be found by lookup or given a login."
       />
       <Card className="max-w-2xl">

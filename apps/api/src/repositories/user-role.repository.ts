@@ -10,6 +10,9 @@ export interface UserRoleRecord {
   id: bigint;
   userId: bigint;
   systemRole: SystemRole | null;
+  /** Set exactly when systemRole is null (CHECK user_roles_one_role_check). */
+  customRoleId: bigint | null;
+  customRoleName: string | null;
   /** Null for the platform's principal assignment. */
   assignedBy: bigint | null;
   assignedAt: Date;
@@ -17,15 +20,40 @@ export interface UserRoleRecord {
   endedBy: bigint | null;
 }
 
+/** The one role a user_roles row names (CHECK user_roles_one_role_check). */
+export type RoleChoice =
+  | { kind: 'system'; systemRole: SystemRole }
+  | { kind: 'custom'; customRoleId: bigint };
+
+const roleColumns = (role: RoleChoice) =>
+  role.kind === 'system' ? { systemRole: role.systemRole } : { customRoleId: role.customRoleId };
+
+/** A user's live role rows, as the staff and users lists show them. */
+export interface LiveRoles {
+  systemRoles: SystemRole[];
+  customRoleNames: string[];
+}
+
 const RECORD_SELECT = {
   id: true,
   userId: true,
   systemRole: true,
+  customRoleId: true,
+  customRole: { select: { name: true } },
   assignedBy: true,
   assignedAt: true,
   endedAt: true,
   endedBy: true,
 } as const satisfies Prisma.UserRoleSelect;
+
+type RecordRow = Prisma.UserRoleGetPayload<{ select: typeof RECORD_SELECT }>;
+
+const toRecord = ({ customRole, ...row }: RecordRow): UserRoleRecord => ({
+  ...row,
+  customRoleName: customRole?.name ?? null,
+});
+
+const toRecordOrNull = (row: RecordRow | null): UserRoleRecord | null => (row ? toRecord(row) : null);
 
 /** user_roles (tenant). Rows are ended, never deleted. */
 @Injectable()
@@ -88,21 +116,26 @@ export class UserRoleRepository {
     });
   }
 
-  /** Live system roles of each user, in assignment order; users with none are absent. */
+  /**
+   * Live roles of each user, in assignment order: system roles, and the names of custom roles
+   * (archived ones included: the row still exists). Users with no live row are absent.
+   */
   async liveRolesByUser(
     schoolId: SchoolId,
     userIds: readonly bigint[],
-  ): Promise<Map<bigint, SystemRole[]>> {
-    const byUser = new Map<bigint, SystemRole[]>();
+  ): Promise<Map<bigint, LiveRoles>> {
+    const byUser = new Map<bigint, LiveRoles>();
     if (userIds.length === 0) return byUser;
     const rows = await this.txHost.tx.userRole.findMany({
       where: { schoolId, userId: { in: [...userIds] }, endedAt: null },
-      select: { userId: true, systemRole: true },
+      select: { userId: true, systemRole: true, customRole: { select: { name: true } } },
       orderBy: { id: 'asc' },
     });
     for (const row of rows) {
-      if (row.systemRole === null) continue;
-      byUser.set(row.userId, [...(byUser.get(row.userId) ?? []), row.systemRole]);
+      const roles = byUser.get(row.userId) ?? { systemRoles: [], customRoleNames: [] };
+      if (row.systemRole !== null) roles.systemRoles.push(row.systemRole);
+      if (row.customRole) roles.customRoleNames.push(row.customRole.name);
+      byUser.set(row.userId, roles);
     }
     return byUser;
   }
@@ -127,43 +160,56 @@ export class UserRoleRepository {
       take: query.take,
     });
     const total = await this.txHost.tx.userRole.count({ where });
-    return { rows, total };
+    return { rows: rows.map(toRecord), total };
   }
 
-  findById(schoolId: SchoolId, id: bigint): Promise<UserRoleRecord | null> {
-    return this.txHost.tx.userRole.findFirst({ where: { schoolId, id }, select: RECORD_SELECT });
+  async findById(schoolId: SchoolId, id: bigint): Promise<UserRoleRecord | null> {
+    return toRecordOrNull(
+      await this.txHost.tx.userRole.findFirst({ where: { schoolId, id }, select: RECORD_SELECT }),
+    );
   }
 
-  /** The user's live row of this system role (at most one: the partial unique index). */
-  findLive(
-    schoolId: SchoolId,
-    userId: bigint,
-    systemRole: SystemRole,
-  ): Promise<UserRoleRecord | null> {
-    return this.txHost.tx.userRole.findFirst({
-      where: { schoolId, userId, systemRole, endedAt: null },
+  /** The user's live rows (system and custom), in assignment order. */
+  async liveForUser(schoolId: SchoolId, userId: bigint): Promise<UserRoleRecord[]> {
+    const rows = await this.txHost.tx.userRole.findMany({
+      where: { schoolId, userId, endedAt: null },
       select: RECORD_SELECT,
+      orderBy: { id: 'asc' },
     });
+    return rows.map(toRecord);
+  }
+
+  /** The user's live row of this role (at most one: the partial unique indexes). */
+  async findLive(schoolId: SchoolId, userId: bigint, role: RoleChoice): Promise<UserRoleRecord | null> {
+    return toRecordOrNull(
+      await this.txHost.tx.userRole.findFirst({
+        where: { schoolId, userId, ...roleColumns(role), endedAt: null },
+        select: RECORD_SELECT,
+      }),
+    );
   }
 
   /**
-   * A school user assigning a system role (issue-login, role assignment). A second live row of
-   * the role fails user_roles_school_id_user_id_system_role_key. The caller holds the user lock.
+   * A school user assigning a role (issue-login, role assignment). A second live row of the role
+   * fails user_roles_school_id_user_id_system_role_key or ..._custom_role_key. The caller holds
+   * the user lock, and for a custom role then the role lock (contracts/slice-7.md §1).
    */
-  assign(
+  async assign(
     schoolId: SchoolId,
-    data: { userId: bigint; systemRole: SystemRole; assignedBy: bigint; now: Date },
+    data: { userId: bigint; role: RoleChoice; assignedBy: bigint; now: Date },
   ): Promise<UserRoleRecord> {
-    return this.txHost.tx.userRole.create({
-      data: {
-        schoolId,
-        userId: data.userId,
-        systemRole: data.systemRole,
-        assignedBy: data.assignedBy,
-        assignedAt: data.now,
-      },
-      select: RECORD_SELECT,
-    });
+    return toRecord(
+      await this.txHost.tx.userRole.create({
+        data: {
+          schoolId,
+          userId: data.userId,
+          ...roleColumns(data.role),
+          assignedBy: data.assignedBy,
+          assignedAt: data.now,
+        },
+        select: RECORD_SELECT,
+      }),
+    );
   }
 
   /** Ends one live row. Returns rows changed (0 when it was already ended). */

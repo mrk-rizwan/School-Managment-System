@@ -11,11 +11,12 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1, **slices 0–6 done** (2026-10-03): scaffold and isolation guardrails;
+- **Phase:** Phase 1, **slices 0–7 done** (2026-10-03): scaffold and isolation guardrails;
   platform console and school record; school logins, sessions, users, settings; academic
-  structure; guardians; staff and teacher assignments; students, enrolment, admission, documents.
-  **Next: wave C = slices 7 (custom roles, grants, effective-permissions screen) and 8 (phase
-  close with the full `phase-gate`).** Project progress 24.5 / 155 days ≈ 15.8 %.
+  structure; guardians; staff and teacher assignments; students, enrolment, admission, documents;
+  custom roles, grants and the permissions screen. **Slice 8 (phase close) in progress:** docs
+  sweep, performance review and web consolidation done; still to run: R16/R57 scans, the
+  whole-phase `security-reviewer`, `phase-gate`. Project progress 29.25 / 155 days ≈ 18.9 %.
 - **CI status unknown:** the auto-sync pushes to GitHub, but the repo is private and this machine
   has no GitHub login, so nobody here has seen an Actions run. The product owner must check.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
@@ -61,7 +62,9 @@ slice 0 are not counted.
    reconcile would make storage provably clean; two pg "client already executing a query"
    warnings appear in the full run (believed test-side `Promise.all` on the raw client — confirm;
    staff has no no-overlapping-queries test); one mocked Playwright staff test failed once under
-   load and passed on re-run.
+   load and passed on re-run; in the wave-C run `students-real.spec.ts` failed once at the second
+   admission's confirmation under `--workers 2` and passed alone and in a full re-run (125/125).
+   If it recurs, read its trace first.
 4. Product owner, new from wave B: (a) may admission, readmission and change-class dates fall
    outside the academic year's dates? Today they are not checked; (b) a person whose CNIC equals
    their former student B-Form cannot be given a staff or guardian login (the username is taken
@@ -90,6 +93,43 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Wave C part 1: slice 7 and slice-8 preparation (Opus 5.5) — DONE
+
+**Slice 7** (contract `docs/plans/contracts/slice-7.md`, migrations `20261003130000_slice7_roles_grants`
+and `20261003150000_slice7_history_guards`): custom roles (create, edit with reason when keys are
+removed or a held role gains keys, archive, no unarchive), per-user grant and revoke rows
+(append-only, ended with a reason, DB trigger refuses anything else), assigning a custom role
+through the one "Give a role" dialog, `GET /users/:id/permissions` (role defaults, deltas, effective
+lines with source and scope). `EffectivePermissions` is a pure function
+(`modules/access/effective-permissions.ts`, 80+ unit tests) behind `can()`, `/me` and R14.
+`role.manage` is unreachable three ways (DTO, DB CHECK, read filter). Staff leaving ends grants.
+**Decision taken by the main thread, for the owner to confirm:** principals are unrestricted
+peers — grants and revokes on a live principal are refused (409 `TARGET_IS_PRINCIPAL`), and
+becoming principal ends existing rows. Reason: the security review showed a revoke on a principal
+could be undone by another principal (via assignment or office reset), so offering it was a false
+control. Also: custom-role-only staff now show their role (`customRoleNames`); R96 race test is
+deterministic; cross-tenant tests assert the composite FK names.
+
+**Reviews:** security PASS (four low, all fixed: principal peers, reason on widening a held role,
+history triggers on roles tables, self-end CHECK). Correctness: three validation defects fixed
+(`null` bypassed R95's reason and caused 500s; 13-digit role key caused a 500 via the audit
+no-ID CHECK), stale permissions view, a slice-4 lock-order inversion in staff status change
+(now restarts to keep user→staff order).
+
+**Slice-8 preparation:** `docs-maintainer` sweep → README now walks a fresh clone to a signed-in
+principal, `--wait` on compose, API build before Playwright; CLAUDE.md exceptions 1–3 match the
+code (login-spike recorder recorded as part of exception 2, **awaiting owner confirmation**).
+`performance-engineer`: nothing blocks; one index added (`20261003140000_enrolment_status_index`).
+**Rule for Phase 2:** Prisma sends enum conditions as a stable cast, so a partial index whose
+WHERE is on an enum column is never used for reads — put status in the index columns instead.
+Not verified: response compression (belongs on the edge proxy). Web `code-quality` → about 750
+lines removed (shared list filters, `QueryStates`, formatters, validation, issue-login dialog,
+error messages), demo route deleted, dashed CNIC no longer reaches `q` on users/schools search,
+create-staff and create-guardian forms have no-permission states.
+
+**Results:** lint and typecheck clean; API 63 suites / 892 tests; web build; Playwright 125/125
+(one flake recorded under Left to do); hook clean.
 
 ## 2026-10-03 — Wave B: slices 4 and 6 (Opus 5.5) — DONE
 

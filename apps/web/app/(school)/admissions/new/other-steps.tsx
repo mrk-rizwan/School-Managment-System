@@ -2,16 +2,17 @@
 
 import { XIcon } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
+import { DOCUMENT_TYPES } from '@asms/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { describeApiError } from '@/lib/api/errors';
-import { DOCUMENT_TYPES } from '@asms/shared';
 import type { DocumentType } from '@/lib/api/school-students-contract';
+import { formatBytes } from '@/lib/format';
 import { ACCEPT_ATTRIBUTE, fileProblem, uploadFile } from '../../students/_lib/documents';
 import { PlacementSelects } from '../../students/_lib/placement';
-import { DOCUMENT_TYPE_LABELS, formatBytes } from '../../students/_lib/students-ui';
+import { DOCUMENT_TYPE_LABELS } from '../../students/_lib/students-ui';
 import type { DocumentEntry, Guard, PlacementDraft } from './wizard-types';
 
 export function rollNoProblem(rollNo: string): string | null {

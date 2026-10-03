@@ -1,15 +1,19 @@
 'use client';
 
-import { DEFAULT_TIMEZONE } from '@asms/shared';
+import { IssueLoginDialog } from '@/components/issue-login-dialog';
 import { Badge } from '@/components/ui/badge';
-import type {
-  DocumentType,
-  EnrolmentStatus,
-  Gender,
-  Relationship,
-  StudentCurrentDto,
-  StudentStatus,
+import { unwrap } from '@/lib/api/client';
+import {
+  studentsApi,
+  type DocumentType,
+  type EnrolmentStatus,
+  type Gender,
+  type Relationship,
+  type StudentCurrentDto,
+  type StudentDetailDto,
+  type StudentStatus,
 } from '@/lib/api/school-students-contract';
+import { todayInSchool } from '@/lib/format';
 
 // Pieces shared by the students list, student detail, readmission and the admission wizard
 // (contracts/slice-6.md §10).
@@ -71,24 +75,6 @@ export function placeLabel(current: Pick<StudentCurrentDto, 'className' | 'secti
   return current ? `${current.className} ${current.sectionName}` : null;
 }
 
-/** Today as YYYY-MM-DD in Pakistan time (CLAUDE.md: Asia/Karachi for every school). */
-export function todayInSchool(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIMEZONE }).format(new Date());
-}
-
-const instantFormat = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium',
-  timeZone: DEFAULT_TIMEZONE,
-});
-/** A datetime (createdAt, endedAt) as a Pakistan calendar day. */
-export const formatInstant = (iso: string) => instantFormat.format(new Date(iso));
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 /** The detail fields both the edit form and the wizard validate (§3.5). */
 export function dateOfBirthProblem(value: string, today = todayInSchool()): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Enter the date of birth.';
@@ -96,4 +82,29 @@ export function dateOfBirthProblem(value: string, today = todayInSchool()): stri
   const earliest = `${Number(today.slice(0, 4)) - 30}${today.slice(4)}`;
   if (value < earliest) return 'The date of birth is more than 30 years ago.';
   return null;
+}
+
+/** POST /students/:id/issue-login (contracts/slice-6.md §3.8, R40), confirmed in a dialog. */
+export function IssueStudentLoginDialog({
+  student,
+  ...dialog
+}: {
+  student: Pick<StudentDetailDto, 'id' | 'fullName'>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onIssued?: () => void;
+}) {
+  return (
+    <IssueLoginDialog
+      {...dialog}
+      fullName={student.fullName}
+      description="The username is the student’s B-Form number without dashes. The password is the same number until they change it. Tell the family in person; nothing is sent to them."
+      issue={() =>
+        unwrap(
+          studentsApi.POST('/api/v1/students/{id}/issue-login', { params: { path: { id: student.id } } }),
+        )
+      }
+      invalidate={studentsKeys.all}
+    />
+  );
 }

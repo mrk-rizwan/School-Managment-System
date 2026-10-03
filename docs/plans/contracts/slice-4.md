@@ -52,8 +52,11 @@ Amended 2026-10-03 to match the code; the wave-B audit found no deadlock path, f
   this slice a `staff_id` is written only by issue-login, under the staff lock, so the two cannot
   hold each other's next lock. (The platform's principal issue, slice 1, also links a staff row,
   but it locks the school row and the user and takes no staff lock, so it closes no cycle.) A
-  login that appears after the status change's first read is locked *after* the staff row
-  (`staff` → `users`), the same order as issue-login.
+  login that appears after the status change's first read (issued between that read and the
+  staff lock) is **not** locked after the staff row: the status change rolls back, releasing its
+  locks, and starts again with the login in its first read, so it always takes `users` →
+  `staff`; after three such restarts it answers `409 CONCURRENT_UPDATE`. *Amended 2026-10-03
+  (slice-7 review, auditor A10): it previously locked that user after the staff row.*
 - A status change of another staff member may hold the found user (it carries that member's
   `staff_id`) while issue-login waits on it; that status change never wants this staff row, so
   the wait ends and issue-login then refuses `LOGIN_ALREADY_EXISTS`.
@@ -81,6 +84,7 @@ Amended 2026-10-03 to match the code; the wave-B audit found no deadlock path, f
 | `status` | `StaffStatus` |
 | `userId` | string \| null — login whose `staff_id` is this row |
 | `systemRoles` | `SystemRole[]` — live rows of that user; `[]` without a login |
+| `customRoleNames` | `string[]` — names of that user's live custom-role rows, in assignment order (an archived role's name too, while a row names it); `[]` without a login. *Added 2026-10-03 (slice-7 review A4), so a custom-role-only staff member is not shown as having no role* |
 | `createdAt`, `updatedAt` | datetime |
 
 `TeacherAssignmentDto`: `id`, `staffId`, `staffFullName`, `academicYearId`, `academicYearName`,
@@ -280,10 +284,11 @@ Filter `includeEnded` (default `false`). Sort `-assignedAt`. **200** `{ data: Us
 ### 5.2 `POST /users/:id/roles`
 
 `{ systemRole: SystemRole, reason: TextField(3, 500) }` (slice 7 adds `customRoleId`, exactly one
-of the two). Target user locked. Target = caller → `409 SELF_ACTION_FORBIDDEN` (R74). Target has no
+of the two; `null` for either is `422`, never read as absent). Target user locked. Target = caller → `409 SELF_ACTION_FORBIDDEN` (R74). Target has no
 `staff_id`, or its staff is not `active` → `409 STAFF_NOT_ACTIVE`. Live row of that role → `409
 ROLE_ALREADY_ASSIGNED` `details: { userRoleId }` (the partial unique maps to it on a race; the web
-treats it as done). R13 holds by the decorator. **201** `UserRoleDto`. Audit `user_role.assigned`.
+treats it as done). R13 holds by the decorator. Assigning `principal` ends every live grant and
+revoke row of the user (`slice-7.md` §4.4). **201** `UserRoleDto`. Audit `user_role.assigned`.
 
 ### 5.3 `POST /user-roles/:id/remove`
 

@@ -78,5 +78,5 @@ next-env.d.ts
 .turbo/
 .pnpm-store/
 
-# generated clients (rebuilt by prisma generate / openapi scripts in CI)
+# generated Prisma client (the OpenAPI JSON and the web client are committed)
 apps/api/src/repositories/generated/

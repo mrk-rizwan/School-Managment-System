@@ -1,8 +1,10 @@
 'use client';
 
+import { normalisePhone } from '@asms/shared';
 import { useId } from 'react';
 import {
   useController,
+  useWatch,
   type Control,
   type FieldPath,
   type FieldValues,
@@ -88,6 +90,42 @@ export function FormField<T extends FieldValues>({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * A mobile number. The hint shows what the server is expected to store (`normalisePhone`); the
+ * server's answer is authoritative.
+ */
+export function PhoneField<T extends FieldValues>({
+  control,
+  name,
+  label,
+  disabled,
+}: {
+  control: Control<T>;
+  name: FieldPath<T>;
+  label: string;
+  disabled?: boolean;
+}) {
+  const phone = (useWatch({ control, name }) as string | undefined) ?? '';
+  const normalised = phone.trim() ? normalisePhone(phone) : null;
+  return (
+    <FormField
+      control={control}
+      name={name}
+      label={label}
+      type="tel"
+      inputMode="tel"
+      autoComplete="off"
+      maxLength={20}
+      disabled={disabled}
+      hint={
+        normalised
+          ? `Will be saved as ${normalised}.`
+          : 'Pakistani numbers such as 0300 1234567, or international with +.'
+      }
+    />
   );
 }
 

@@ -21,12 +21,12 @@ import {
   type StudentDetailDto,
   type StudentDocumentDto,
 } from '@/lib/api/school-students-contract';
-import { useCapabilities } from '../../academics/_lib/hooks';
+import { formatBytes, formatDate } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
 import { ACCEPT_ATTRIBUTE, downloadDocument, fileProblem, uploadFile } from '../_lib/documents';
-import { DOCUMENT_TYPE_LABELS, formatBytes, formatInstant, studentsKeys } from '../_lib/students-ui';
+import { DOCUMENT_TYPE_LABELS, studentsKeys } from '../_lib/students-ui';
 
 const LIMIT = 25;
-const NO_ROWS: StudentDocumentDto[] = [];
 
 /** contracts/slice-6.md §6.1, §6.2. Files are downloaded through the API, never a public link. */
 export function DocumentsTab({ student }: { student: StudentDetailDto }) {
@@ -59,7 +59,7 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
           `${info.row.original.mime === 'application/pdf' ? 'PDF' : 'Image'}, ${formatBytes(info.row.original.sizeBytes)}`,
       }),
       column.accessor('uploadedByName', { header: 'Uploaded by', cell: (info) => info.getValue() ?? '—' }),
-      column.accessor('createdAt', { header: 'Added', cell: (info) => formatInstant(info.getValue()) }),
+      column.accessor('createdAt', { header: 'Added', cell: (info) => formatDate(info.getValue()) }),
       column.display({
         id: 'download',
         header: () => <span className="sr-only">Download</span>,
@@ -87,7 +87,6 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
     ];
   }, [downloading]);
 
-  const result = documents.data;
   return (
     <div className="grid gap-6">
       {can(Capability.DOCUMENT_UPLOAD) && <UploadCard studentId={student.id} />}
@@ -112,15 +111,11 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
         </div>
         <DataTable
           columns={columns}
-          data={result?.data ?? NO_ROWS}
+          query={documents}
           getRowId={(row) => row.id}
-          page={result?.page ?? page}
-          limit={result?.limit ?? LIMIT}
-          total={result?.total ?? 0}
+          page={page}
+          limit={LIMIT}
           onPageChange={setPage}
-          isLoading={documents.isPending || documents.isPlaceholderData}
-          error={documents.error}
-          onRetry={() => void documents.refetch()}
           emptyTitle={type ? 'No documents of this type' : 'No documents yet'}
         />
       </div>

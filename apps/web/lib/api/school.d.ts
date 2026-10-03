@@ -244,6 +244,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/custom-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomRolesController_list"];
+        put?: never;
+        post: operations["CustomRolesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/custom-roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomRolesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["CustomRolesController_update"];
+        trace?: never;
+    };
+    "/api/v1/custom-roles/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CustomRolesController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{id}/content": {
         parameters: {
             query?: never;
@@ -302,6 +350,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["EnrolmentsController_changeSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grants/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["GrantsController_end"];
         delete?: never;
         options?: never;
         head?: never;
@@ -948,6 +1012,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["GrantsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GrantsController_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/reset-password": {
         parameters: {
             query?: never;
@@ -1062,13 +1158,27 @@ export interface components {
             reason?: string;
         };
         AssignRoleDto: {
+            customRoleId?: string;
             reason: string;
-            systemRole: components["schemas"]["SystemRole"];
+            systemRole?: components["schemas"]["SystemRole"];
         };
         /** @enum {string} */
         AttendanceMode: "daily" | "period";
         /** @enum {string} */
         Capability: "school.settings.manage" | "academic_year.manage" | "class.manage" | "section.manage" | "subject.manage" | "fee_head.manage" | "holiday.manage" | "user.account.manage" | "role.manage" | "student.view" | "student.create" | "student.update" | "student.status.change" | "enrolment.manage" | "guardian.manage" | "document.view" | "document.upload" | "document.verify" | "staff.view" | "staff.create" | "staff.update" | "staff.contract.manage" | "staff.status.change" | "staff.leave.approve" | "payroll.view" | "payroll.run" | "attendance.student.mark" | "attendance.student.view_all" | "attendance.staff.manage" | "assessment.define" | "marks.enter" | "marks.view_all" | "result.approve" | "result.publish" | "diary.write" | "remark.write" | "timetable.manage" | "certificate.issue" | "charge.create" | "charge.campaign.send" | "concession.grant" | "payment.record" | "payment.verify" | "payment.void" | "collection.handover.confirm" | "expense.record" | "expense.approve" | "finance.report.view" | "fee.statement.view" | "announcement.send.scope" | "announcement.send.school";
+        /** @enum {string} */
+        CapabilityGroup: "setup" | "access" | "students" | "guardians" | "documents" | "staff" | "payroll" | "attendance" | "academics" | "finance" | "comms";
+        /** @enum {string} */
+        CapabilityScope: "all" | "assigned_sections";
+        CapabilitySourceDto: {
+            customRoleId: string | null;
+            customRoleName: string | null;
+            grantId: string | null;
+            kind: components["schemas"]["CapabilitySourceKind"];
+            systemRole: components["schemas"]["SystemRole"] | null;
+        };
+        /** @enum {string} */
+        CapabilitySourceKind: "system_role" | "custom_role" | "grant";
         ChangeClassDto: {
             classId: string;
             /**
@@ -1162,6 +1272,16 @@ export interface components {
             /** @default 0 */
             sortOrder?: number;
         };
+        CreateCustomRoleDto: {
+            capabilities: components["schemas"]["Capability"][];
+            key: string;
+            name: string;
+        };
+        CreateGrantDto: {
+            capability: components["schemas"]["Capability"];
+            effect: components["schemas"]["GrantEffect"];
+            reason: string;
+        };
         CreateGuardianDto: {
             address?: string | null;
             /** @description CNIC, 13 digits, dashes optional. Never returned. */
@@ -1219,10 +1339,34 @@ export interface components {
             /** @description Required for a subject teacher only */
             subjectId?: string | null;
         };
+        CustomRoleDto: {
+            /** @description Live keys, registry order */
+            capabilities: components["schemas"]["Capability"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Live role rows on this role, any user or staff status */
+            holderCount: number;
+            id: string;
+            key: string;
+            name: string;
+            status: components["schemas"]["CustomRoleStatus"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        CustomRoleSort: "name" | "-name" | "createdAt" | "-createdAt";
+        /** @enum {string} */
+        CustomRoleStatus: "active" | "archived";
         /** @enum {string} */
         DocumentMime: "image/jpeg" | "image/png" | "application/pdf";
         /** @enum {string} */
         DocumentType: "b_form" | "photo" | "previous_school_leaving" | "guardian_cnic" | "other";
+        EffectiveCapabilityDto: {
+            capability: components["schemas"]["Capability"];
+            group: components["schemas"]["CapabilityGroup"];
+            scope: components["schemas"]["CapabilityScope"];
+            sources: components["schemas"]["CapabilitySourceDto"][];
+        };
         EndTeacherAssignmentDto: {
             /**
              * Format: date
@@ -1250,7 +1394,7 @@ export interface components {
         /** @enum {string} */
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
-        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "UNEXPECTED_RESPONSE";
+        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UNEXPECTED_RESPONSE";
         ForgotPasswordDto: {
             schoolCode: string;
             /** @description 13 digits; dashes allowed (5-7-1). */
@@ -1258,6 +1402,26 @@ export interface components {
         };
         /** @enum {string} */
         Gender: "male" | "female";
+        GrantDto: {
+            capability: components["schemas"]["Capability"];
+            effect: components["schemas"]["GrantEffect"];
+            /** @description "staff left" when ended by R17 */
+            endReason: string | null;
+            /** Format: date-time */
+            grantedAt: string;
+            grantedBy: string;
+            /** @description The grantor's staff name */
+            grantedByName: string | null;
+            id: string;
+            reason: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+            revokedBy: string | null;
+            revokedByName: string | null;
+            userId: string;
+        };
+        /** @enum {string} */
+        GrantEffect: "grant" | "revoke";
         GuardianDetailDto: {
             address: string | null;
             /** @description Masked, e.g. 35201-*****-1 */
@@ -1402,6 +1566,15 @@ export interface components {
             clearEmail: boolean;
             reason: string;
         };
+        PermissionRoleDto: {
+            /** @description The role's defaults */
+            capabilities: components["schemas"]["Capability"][];
+            customRoleId: string | null;
+            customRoleName: string | null;
+            customRoleStatus: components["schemas"]["CustomRoleStatus"] | null;
+            systemRole: components["schemas"]["SystemRole"] | null;
+            userRoleId: string;
+        };
         ReadmitDto: {
             classId: string;
             /**
@@ -1464,6 +1637,8 @@ export interface components {
             cnicMasked: string | null;
             /** Format: date-time */
             createdAt: string;
+            /** @description Names of the live custom roles of that login */
+            customRoleNames: string[];
             designation: string | null;
             fullName: string;
             hasCnic: boolean;
@@ -1647,6 +1822,12 @@ export interface components {
             name?: string;
             sortOrder?: number;
         };
+        UpdateCustomRoleDto: {
+            capabilities?: components["schemas"]["Capability"][];
+            name?: string;
+            /** @description Required when removing keys, and when adding keys to a role that has holders */
+            reason?: string;
+        };
         UpdateEnrolmentDto: {
             rollNo: number | null;
         };
@@ -1710,6 +1891,8 @@ export interface components {
         UserDto: {
             /** Format: date-time */
             createdAt: string;
+            /** @description Names of the live custom roles */
+            customRoleNames: string[];
             emailMasked: string | null;
             fullName: string;
             guardianId: string | null;
@@ -1726,13 +1909,24 @@ export interface components {
         };
         /** @enum {string} */
         UserKind: "staff" | "guardian" | "student";
+        UserPermissionsDto: {
+            deltas: components["schemas"]["GrantDto"][];
+            effective: components["schemas"]["EffectiveCapabilityDto"][];
+            roles: components["schemas"]["PermissionRoleDto"][];
+            /** @description False: no staff capability at all (R59); effective is empty */
+            staffCapacity: boolean;
+            staffId: string | null;
+            staffStatus: components["schemas"]["StaffStatus"] | null;
+            userId: string;
+        };
         UserRoleDto: {
             /** Format: date-time */
             assignedAt: string;
             /** @description Null when issued by the platform */
             assignedBy: string | null;
-            /** @description Always null until custom roles (slice 7) */
+            /** @description Set exactly when systemRole is null */
             customRoleId: string | null;
+            customRoleName: string | null;
             /** Format: date-time */
             endedAt: string | null;
             endedBy: string | null;
@@ -3203,6 +3397,379 @@ export interface operations {
             };
         };
     };
+    CustomRolesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["CustomRoleStatus"];
+                /** @description Name or key contains */
+                q?: string;
+                sort?: components["schemas"]["CustomRoleSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CustomRoleDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CustomRolesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomRoleDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomRoleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CustomRolesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomRoleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CustomRolesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomRoleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CustomRolesController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomRoleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     DocumentsController_content: {
         parameters: {
             query?: never;
@@ -3449,6 +4016,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnrolmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    GrantsController_end: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrantDto"];
                 };
             };
             401: {
@@ -7303,6 +7951,159 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    GrantsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGrantDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrantDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    GrantsController_view: {
+        parameters: {
+            query?: {
+                /** @description Include ended grant and revoke rows */
+                includeEnded?: boolean;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPermissionsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

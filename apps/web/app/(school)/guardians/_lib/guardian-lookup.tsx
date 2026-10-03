@@ -24,7 +24,8 @@ import {
   type GuardianLookupHitDto,
   type GuardianLookupResultDto,
 } from '@/lib/api/school-guardians-contract';
-import { describeStudents, formatIdentityInput } from './guardians-ui';
+import { formatIdentityInput } from '@/lib/validation';
+import { describeStudents } from './guardians-ui';
 
 /** POST /guardians/lookup (contracts/slice-5.md §3.6). Never audited; throttled per user. */
 export function lookupGuardians(body: GuardianLookupBody) {

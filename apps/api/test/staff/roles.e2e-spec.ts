@@ -77,6 +77,7 @@ describe('system roles (e2e)', () => {
         userId: String(t.userId),
         systemRole: 'office_staff',
         customRoleId: null,
+        customRoleName: null,
         assignedBy: String(principal.userId),
         assignedAt: expect.any(String),
         endedAt: null,
@@ -107,6 +108,12 @@ describe('system roles (e2e)', () => {
       expect(errorOf(dup)).toMatchObject({ code: 'ROLE_ALREADY_ASSIGNED', details: { userRoleId: String(t.userRoleId) } });
       expect((await assign(t.userId, 'parent')).status).toBe(422);
       expect((await h.send('post', rolesOf(t.userId), { systemRole: 'office_staff' }, principal.cookie)).status).toBe(422);
+      // A2: null is refused by the DTO, never read as absent (it reached the database as a 500).
+      expect((await h.send('post', rolesOf(t.userId), { systemRole: null, reason: 'ok go' }, principal.cookie)).status).toBe(422);
+      expect((await h.send('post', rolesOf(t.userId), { customRoleId: null, reason: 'ok go' }, principal.cookie)).status).toBe(422);
+      expect(
+        (await h.send('post', rolesOf(t.userId), { systemRole: 'office_staff', customRoleId: null, reason: 'ok go' }, principal.cookie)).status,
+      ).toBe(422);
       expect((await h.send('post', rolesOf(t.userId), { systemRole: 'office_staff', reason: 'ok go', customRoleId: '1' }, principal.cookie)).status).toBe(422);
       const other = await createSchool();
       const theirs = await createSchoolUser(db, other, { systemRole: 'teacher' });

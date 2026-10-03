@@ -72,7 +72,7 @@ Health check endpoint · structured JSON logging with a request id, and **no CNI
 
 ## CI
 
-On every push: install with a locked dependency tree (`npm ci`), typecheck, lint, run migrations against a scratch database, run the tests, fail loudly. **Typecheck is not optional** — it is the cheapest review the project gets, and with AI-written code it catches what a tired reviewer will not.
+On every push: install with a locked dependency tree (`pnpm install --frozen-lockfile`), typecheck, lint, run migrations against a scratch database, run the tests, fail loudly. **Typecheck is not optional** — it is the cheapest review the project gets, and with AI-written code it catches what a tired reviewer will not.
 
 Do not build a deployment pipeline before there is a test suite worth gating on.
 

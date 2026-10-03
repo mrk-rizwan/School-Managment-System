@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { unwrap } from '@/lib/api/client';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { ApiError, toastApiError } from '@/lib/api/errors';
 import { platform, type ChangeSchoolStatusBody, type SchoolDto } from '@/lib/api/platform-contract';
 import { platformKeys } from '@/lib/platform-session';
 import { SCHOOL_STATUS_LABELS } from '../school-ui';
@@ -77,8 +77,7 @@ export function StatusChange({ school }: { school: SchoolDto }) {
     },
     onError: (error) => {
       // A 422 on `reason` (an identity number in it, say) carries its own sentence.
-      const fieldMessage = error instanceof ApiError ? error.fieldErrors[0]?.message : undefined;
-      toast.error(fieldMessage ?? describeApiError(error));
+      toastApiError(error);
       if (error instanceof ApiError && error.code === ErrorCode.ILLEGAL_STATUS_TRANSITION) {
         // Someone else changed it first: show the current status and close.
         setReasonOpen(false);

@@ -2,7 +2,6 @@
 
 import { Capability, ErrorCode, READMISSIBLE_STATUSES } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
@@ -10,11 +9,11 @@ import { toast } from 'sonner';
 import { PageHeader } from '@/components/app-shell';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
 import {
+  BackLink,
   EmptyState,
-  ErrorState,
-  LoadingState,
   NoPermissionState,
-  isPermissionDenied,
+  QueryStates,
+  StateCard,
 } from '@/components/page-states';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -27,11 +26,11 @@ import {
   studentsApi,
   type StudentDetailDto,
 } from '@/lib/api/school-students-contract';
+import { formatDay, todayInSchool } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
 import { ReauthAbandoned, useReauth } from '../../../admissions/_lib/reauth';
-import { formatDay } from '../../../academics/_lib/academics-ui';
-import { useCapabilities } from '../../../academics/_lib/hooks';
 import { NO_PLACEMENT, PlacementSelects, type Placement } from '../../_lib/placement';
-import { STUDENT_STATUS_LABELS, studentsKeys, todayInSchool } from '../../_lib/students-ui';
+import { STUDENT_STATUS_LABELS, studentsKeys } from '../../_lib/students-ui';
 
 /**
  * POST /students/:id/readmit (contracts/slice-6.md §3.7, R26): a new active enrolment, the same
@@ -44,52 +43,40 @@ export function ReadmitForm({ id }: { id: string }) {
     queryFn: () => unwrap(studentsApi.GET('/api/v1/students/{id}', { params: { path: { id } } })),
   });
 
-  const back = (
-    <Link
-      href={`/students/${id}`}
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeftIcon className="size-4" />
-      Student
-    </Link>
-  );
-  const frame = (children: React.ReactNode) => (
-    <>
-      {back}
-      <div className="rounded-lg border bg-card">{children}</div>
-    </>
-  );
-
-  if (student.isPending) return frame(<LoadingState rows={4} />);
-  if (student.error) {
-    if (isPermissionDenied(student.error)) return frame(<NoPermissionState />);
-    const notFound = student.error instanceof ApiError && student.error.status === 404;
-    return frame(
-      notFound ? (
-        <EmptyState title="Student not found" description="Find them in the students list." />
-      ) : (
-        <ErrorState error={student.error} onRetry={() => void student.refetch()} />
-      ),
-    );
-  }
-  if (!can(Capability.STUDENT_CREATE)) return frame(<NoPermissionState />);
-  if (!READMISSIBLE_STATUSES.includes(student.data.status)) {
-    return frame(
-      <EmptyState
-        title={`${student.data.fullName} is ${STUDENT_STATUS_LABELS[student.data.status].toLowerCase()}`}
-        description="Only a withdrawn, transferred or alumni student can be readmitted."
-        action={
-          <Link href={`/students/${id}`} className={buttonVariants({ variant: 'outline' })}>
-            Open the record
-          </Link>
-        }
-      />,
-    );
-  }
   return (
     <>
-      {back}
-      <ReadmitCard student={student.data} />
+      <BackLink href={`/students/${id}`}>Student</BackLink>
+      <QueryStates
+        query={student}
+        loadingRows={4}
+        notFound={{ title: 'Student not found', description: 'Find them in the students list.' }}
+      >
+        {(data) => {
+          if (!can(Capability.STUDENT_CREATE)) {
+            return (
+              <StateCard>
+                <NoPermissionState />
+              </StateCard>
+            );
+          }
+          if (!READMISSIBLE_STATUSES.includes(data.status)) {
+            return (
+              <StateCard>
+                <EmptyState
+                  title={`${data.fullName} is ${STUDENT_STATUS_LABELS[data.status].toLowerCase()}`}
+                  description="Only a withdrawn, transferred or alumni student can be readmitted."
+                  action={
+                    <Link href={`/students/${id}`} className={buttonVariants({ variant: 'outline' })}>
+                      Open the record
+                    </Link>
+                  }
+                />
+              </StateCard>
+            );
+          }
+          return <ReadmitCard student={data} />;
+        }}
+      </QueryStates>
     </>
   );
 }

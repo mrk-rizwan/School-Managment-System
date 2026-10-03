@@ -3,6 +3,7 @@
  * screens, not keys. Values are the dotted keys stored in custom_role_capabilities and
  * user_capability_grants; a value never changes once shipped.
  */
+import { containsIdentityNumber } from './identity';
 export const Capability = {
   // Setup (7)
   SCHOOL_SETTINGS_MANAGE: 'school.settings.manage',
@@ -180,3 +181,53 @@ export const SYSTEM_ROLE_DEFAULTS: Readonly<Record<SystemRole, readonly Capabili
 
 /** Never in a grant row, a revoke row or a custom role (R45, R75; also a database CHECK). */
 export const NEVER_GRANTABLE: readonly Capability[] = [C.ROLE_MANAGE];
+
+/** Per-user rows (contracts/slice-7.md §2): a grant adds a key, a revoke removes a role default. */
+export const GRANT_EFFECTS = ['grant', 'revoke'] as const;
+export type GrantEffect = (typeof GRANT_EFFECTS)[number];
+
+export const CUSTOM_ROLE_STATUSES = ['active', 'archived'] as const;
+export type CustomRoleStatus = (typeof CUSTOM_ROLE_STATUSES)[number];
+
+/**
+ * A custom role's key (contracts/slice-7.md §3.3): 2-32 lower-case letters, digits or
+ * underscores, starting with a letter; also `CHECK custom_roles_key_check`. The API refuses, and
+ * the web should refuse, a key that is a fixed role's name or that carries 13 consecutive digits
+ * (an identity number never reaches the audit log): see customRoleKeyProblem.
+ */
+export const CUSTOM_ROLE_KEY_PATTERN = /^[a-z][a-z0-9_]{1,31}$/;
+
+/** The fixed roles' names, which no custom role key may reuse. */
+export const RESERVED_CUSTOM_ROLE_KEYS: readonly string[] = [...SYSTEM_ROLES, 'parent', 'student'];
+
+/** Why `key` is not an acceptable custom-role key, or null when it is. One rule for API and web. */
+export function customRoleKeyProblem(key: string): 'format' | 'reserved' | 'identity_number' | null {
+  if (!CUSTOM_ROLE_KEY_PATTERN.test(key)) return 'format';
+  if (RESERVED_CUSTOM_ROLE_KEYS.includes(key)) return 'reserved';
+  if (containsIdentityNumber(key)) return 'identity_number';
+  return null;
+}
+
+/** Where an effective capability comes from (the permissions view, contracts/slice-7.md §2). */
+export const CAPABILITY_SOURCE_KINDS = ['system_role', 'custom_role', 'grant'] as const;
+export type CapabilitySourceKind = (typeof CAPABILITY_SOURCE_KINDS)[number];
+
+/** `assigned_sections`: held only through the teacher default, scoped by assignments (R79). */
+export const CAPABILITY_SCOPES = ['all', 'assigned_sections'] as const;
+export type CapabilityScope = (typeof CAPABILITY_SCOPES)[number];
+
+/** The group names of CAPABILITY_GROUPS, in display order. */
+export const CAPABILITY_GROUP_NAMES = Object.keys(CAPABILITY_GROUPS) as CapabilityGroup[];
+
+const GROUP_OF: ReadonlyMap<Capability, CapabilityGroup> = new Map(
+  CAPABILITY_GROUP_NAMES.flatMap((group) =>
+    CAPABILITY_GROUPS[group].map((key): [Capability, CapabilityGroup] => [key, group]),
+  ),
+);
+
+/** The group a capability is listed under (every registry key has exactly one). */
+export function capabilityGroupOf(capability: Capability): CapabilityGroup {
+  const group = GROUP_OF.get(capability);
+  if (group === undefined) throw new Error(`capability ${capability} has no group`);
+  return group;
+}

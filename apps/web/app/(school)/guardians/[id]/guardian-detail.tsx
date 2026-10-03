@@ -4,7 +4,6 @@ import { Capability, ErrorCode, normaliseIdentityDigits } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -13,27 +12,14 @@ import { z } from 'zod';
 import { PageHeader } from '@/components/app-shell';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  isPermissionDenied,
-} from '@/components/page-states';
+import { IssueLoginDialog } from '@/components/issue-login-dialog';
+import { BackLink, QueryStates } from '@/components/page-states';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { unwrap } from '@/lib/api/client';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { ApiError } from '@/lib/api/errors';
 import {
   guardiansApi,
   type ContactCapability,
@@ -41,16 +27,9 @@ import {
   type GuardianStudentDto,
   type UpdateGuardianBody,
 } from '@/lib/api/school-guardians-contract';
-import { useCapabilities } from '../../academics/_lib/hooks';
-import {
-  ContactFields,
-  blankToNull,
-  contactFieldsSchema,
-  formatIdentityInput,
-  fullNameSchema,
-  guardiansKeys,
-  optionalCnicSchema,
-} from '../_lib/guardians-ui';
+import { useCapabilities } from '@/lib/school-session';
+import { blankToNull, formatIdentityInput, nameSchema, optionalCnicSchema } from '@/lib/validation';
+import { ContactFields, contactFieldsSchema, guardiansKeys } from '../_lib/guardians-ui';
 
 /** contracts/slice-5.md §3.2, §3.3, §3.5, §3.7 and §6. */
 export function GuardianDetail({ id }: { id: string }) {
@@ -60,69 +39,53 @@ export function GuardianDetail({ id }: { id: string }) {
       unwrap(guardiansApi.GET('/api/v1/guardians/{id}', { params: { path: { id } } })),
   });
 
-  const back = (
-    <Link
-      href="/guardians"
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeftIcon className="size-4" />
-      Guardians
-    </Link>
-  );
-  const frame = (children: React.ReactNode) => (
-    <>
-      {back}
-      <div className="rounded-lg border bg-card">{children}</div>
-    </>
-  );
-
-  if (guardian.isPending) return frame(<LoadingState rows={5} />);
-  if (guardian.error) {
-    if (isPermissionDenied(guardian.error)) return frame(<NoPermissionState />);
-    const notFound = guardian.error instanceof ApiError && guardian.error.status === 404;
-    return frame(
-      notFound ? (
-        <EmptyState title="Guardian not found" description="Find them in the guardian list." />
-      ) : (
-        <ErrorState error={guardian.error} onRetry={() => void guardian.refetch()} />
-      ),
-    );
-  }
-
-  const data = guardian.data;
-  const merged = data.status === 'merged';
   return (
     <>
-      {back}
-      <PageHeader
-        title={data.fullName}
-        description={merged ? 'Merged record' : 'Guardian'}
-        actions={merged && <Badge variant="outline">Merged</Badge>}
-      />
-      {merged && (
-        <Alert className="mb-6">
-          <AlertDescription>
-            This record was merged into another guardian and is kept read-only for history.{' '}
-            {data.mergedIntoId && (
-              <Link
-                href={`/guardians/${data.mergedIntoId}`}
-                className="font-medium text-foreground underline underline-offset-4"
-              >
-                Open the current record
-              </Link>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        {/* Keyed by the last update so the form restarts from the saved values. */}
-        <EditGuardianForm key={data.updatedAt} guardian={data} />
-        <LoginCard guardian={data} />
-      </div>
-      <div className="mt-6">
-        <h2 className="mb-3 text-base font-semibold">Students</h2>
-        <GuardianStudents guardianId={data.id} />
-      </div>
+      <BackLink href="/guardians">Guardians</BackLink>
+      <QueryStates
+        query={guardian}
+        notFound={{
+          title: 'Guardian not found',
+          description: 'Find them in the guardian list.',
+        }}
+      >
+        {(data) => {
+          const merged = data.status === 'merged';
+          return (
+            <>
+              <PageHeader
+                title={data.fullName}
+                description={merged ? 'Merged record' : 'Guardian'}
+                actions={merged && <Badge variant="outline">Merged</Badge>}
+              />
+              {merged && (
+                <Alert className="mb-6">
+                  <AlertDescription>
+                    This record was merged into another guardian and is kept read-only for history.{' '}
+                    {data.mergedIntoId && (
+                      <Link
+                        href={`/guardians/${data.mergedIntoId}`}
+                        className="font-medium text-foreground underline underline-offset-4"
+                      >
+                        Open the current record
+                      </Link>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                {/* Keyed by the last update so the form restarts from the saved values. */}
+                <EditGuardianForm key={data.updatedAt} guardian={data} />
+                <LoginCard guardian={data} />
+              </div>
+              <div className="mt-6">
+                <h2 className="mb-3 text-base font-semibold">Students</h2>
+                <GuardianStudents guardianId={data.id} />
+              </div>
+            </>
+          );
+        }}
+      </QueryStates>
     </>
   );
 }
@@ -130,7 +93,7 @@ export function GuardianDetail({ id }: { id: string }) {
 // ---- Edit (§3.5) ----
 
 const editSchema = contactFieldsSchema.extend({
-  fullName: fullNameSchema,
+  fullName: nameSchema(2, 200),
   /** A new CNIC; blank keeps the recorded one. */
   cnic: optionalCnicSchema,
 });
@@ -301,91 +264,34 @@ function LoginCard({ guardian }: { guardian: GuardianDetailDto }) {
       {canIssue && (
         <CardContent>
           <Button onClick={() => setOpen(true)}>Issue login</Button>
-          <IssueLoginDialog guardian={guardian} open={open} onOpenChange={setOpen} />
+          <IssueLoginDialog
+            fullName={guardian.fullName}
+            description="The username is the guardian’s CNIC without dashes. The password is the same CNIC until they change it. Tell the guardian in person; nothing is sent to them."
+            issue={() =>
+              unwrap(
+                guardiansApi.POST('/api/v1/guardians/{id}/issue-login', {
+                  params: { path: { id: guardian.id } },
+                }),
+              )
+            }
+            successMessage={(user) =>
+              user.staffId
+                ? `${guardian.fullName}'s existing staff login now covers this guardian too.`
+                : `Login issued to ${guardian.fullName}.`
+            }
+            invalidate={guardiansKeys.all}
+            open={open}
+            onOpenChange={setOpen}
+          />
         </CardContent>
       )}
     </Card>
   );
 }
 
-function IssueLoginDialog({
-  guardian,
-  open,
-  onOpenChange,
-}: {
-  guardian: GuardianDetailDto;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const queryClient = useQueryClient();
-  const issue = useMutation({
-    mutationFn: () =>
-      unwrap(
-        guardiansApi.POST('/api/v1/guardians/{id}/issue-login', {
-          params: { path: { id: guardian.id } },
-        }),
-      ),
-    onSuccess: (user) => {
-      toast.success(
-        user.staffId
-          ? `${guardian.fullName}'s existing staff login now covers this guardian too.`
-          : `Login issued to ${guardian.fullName}.`,
-      );
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      // A resubmit after a lost response: the login exists, which is what was wanted.
-      if (error instanceof ApiError && error.code === ErrorCode.LOGIN_ALREADY_EXISTS) {
-        toast.info(`${guardian.fullName} already has a login.`);
-        onOpenChange(false);
-      }
-    },
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: guardiansKeys.all }),
-  });
-  const shownError =
-    issue.error instanceof ApiError && issue.error.code === ErrorCode.LOGIN_ALREADY_EXISTS
-      ? null
-      : issue.error;
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (issue.isPending) return;
-        if (!next) issue.reset();
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent showCloseButton={!issue.isPending}>
-        <DialogHeader>
-          <DialogTitle>Issue a login to {guardian.fullName}?</DialogTitle>
-          <DialogDescription>
-            The username is the guardian’s CNIC without dashes. The password is the same CNIC
-            until they change it. Tell the guardian in person; nothing is sent to them.
-          </DialogDescription>
-        </DialogHeader>
-        {shownError && (
-          <Alert variant="destructive">
-            <AlertDescription>{describeApiError(shownError)}</AlertDescription>
-          </Alert>
-        )}
-        <DialogFooter>
-          <Button variant="outline" disabled={issue.isPending} onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button disabled={issue.isPending} onClick={() => issue.mutate()}>
-            {issue.isPending ? 'Issuing…' : 'Issue login'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ---- Students (§3.3, filled by slice 6: contracts/slice-6.md §9) ----
 
 const STUDENTS_LIMIT = 25;
-const NO_STUDENTS: GuardianStudentDto[] = [];
 
 function GuardianStudents({ guardianId }: { guardianId: string }) {
   const { can } = useCapabilities();
@@ -448,19 +354,14 @@ function GuardianStudents({ guardianId }: { guardianId: string }) {
     ];
   }, [canOpenStudent]);
 
-  const result = students.data;
   return (
     <DataTable
       columns={columns}
-      data={result?.data ?? NO_STUDENTS}
+      query={students}
       getRowId={(row) => row.linkId}
-      page={result?.page ?? page}
-      limit={result?.limit ?? STUDENTS_LIMIT}
-      total={result?.total ?? 0}
+      page={page}
+      limit={STUDENTS_LIMIT}
       onPageChange={setPage}
-      isLoading={students.isPending || students.isPlaceholderData}
-      error={students.error}
-      onRetry={() => void students.refetch()}
       emptyTitle="No students linked"
       emptyDescription="Students are linked to their guardians at admission."
     />

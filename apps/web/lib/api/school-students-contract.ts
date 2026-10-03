@@ -14,7 +14,6 @@ type Schemas = components['schemas'];
 export { schoolApi as studentsApi } from './client';
 
 export type { UserDto } from './school-contract';
-export type Paginated<T> = { data: T[]; page: number; limit: number; total: number };
 
 // ---- Enums (contract §2); the value lists are in @asms/shared ----
 
@@ -52,30 +51,18 @@ export type DuplicateMatchDto = {
 
 export type StudentSort = Schemas['StudentSort'];
 export type StudentListQuery = NonNullable<operations['StudentsController_list']['parameters']['query']>;
-export type GuardianLinkListQuery = NonNullable<
-  operations['StudentsController_guardianLinks']['parameters']['query']
->;
-export type DocumentListQuery = NonNullable<operations['DocumentsController_list']['parameters']['query']>;
 
 // ---- Bodies ----
 
 export type UpdateStudentBody = Schemas['UpdateStudentDto'];
-export type ChangeStudentStatusBody = Schemas['ChangeStatusDto'];
-export type ReadmitBody = Schemas['ReadmitDto'];
-export type CreateGuardianLinkBody = Schemas['CreateGuardianLinkDto'];
 export type UpdateGuardianLinkBody = Schemas['UpdateGuardianLinkDto'];
-export type ReasonBody = Schemas['ReasonDto'];
-export type UpdateEnrolmentBody = Schemas['UpdateEnrolmentDto'];
-export type ChangeSectionBody = Schemas['ChangeSectionDto'];
-export type ChangeClassBody = Schemas['ChangeClassDto'];
-export type AttachDocumentBody = Schemas['AddDocumentDto'];
 
 /**
  * The API requires exactly one of `guardianId` and `newGuardian` (§6.2); the generated type has
  * both optional, so the screens use this narrower union, which is assignable to it.
  */
 type GuardianLinkFlags = Omit<Schemas['AdmissionGuardianDto'], 'guardianId' | 'newGuardian'>;
-export type AdmissionGuardianBody =
+type AdmissionGuardianBody =
   | (GuardianLinkFlags & { guardianId: string; newGuardian?: never })
   | (GuardianLinkFlags & { newGuardian: Schemas['CreateGuardianDto']; guardianId?: never });
 export type AdmissionBody = Omit<Schemas['CreateAdmissionDto'], 'guardians'> & {

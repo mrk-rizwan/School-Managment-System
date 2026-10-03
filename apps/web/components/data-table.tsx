@@ -7,8 +7,16 @@ import {
   ArrowUpIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  MoreHorizontalIcon,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -22,26 +30,36 @@ import { EmptyState, ErrorState, NoPermissionState, isPermissionDenied } from '.
 
 /**
  * The one table component (plan §3.10). Pagination, sorting and filtering happen on the server:
- * the table renders exactly the page it is given and reports page changes upward.
+ * the table renders exactly the page its query holds and reports page changes upward.
  * Build columns with `createColumnHelper<DataTableFeatures, Row>()`.
  */
 export const dataTableFeatures = tableFeatures({});
 export type DataTableFeatures = typeof dataTableFeatures;
 
+/** The part of a TanStack Query result for one page of a list that the table reads. */
+export type PageQuery<TData> = {
+  data: { data: TData[]; page: number; limit: number; total: number } | undefined;
+  isPending: boolean;
+  isPlaceholderData: boolean;
+  error: unknown;
+  refetch: () => unknown;
+};
+
+const NO_ROWS: never[] = [];
+
 type DataTableProps<TData extends object> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- columns hold mixed value types
   columns: ColumnDef<DataTableFeatures, TData, any>[];
-  /** Rows of the current page. Pass a stable reference (query data or a module constant). */
-  data: TData[];
-  getRowId?: (row: TData) => string;
-  /** Server pagination, as the API returns it: `{ data, page, limit, total }`. */
+  /**
+   * The list query, as the API returns a page: `{ data, page, limit, total }`. Run it with
+   * `placeholderData: keepPreviousData`: a placeholder page shows as loading.
+   */
+  query: PageQuery<TData>;
+  /** The page and page size asked for, shown until the first answer arrives. */
   page: number;
   limit: number;
-  total: number;
   onPageChange: (page: number) => void;
-  isLoading?: boolean;
-  error?: unknown;
-  onRetry?: () => void;
+  getRowId?: (row: TData) => string;
   emptyTitle?: string;
   emptyDescription?: string;
   emptyAction?: React.ReactNode;
@@ -49,19 +67,23 @@ type DataTableProps<TData extends object> = {
 
 export function DataTable<TData extends object>({
   columns,
-  data,
-  getRowId,
-  page,
-  limit,
-  total,
+  query,
+  page: requestedPage,
+  limit: requestedLimit,
   onPageChange,
-  isLoading = false,
-  error,
-  onRetry,
+  getRowId,
   emptyTitle,
   emptyDescription,
   emptyAction,
 }: DataTableProps<TData>) {
+  const result = query.data;
+  const data: TData[] = result?.data ?? NO_ROWS;
+  const page = result?.page ?? requestedPage;
+  const limit = result?.limit ?? requestedLimit;
+  const total = result?.total ?? 0;
+  const isLoading = query.isPending || query.isPlaceholderData;
+  const error = query.error;
+  const onRetry = () => void query.refetch();
   const table = useTable({ features: dataTableFeatures, columns, data, getRowId });
 
   if (error) {
@@ -192,6 +214,38 @@ export function SortHeader<F extends string>({
       <span className="sr-only">{direction ? `, sorted ${direction}` : ', not sorted'}</span>
     </button>
   );
+}
+
+export type RowAction = { label: string; onSelect: () => void; destructive?: boolean };
+
+/** The per-row actions menu. Renders nothing when the user may take no action on the row. */
+export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
+  if (actions.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`} />}
+      >
+        <MoreHorizontalIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            variant={action.destructive ? 'destructive' : 'default'}
+            onClick={action.onSelect}
+          >
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** A cell flag for a missing value the office should fill in ("No CNIC", "No phone"). */
+export function MissingBadge({ children }: { children: React.ReactNode }) {
+  return <Badge variant="outline">{children}</Badge>;
 }
 
 function Frame({ children }: { children: React.ReactNode }) {

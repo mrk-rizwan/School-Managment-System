@@ -20,6 +20,7 @@ import {
   type MeDto,
 } from '@/lib/api/school-contract';
 import { schoolKeys, useSchoolMe, useSetMe } from '@/lib/school-session';
+import { newPasswordSchema } from '@/lib/validation';
 
 // contracts/slice-2.md §4.2, §4.3, §10. The shell renders this only after GET /me loaded.
 export function Account() {
@@ -143,10 +144,7 @@ function EmailCard({ me }: { me: MeDto }) {
 const passwordSchema = z
   .object({
     currentPassword: currentPasswordSchema,
-    newPassword: z
-      .string()
-      .min(8, 'Use at least 8 characters.')
-      .max(128, 'Use at most 128 characters.'),
+    newPassword: newPasswordSchema,
     confirmPassword: z.string(),
   })
   .refine((v) => v.newPassword !== v.currentPassword, {

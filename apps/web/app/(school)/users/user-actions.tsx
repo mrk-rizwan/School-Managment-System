@@ -1,46 +1,16 @@
 'use client';
 
-import { ErrorCode } from '@asms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MoreHorizontalIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { RowActions } from '@/components/data-table';
 import { unwrap } from '@/lib/api/client';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { refusalMessage } from '@/lib/api/errors';
 import { school, type UserDto } from '@/lib/api/school-contract';
 import { schoolKeys } from '@/lib/school-session';
 
 type Action = 'reset' | 'disable' | 'enable';
-
-/** §5.3 refusals in words the office can act on; anything else is the API's own sentence. */
-function actionErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    const field = error.fieldErrors[0]?.message;
-    if (field) return field;
-    const reason = (error.details as { reason?: unknown } | null)?.reason;
-    if (error.code === ErrorCode.PERMISSION_DENIED && reason === 'target_is_principal') {
-      return 'Only someone who manages roles can change a principal’s account.';
-    }
-    if (error.code === ErrorCode.PERMISSION_DENIED && reason === 'target_exceeds_actor') {
-      return 'This account can do things yours cannot, so you cannot change it.';
-    }
-    if (error.code === ErrorCode.LAST_PRINCIPAL) {
-      return 'This is the school’s only active principal. Appoint another principal first.';
-    }
-    if (error.code === ErrorCode.IDENTITY_NUMBER_MISSING) {
-      return 'This person has no identity number on record, so there is no default password to reset to.';
-    }
-  }
-  return describeApiError(error);
-}
 
 /**
  * Office reset, disable and enable for one account (contracts/slice-2.md §5.3–§5.5), each asked
@@ -77,7 +47,8 @@ export function UserActions({ user }: { user: UserDto }) {
           : `${updated.fullName}’s account is ${updated.status === 'active' ? 'enabled' : 'disabled'}.`,
       );
     },
-    onError: (error) => toast.error(actionErrorMessage(error)),
+    // §5.3 refusals in words the office can act on.
+    onError: (error) => toast.error(refusalMessage(error, 'account')),
   });
 
   const open = (kind: Action) => {
@@ -108,23 +79,15 @@ export function UserActions({ user }: { user: UserDto }) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${user.fullName}`} />}
-        >
-          <MoreHorizontalIcon />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => open('reset')}>Reset password</DropdownMenuItem>
-          {user.status === 'active' ? (
-            <DropdownMenuItem variant="destructive" onClick={() => open('disable')}>
-              Disable account
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onClick={() => open('enable')}>Enable account</DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActions
+        label={user.fullName}
+        actions={[
+          { label: 'Reset password', onSelect: () => open('reset') },
+          user.status === 'active'
+            ? { label: 'Disable account', onSelect: () => open('disable'), destructive: true }
+            : { label: 'Enable account', onSelect: () => open('enable') },
+        ]}
+      />
 
       <ConfirmWithReasonDialog
         open={action !== null}

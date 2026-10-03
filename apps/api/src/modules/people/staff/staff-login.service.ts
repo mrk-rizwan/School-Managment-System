@@ -134,7 +134,7 @@ export class StaffLoginService {
 
     await this.roles.assign(schoolId, {
       userId,
-      systemRole: dto.systemRole,
+      role: { kind: 'system', systemRole: dto.systemRole },
       assignedBy: actor.userId,
       now,
     });

@@ -73,6 +73,9 @@ export class StaffDto {
   @ApiProperty({ ...SYSTEM_ROLE, isArray: true, description: 'Live roles of that login' })
   systemRoles: SystemRole[];
 
+  @ApiProperty({ type: String, isArray: true, description: 'Names of the live custom roles of that login' })
+  customRoleNames: string[];
+
   @ApiProperty(DATE_TIME)
   createdAt: Date;
 
@@ -143,8 +146,11 @@ export class UserRoleDto {
   @ApiProperty({ ...SYSTEM_ROLE, nullable: true })
   systemRole: SystemRole | null;
 
-  @ApiProperty({ ...NULLABLE_ID, description: 'Always null until custom roles (slice 7)' })
+  @ApiProperty({ ...NULLABLE_ID, description: 'Set exactly when systemRole is null' })
   customRoleId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  customRoleName: string | null;
 
   @ApiProperty({ ...NULLABLE_ID, description: 'Null when issued by the platform' })
   assignedBy: string | null;
@@ -380,10 +386,17 @@ export class ListUserRolesQueryDto extends PageQueryDto {
   sort?: '-assignedAt';
 }
 
+/** Exactly one of systemRole / customRoleId (contracts/slice-7.md §3.6; checked by the service). */
 export class AssignRoleDto {
-  @ApiProperty(SYSTEM_ROLE)
+  @ApiPropertyOptional(SYSTEM_ROLE)
+  @IfPresent()
   @IsIn(SYSTEM_ROLES)
-  systemRole: SystemRole;
+  systemRole?: SystemRole;
+
+  @ApiPropertyOptional(ID)
+  @IfPresent()
+  @IsIdString()
+  customRoleId?: string;
 
   @ReasonField()
   reason: string;

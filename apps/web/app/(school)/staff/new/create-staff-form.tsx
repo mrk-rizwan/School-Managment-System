@@ -1,9 +1,8 @@
 'use client';
 
-import { ErrorCode, normaliseIdentityDigits } from '@asms/shared';
+import { Capability, ErrorCode, normaliseIdentityDigits } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -11,12 +10,14 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/app-shell';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
+import { BackLink, NoPermissionState, StateCard } from '@/components/page-states';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { staffApi, type CreateStaffBody } from '@/lib/api/school-staff-contract';
-import { blankToNull, formatIdentityInput } from '../../guardians/_lib/guardians-ui';
+import { useCapabilities } from '@/lib/school-session';
+import { blankToNull, formatIdentityInput } from '@/lib/validation';
 import {
   StaffMoreFields,
   staffFieldsSchema,
@@ -24,11 +25,30 @@ import {
   type StaffFieldValues,
 } from '../_lib/staff-ui';
 
-/**
- * contracts/slice-4.md §3.3, §8. A CNIC can exist once, so a resubmit with one answers with the
- * existing record; without one the submit button is disabled while the request runs.
- */
+const TITLE = 'New staff member';
+
+/** contracts/slice-4.md §3.3, §8; without staff.create, the no-permission state (plan §9). */
 export function CreateStaffForm() {
+  const { can } = useCapabilities();
+  if (!can(Capability.STAFF_CREATE)) {
+    return (
+      <>
+        <BackLink href="/staff">Staff</BackLink>
+        <PageHeader title={TITLE} />
+        <StateCard>
+          <NoPermissionState />
+        </StateCard>
+      </>
+    );
+  }
+  return <StaffForm />;
+}
+
+/**
+ * A CNIC can exist once, so a resubmit with one answers with the existing record; without one
+ * the submit button is disabled while the request runs.
+ */
+function StaffForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
   // The staff member already holding the CNIC, after STAFF_CNIC_EXISTS.
@@ -72,15 +92,9 @@ export function CreateStaffForm() {
 
   return (
     <>
-      <Link
-        href="/staff"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-        Staff
-      </Link>
+      <BackLink href="/staff">Staff</BackLink>
       <PageHeader
-        title="New staff member"
+        title={TITLE}
         description="The record is created without a login. Issue a login and give a role from the staff member’s page."
       />
       <Card className="max-w-2xl">

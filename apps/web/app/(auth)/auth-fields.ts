@@ -27,12 +27,6 @@ export const usernameSchema = z
   .trim()
   .regex(IDENTITY_INPUT_PATTERN, 'Enter the 13 digits of your CNIC or B-Form number.');
 
-/** §3.4: 8–128 characters. The API also refuses the username digits (a 422 on the field). */
-export const newPasswordSchema = z
-  .string()
-  .min(8, 'Use at least 8 characters.')
-  .max(128, 'Use at most 128 characters.');
-
 /** Fills the school code field from the remembered value (the only thing in localStorage). */
 export function useRememberedSchoolCode<T extends FieldValues>(
   form: UseFormReturn<T>,

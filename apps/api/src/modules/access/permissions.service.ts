@@ -1,11 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Capability, SYSTEM_ROLE_DEFAULTS, type SystemRole } from '@asms/shared';
+import { Capability, type SystemRole } from '@asms/shared';
+import { CapabilityGrantRepository } from '../../repositories/capability-grant.repository';
+import {
+  CustomRoleRepository,
+  type UserCustomRole,
+} from '../../repositories/custom-role.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { UserRepository, type UserStatusValue } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { Scope } from '../../tenancy/scope';
 import { scopeAll, scopeSections } from '../../tenancy/scope.mint';
 import { SchoolClock } from '../../common/school-clock';
+import {
+  capabilityOrder,
+  effectivePermissions,
+  type EffectiveLine,
+  type GrantInput,
+} from './effective-permissions';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -13,7 +24,7 @@ export type SchoolRole = (typeof SCHOOL_ROLES)[number];
 
 /** Which kinds of person the user currently is (contract §1.1 "Capacity"). */
 export interface Capacities {
-  /** staff_id set, staff active, at least one live role row. */
+  /** staff_id set, staff active, at least one live role row (system or custom). */
   staff: boolean;
   /** guardian_id set (plan §6 stance). */
   guardian: boolean;
@@ -33,25 +44,28 @@ export interface UserAccess {
   capacities: Capacities;
   /** Live system-role rows, whatever the staff status (the users screen shows them). */
   systemRoles: readonly SystemRole[];
-  /** Effective capabilities: empty unless the staff capacity holds (R59). */
+  /** The same rows with their user_roles ids, in assignment order (the permissions view). */
+  systemRoleRows: readonly { userRoleId: bigint; systemRole: SystemRole }[];
+  /** Live custom-role rows, whatever the staff status. */
+  customRoles: readonly UserCustomRole[];
+  /** Live grant and revoke rows. */
+  grants: readonly GrantInput[];
+  /** effectivePermissions() for this user, in registry order: empty without staff capacity (R59). */
+  lines: readonly EffectiveLine[];
+  /** Effective capabilities: exactly the keys of `lines`. */
   capabilities: ReadonlySet<Capability>;
 }
 
-const ALL_CAPABILITIES: readonly Capability[] = Object.values(Capability);
-/** Display and comparison order: the registry order of §7. */
-const ORDER = new Map(ALL_CAPABILITIES.map((key, i) => [key, i]));
-
-/** Roles whose defaults are school-wide; a teacher's defaults are scoped by assignments. */
-const SCHOOL_WIDE_ROLES: readonly SystemRole[] = ['principal', 'office_staff'];
-
 /**
- * Effective permissions (plan §3.4, contract slice-2 §1.1). Computed from system roles; teacher
- * scope comes from assignments (slice 4); slice 7 adds custom roles and grants.
+ * Effective permissions (plan §3.4, contracts/slice-7.md §1): system roles, custom roles, grants
+ * and revokes through the pure effectivePermissions(); teacher scope from assignments (slice 4).
  */
 @Injectable()
 export class PermissionsService {
   constructor(
     private readonly users: UserRepository,
+    private readonly customRoles: CustomRoleRepository,
+    private readonly grants: CapabilityGrantRepository,
     private readonly assignments: TeacherAssignmentRepository,
     private readonly clock: SchoolClock,
   ) {}
@@ -60,15 +74,28 @@ export class PermissionsService {
   async load(schoolId: SchoolId, userId: bigint): Promise<UserAccess | null> {
     const row = await this.users.findAccess(schoolId, userId);
     if (!row) return null;
+    // Sequential statements (§3.3); a user with no staff link has no role or grant rows to read.
+    const customRoles =
+      row.staffId === null ? [] : await this.customRoles.liveForUser(schoolId, userId);
+    const grants =
+      row.staffId === null
+        ? []
+        : (await this.grants.activeForUser(schoolId, userId)).map((g) => ({
+            grantId: g.id,
+            capabilityKey: g.capabilityKey,
+            effect: g.effect,
+          }));
     const staff =
-      row.staffId !== null && row.staffStatus === 'active' && row.systemRoles.length > 0;
-    const capabilities = new Set<Capability>();
+      row.staffId !== null &&
+      row.staffStatus === 'active' &&
+      row.systemRoles.length + customRoles.length > 0;
     // R59: a user whose staff record is not active has no staff capability, whatever is stored.
-    if (staff) {
-      for (const role of row.systemRoles) {
-        for (const key of SYSTEM_ROLE_DEFAULTS[role]) capabilities.add(key);
-      }
-    }
+    const lines = effectivePermissions({
+      staffCapacity: staff,
+      systemRoles: row.systemRoles,
+      customRoles,
+      grants,
+    });
     return {
       userId: row.id,
       status: row.status,
@@ -82,7 +109,11 @@ export class PermissionsService {
           row.studentId !== null && row.studentStatus === 'active' && row.studentLoginEnabled,
       },
       systemRoles: row.systemRoles,
-      capabilities,
+      systemRoleRows: row.systemRoleRows,
+      customRoles,
+      grants,
+      lines,
+      capabilities: new Set(lines.map((line) => line.capability)),
     };
   }
 
@@ -102,7 +133,7 @@ export class PermissionsService {
 
   /** Effective capabilities in registry order. */
   sortedCapabilities(access: UserAccess): Capability[] {
-    return [...access.capabilities].sort((a, b) => (ORDER.get(a) ?? 0) - (ORDER.get(b) ?? 0));
+    return [...access.capabilities].sort(capabilityOrder);
   }
 
   holds(access: UserAccess, capability: Capability): boolean {
@@ -116,14 +147,19 @@ export class PermissionsService {
    * reset or disable it while it is suspended when they could not while it is active.
    */
   isSubset(target: UserAccess, actor: UserAccess): boolean {
-    const dormant = target.systemRoles.flatMap((role) => SYSTEM_ROLE_DEFAULTS[role]);
+    const dormant = effectivePermissions({
+      staffCapacity: true,
+      systemRoles: target.systemRoles,
+      customRoles: target.customRoles,
+      grants: target.grants,
+    }).map((line) => line.capability);
     return [...target.capabilities, ...dormant].every((key) => actor.capabilities.has(key));
   }
 
   /**
-   * A refusal (null) or the row scope the capability gives (plan §3.4, R79): school-wide when it
-   * comes from the principal or office-staff defaults; the teacher's sections when it comes only
-   * from the teacher default (contracts/slice-4.md §1). An empty section list means no rows,
+   * A refusal (null) or the row scope the capability gives (plan §3.4, R79): the teacher's
+   * sections when it comes only from the teacher default (contracts/slice-4.md §1), school-wide
+   * from any other source (principal or office default, custom role, grant: slice-7 §1). An empty section list means no rows,
    * never no filter.
    */
   can(schoolId: SchoolId, access: UserAccess, capability: Capability): Promise<Scope | null> {
@@ -132,8 +168,8 @@ export class PermissionsService {
 
   /**
    * Any-of over several capabilities (@RequireCapability with more than one key): a refusal
-   * (null) when none is held, else the widest scope: school-wide if any held key comes from a
-   * school-wide role, otherwise the teacher's sections (read once).
+   * (null) when none is held, else the widest scope: school-wide if any held key has a school-wide
+   * source, otherwise the teacher's sections (read once).
    */
   async canAny(
     schoolId: SchoolId,
@@ -144,11 +180,10 @@ export class PermissionsService {
     if (!access.capacities.staff) return null;
     const held = capabilities.filter((key) => access.capabilities.has(key));
     if (held.length === 0) return null;
-    const schoolWide = held.some((key) =>
-      access.systemRoles.some(
-        (role) => SCHOOL_WIDE_ROLES.includes(role) && SYSTEM_ROLE_DEFAULTS[role].includes(key),
-      ),
+    const teacherOnly = new Set(
+      access.lines.filter((l) => l.scope === 'assigned_sections').map((l) => l.capability),
     );
+    const schoolWide = held.some((key) => !teacherOnly.has(key));
     return schoolWide ? scopeAll() : scopeSections(await this.teacherSections(schoolId, access));
   }
 

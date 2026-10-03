@@ -15,7 +15,8 @@ import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import { school, type ResetPasswordBody } from '@/lib/api/school-contract';
 import { SCHOOL_PATHS } from '@/lib/school-session';
-import { newPasswordSchema, SCHOOL_CODE_PATTERN, useFragmentToken } from '../../auth-fields';
+import { newPasswordSchema } from '@/lib/validation';
+import { SCHOOL_CODE_PATTERN, useFragmentToken } from '../../auth-fields';
 import { LinkOutcome } from '../../link-states';
 
 // contracts/slice-2.md §3.4. The token travels in the POST body only; the confirmation is

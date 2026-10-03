@@ -1,20 +1,12 @@
 'use client';
 
-import {
-  Capability,
-  DEFAULT_TIMEZONE,
-  ErrorCode,
-  SYSTEM_ROLE_DEFAULTS,
-  SYSTEM_ROLES,
-  normalisePhone,
-} from '@asms/shared';
-import { useWatch, type Control } from 'react-hook-form';
+import { Capability, SYSTEM_ROLE_DEFAULTS, SYSTEM_ROLES, normalisePhone } from '@asms/shared';
+import type { Control } from 'react-hook-form';
 import { z } from 'zod';
-import { FormField } from '@/components/form-field';
+import { FormField, PhoneField } from '@/components/form-field';
 import { Badge } from '@/components/ui/badge';
-import { ApiError, describeApiError } from '@/lib/api/errors';
-import { fullNameSchema, optionalCnicSchema } from '../../guardians/_lib/guardians-ui';
 import type { StaffStatus, SystemRole, TeacherRole } from '@/lib/api/school-staff-contract';
+import { nameSchema, optionalCnicSchema } from '@/lib/validation';
 
 // Pieces shared by the staff list, create and detail screens (contracts/slice-4.md §8).
 
@@ -64,17 +56,8 @@ export function givableRoles(can: (capability: Capability) => boolean): SystemRo
   );
 }
 
-/** Today in the school's time zone (Asia/Karachi, CLAUDE.md), as YYYY-MM-DD. */
-const todayFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: DEFAULT_TIMEZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-export const schoolToday = () => todayFormat.format(new Date());
-
 // ---- Form rules (§3.3). The API repeats every one; these only save a round trip. The name,
-// CNIC and blank-to-null rules are the guardians' (guardians/_lib/guardians-ui.tsx). ----
+// CNIC and blank-to-null rules are shared (lib/validation.ts). ----
 
 export const optionalDateSchema = z
   .string()
@@ -82,7 +65,7 @@ export const optionalDateSchema = z
 
 /** The fields create and edit share. `cnic` is blank for "not given" / "keep". */
 export const staffFieldsSchema = z.object({
-  fullName: fullNameSchema,
+  fullName: nameSchema(2, 200),
   cnic: optionalCnicSchema,
   phone: z
     .string()
@@ -97,60 +80,11 @@ export const staffFieldsSchema = z.object({
 });
 export type StaffFieldValues = z.input<typeof staffFieldsSchema>;
 
-/**
- * The sentence for a staff refusal the office can act on (§3.5, §3.6, §5): the permission
- * reasons in words; anything else is the API's own message (or a 422's field sentence).
- */
-export function staffErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    const field = error.fieldErrors[0]?.message;
-    if (field) return field;
-    const reason = (error.details as { reason?: unknown } | null)?.reason;
-    if (error.code === ErrorCode.PERMISSION_DENIED) {
-      if (reason === 'target_is_principal') {
-        return 'Only someone who manages roles can change a principal’s record.';
-      }
-      if (reason === 'target_exceeds_actor') {
-        return 'This person can do things you cannot, so you cannot change their status.';
-      }
-      if (reason === 'role_exceeds_actor') {
-        return 'You can only give a role whose permissions you hold yourself.';
-      }
-    }
-    if (error.code === ErrorCode.LAST_PRINCIPAL) {
-      return 'This is the school’s only active principal. Appoint another principal first.';
-    }
-    if (error.code === ErrorCode.SELF_ACTION_FORBIDDEN) {
-      return 'You cannot do this to your own record. Ask another member of staff.';
-    }
-  }
-  return describeApiError(error);
-}
-
-/**
- * Phone, designation and joining date: the fields create and edit share after name and CNIC.
- * The phone preview shows what the server is expected to store; its answer is authoritative.
- */
+/** Phone, designation and joining date: the fields create and edit share after name and CNIC. */
 export function StaffMoreFields({ control, disabled }: { control: Control<StaffFieldValues>; disabled?: boolean }) {
-  const phone = useWatch({ control, name: 'phone' }) ?? '';
-  const normalised = phone.trim() ? normalisePhone(phone) : null;
   return (
     <>
-      <FormField
-        control={control}
-        name="phone"
-        label="Mobile phone"
-        type="tel"
-        inputMode="tel"
-        autoComplete="off"
-        maxLength={20}
-        disabled={disabled}
-        hint={
-          normalised
-            ? `Will be saved as ${normalised}.`
-            : 'Pakistani numbers such as 0300 1234567, or international with +.'
-        }
-      />
+      <PhoneField control={control} name="phone" label="Mobile phone" disabled={disabled} />
       <FormField
         control={control}
         name="designation"

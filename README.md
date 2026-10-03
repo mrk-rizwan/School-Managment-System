@@ -38,7 +38,9 @@ uploaded student documents or files over 1 MB. Git does not enable repository ho
 cp .env.example .env
 ```
 
-Fill every value — the API refuses to start if any is missing. `.env` is git-ignored and the
+Fill every value. The API refuses to start if one of its own keys is missing; `POSTGRES_*`,
+`REDIS_PASSWORD` and `TEST_DATABASE_URL` feed Docker Compose and the tests, and
+`PLATFORM_ADMIN_*` are read only by the seed. `.env` is git-ignored and the
 hook blocks it; never commit it.
 
 - `IDENTITY_HASH_KEY`, `PASSWORD_PEPPER` — two **different** random secrets. Generate each with
@@ -63,7 +65,7 @@ hook blocks it; never commit it.
 ### Services, dependencies, database
 
 ```sh
-docker compose up -d
+docker compose up -d --wait
 docker compose exec postgres psql -U <user> -d asms -c "CREATE DATABASE asms_test;"
 
 pnpm install
@@ -91,21 +93,36 @@ pnpm dev
 | Mailpit (captured outgoing mail) | http://127.0.0.1:8025 |
 | MinIO console (object storage) | http://127.0.0.1:9001 |
 
-Every service port binds to `127.0.0.1` only.
+The Docker services and the API bind to `127.0.0.1` only. The Next.js dev server listens on all
+interfaces, so run it only on a trusted network.
 
 First platform sign-in: use the seeded email and password, scan the QR with an authenticator app,
 confirm a code, then choose a new password (12 characters or more). Later sign-ins need email,
 password and the current 6-digit code.
+
+### First school and principal
+
+No school is seeded. From the platform console:
+
+1. **Schools → New school.** The short code you choose is the school code used at sign-in.
+2. On the school's page, **Issue principal login** with full name, CNIC and phone.
+3. Sign in at http://localhost:3000/login with the school code, the CNIC digits without dashes
+   as the username, and the same digits as the password (settled rule 12). The first sign-in
+   suggests a password change but does not force it.
 
 ## Tests and checks
 
 ```sh
 pnpm --filter @asms/api test                                 # API tests (uses asms_test)
 pnpm --filter @asms/web exec playwright install chromium     # once per machine
+pnpm --filter @asms/api build                                # the real-API specs start apps/api/dist
 pnpm --filter @asms/web test:e2e                             # web end-to-end tests
 pnpm lint
 pnpm typecheck
 ```
+
+Stop `pnpm dev` before `test:e2e`: Playwright reuses a running server, and the dev API points at
+the dev database, so the real-API specs would fail at their first sign-in.
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request: install, Prisma generate,
 lint, typecheck, migrations, API tests, a check that the committed OpenAPI document and web

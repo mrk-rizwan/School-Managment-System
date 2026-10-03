@@ -17,6 +17,9 @@ const common = {
 export const schoolApi = createClient<SchoolPaths>({ ...common, baseUrl: '' });
 export const platformApi = createClient<PlatformPaths>({ ...common, baseUrl: '' });
 
+/** Largest page the API serves (plan §3.9); dropdowns ask for it. */
+export const OPTIONS_LIMIT = 50;
+
 /**
  * Returns the data of an openapi-fetch call or throws an ApiError, so TanStack Query sees a
  * failure as an error. Usage: `queryFn: () => unwrap(schoolApi.GET('/api/v1/health'))`.

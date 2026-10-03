@@ -1,9 +1,9 @@
 'use client';
 
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, type Capability } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
@@ -45,6 +45,19 @@ export function useSchoolMe() {
     queryKey: schoolKeys.me,
     queryFn: () => unwrap(school.GET('/api/v1/me')),
   });
+}
+
+/**
+ * The signed-in user's effective capabilities, from the school shell's GET /me query
+ * (contracts/slice-2.md §4.1), to hide controls the user cannot use. A convenience only: the API
+ * checks every request, and a 403 still shows the no-permission state.
+ */
+export function useCapabilities() {
+  const me = useSchoolMe();
+  const held = useMemo(() => new Set<string>(me.data?.capabilities ?? []), [me.data]);
+  // While GET /me is pending (or failed) nothing is held, so write controls stay hidden.
+  const can = useCallback((capability: Capability) => held.has(capability), [held]);
+  return { can };
 }
 
 /**

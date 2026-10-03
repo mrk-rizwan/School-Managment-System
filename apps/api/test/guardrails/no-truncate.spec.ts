@@ -9,6 +9,12 @@ const apiRoot = resolve(__dirname, '../..');
 const FORBIDDEN =
   /\bTRUNCATE\b|\btruncate\s+table\b|\.deleteMany\s*\(|\bDELETE\s+FROM\b|\bdelete\s+from\b|\bDROP\s+TABLE\b|\bdrop\s+table\b/;
 
+/**
+ * Files that state DELETE / TRUNCATE on purpose: they prove the database refuses them, inside one
+ * transaction that is rolled back. Adding a file here is a review decision, not a convenience.
+ */
+const EXEMPT = new Set([join(apiRoot, 'test', 'access', 'history-guards.e2e-spec.ts')]);
+
 function testFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
@@ -24,7 +30,7 @@ describe('tests never truncate', () => {
   it('no test or test-support file truncates, bulk-deletes or drops a table', () => {
     const self = resolve(__filename);
     const offenders = [...testFiles(join(apiRoot, 'src')), ...testFiles(join(apiRoot, 'test'))]
-      .filter((file) => file !== self && FORBIDDEN.test(readFileSync(file, 'utf8')))
+      .filter((file) => file !== self && !EXEMPT.has(file) && FORBIDDEN.test(readFileSync(file, 'utf8')))
       .map((file) => relative(apiRoot, file));
     expect(offenders).toEqual([]);
   });

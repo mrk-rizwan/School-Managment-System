@@ -33,9 +33,6 @@ export type GuardianSort = Schemas['GuardianSort'];
 export type GuardianListQuery = NonNullable<
   operations['GuardiansController_list']['parameters']['query']
 >;
-export type GuardianStudentsQuery = NonNullable<
-  operations['GuardiansController_students']['parameters']['query']
->;
 
 // ---- Bodies ----
 

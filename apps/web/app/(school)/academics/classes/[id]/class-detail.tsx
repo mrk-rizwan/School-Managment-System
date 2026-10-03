@@ -4,21 +4,20 @@ import { Capability, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { ArrowLeftIcon, PlusIcon } from 'lucide-react';
-import Link from 'next/link';
+import { PlusIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { DataTable, SortHeader, type DataTableFeatures } from '@/components/data-table';
-import { FormField, FormRootError, applyApiError } from '@/components/form-field';
 import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  isPermissionDenied,
-} from '@/components/page-states';
+  DataTable,
+  type DataTableFeatures,
+  type RowAction,
+  RowActions,
+  SortHeader,
+} from '@/components/data-table';
+import { FormField, FormRootError, applyApiError } from '@/components/form-field';
+import { BackLink, QueryStates } from '@/components/page-states';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,22 +37,21 @@ import {
   type SectionSort,
   type UpdateSectionBody,
 } from '@/lib/api/school-academics-contract';
-import { useCapabilities } from '../../_lib/hooks';
+import { useListPage } from '@/lib/hooks';
+import { useCapabilities } from '@/lib/school-session';
+import { nameSchema } from '@/lib/validation';
 import {
-  ATTENDANCE_MODE_LABELS,
-  ArchiveDialog,
-  ArchivedBadge,
-  ShowArchivedToggle,
-  RowActions,
-  YearStatusBadge,
   academicsKeys,
-  nameSchema,
-  type RowAction,
+  ArchivedBadge,
+  ArchiveDialog,
+  ATTENDANCE_MODE_LABELS,
+  ShowArchivedToggle,
+  YearStatusBadge,
 } from '../../_lib/academics-ui';
-import { CopySectionsDialog, useYearOptions } from '../class-dialogs';
+import { useYears } from '../../_lib/options';
+import { CopySectionsDialog } from '../class-dialogs';
 
 const LIMIT = 25;
-const NO_ROWS: SectionDto[] = [];
 
 /** Class detail: its sections (contracts/slice-3.md §4, §8). */
 export function ClassDetail({ id }: { id: string }) {
@@ -62,38 +60,20 @@ export function ClassDetail({ id }: { id: string }) {
     queryFn: () => unwrap(academics.GET('/api/v1/classes/{id}', { params: { path: { id } } })),
   });
 
-  const back = (
-    <Link
-      href={klass.data ? `/academics/classes?year=${klass.data.academicYearId}` : '/academics/classes'}
-      className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      <ArrowLeftIcon className="size-4" />
-      Classes
-    </Link>
-  );
-  const frame = (children: React.ReactNode) => (
-    <>
-      {back}
-      <div className="rounded-lg border bg-card">{children}</div>
-    </>
-  );
-
-  if (klass.isPending) return frame(<LoadingState rows={4} />);
-  if (klass.error) {
-    if (isPermissionDenied(klass.error)) return frame(<NoPermissionState />);
-    const notFound = klass.error instanceof ApiError && klass.error.status === 404;
-    return frame(
-      notFound ? (
-        <EmptyState title="Class not found" description="Find it in the classes list." />
-      ) : (
-        <ErrorState error={klass.error} onRetry={() => void klass.refetch()} />
-      ),
-    );
-  }
   return (
     <>
-      {back}
-      <Sections klass={klass.data} />
+      <BackLink
+        href={klass.data ? `/academics/classes?year=${klass.data.academicYearId}` : '/academics/classes'}
+      >
+        Classes
+      </BackLink>
+      <QueryStates
+        query={klass}
+        loadingRows={4}
+        notFound={{ title: 'Class not found', description: 'Find it in the classes list.' }}
+      >
+        {(data) => <Sections klass={data} />}
+      </QueryStates>
     </>
   );
 }
@@ -101,7 +81,7 @@ export function ClassDetail({ id }: { id: string }) {
 function Sections({ klass }: { klass: ClassDto }) {
   const queryClient = useQueryClient();
   const { can } = useCapabilities();
-  const years = useYearOptions();
+  const years = useYears();
   const yearList = years.data?.data ?? [];
   const year = yearList.find((y) => y.id === klass.academicYearId);
   // Writes need the class active and its year known and not closed (§4.3); the API repeats it.
@@ -109,19 +89,12 @@ function Sections({ klass }: { klass: ClassDto }) {
   const canManage = can(Capability.SECTION_MANAGE) && writable;
   const canCopy = can(Capability.CLASS_MANAGE) && writable;
 
-  const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SectionSort>('name');
   const [showArchived, setShowArchived] = useState(false);
+  const [page, setPage] = useListPage([sort, showArchived]);
   const [editing, setEditing] = useState<SectionDto | 'new' | null>(null);
   const [archiving, setArchiving] = useState<SectionDto | null>(null);
   const [copying, setCopying] = useState(false);
-
-  const filterKey = `${sort}|${showArchived}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
 
   const query: SectionListQuery = {
     page,
@@ -181,7 +154,6 @@ function Sections({ klass }: { klass: ClassDto }) {
     ];
   }, [sort, canManage]);
 
-  const result = sections.data;
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -223,15 +195,11 @@ function Sections({ klass }: { klass: ClassDto }) {
       </div>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={sections}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={sections.isPending || sections.isPlaceholderData}
-        error={sections.error}
-        onRetry={() => void sections.refetch()}
         emptyTitle={showArchived ? 'No sections' : 'No sections yet'}
         emptyDescription={
           canManage

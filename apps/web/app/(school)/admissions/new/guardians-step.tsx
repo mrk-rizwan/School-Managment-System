@@ -10,15 +10,12 @@ import { FormField, FormRootError, applyApiError } from '@/components/form-field
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ContactCapability } from '@/lib/api/school-guardians-contract';
+import { blankToNull, formatIdentityInput, nameSchema, optionalCnicSchema } from '@/lib/validation';
 import { lookupGuardians } from '../../guardians/_lib/guardian-lookup';
 import {
   ContactFields,
-  blankToNull,
   contactFieldsSchema,
   describeStudents,
-  formatIdentityInput,
-  fullNameSchema,
-  optionalCnicSchema,
 } from '../../guardians/_lib/guardians-ui';
 import { GuardianFinder, type Searched } from '../../students/_lib/guardian-finder';
 import { LinkFlagFields, type LinkFlags } from '../../students/_lib/link-flags';
@@ -183,7 +180,7 @@ export function GuardiansStep({
   );
 }
 
-const schema = contactFieldsSchema.extend({ fullName: fullNameSchema, cnic: optionalCnicSchema });
+const schema = contactFieldsSchema.extend({ fullName: nameSchema(2, 200), cnic: optionalCnicSchema });
 type Values = z.input<typeof schema>;
 
 /** slice-5 §3.4 create fields; the searched CNIC and phone are filled in. */

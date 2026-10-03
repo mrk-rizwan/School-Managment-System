@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode, type SystemRole } from '@asms/shared';
+import { ErrorCode } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
@@ -15,7 +15,7 @@ import {
   type NewStaff,
   type StaffRecord,
 } from '../../../repositories/staff.repository';
-import { UserRoleRepository } from '../../../repositories/user-role.repository';
+import { UserRoleRepository, type LiveRoles } from '../../../repositories/user-role.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
 import { fromDateString, toDateString } from '../../academics/academics.shared';
 import { addDays, SchoolClock } from '../../../common/school-clock';
@@ -259,10 +259,13 @@ export class StaffService {
   async toDtos(schoolId: SchoolId, rows: StaffRecord[]): Promise<StaffDto[]> {
     const userIds = rows.flatMap((row) => (row.userId === null ? [] : [row.userId]));
     const roles = await this.roles.liveRolesByUser(schoolId, userIds);
-    return rows.map((row) => this.toDto(schoolId, row, row.userId === null ? [] : (roles.get(row.userId) ?? [])));
+    const none: LiveRoles = { systemRoles: [], customRoleNames: [] };
+    return rows.map((row) =>
+      this.toDto(schoolId, row, row.userId === null ? none : (roles.get(row.userId) ?? none)),
+    );
   }
 
-  private toDto(schoolId: SchoolId, row: StaffRecord, systemRoles: SystemRole[]): StaffDto {
+  private toDto(schoolId: SchoolId, row: StaffRecord, { systemRoles, customRoleNames }: LiveRoles): StaffDto {
     const digits = this.cnicDigits(schoolId, row);
     return {
       id: row.id.toString(),
@@ -275,6 +278,7 @@ export class StaffService {
       status: row.status,
       userId: row.userId?.toString() ?? null,
       systemRoles,
+      customRoleNames,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

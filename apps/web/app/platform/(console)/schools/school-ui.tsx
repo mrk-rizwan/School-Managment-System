@@ -2,19 +2,10 @@
 
 import { DEFAULT_TIMEZONE, type SchoolStatus } from '@asms/shared';
 import { useMemo, useSyncExternalStore } from 'react';
-import { z } from 'zod';
 import type { FormFieldOption } from '@/components/form-field';
 import { Badge } from '@/components/ui/badge';
 
 // Pieces shared by the school list, create and detail screens.
-
-/** School name rule of contract §4.2 (2–200, no control characters), shared by create and edit. */
-export const schoolNameSchema = z
-  .string()
-  .trim()
-  .min(2, 'Use at least 2 characters.')
-  .max(200, 'Use at most 200 characters.')
-  .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.');
 
 export const SCHOOL_STATUS_LABELS: Record<SchoolStatus, string> = {
   trial: 'Trial',
@@ -33,20 +24,6 @@ const STATUS_VARIANT = {
 export function SchoolStatusBadge({ status }: { status: SchoolStatus }) {
   return <Badge variant={STATUS_VARIANT[status]}>{SCHOOL_STATUS_LABELS[status]}</Badge>;
 }
-
-// Dates are shown in Pakistan time (CLAUDE.md: Asia/Karachi is assumed for every school). A
-// fixed zone also keeps the server render and the browser render identical.
-const dateFormat = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium',
-  timeZone: DEFAULT_TIMEZONE,
-});
-const dateTimeFormat = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: DEFAULT_TIMEZONE,
-});
-export const formatDate = (iso: string) => dateFormat.format(new Date(iso));
-export const formatDateTime = (iso: string) => dateTimeFormat.format(new Date(iso));
 
 // Time-zone options come from the browser (contracts/slice-1.md §8). The server render uses
 // only the default so it cannot disagree with the browser's list during hydration.

@@ -290,6 +290,10 @@
       },
       "AssignRoleDto": {
         "properties": {
+          "customRoleId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
           "reason": {
             "maxLength": 500,
             "minLength": 3,
@@ -304,7 +308,6 @@
           }
         },
         "required": [
-          "systemRole",
           "reason"
         ],
         "type": "object"
@@ -369,6 +372,78 @@
           "fee.statement.view",
           "announcement.send.scope",
           "announcement.send.school"
+        ],
+        "type": "string"
+      },
+      "CapabilityGroup": {
+        "enum": [
+          "setup",
+          "access",
+          "students",
+          "guardians",
+          "documents",
+          "staff",
+          "payroll",
+          "attendance",
+          "academics",
+          "finance",
+          "comms"
+        ],
+        "type": "string"
+      },
+      "CapabilityScope": {
+        "enum": [
+          "all",
+          "assigned_sections"
+        ],
+        "type": "string"
+      },
+      "CapabilitySourceDto": {
+        "properties": {
+          "customRoleId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "customRoleName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "grantId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapabilitySourceKind"
+              }
+            ]
+          },
+          "systemRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SystemRole"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "systemRole",
+          "customRoleId",
+          "customRoleName",
+          "grantId"
+        ],
+        "type": "object"
+      },
+      "CapabilitySourceKind": {
+        "enum": [
+          "system_role",
+          "custom_role",
+          "grant"
         ],
         "type": "string"
       },
@@ -718,6 +793,61 @@
         ],
         "type": "object"
       },
+      "CreateCustomRoleDto": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "key": {
+            "pattern": "^[a-z][a-z0-9_]{1,31}$",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "CreateGrantDto": {
+        "properties": {
+          "capability": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Capability"
+              }
+            ]
+          },
+          "effect": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GrantEffect"
+              }
+            ]
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "capability",
+          "effect",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CreateGuardianDto": {
         "properties": {
           "address": {
@@ -914,6 +1044,74 @@
         ],
         "type": "object"
       },
+      "CustomRoleDto": {
+        "properties": {
+          "capabilities": {
+            "description": "Live keys, registry order",
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "holderCount": {
+            "description": "Live role rows on this role, any user or staff status",
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "key": {
+            "pattern": "^[a-z][a-z0-9_]{1,31}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomRoleStatus"
+              }
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "status",
+          "capabilities",
+          "holderCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CustomRoleSort": {
+        "enum": [
+          "name",
+          "-name",
+          "createdAt",
+          "-createdAt"
+        ],
+        "type": "string"
+      },
+      "CustomRoleStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "type": "string"
+      },
       "DocumentMime": {
         "enum": [
           "image/jpeg",
@@ -931,6 +1129,44 @@
           "other"
         ],
         "type": "string"
+      },
+      "EffectiveCapabilityDto": {
+        "properties": {
+          "capability": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Capability"
+              }
+            ]
+          },
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapabilityGroup"
+              }
+            ]
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapabilityScope"
+              }
+            ]
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilitySourceDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "capability",
+          "group",
+          "scope",
+          "sources"
+        ],
+        "type": "object"
       },
       "EndTeacherAssignmentDto": {
         "properties": {
@@ -1102,6 +1338,11 @@
           "ENROLMENT_NOT_ACTIVE",
           "ROLL_NO_TAKEN",
           "CLASS_IN_OTHER_YEAR",
+          "CUSTOM_ROLE_KEY_TAKEN",
+          "CUSTOM_ROLE_ARCHIVED",
+          "CUSTOM_ROLE_IN_USE",
+          "GRANT_EXISTS",
+          "TARGET_IS_PRINCIPAL",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
@@ -1127,6 +1368,89 @@
         "enum": [
           "male",
           "female"
+        ],
+        "type": "string"
+      },
+      "GrantDto": {
+        "properties": {
+          "capability": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Capability"
+              }
+            ]
+          },
+          "effect": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GrantEffect"
+              }
+            ]
+          },
+          "endReason": {
+            "description": "\"staff left\" when ended by R17",
+            "nullable": true,
+            "type": "string"
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "grantedBy": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "grantedByName": {
+            "description": "The grantor's staff name",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "revokedBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "revokedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "userId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "capability",
+          "effect",
+          "reason",
+          "grantedBy",
+          "grantedByName",
+          "grantedAt",
+          "revokedAt",
+          "revokedBy",
+          "revokedByName",
+          "endReason"
+        ],
+        "type": "object"
+      },
+      "GrantEffect": {
+        "enum": [
+          "grant",
+          "revoke"
         ],
         "type": "string"
       },
@@ -1704,6 +2028,55 @@
         ],
         "type": "object"
       },
+      "PermissionRoleDto": {
+        "properties": {
+          "capabilities": {
+            "description": "The role's defaults",
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "customRoleId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "customRoleName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "customRoleStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomRoleStatus"
+              }
+            ],
+            "nullable": true
+          },
+          "systemRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SystemRole"
+              }
+            ],
+            "nullable": true
+          },
+          "userRoleId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userRoleId",
+          "systemRole",
+          "customRoleId",
+          "customRoleName",
+          "customRoleStatus",
+          "capabilities"
+        ],
+        "type": "object"
+      },
       "ReadmitDto": {
         "properties": {
           "classId": {
@@ -1922,6 +2295,13 @@
             "format": "date-time",
             "type": "string"
           },
+          "customRoleNames": {
+            "description": "Names of the live custom roles of that login",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "designation": {
             "nullable": true,
             "type": "string"
@@ -1981,6 +2361,7 @@
           "status",
           "userId",
           "systemRoles",
+          "customRoleNames",
           "createdAt",
           "updatedAt"
         ],
@@ -2647,6 +3028,29 @@
         },
         "type": "object"
       },
+      "UpdateCustomRoleDto": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 2,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Required when removing keys, and when adding keys to a role that has holders",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateEnrolmentDto": {
         "properties": {
           "rollNo": {
@@ -2849,6 +3253,13 @@
             "format": "date-time",
             "type": "string"
           },
+          "customRoleNames": {
+            "description": "Names of the live custom roles",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "emailMasked": {
             "nullable": true,
             "type": "string"
@@ -2906,6 +3317,7 @@
           "studentId",
           "fullName",
           "systemRoles",
+          "customRoleNames",
           "status",
           "emailMasked",
           "hasEmail",
@@ -2924,6 +3336,59 @@
         ],
         "type": "string"
       },
+      "UserPermissionsDto": {
+        "properties": {
+          "deltas": {
+            "items": {
+              "$ref": "#/components/schemas/GrantDto"
+            },
+            "type": "array"
+          },
+          "effective": {
+            "items": {
+              "$ref": "#/components/schemas/EffectiveCapabilityDto"
+            },
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/PermissionRoleDto"
+            },
+            "type": "array"
+          },
+          "staffCapacity": {
+            "description": "False: no staff capability at all (R59); effective is empty",
+            "type": "boolean"
+          },
+          "staffId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffStatus"
+              }
+            ],
+            "nullable": true
+          },
+          "userId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "staffId",
+          "staffStatus",
+          "staffCapacity",
+          "roles",
+          "deltas",
+          "effective"
+        ],
+        "type": "object"
+      },
       "UserRoleDto": {
         "properties": {
           "assignedAt": {
@@ -2937,9 +3402,13 @@
             "type": "string"
           },
           "customRoleId": {
-            "description": "Always null until custom roles (slice 7)",
+            "description": "Set exactly when systemRole is null",
             "nullable": true,
             "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "customRoleName": {
+            "nullable": true,
             "type": "string"
           },
           "endedAt": {
@@ -2974,6 +3443,7 @@
           "userId",
           "systemRole",
           "customRoleId",
+          "customRoleName",
           "assignedBy",
           "assignedAt",
           "endedAt",
@@ -5064,6 +5534,554 @@
         ]
       }
     },
+    "/api/v1/custom-roles": {
+      "get": {
+        "operationId": "CustomRolesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CustomRoleStatus"
+            }
+          },
+          {
+            "description": "Name or key contains",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 50,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CustomRoleSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/CustomRoleDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "custom-roles"
+        ]
+      },
+      "post": {
+        "operationId": "CustomRolesController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomRoleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRoleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "custom-roles"
+        ]
+      }
+    },
+    "/api/v1/custom-roles/{id}": {
+      "get": {
+        "operationId": "CustomRolesController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRoleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "custom-roles"
+        ]
+      },
+      "patch": {
+        "operationId": "CustomRolesController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomRoleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRoleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "custom-roles"
+        ]
+      }
+    },
+    "/api/v1/custom-roles/{id}/archive": {
+      "post": {
+        "operationId": "CustomRolesController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomRoleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "custom-roles"
+        ]
+      }
+    },
     "/api/v1/documents/{id}/content": {
       "get": {
         "operationId": "DocumentsController_content",
@@ -5488,6 +6506,117 @@
         },
         "tags": [
           "students"
+        ]
+      }
+    },
+    "/api/v1/grants/{id}/end": {
+      "post": {
+        "operationId": "GrantsController_end",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
         ]
       }
     },
@@ -11220,6 +12349,218 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/grants": {
+      "post": {
+        "operationId": "GrantsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrantDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/permissions": {
+      "get": {
+        "operationId": "GrantsController_view",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Include ended grant and revoke rows",
+            "in": "query",
+            "name": "includeEnded",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPermissionsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
             "content": {
               "application/json": {
                 "schema": {

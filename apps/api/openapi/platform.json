@@ -204,6 +204,11 @@
           "ENROLMENT_NOT_ACTIVE",
           "ROLL_NO_TAKEN",
           "CLASS_IN_OTHER_YEAR",
+          "CUSTOM_ROLE_KEY_TAKEN",
+          "CUSTOM_ROLE_ARCHIVED",
+          "CUSTOM_ROLE_IN_USE",
+          "GRANT_EXISTS",
+          "TARGET_IS_PRINCIPAL",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"

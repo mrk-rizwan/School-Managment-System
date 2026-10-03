@@ -4,13 +4,20 @@ import { Capability, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { PlusIcon, SearchIcon } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { PlusIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { DataTable, SortHeader, type DataTableFeatures } from '@/components/data-table';
+import {
+  DataTable,
+  type DataTableFeatures,
+  type RowAction,
+  RowActions,
+  SortHeader,
+} from '@/components/data-table';
 import { FormField, FormRootError, applyApiError } from '@/components/form-field';
+import { SearchField } from '@/components/list-filters';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,8 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
 import {
@@ -31,19 +36,17 @@ import {
   type SubjectSort,
   type UpdateSubjectBody,
 } from '@/lib/api/school-academics-contract';
-import { useCapabilities, useDebounced } from '../_lib/hooks';
+import { useDebounced, useListPage } from '@/lib/hooks';
+import { useCapabilities } from '@/lib/school-session';
+import { nameSchema } from '@/lib/validation';
 import {
-  ArchiveDialog,
-  ArchivedBadge,
-  RowActions,
-  ShowArchivedToggle,
   academicsKeys,
-  nameSchema,
-  type RowAction,
+  ArchivedBadge,
+  ArchiveDialog,
+  ShowArchivedToggle,
 } from '../_lib/academics-ui';
 
 const LIMIT = 25;
-const NO_ROWS: SubjectDto[] = [];
 
 
 /** contracts/slice-3.md §5. */
@@ -51,23 +54,16 @@ export function SubjectList() {
   const queryClient = useQueryClient();
   const { can } = useCapabilities();
   const canManage = can(Capability.SUBJECT_MANAGE);
-  const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SubjectSort>('name');
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState('');
-  const searchId = useId();
-  const typed = useDebounced(search, 300).trim();
+  const typed = useDebounced(search).trim();
   // q is 2–50 characters (§5.1); a single character is not sent.
   const q = typed.length >= 2 ? typed.slice(0, 50) : undefined;
   const [editing, setEditing] = useState<SubjectDto | 'new' | null>(null);
   const [archiving, setArchiving] = useState<SubjectDto | null>(null);
 
-  const filterKey = `${sort}|${showArchived}|${q ?? ''}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
+  const [page, setPage] = useListPage([sort, showArchived, q]);
 
   const query: SubjectListQuery = {
     page,
@@ -124,29 +120,11 @@ export function SubjectList() {
   }, [sort, canManage]);
 
   const filtered = Boolean(q);
-  const result = subjects.data;
   return (
     <>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-4">
-          <div className="grid w-full gap-1.5 sm:w-72">
-            <Label htmlFor={searchId}>Search</Label>
-            <div className="relative">
-              <SearchIcon
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id={searchId}
-                type="search"
-                value={search}
-                maxLength={50}
-                placeholder="Name or code"
-                className="pl-8"
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-          </div>
+          <SearchField value={search} onChange={setSearch} placeholder="Name or code" maxLength={50} />
           <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
         </div>
         {canManage && (
@@ -158,15 +136,11 @@ export function SubjectList() {
       </div>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={subjects}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={subjects.isPending || subjects.isPlaceholderData}
-        error={subjects.error}
-        onRetry={() => void subjects.refetch()}
         emptyTitle={filtered ? 'No subjects match' : 'No subjects yet'}
         emptyDescription={
           filtered ? 'Try a different name or code.' : 'Subjects are shared by every class and year.'

@@ -11,8 +11,8 @@ import type {
   GuardianLookupHitDto,
   GuardianLookupResultDto,
 } from '@/lib/api/school-guardians-contract';
+import { formatIdentityInput } from '@/lib/validation';
 import { LookupHits, lookupGuardians } from '../../guardians/_lib/guardian-lookup';
-import { formatIdentityInput } from '../../guardians/_lib/guardians-ui';
 
 /** What was searched, for pre-filling a new guardian when nobody matched. */
 export type Searched = { cnic: string | null; phone: string | null };

@@ -9,7 +9,7 @@ import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
-import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { DataTable, RowActions, type DataTableFeatures } from '@/components/data-table';
 import { FormField, FormRootError, applyApiError, type FormFieldOption } from '@/components/form-field';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -25,8 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { unwrap } from '@/lib/api/client';
-import { ApiError } from '@/lib/api/errors';
-import { academics } from '@/lib/api/school-academics-contract';
+import { ApiError, refusalMessage } from '@/lib/api/errors';
 import {
   staffApi,
   type ClassTeacherConflict,
@@ -35,20 +34,13 @@ import {
   type TeacherAssignmentDto,
   type TeacherRole,
 } from '@/lib/api/school-staff-contract';
-import { OPTIONS_LIMIT, RowActions, academicsKeys, formatDay } from '../../academics/_lib/academics-ui';
-import { useYearOptions } from '../../academics/classes/class-dialogs';
-import { useCapabilities } from '../../academics/_lib/hooks';
-import {
-  TEACHER_ROLE_LABELS,
-  optionalDateSchema,
-  schoolToday,
-  staffErrorMessage,
-  staffKeys,
-} from '../_lib/staff-ui';
+import { formatDay, todayInSchool } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
+import { useClasses, useSections, useSubjectOptions, useYears } from '../../academics/_lib/options';
+import { TEACHER_ROLE_LABELS, optionalDateSchema, staffKeys } from '../_lib/staff-ui';
 
 /** contracts/slice-4.md §4 and §8. The whole tab needs class.manage (§1). */
 const LIMIT = 25;
-const NO_ROWS: TeacherAssignmentDto[] = [];
 
 export function AssignmentsTab({ staff }: { staff: StaffDto }) {
   const { can } = useCapabilities();
@@ -58,7 +50,7 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
   const [includeEnded, setIncludeEnded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [ending, setEnding] = useState<TeacherAssignmentDto | null>(null);
-  const today = schoolToday();
+  const today = todayInSchool();
 
   const query = { page, limit: LIMIT, includeEnded, sort: '-startsOn' } as const;
   const assignments = useQuery({
@@ -140,7 +132,6 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
     ];
   }, [canWrite, today]);
 
-  const result = assignments.data;
   const notTeacher = !staff.systemRoles.includes('teacher');
 
   return (
@@ -176,15 +167,11 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
       )}
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_ROWS}
+        query={assignments}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={assignments.isPending || assignments.isPlaceholderData}
-        error={assignments.error}
-        onRetry={() => void assignments.refetch()}
         emptyTitle={includeEnded ? 'No assignments yet' : 'No current assignments'}
         emptyDescription="A class teacher keeps one section's register; a subject teacher teaches one subject to a class."
       />
@@ -237,7 +224,7 @@ const ROLE_OPTIONS: FormFieldOption[] = [
 
 function AddAssignmentDialog({ staff, onClose }: { staff: StaffDto; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const today = schoolToday();
+  const today = todayInSchool();
   // The body that hit CLASS_TEACHER_EXISTS, and who holds the section: the second step asks
   // before replacing them (§4.3, decision 3).
   const [conflict, setConflict] = useState<{
@@ -245,7 +232,7 @@ function AddAssignmentDialog({ staff, onClose }: { staff: StaffDto; onClose: () 
     conflicts: ClassTeacherConflict[];
   } | null>(null);
 
-  const years = useYearOptions();
+  const years = useYears();
   const openYears = (years.data?.data ?? []).filter((y) => y.status !== 'closed');
   const defaultYear = openYears.find((y) => y.status === 'active') ?? openYears[0];
 
@@ -278,29 +265,9 @@ function AddAssignmentDialog({ staff, onClose }: { staff: StaffDto; onClose: () 
     form.setValue('sectionId', '');
   }, [classId, form]);
 
-  const classQuery = { academicYearId: yearId, status: 'active', limit: OPTIONS_LIMIT, sort: 'sortOrder' } as const;
-  const classes = useQuery({
-    queryKey: [...academicsKeys.classes, 'options', classQuery],
-    queryFn: () => unwrap(academics.GET('/api/v1/classes', { params: { query: classQuery } })),
-    enabled: yearId !== '',
-  });
-  const sectionQuery = { limit: OPTIONS_LIMIT, sort: 'name' } as const;
-  const sections = useQuery({
-    queryKey: [...academicsKeys.sections(classId), 'options'],
-    queryFn: () =>
-      unwrap(
-        academics.GET('/api/v1/classes/{id}/sections', {
-          params: { path: { id: classId }, query: sectionQuery },
-        }),
-      ),
-    enabled: classId !== '',
-  });
-  const subjectQuery = { limit: OPTIONS_LIMIT, sort: 'name' } as const;
-  const subjects = useQuery({
-    queryKey: [...academicsKeys.subjects, 'options'],
-    queryFn: () => unwrap(academics.GET('/api/v1/subjects', { params: { query: subjectQuery } })),
-    enabled: role === 'subject_teacher',
-  });
+  const classes = useClasses(yearId);
+  const sections = useSections(classId);
+  const subjects = useSubjectOptions(role === 'subject_teacher');
 
   const create = useMutation({
     mutationFn: (body: CreateTeacherAssignmentBody) =>
@@ -377,7 +344,7 @@ function AddAssignmentDialog({ staff, onClose }: { staff: StaffDto; onClose: () 
             </p>
             {create.error && !(create.error instanceof ApiError && create.error.code === ErrorCode.CLASS_TEACHER_EXISTS) && (
               <Alert variant="destructive">
-                <AlertDescription>{staffErrorMessage(create.error)}</AlertDescription>
+                <AlertDescription>{refusalMessage(create.error, 'record')}</AlertDescription>
               </Alert>
             )}
             <DialogFooter>
@@ -569,7 +536,7 @@ function EndAssignmentDialog({
       </div>
       {end.error && (
         <Alert variant="destructive">
-          <AlertDescription>{staffErrorMessage(end.error)}</AlertDescription>
+          <AlertDescription>{refusalMessage(end.error, 'record')}</AlertDescription>
         </Alert>
       )}
     </ConfirmWithReasonDialog>

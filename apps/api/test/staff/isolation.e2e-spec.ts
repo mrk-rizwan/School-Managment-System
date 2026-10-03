@@ -115,8 +115,8 @@ describe('slice-4 repositories are tenant-isolated', () => {
       snapshot: (row) => (row as { endedAt: Date | null }).endedAt,
     });
     expect((await repo.liveRolesByUser(b.id, [user.userId])).size).toBe(0);
-    expect(await repo.findLive(b.id, user.userId, 'teacher')).toBeNull();
+    expect(await repo.findLive(b.id, user.userId, { kind: 'system', systemRole: 'teacher' })).toBeNull();
     expect(await repo.endAllForUser(b.id, user.userId, user.userId, new Date())).toBe(0);
-    expect(await repo.findLive(a.id, user.userId, 'teacher')).toMatchObject({ endedAt: null });
+    expect(await repo.findLive(a.id, user.userId, { kind: 'system', systemRole: 'teacher' })).toMatchObject({ endedAt: null });
   });
 });

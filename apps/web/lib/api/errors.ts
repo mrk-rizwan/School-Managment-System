@@ -1,4 +1,5 @@
 import { ErrorCode } from '@asms/shared';
+import { toast } from 'sonner';
 import type { components } from './school';
 
 /** One entry of a 422 VALIDATION_FAILED response: `details.fields`. */
@@ -89,9 +90,48 @@ export function rateLimitMessage(error: ApiError): string {
   return `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
 }
 
-/** One sentence for an error shown at form level: the API's message, or the 429 wait. */
+/**
+ * One sentence for an error shown outside a form's fields: a 422's first field message (an
+ * identity number in a reason, say), the 429 wait, or the API's own message.
+ */
 export function describeApiError(error: unknown): string {
   if (!(error instanceof ApiError)) return 'The request failed. Check your connection and try again.';
   if (error.status === 429) return rateLimitMessage(error);
-  return error.message;
+  return error.fieldErrors[0]?.message ?? error.message;
+}
+
+/** The toast for a failed action. */
+export function toastApiError(error: unknown) {
+  toast.error(describeApiError(error));
+}
+
+/**
+ * The sentence for a refusal of an action on someone else's account or staff record (`noun`),
+ * in words the office can act on; anything else is `describeApiError`.
+ */
+export function refusalMessage(error: unknown, noun: 'account' | 'record'): string {
+  if (error instanceof ApiError && error.fieldErrors.length === 0) {
+    const reason = (error.details as { reason?: unknown } | null)?.reason;
+    if (error.code === ErrorCode.PERMISSION_DENIED) {
+      if (reason === 'target_is_principal') {
+        return `Only someone who manages roles can change a principal’s ${noun}.`;
+      }
+      if (reason === 'target_exceeds_actor') {
+        return `This person can do things you cannot, so you cannot change their ${noun}.`;
+      }
+      if (reason === 'role_exceeds_actor') {
+        return 'You can only give a role whose permissions you hold yourself.';
+      }
+    }
+    if (error.code === ErrorCode.LAST_PRINCIPAL) {
+      return 'This is the school’s only active principal. Appoint another principal first.';
+    }
+    if (error.code === ErrorCode.SELF_ACTION_FORBIDDEN) {
+      return `You cannot do this to your own ${noun}. Ask another member of staff.`;
+    }
+    if (error.code === ErrorCode.IDENTITY_NUMBER_MISSING) {
+      return 'This person has no identity number on record, so there is no default password to reset to.';
+    }
+  }
+  return describeApiError(error);
 }

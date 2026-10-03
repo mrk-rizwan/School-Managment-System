@@ -2,7 +2,7 @@
 
 import { ATTENDANCE_MODES, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -29,16 +29,9 @@ import {
   type CopySectionsResultDto,
   type UpdateClassBody,
 } from '@/lib/api/school-academics-contract';
-import { ATTENDANCE_MODE_LABELS, OPTIONS_LIMIT, academicsKeys, nameSchema } from '../_lib/academics-ui';
-
-/** Every year, newest first: the year select of the classes tab and of these dialogs. */
-export function useYearOptions() {
-  const query = { limit: OPTIONS_LIMIT, sort: '-startsOn' } as const;
-  return useQuery({
-    queryKey: [...academicsKeys.years, 'options'],
-    queryFn: () => unwrap(academics.GET('/api/v1/academic-years', { params: { query } })),
-  });
-}
+import { nameSchema } from '@/lib/validation';
+import { academicsKeys, ATTENDANCE_MODE_LABELS } from '../_lib/academics-ui';
+import { useClasses } from '../_lib/options';
 
 const ATTENDANCE_OPTIONS: FormFieldOption[] = [
   // Rule 14: the school chooses per class; there is no default.
@@ -253,12 +246,8 @@ function CopySectionsBody({
   const [yearId, setYearId] = useState(target.academicYearId);
   const [fromClassId, setFromClassId] = useState('');
 
-  const query = { academicYearId: yearId, limit: OPTIONS_LIMIT, sort: 'sortOrder' } as const;
-  const sources = useQuery({
-    queryKey: [...academicsKeys.classes, 'options', yearId],
-    queryFn: () => unwrap(academics.GET('/api/v1/classes', { params: { query } })),
-    enabled: yearId !== '',
-  });
+  // Archived classes too: their sections can still be copied.
+  const sources = useClasses(yearId, { includeArchived: true });
   const sourceOptions = (sources.data?.data ?? []).filter((c) => c.id !== target.id);
 
   const copy = useMutation({
@@ -293,9 +282,7 @@ function CopySectionsBody({
       </DialogHeader>
       {copy.error && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {copy.error instanceof ApiError && copy.error.fieldErrors[0]
-            ? copy.error.fieldErrors[0].message
-            : describeApiError(copy.error)}
+          {describeApiError(copy.error)}
         </p>
       )}
       <div className="grid gap-1.5">

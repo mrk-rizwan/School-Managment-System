@@ -2,11 +2,11 @@
 
 import { Capability, ErrorCode } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon, CheckCircle2Icon } from 'lucide-react';
+import { CheckCircle2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
-import { NoPermissionState } from '@/components/page-states';
+import { BackLink, NoPermissionState, StateCard } from '@/components/page-states';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,19 +20,18 @@ import {
   type DuplicateMatchDto,
   type Relationship,
 } from '@/lib/api/school-students-contract';
+import { formatDay, todayInSchool } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
-import { formatDay } from '../../academics/_lib/academics-ui';
-import { useCapabilities } from '../../academics/_lib/hooks';
 import { guardiansKeys } from '../../guardians/_lib/guardians-ui';
-import { IssueStudentLoginDialog } from '../../students/_lib/issue-login-dialog';
-import { useClasses, useSections, useYears } from '../../students/_lib/placement';
+import { useClasses, useSections, useYears } from '../../academics/_lib/options';
 import {
   DOCUMENT_TYPE_LABELS,
   GENDER_LABELS,
+  IssueStudentLoginDialog,
   RELATIONSHIP_LABELS,
   STUDENT_STATUS_LABELS,
   studentsKeys,
-  todayInSchool,
 } from '../../students/_lib/students-ui';
 import { ReauthAbandoned, useReauth } from '../_lib/reauth';
 import { GuardiansStep } from './guardians-step';
@@ -63,9 +62,9 @@ export function AdmissionWizardPage() {
     return (
       <>
         <PageHeader title="New admission" />
-        <div className="rounded-lg border bg-card">
+        <StateCard>
           <NoPermissionState />
-        </div>
+        </StateCard>
       </>
     );
   }
@@ -154,13 +153,7 @@ function AdmissionWizard({ onRestart }: { onRestart: () => void }) {
   return (
     <>
       {dialog}
-      <Link
-        href="/students"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-        Students
-      </Link>
+      <BackLink href="/students">Students</BackLink>
       <PageHeader title="New admission" description="Nothing is saved until the last step." />
       <ol className="mb-6 flex flex-wrap gap-x-4 gap-y-2 text-sm" aria-label="Admission steps">
         {STEPS.map((label, index) => (
@@ -292,7 +285,7 @@ function ReviewStep({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const years = useYears(guard);
-  const classes = useClasses(placement.academicYearId, guard);
+  const classes = useClasses(placement.academicYearId, { call: guard });
   const sections = useSections(placement.classId, guard);
   const name = (list: { id: string; name: string }[] | undefined, id: string) =>
     list?.find((x) => x.id === id)?.name ?? '…';

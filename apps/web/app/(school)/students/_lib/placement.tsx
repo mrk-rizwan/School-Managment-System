@@ -1,12 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useId } from 'react';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
-import { unwrap } from '@/lib/api/client';
-import { academics } from '@/lib/api/school-academics-contract';
-import { OPTIONS_LIMIT, academicsKeys } from '../../academics/_lib/academics-ui';
+import { useClasses, useSections, useYears, type Call } from '../../academics/_lib/options';
 
 // Year → class → section pickers over the academic-structure list endpoints (contracts/slice-6.md
 // §10: dropdowns use the list endpoints with limit=50). Used by the list filters, the admission
@@ -14,39 +11,6 @@ import { OPTIONS_LIMIT, academicsKeys } from '../../academics/_lib/academics-ui'
 
 export type Placement = { academicYearId: string; classId: string; sectionId: string };
 export const NO_PLACEMENT: Placement = { academicYearId: '', classId: '', sectionId: '' };
-
-/** Wraps each request; the admission wizard passes its re-authenticating guard. */
-type Call = <T>(request: () => Promise<T>) => Promise<T>;
-const direct: Call = (request) => request();
-
-export function useYears(call: Call = direct) {
-  const query = { limit: OPTIONS_LIMIT, sort: '-startsOn' } as const;
-  return useQuery({
-    queryKey: [...academicsKeys.years, 'options', query],
-    queryFn: () => call(() => unwrap(academics.GET('/api/v1/academic-years', { params: { query } }))),
-  });
-}
-
-export function useClasses(academicYearId: string, call: Call = direct) {
-  const query = { academicYearId, status: 'active', limit: OPTIONS_LIMIT, sort: 'sortOrder' } as const;
-  return useQuery({
-    queryKey: [...academicsKeys.classes, 'options', query],
-    queryFn: () => call(() => unwrap(academics.GET('/api/v1/classes', { params: { query } }))),
-    enabled: academicYearId !== '',
-  });
-}
-
-export function useSections(classId: string, call: Call = direct) {
-  const query = { limit: OPTIONS_LIMIT, sort: 'name' } as const;
-  return useQuery({
-    queryKey: [...academicsKeys.sections(classId), 'options', query],
-    queryFn: () =>
-      call(() =>
-        unwrap(academics.GET('/api/v1/classes/{id}/sections', { params: { path: { id: classId }, query } })),
-      ),
-    enabled: classId !== '',
-  });
-}
 
 /**
  * Three dependent selects. Changing the year clears class and section; changing the class clears
@@ -79,7 +43,7 @@ export function PlacementSelects({
   const ids = { year: useId(), cls: useId(), section: useId() };
   const yearId = fixedYearId ?? value.academicYearId;
   const years = useYears(call);
-  const classes = useClasses(yearId, call);
+  const classes = useClasses(yearId, { call });
   const sections = useSections(value.classId, call);
   const yearOptions = (years.data?.data ?? []).filter(
     (y) => includeClosedYears || y.status !== 'closed',

@@ -1,23 +1,14 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { MoreHorizontalIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ApiError, describeApiError } from '@/lib/api/errors';
+import { ApiError, toastApiError } from '@/lib/api/errors';
 import type {
   AcademicYearStatus,
   AttendanceMode,
@@ -34,19 +25,6 @@ export const academicsKeys = {
   sections: (classId: string) => ['school', 'academics', 'sections', classId] as const,
   subjects: ['school', 'academics', 'subjects'] as const,
 };
-
-/** Largest page the API serves (plan §3.9); dropdowns use it. */
-export const OPTIONS_LIMIT = 50;
-
-/** Name rule of §1: trimmed, length-bounded, no control characters (the API also collapses spaces). */
-export function nameSchema(min: number, max: number) {
-  return z
-    .string()
-    .trim()
-    .min(min, min === 1 ? 'Enter a name.' : `Use at least ${min} characters.`)
-    .max(max, `Use at most ${max} characters.`)
-    .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.');
-}
 
 export const YEAR_STATUS_LABELS: Record<AcademicYearStatus, string> = {
   planned: 'Planned',
@@ -72,16 +50,6 @@ export const ATTENDANCE_MODE_LABELS: Record<AttendanceMode, string> = {
   daily: 'Once a day',
   period: 'Every period',
 };
-
-// A YYYY-MM-DD date is a calendar day, not an instant: format it in UTC so no zone moves it.
-const dayFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' });
-export const formatDay = (isoDate: string) => dayFormat.format(new Date(`${isoDate}T00:00:00Z`));
-
-/** The toast for a failed action: a 422's field sentence (an identity number in a reason, say) or the API's message. */
-export function toastApiError(error: unknown) {
-  const fieldMessage = error instanceof ApiError ? error.fieldErrors[0]?.message : undefined;
-  toast.error(fieldMessage ?? describeApiError(error));
-}
 
 const TABS = [
   { href: '/academics/years', label: 'Academic years' },
@@ -113,33 +81,6 @@ export function AcademicsTabs() {
         );
       })}
     </nav>
-  );
-}
-
-export type RowAction = { label: string; onSelect: () => void; destructive?: boolean };
-
-/** The per-row actions menu. Renders nothing when the user may take no action on the row. */
-export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
-  if (actions.length === 0) return null;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`} />}
-      >
-        <MoreHorizontalIcon />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {actions.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            variant={action.destructive ? 'destructive' : 'default'}
-            onClick={action.onSelect}
-          >
-            {action.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

@@ -79,6 +79,9 @@ export class UserDto {
   @ApiProperty({ enum: SYSTEM_ROLES, enumName: 'SystemRole', isArray: true })
   systemRoles: SystemRole[];
 
+  @ApiProperty({ type: String, isArray: true, description: 'Names of the live custom roles' })
+  customRoleNames: string[];
+
   @ApiProperty({ enum: USER_STATUSES, enumName: 'UserStatus' })
   status: UserStatus;
 

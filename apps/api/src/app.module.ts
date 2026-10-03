@@ -12,6 +12,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AcademicsModule } from './modules/academics/academics.module';
 import { SchoolAuthModule } from './modules/auth/school-auth.module';
 import { GuardiansModule } from './modules/people/guardians/guardians.module';
+import { RolesModule } from './modules/access/roles.module';
 import { StaffModule } from './modules/people/staff/staff.module';
 import { StudentsModule } from './modules/people/students/students.module';
 import { AdmissionsModule } from './modules/people/admissions/admissions.module';
@@ -37,6 +38,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     AcademicsModule,
     GuardiansModule,
     StaffModule,
+    RolesModule,
     StudentsModule,
     AdmissionsModule,
     DocumentsModule,

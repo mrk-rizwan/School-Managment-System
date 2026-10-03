@@ -1,13 +1,13 @@
 import type { Capability } from '@asms/shared';
 import {
   BookOpenIcon,
-  FlaskConicalIcon,
   CircleUserRoundIcon,
   SchoolIcon,
   SettingsIcon,
   ShieldCheckIcon,
   UserRoundIcon,
   IdCardIcon,
+  KeyRoundIcon,
   UsersRoundIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -37,6 +37,14 @@ export const schoolNav: NavItem[] = [
     icon: ShieldCheckIcon,
     capability: 'user.account.manage',
   },
+  // Readable with user.account.manage, so the office can name a custom role; writes need
+  // role.manage, which only a principal holds (contracts/slice-7.md §1, §9).
+  {
+    href: '/custom-roles',
+    label: 'Custom roles',
+    icon: KeyRoundIcon,
+    capability: 'user.account.manage',
+  },
   {
     href: '/settings',
     label: 'School settings',
@@ -45,8 +53,6 @@ export const schoolNav: NavItem[] = [
   },
   // Every signed-in school user: email, password (slice 2).
   { href: '/account', label: 'Your account', icon: CircleUserRoundIcon, capability: null },
-  // Throwaway: the slice-0 component demo. Remove with app/(demo).
-  { href: '/demo', label: 'Component demo', icon: FlaskConicalIcon, capability: null },
 ];
 
 // Platform admins hold no capabilities (plan §7): their console shows every entry.

@@ -22,6 +22,8 @@ export interface UserAccessRow {
   studentLoginEnabled: boolean;
   /** Live (not ended) system-role rows. */
   systemRoles: SystemRole[];
+  /** The same rows with their ids, in assignment order (the permissions view lists them). */
+  systemRoleRows: { userRoleId: bigint; systemRole: SystemRole }[];
 }
 
 /** The credential fields of a user, as login and the password flows read them. */
@@ -54,6 +56,8 @@ export interface UserRecord {
   studentId: bigint | null;
   fullName: string;
   systemRoles: SystemRole[];
+  /** Names of the live custom-role rows, in assignment order. */
+  customRoleNames: string[];
   status: UserStatusValue;
   email: string | null;
   emailVerifiedAt: Date | null;
@@ -189,16 +193,20 @@ export class UserRepository {
             select: { studentLoginEnabled: true },
           });
     const roles = await this.txHost.tx.userRole.findMany({
-      where: { schoolId, userId: row.id, endedAt: null },
-      select: { systemRole: true },
+      where: { schoolId, userId: row.id, endedAt: null, systemRole: { not: null } },
+      select: { id: true, systemRole: true },
       orderBy: { id: 'asc' },
     });
+    const systemRoleRows = roles.flatMap((r) =>
+      r.systemRole === null ? [] : [{ userRoleId: r.id, systemRole: r.systemRole }],
+    );
     return {
       ...row,
       staffStatus: staff?.status ?? null,
       studentStatus: student?.status ?? null,
       studentLoginEnabled: settings?.studentLoginEnabled ?? false,
-      systemRoles: liveSystemRoles(roles),
+      systemRoles: systemRoleRows.map((r) => r.systemRole),
+      systemRoleRows,
     };
   }
 
@@ -275,7 +283,7 @@ export class UserRepository {
   }
 
   /**
-   * Full names (staff, else guardian, else student) and live system roles for a page of users:
+   * Full names (staff, else guardian, else student) and live roles for a page of users:
    * at most four sequential statements, whatever the page size.
    */
   private async withNamesAndRoles(schoolId: SchoolId, rows: RecordRow[]): Promise<UserRecord[]> {
@@ -310,7 +318,7 @@ export class UserRepository {
           });
     const roles = await this.txHost.tx.userRole.findMany({
       where: { schoolId, userId: { in: rows.map((row) => row.id) }, endedAt: null },
-      select: { userId: true, systemRole: true },
+      select: { userId: true, systemRole: true, customRole: { select: { name: true } } },
       orderBy: { id: 'asc' },
     });
     const staffNames = new Map(staff.map((r) => [r.id, r.fullName]));
@@ -324,6 +332,9 @@ export class UserRepository {
         (row.studentId === null ? undefined : studentNames.get(row.studentId)) ??
         '',
       systemRoles: liveSystemRoles(roles.filter((r) => r.userId === row.id)),
+      customRoleNames: roles.flatMap((r) =>
+        r.userId === row.id && r.customRole ? [r.customRole.name] : [],
+      ),
     }));
   }
 

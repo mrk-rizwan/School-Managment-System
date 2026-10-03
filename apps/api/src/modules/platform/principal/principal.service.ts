@@ -7,6 +7,7 @@ import { ApiException, notFound } from '../../../common/errors/api-exception';
 import { identityHash, staffCnicAad } from '../../../common/identity';
 import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
+import { CapabilityGrantRepository } from '../../../repositories/capability-grant.repository';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository } from '../../../repositories/platform/school.repository';
 import { StaffRepository } from '../../../repositories/staff.repository';
@@ -37,6 +38,7 @@ export class PrincipalLoginService {
     private readonly staff: StaffRepository,
     private readonly users: UserRepository,
     private readonly roles: UserRoleRepository,
+    private readonly grants: CapabilityGrantRepository,
     private readonly sessions: SessionRepository,
     private readonly tokens: UserTokenRepository,
     private readonly audit: AuditLogRepository,
@@ -173,13 +175,18 @@ export class PrincipalLoginService {
     }
 
     await this.roles.insertPlatformPrincipal(schoolId, userId, now);
+    // Principals are unrestricted peers (contracts/slice-7.md §4.4): a linked staff login's grant
+    // and revoke rows end here, with no school-user actor.
+    const grantsEnded = foundUser
+      ? await this.grants.endAllForNewPrincipal(schoolId, userId, { revokedBy: null, now })
+      : 0;
     await this.audit.record(schoolId, {
       ...actor,
       action: 'user.principal_login_issued',
       subjectType: 'user',
       subjectId: userId,
       ...reason,
-      metadata: { linkedExistingUser },
+      metadata: { linkedExistingUser, ...(grantsEnded > 0 ? { grantsEnded } : {}) },
     });
     await this.platformAudit.record({
       actorPlatformUserId: platformUserId,

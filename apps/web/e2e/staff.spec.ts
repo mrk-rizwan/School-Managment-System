@@ -8,6 +8,7 @@ import type {
   SubjectDto,
 } from '../lib/api/school-academics-contract';
 import type { MeDto } from '../lib/api/school-contract';
+import type { CustomRoleDto } from '../lib/api/school-roles-contract';
 import type {
   StaffDto,
   TeacherAssignmentDto,
@@ -56,6 +57,7 @@ const staffRow = (id: string, fullName: string, extra: Partial<StaffDto> = {}): 
   status: 'active',
   userId: null,
   systemRoles: [],
+  customRoleNames: [],
   createdAt: STAMP,
   updatedAt: STAMP,
   ...extra,
@@ -68,6 +70,7 @@ const userFor = (staff: StaffDto): UserDto => ({
   studentId: null,
   fullName: staff.fullName,
   systemRoles: [],
+  customRoleNames: [],
   status: 'active',
   emailMasked: null,
   hasEmail: false,
@@ -161,6 +164,7 @@ async function mockStaffApi(page: Page, state: MockState) {
     if (method === 'GET' && path === '/classes/c5/sections') return json(200, page1([SECTION_A]));
     if (method === 'GET' && path === '/subjects') return json(200, page1([MATHS]));
     if (path === '/staff' && method === 'GET') return json(200, page1(staff));
+    if (path === '/custom-roles' && method === 'GET') return json(200, page1([CLERK_ROLE]));
     if (path === '/staff' && method === 'POST') {
       const b = request.postDataJSON() as Partial<StaffDto> & { cnic?: string | null };
       const created = staffRow('st-new', b.fullName ?? '', {
@@ -239,11 +243,23 @@ const assignment = (id: string, extra: Partial<TeacherAssignmentDto> = {}): Teac
   ...extra,
 });
 
+const CLERK_ROLE: CustomRoleDto = {
+  id: 'cr1',
+  key: 'accounts_clerk',
+  name: 'Accounts clerk',
+  status: 'active',
+  capabilities: [Capability.PAYMENT_RECORD],
+  holderCount: 0,
+  createdAt: STAMP,
+  updatedAt: STAMP,
+};
+
 const roleRow = (id: string, extra: Partial<UserRoleDto> = {}): UserRoleDto => ({
   id,
   userId: 'u7',
   systemRole: 'teacher',
   customRoleId: null,
+  customRoleName: null,
   assignedBy: 'u-principal',
   assignedAt: STAMP,
   endedAt: null,
@@ -260,7 +276,7 @@ test('list: masked CNIC, roles and status; asks for active staff; never sends a 
   const requests = await mockStaffApi(page, {
     me: OFFICE_ME,
     staff: [
-      staffRow('st1', 'Ayesha Malik', { userId: 'u7', systemRoles: ['teacher'] }),
+      staffRow('st1', 'Ayesha Malik', { userId: 'u7', systemRoles: ['teacher'], customRoleNames: ['Exams desk'] }),
       staffRow('st2', 'Bilal Ahmed', { cnicMasked: null, hasCnic: false, designation: null }),
     ],
   });
@@ -270,6 +286,7 @@ test('list: masked CNIC, roles and status; asks for active staff; never sends a 
   const ayesha = table.getByRole('row', { name: /Ayesha Malik/ });
   await expect(ayesha.getByText('35201-*****-1')).toBeVisible();
   await expect(ayesha.getByText('Teacher', { exact: true }).last()).toBeVisible();
+  await expect(ayesha.getByText('Exams desk', { exact: true })).toBeVisible();
   await expect(ayesha.getByText('Has login')).toBeVisible();
   await expect(ayesha.getByText('Active')).toBeVisible();
   await expect(table.getByRole('row', { name: /Bilal Ahmed/ }).getByText('No CNIC')).toBeVisible();
@@ -320,6 +337,16 @@ test('create: sends the normalised CNIC and opens the new record', async ({ page
     designation: 'Senior teacher',
     // No joining date given: the field is left out (CreateStaffDto.joinedOn is not nullable).
   });
+});
+
+test('create: a user without staff.create gets the no-permission state, not the form', async ({ page }) => {
+  const requests = await mockStaffApi(page, { me: TEACHER_ME });
+  await page.goto('/staff/new');
+  await expect(page.getByText('You do not have access')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New staff member' })).toBeVisible();
+  await expect(page.getByLabel('Full name')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add staff member' })).toHaveCount(0);
+  expect(calls(requests, 'POST', '/staff')).toHaveLength(0);
 });
 
 test('create: an existing CNIC offers to open that staff member', async ({ page }) => {
@@ -517,8 +544,16 @@ test('roles: a principal gives a role with a reason; removing the last principal
 
   await page.getByRole('button', { name: 'Give a role' }).click();
   const give = page.getByRole('dialog');
-  await expect(give.getByLabel('Role').locator('option')).toHaveText(['Choose…', 'Office staff', 'Teacher']);
-  await give.getByLabel('Role').selectOption('teacher');
+  // One select, system roles and active custom roles in two groups (slice-7 §9); held roles are left out.
+  await expect(give.getByLabel('Role').locator('option')).toHaveText([
+    'Choose…',
+    'Office staff',
+    'Teacher',
+    'Accounts clerk (1 capability)',
+  ]);
+  await expect(give.locator('optgroup[label="System roles"] option')).toHaveText(['Office staff', 'Teacher']);
+  await expect(give.locator('optgroup[label="Custom roles"] option')).toHaveText(['Accounts clerk (1 capability)']);
+  await give.getByLabel('Role').selectOption({ label: 'Teacher' });
   await give.getByLabel('Reason').fill('Teaches maths too');
   await give.getByRole('button', { name: 'Give role' }).click();
   await expect(give).toBeHidden();

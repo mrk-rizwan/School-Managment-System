@@ -6,6 +6,8 @@ import { Capability } from '@asms/shared';
 import { PasswordHasher } from '../../src/common/crypto/password';
 import { PermissionsService } from '../../src/modules/access/permissions.service';
 import { StaffStatusService } from '../../src/modules/people/staff/staff-status.service';
+import { StaffRepository } from '../../src/repositories/staff.repository';
+import { UserRepository } from '../../src/repositories/user.repository';
 import { createGuardianUser, nextIp } from '../school-auth/support';
 import {
   createSchoolSession,
@@ -183,6 +185,7 @@ describe('staff (e2e)', () => {
         status: 'active',
         userId: null,
         systemRoles: [],
+        customRoleNames: [],
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });
@@ -440,12 +443,65 @@ describe('staff (e2e)', () => {
         [
           'staff.status_changed',
           'Recorded by the office',
-          { from: 'active', to: 'left', rolesEnded: 1, assignmentsEnded: 3, sessionsRevoked: 2 },
+          { from: 'active', to: 'left', rolesEnded: 1, assignmentsEnded: 3, sessionsRevoked: 2, grantsEnded: 0 },
         ],
       ]);
     });
 
-    it.todo('R17: leaving ends the user’s active grants with reason "staff left" (slice 7, GrantsRepository.endAllForUser)');
+    it('R17, R19: leaving ends active grants and revokes with reason "staff left"; re-hire restores none', async () => {
+      const { user } = await teacherWithEverything(school);
+      const permissions = h.app.get(PermissionsService);
+      const row = (capabilityKey: string, effect: 'grant' | 'revoke') => ({
+        schoolId: school.id,
+        userId: user.userId,
+        capabilityKey,
+        effect,
+        grantedBy: principal.userId,
+        reason: 'Covering the office',
+      });
+      const grant = await db.userCapabilityGrant.create({ data: row('payment.record', 'grant') });
+      const revoke = await db.userCapabilityGrant.create({ data: row('diary.write', 'revoke') });
+      const ended = await db.userCapabilityGrant.create({
+        data: { ...row('staff.view', 'grant'), createdAt: new Date(Date.now() - 60_000), revokedAt: new Date(), revokedBy: principal.userId, endReason: 'Done' },
+      });
+      expect((await changeStatus(String(user.staffId), 'left')).status).toBe(200);
+      const rows = await db.userCapabilityGrant.findMany({ where: { schoolId: school.id, userId: user.userId } });
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      for (const id of [grant.id, revoke.id]) {
+        expect(byId.get(id)).toMatchObject({ revokedBy: principal.userId, endReason: 'staff left', revokedAt: expect.any(Date) });
+      }
+      // An already-ended row keeps its own end.
+      expect(byId.get(ended.id)).toMatchObject({ endReason: 'Done' });
+      const [audit] = await auditFor(school.id, 'staff', user.staffId);
+      expect(audit?.metadata).toMatchObject({ to: 'left', grantsEnded: 2 });
+
+      // R19: re-hire restores nothing, grants included.
+      expect((await changeStatus(String(user.staffId), 'active')).status).toBe(200);
+      expect(await db.userCapabilityGrant.count({ where: { schoolId: school.id, userId: user.userId, revokedAt: null } })).toBe(0);
+      expect((await permissions.load(school.id, user.userId))?.capabilities.size).toBe(0);
+    });
+
+    it('R18: suspended keeps grants inert; they count again on reactivation', async () => {
+      const { user } = await teacherWithEverything(school);
+      const permissions = h.app.get(PermissionsService);
+      await db.userCapabilityGrant.create({
+        data: {
+          schoolId: school.id,
+          userId: user.userId,
+          capabilityKey: 'payment.record',
+          effect: 'grant',
+          grantedBy: principal.userId,
+          reason: 'Covering the office',
+        },
+      });
+      const held = async () => (await permissions.load(school.id, user.userId))?.capabilities.has(Capability.PAYMENT_RECORD);
+      expect(await held()).toBe(true);
+      expect((await changeStatus(String(user.staffId), 'suspended')).status).toBe(200);
+      expect(await held()).toBe(false);
+      expect(await db.userCapabilityGrant.count({ where: { schoolId: school.id, userId: user.userId, revokedAt: null } })).toBe(1);
+      expect((await changeStatus(String(user.staffId), 'active')).status).toBe(200);
+      expect(await held()).toBe(true);
+    });
 
     it('R18, R59: suspended revokes sessions and empties capabilities; roles and assignments wait', async () => {
       const { user, assignments } = await teacherWithEverything(school);
@@ -501,9 +557,38 @@ describe('staff (e2e)', () => {
       // Back to a login with no capacity until a role is assigned (contract §3.5, §5).
       expect((await permissions().load(school.id, user.userId))?.capacities.staff).toBe(false);
       expect((await auditFor(school.id, 'staff', user.staffId)).map((a) => a.metadata)).toEqual([
-        { from: 'active', to: 'left', rolesEnded: 1, assignmentsEnded: 3, sessionsRevoked: 2 },
-        { from: 'left', to: 'active', rolesEnded: 0, assignmentsEnded: 0, sessionsRevoked: 0 },
+        { from: 'active', to: 'left', rolesEnded: 1, assignmentsEnded: 3, sessionsRevoked: 2, grantsEnded: 0 },
+        { from: 'left', to: 'active', rolesEnded: 0, assignmentsEnded: 0, sessionsRevoked: 0, grantsEnded: 0 },
       ]);
+    });
+
+    it('A10: a login issued between the read and the staff lock restarts the change (user before staff)', async () => {
+      const t = await h.caller(school, 'teacher');
+      const repo = h.app.get(StaffRepository, { strict: false });
+      const row = await repo.findById(school.id, t.staffId);
+      // The first read sees the staff row as it was before its login existed.
+      const stale = jest
+        .spyOn(StaffRepository.prototype, 'findById')
+        .mockResolvedValueOnce(row && { ...row, userId: null });
+      const userLock = jest.spyOn(UserRepository.prototype, 'lock');
+      const staffLock = jest.spyOn(StaffRepository.prototype, 'lockIfUnchanged');
+      try {
+        const res = await changeStatus(String(t.staffId), 'suspended');
+        expect(res.status).toBe(200);
+        // The attempt that committed locked the login before the staff row.
+        const lastUserLock = userLock.mock.invocationCallOrder.at(-1) ?? 0;
+        const lastStaffLock = staffLock.mock.invocationCallOrder.at(-1) ?? 0;
+        expect(staffLock.mock.calls.length).toBe(2);
+        expect(lastUserLock).toBeLessThan(lastStaffLock);
+        expect(userLock.mock.calls.at(-1)?.[1]).toBe(t.userId);
+      } finally {
+        stale.mockRestore();
+        userLock.mockRestore();
+        staffLock.mockRestore();
+      }
+      // The restart locked and acted on the login: its sessions were revoked (R70).
+      expect(await liveSessions(school.id, t.userId)).toBe(0);
+      expect((await db.staff.findFirst({ where: { schoolId: school.id, id: t.staffId } }))?.status).toBe('suspended');
     });
 
     it('a staff member without a login changes status with nothing else to end', async () => {

@@ -32,14 +32,14 @@ import {
   type IssuePrincipalLoginDto,
   type SchoolDto,
 } from '@/lib/api/platform-contract';
-import { schoolNameSchema } from '../school-ui';
+import { nameSchema } from '@/lib/validation';
 
 // contracts/slice-2.md §7: the one place a platform admin creates a login inside a school.
 // The reason field appears only when the school already has an active principal (R103).
 
 const schema = z.object({
   // Same rule as a school name: 2–200 characters, no control characters.
-  fullName: schoolNameSchema,
+  fullName: nameSchema(2, 200),
   cnic: z
     .string()
     .trim()

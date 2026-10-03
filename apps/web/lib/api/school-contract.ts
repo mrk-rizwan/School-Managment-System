@@ -27,8 +27,6 @@ export type SchoolSettingsDto = Schemas['SchoolSettingsDto'];
 
 export type UserListQuery = NonNullable<operations['UsersController_list']['parameters']['query']>;
 export type UserSort = NonNullable<UserListQuery['sort']>;
-export type UserListDto =
-  operations['UsersController_list']['responses'][200]['content']['application/json'];
 
 // ---- Request bodies ----
 
@@ -38,6 +36,4 @@ export type ResetPasswordBody = Schemas['ResetPasswordDto'];
 export type VerifyEmailBody = Schemas['VerifyEmailDto'];
 export type ChangeEmailBody = Schemas['ChangeEmailDto'];
 export type ChangeSchoolPasswordBody = Schemas['ChangePasswordDto'];
-export type OfficeResetBody = Schemas['OfficeResetDto'];
-export type ReasonBody = Schemas['ReasonDto'];
 export type UpdateSchoolSettingsBody = Schemas['UpdateSchoolSettingsDto'];

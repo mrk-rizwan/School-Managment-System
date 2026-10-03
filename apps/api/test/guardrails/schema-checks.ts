@@ -475,7 +475,9 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     kind: 'constraint',
     table: 'user_roles',
     name: 'user_roles_assigned_by_check',
-    definition: "CHECK (((assigned_by IS NOT NULL) OR (system_role = 'principal'::system_role)))",
+    // Slice-7 review (A8): IS NOT DISTINCT FROM, so a custom-role row cannot pass on NULL.
+    definition:
+      "CHECK (((assigned_by IS NOT NULL) OR (NOT (system_role IS DISTINCT FROM 'principal'::system_role))))",
   },
   {
     kind: 'constraint',
@@ -488,7 +490,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     kind: 'constraint',
     table: 'user_roles',
     name: 'user_roles_one_role_check',
-    definition: 'CHECK ((num_nonnulls(system_role) = 1))',
+    definition: 'CHECK ((num_nonnulls(system_role, custom_role_id) = 1))',
   },
   {
     kind: 'constraint',
@@ -829,6 +831,189 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     name: 'student_status_changes_no_truncate',
     definition:
       'BEFORE TRUNCATE ON public.student_status_changes FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  // Slice 7: custom roles, grants (contracts/slice-7.md §6).
+  {
+    kind: 'function',
+    name: 'asms_grant_end_only',
+    definition: "DETAIL = 'constraint: user_capability_grants_end_only'",
+  },
+  {
+    kind: 'index',
+    table: 'user_roles',
+    name: 'user_roles_school_id_user_id_custom_role_key',
+    definition:
+      'USING btree (school_id, user_id, custom_role_id) WHERE ((custom_role_id IS NOT NULL) AND (ended_at IS NULL))',
+  },
+  {
+    kind: 'index',
+    table: 'custom_roles',
+    name: 'custom_roles_school_id_key_key',
+    definition: "USING btree (school_id, key) WHERE (status = 'active'::custom_role_status)",
+  },
+  { kind: 'constraint', table: 'custom_roles', name: 'custom_roles_key_check' },
+  { kind: 'constraint', table: 'custom_roles', name: 'custom_roles_name_check' },
+  {
+    kind: 'trigger',
+    table: 'custom_roles',
+    name: 'custom_roles_columns_immutable',
+    definition: "EXECUTE FUNCTION asms_forbid_columns_change('key')",
+  },
+  {
+    kind: 'constraint',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_no_role_manage_check',
+    definition: "CHECK (((capability_key)::text <> 'role.manage'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_key_format_check',
+  },
+  {
+    kind: 'constraint',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_removed_check',
+  },
+  {
+    kind: 'index',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_live_key',
+    definition:
+      'USING btree (school_id, custom_role_id, capability_key) WHERE (removed_at IS NULL)',
+  },
+  {
+    kind: 'trigger',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_columns_immutable',
+    definition:
+      "EXECUTE FUNCTION asms_forbid_columns_change('custom_role_id', 'capability_key', 'added_by', 'added_at')",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_no_role_manage_check',
+    definition: "CHECK (((capability_key)::text <> 'role.manage'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_key_format_check',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_not_self_check',
+    definition: 'CHECK ((granted_by <> user_id))',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_revoked_check',
+    definition:
+      "((revoked_at IS NULL) OR (revoked_by IS NOT NULL) OR ((end_reason)::text = 'became principal'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_reason_no_id_check',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_end_reason_no_id_check',
+  },
+  {
+    kind: 'index',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_live_key',
+    definition:
+      'USING btree (school_id, user_id, capability_key, effect) WHERE (revoked_at IS NULL)',
+  },
+  {
+    kind: 'trigger',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_end_only',
+    definition:
+      'BEFORE DELETE OR UPDATE ON public.user_capability_grants FOR EACH ROW EXECUTE FUNCTION asms_grant_end_only()',
+  },
+  {
+    kind: 'trigger',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_no_truncate',
+    definition:
+      'BEFORE TRUNCATE ON public.user_capability_grants FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  // Slice-7 review fixes (migration slice7_history_guards): L3, L4.
+  {
+    kind: 'function',
+    name: 'asms_forbid_delete',
+    definition: "DETAIL = 'constraint: ' || TG_TABLE_NAME || '_no_delete'",
+  },
+  {
+    kind: 'function',
+    name: 'asms_forbid_change_once_set',
+    definition: "DETAIL = 'constraint: ' || TG_TABLE_NAME || '_' || col || '_frozen'",
+  },
+  {
+    kind: 'function',
+    name: 'asms_custom_role_archive_final',
+    definition: "DETAIL = 'constraint: custom_roles_archive_final'",
+  },
+  {
+    kind: 'function',
+    name: 'asms_user_role_custom_role_active',
+    definition: "DETAIL = 'constraint: user_roles_custom_role_active'",
+  },
+  ...(['custom_roles', 'custom_role_capabilities'] as const).flatMap((table): ExpectedObject[] => [
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_no_delete`,
+      definition: `BEFORE DELETE ON public.${table} FOR EACH ROW EXECUTE FUNCTION asms_forbid_delete()`,
+    },
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_no_truncate`,
+      definition: `BEFORE TRUNCATE ON public.${table} FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()`,
+    },
+  ]),
+  {
+    kind: 'trigger',
+    table: 'custom_roles',
+    name: 'custom_roles_archive_final',
+    definition: 'BEFORE UPDATE ON public.custom_roles FOR EACH ROW EXECUTE FUNCTION asms_custom_role_archive_final()',
+  },
+  {
+    kind: 'trigger',
+    table: 'custom_role_capabilities',
+    name: 'custom_role_capabilities_removed_frozen',
+    definition: "EXECUTE FUNCTION asms_forbid_change_once_set('removed_at', 'removed_by')",
+  },
+  {
+    kind: 'trigger',
+    table: 'user_roles',
+    name: 'user_roles_columns_immutable',
+    definition: "EXECUTE FUNCTION asms_forbid_columns_change('user_id', 'system_role', 'custom_role_id')",
+  },
+  {
+    kind: 'trigger',
+    table: 'user_roles',
+    name: 'user_roles_ended_frozen',
+    definition: "EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by')",
+  },
+  {
+    kind: 'trigger',
+    table: 'user_roles',
+    name: 'user_roles_custom_role_active',
+    definition: 'BEFORE INSERT ON public.user_roles FOR EACH ROW EXECUTE FUNCTION asms_user_role_custom_role_active()',
+  },
+  {
+    kind: 'constraint',
+    table: 'user_capability_grants',
+    name: 'user_capability_grants_not_self_end_check',
+    definition: 'CHECK (((revoked_by IS NULL) OR (revoked_by <> user_id)))',
   },
 ];
 

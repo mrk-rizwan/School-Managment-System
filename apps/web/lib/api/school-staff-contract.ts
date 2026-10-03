@@ -21,8 +21,6 @@ export type TeacherRole = Schemas['TeacherRole'];
 
 // ---- Responses (contract §2) ----
 
-export type Paginated<T> = { data: T[]; page: number; limit: number; total: number };
-
 export type StaffDto = Schemas['StaffDto'];
 export type TeacherAssignmentDto = Schemas['TeacherAssignmentDto'];
 export type UserRoleDto = Schemas['UserRoleDto'];
@@ -32,24 +30,13 @@ export type UserRoleDto = Schemas['UserRoleDto'];
 export type StaffSort = Schemas['StaffSort'];
 export type StaffListQuery = NonNullable<operations['StaffController_list']['parameters']['query']>;
 export type TeacherAssignmentSort = Schemas['TeacherAssignmentSort'];
-export type TeacherAssignmentListQuery = NonNullable<
-  operations['StaffController_listAssignments']['parameters']['query']
->;
-export type UserRoleListQuery = NonNullable<
-  operations['UserRolesController_list']['parameters']['query']
->;
 
 // ---- Bodies ----
 
 export type CreateStaffBody = Schemas['CreateStaffDto'];
 /** Absent = unchanged, null = clear (not allowed for fullName and phone). `cnic` is 409 STAFF_CNIC_LOCKED once a login exists. */
 export type UpdateStaffBody = Schemas['UpdateStaffDto'];
-export type ChangeStaffStatusBody = Schemas['ChangeStaffStatusDto'];
-export type IssueStaffLoginBody = Schemas['IssueStaffLoginDto'];
 export type CreateTeacherAssignmentBody = Schemas['CreateTeacherAssignmentDto'];
-export type EndTeacherAssignmentBody = Schemas['EndTeacherAssignmentDto'];
-export type AssignRoleBody = Schemas['AssignRoleDto'];
-export type ReasonBody = Schemas['RemoveRoleDto'];
 
 /** `details` of 409 CLASS_TEACHER_EXISTS (§4.3); error details are not in the OpenAPI document. */
 export type ClassTeacherConflict = {

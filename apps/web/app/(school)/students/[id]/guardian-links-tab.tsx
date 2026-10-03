@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
-import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { DataTable, type DataTableFeatures, RowActions } from '@/components/data-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,15 +30,14 @@ import {
   type StudentDetailDto,
   type UpdateGuardianLinkBody,
 } from '@/lib/api/school-students-contract';
-import { RowActions } from '../../academics/_lib/academics-ui';
-import { useCapabilities } from '../../academics/_lib/hooks';
+import { formatDate } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
 import { guardiansKeys } from '../../guardians/_lib/guardians-ui';
 import { GuardianFinder } from '../_lib/guardian-finder';
 import { LinkFlagFields, type LinkFlags as Flags } from '../_lib/link-flags';
-import { RELATIONSHIP_LABELS, formatInstant, studentsKeys } from '../_lib/students-ui';
+import { RELATIONSHIP_LABELS, studentsKeys } from '../_lib/students-ui';
 
 const LIMIT = 25;
-const NO_LINKS: GuardianLinkDto[] = [];
 
 /**
  * contracts/slice-6.md §4 (rule 9, R28–R30): one primary contact with a phone, at least one fee
@@ -108,7 +107,7 @@ export function GuardianLinksTab({ student }: { student: StudentDetailDto }) {
               {link.isPrimaryContact && <Badge variant="secondary">Primary contact</Badge>}
               {link.isFeePayer && <Badge variant="outline">Fee payer</Badge>}
               {link.canLogin && <Badge variant="outline">May log in</Badge>}
-              {link.endedAt && <Badge variant="ghost">Ended {formatInstant(link.endedAt)}</Badge>}
+              {link.endedAt && <Badge variant="ghost">Ended {formatDate(link.endedAt)}</Badge>}
             </span>
           );
         },
@@ -137,7 +136,6 @@ export function GuardianLinksTab({ student }: { student: StudentDetailDto }) {
     ];
   }, [canManage]);
 
-  const result = links.data;
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -159,15 +157,11 @@ export function GuardianLinksTab({ student }: { student: StudentDetailDto }) {
       </div>
       <DataTable
         columns={columns}
-        data={result?.data ?? NO_LINKS}
+        query={links}
         getRowId={(row) => row.id}
-        page={result?.page ?? page}
-        limit={result?.limit ?? LIMIT}
-        total={result?.total ?? 0}
+        page={page}
+        limit={LIMIT}
         onPageChange={setPage}
-        isLoading={links.isPending || links.isPlaceholderData}
-        error={links.error}
-        onRetry={() => void links.refetch()}
         emptyTitle="No guardians linked"
       />
       {canManage && (
@@ -325,7 +319,7 @@ function linkErrorText(error: unknown): string {
     case ErrorCode.PRIMARY_CONTACT_NEEDS_PHONE:
       return `${error.message} Add a phone number to the guardian’s record first.`;
     default:
-      return error.fieldErrors[0]?.message ?? describeApiError(error);
+      return describeApiError(error);
   }
 }
 

@@ -19,7 +19,6 @@ export type ClassStatus = Schemas['ClassStatus'];
 
 // ---- Responses ----
 
-export type Paginated<T> = { data: T[]; page: number; limit: number; total: number };
 export type AcademicYearDto = Schemas['AcademicYearDto'];
 export type ClassDto = Schemas['ClassDto'];
 export type SectionDto = Schemas['SectionDto'];
@@ -39,13 +38,8 @@ export type SubjectListQuery = Query<'SubjectsController_list'>;
 
 // ---- Bodies ----
 
-export type CreateAcademicYearBody = Schemas['CreateAcademicYearDto'];
 export type UpdateAcademicYearBody = Schemas['UpdateAcademicYearDto'];
-export type CreateClassBody = Schemas['CreateClassDto'];
 export type UpdateClassBody = Schemas['UpdateClassDto'];
-export type ArchiveBody = Schemas['ArchiveDto'];
 export type CopySectionsBody = Schemas['CopySectionsDto'];
-export type CreateSectionBody = Schemas['CreateSectionDto'];
 export type UpdateSectionBody = Schemas['UpdateSectionDto'];
-export type CreateSubjectBody = Schemas['CreateSubjectDto'];
 export type UpdateSubjectBody = Schemas['UpdateSubjectDto'];
