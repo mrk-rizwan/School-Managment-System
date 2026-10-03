@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, ErrorCode, LOGIN_ISSUED_REASONS } from '@asms/shared';
+import { Capability, ErrorCode, LOGIN_ISSUED_REASONS, newIdempotencyKey } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -49,7 +49,6 @@ import {
 const STEPS = ['Student', 'Guardians', 'Class and section', 'Documents', 'Review and submit'] as const;
 
 /** 32 characters of [0-9a-f]: inside the API's `^[A-Za-z0-9_-]{16,64}$`. */
-const newIdempotencyKey = () => crypto.randomUUID().replaceAll('-', '');
 
 /**
  * The admission wizard (plan §5 slice 6, contracts/slice-6.md §6.3, §10). Remounted by

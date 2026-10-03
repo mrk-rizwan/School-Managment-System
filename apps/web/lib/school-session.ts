@@ -31,7 +31,7 @@ export const schoolKeys = {
 
 /**
  * The screen a session error sends the user to, or null when the error is not about the session.
- * Only a 401 is: the session is gone. A 403 (no capability, suspended school) is answered on the
+ * Only a 401 is: the session is gone. A 403 (no capability) is answered on the
  * screen itself. AUTH_FAILED is the login form's own answer and stays on the form.
  */
 export function sessionRedirectFor(error: unknown): string | null {

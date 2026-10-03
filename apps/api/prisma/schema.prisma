@@ -683,6 +683,9 @@ model Session {
   @@unique([schoolId, id], map: "sessions_school_id_id_key")
   @@unique([tokenHash], map: "sessions_token_hash_key")
   @@index([schoolId, userId], map: "sessions_school_id_user_id_idx")
+  /// The daily session purge (contracts/slice-9.md §1.5): revoked or expired before a cut-off.
+  @@index([schoolId, revokedAt], map: "sessions_school_id_revoked_at_idx")
+  @@index([schoolId, expiresAt], map: "sessions_school_id_expires_at_idx")
   @@map("sessions")
 }
 

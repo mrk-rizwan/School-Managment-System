@@ -132,6 +132,40 @@ export class SessionRepository {
     return count === 1;
   }
 
+  /**
+   * The daily session purge (contracts/slice-9.md §1.5): ids of sessions revoked, or past their
+   * absolute expiry, before `endedBefore`, oldest first. A session idle past its window reaches
+   * its expiry within 180 days and is purged after that.
+   */
+  async listEndedBefore(schoolId: SchoolId, endedBefore: Date, limit: number): Promise<bigint[]> {
+    const rows = await this.txHost.tx.session.findMany({
+      where: {
+        schoolId,
+        OR: [{ revokedAt: { lt: endedBefore } }, { expiresAt: { lt: endedBefore } }],
+      },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+      take: limit,
+    });
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Deletes these sessions, re-checking that each is still ended before `endedBefore`. Their
+   * devices must be deleted first (devices_session_id_fkey has no cascade). Returns the count.
+   */
+  async deleteEnded(schoolId: SchoolId, ids: readonly bigint[], endedBefore: Date): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { count } = await this.txHost.tx.session.deleteMany({
+      where: {
+        schoolId,
+        id: { in: [...ids] },
+        OR: [{ revokedAt: { lt: endedBefore } }, { expiresAt: { lt: endedBefore } }],
+      },
+    });
+    return count;
+  }
+
   /** Live (unrevoked, unexpired) sessions of a user; for tests of revocation and for R70. */
   countLiveForUser(schoolId: SchoolId, userId: bigint, now: Date): Promise<number> {
     return this.txHost.tx.session.count({

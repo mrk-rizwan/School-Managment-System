@@ -31,6 +31,8 @@ const OFFICE_ME: MeDto = {
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
+  capacities: ['staff'],
+  assignments: [],
 };
 const PRINCIPAL_ME: MeDto = {
   ...OFFICE_ME,
@@ -239,6 +241,8 @@ const assignment = (id: string, extra: Partial<TeacherAssignmentDto> = {}): Teac
   endsOn: null,
   voidedAt: null,
   activeToday: true,
+  coversAssignmentId: null,
+  coversStaffFullName: null,
   createdAt: STAMP,
   ...extra,
 });

@@ -5,6 +5,7 @@ import {
   bindSchoolSession,
   presentedSchoolToken,
   SCHOOL_SESSION_LIMITS,
+  sessionLifetime,
   type SchoolSessionContext,
 } from '../common/auth/school-session';
 import { ApiException } from '../common/errors/api-exception';
@@ -41,10 +42,13 @@ export class SchoolSessionResolver {
 
     const row = await this.sessions.findActiveByTokenHash(presented.tokenHash);
     const now = new Date();
+    const idleFor = row ? now.getTime() - row.lastSeenAt.getTime() : 0;
+    // The longest idle window of the channel first (no capacity can make it longer), so an
+    // idle session is refused before any further read.
     if (
       !row ||
       row.channel !== presented.kind ||
-      now.getTime() - row.lastSeenAt.getTime() >= SCHOOL_SESSION_LIMITS.idleMs
+      idleFor >= sessionLifetime(row.channel, { staff: false }).idleMs
     ) {
       throw authRequired();
     }
@@ -57,6 +61,8 @@ export class SchoolSessionResolver {
     if (!access || access.status !== 'active' || !this.permissions.hasAnyCapacity(access)) {
       throw authRequired();
     }
+    // R154: idle per channel and the capacities held now (a bearer staff session idles at 14 d).
+    if (idleFor >= sessionLifetime(row.channel, access.capacities).idleMs) throw authRequired();
 
     this.establisher.establishSession({ schoolId, userId: row.userId, sessionId: row.id });
 

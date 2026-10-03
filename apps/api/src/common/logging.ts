@@ -12,6 +12,12 @@ const IDENTITY_NUMBER = new RegExp(
   'gi',
 );
 
+/**
+ * A Pakistani mobile in E.164 or local form (R111, slice 9): `+923001234567`, `923001234567`,
+ * `03001234567`, also URL-encoded (`%2B92...`). Phone numbers never reach a log line unmasked.
+ */
+export const PHONE_NUMBER = /(?:\+|%2B)?92(?:3\d{9})(?!\d)|(?<!\d)03\d{9}(?!\d)/gi;
+
 /** Where log lines go. Tests override this token to capture output. */
 export const LOG_DESTINATION = Symbol('LOG_DESTINATION');
 
@@ -21,7 +27,10 @@ export const LOG_DESTINATION = Symbol('LOG_DESTINATION');
  * because epoch milliseconds are themselves 13 digits.
  */
 export function scrubbingStream(destination: DestinationStream): DestinationStream {
-  return { write: (line: string) => destination.write(line.replace(IDENTITY_NUMBER, '[id]')) };
+  return {
+    write: (line: string) =>
+      destination.write(line.replace(IDENTITY_NUMBER, '[id]').replace(PHONE_NUMBER, '[phone]')),
+  };
 }
 
 @Module({
@@ -49,6 +58,18 @@ export function scrubbingStream(destination: DestinationStream): DestinationStre
                 '*.cnic',
                 '*.bForm',
                 '*.token',
+                // R173: an FCM registration token is a push address to one phone.
+                '*.pushToken',
+                '*.bearerToken',
+                // contracts/slice-9.md §5.4, §5.5, §8.1: pairing QR, Meta token, provider bodies.
+                '*.qr',
+                '*.accessToken',
+                '*.to',
+                '*.from',
+                '*.chatId',
+                '*.body',
+                '*.text',
+                '*.phone',
               ],
               censor: '[redacted]',
             },

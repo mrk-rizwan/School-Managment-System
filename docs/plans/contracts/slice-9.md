@@ -109,9 +109,12 @@ emitted anywhere (§10). Absent, malformed or another school's path id → `404 
   device with `unregistered_at IS NULL` whose session has `revoked_at IS NULL AND expires_at >
   now() AND last_seen_at > now() − idle` (the same `idle()` function). No revocation path writes
   `devices`; only logout (§3.2), FCM `unregistered` (§7.6) and replacement (§3.5) do.
-- The daily session purge (sessions ended more than 90 days ago) deletes the purged sessions'
-  `devices` rows first, in the same transaction (no cascades exist; a device row is a push
-  address, not history).
+- The daily session purge (`session-purge`, 03:00 Asia/Karachi, every school including
+  terminated ones) deletes sessions revoked, or past `expires_at`, more than 90 days ago, 500 per
+  transaction, and deletes the purged sessions' `devices` rows first in the same transaction (no
+  cascades exist; a device row is a push address, not history, so `devices` carries no DELETE or
+  TRUNCATE refusal — migration `20261004090000_devices_purgeable`). Indexed by `(school_id,
+  revoked_at)` and `(school_id, expires_at)`.
 
 ### 1.6 Throttles (R166 and this slice)
 
@@ -199,7 +202,8 @@ token** (R173).
 `whatsappProvider` (`WhatsAppProviderChoice`), `smsProvider` (`SmsProviderChoice`).
 
 `PlatformSettingsDto`: `defaultWhatsappProvider` (`WhatsAppProvider`), `defaultSmsProvider`
-(`SmsProvider`), `updatedAt`.
+(`SmsProvider`), `enabledWhatsappProviders` (`WhatsAppProvider[]`, from
+`WHATSAPP_PROVIDERS_ENABLED`, §6.4), `updatedAt`.
 
 `WhatsAppSettingsDto` (`GET /messaging/whatsapp`, connect, disable):
 
@@ -501,7 +505,7 @@ new row (a lost SIM is replaced without a delete). **200** `WhatsAppSettingsDto`
 | Field | Rules |
 |---|---|
 | `smsMonthlyCap` | optional integer 0–100,000; `null` → `422` |
-| `whatsappProvider` | optional `WhatsAppProviderChoice`; `null` → `422` |
+| `whatsappProvider` | optional `WhatsAppProviderChoice`; `null` → `422`; a provider not enabled on the deployment (§6.4) → `422 INVALID_VALUE` (`platform_default` always passes) |
 | `smsProvider` | optional `SmsProviderChoice`; `null` → `422` |
 
 Unchanged otherwise: school row locked; terminated → `409 SCHOOL_TERMINATED`; empty body or no
@@ -518,7 +522,8 @@ settings screen shows the mismatch. **200** `SchoolDto`. Platform audit `school.
 migration: `waha`, `sendpk`).
 
 `PATCH` `{ defaultWhatsappProvider?: WhatsAppProvider, defaultSmsProvider?: SmsProvider }`
-(`platform_default` is not a value here → `422`; `null` → `422`). Row locked. No change → `200`, no
+(`platform_default` is not a value here → `422`; `null` → `422`; a WhatsApp provider not enabled
+on the deployment, §6.4 → `422 INVALID_VALUE` on `defaultWhatsappProvider`). Row locked. No change → `200`, no
 audit. Takes effect for every school on `platform_default` on its next onboarding check and next
 SMS leg — "change it for all schools at once". **200** `PlatformSettingsDto`. Platform audit
 `platform_settings.updated { changes }`, `school_id` null.
@@ -537,6 +542,18 @@ Reads `schools` left-joined to `platform_delivery_health` (today's and yesterday
 days) through `repositories/platform/delivery-health.repository.ts`. Never reads `messages`,
 `message_deliveries` or `whatsapp_numbers`; never returns a body, a recipient or a phone number.
 **200** `{ data: PlatformDeliveryHealthDto[], page, limit, total }`.
+
+### 6.4 WhatsApp providers enabled on the deployment (`WHATSAPP_PROVIDERS_ENABLED`)
+
+Environment key, a comma list of `waha`, `cloud_api`; unset or empty means both. A provider left
+out: its driver refuses every send as `session_down` (permanent, so the guardian falls to SMS) and
+fails every health check (a live row of it goes `down` once, with the usual alert); its webhook
+routes (§8.2 for `waha`, §8.3 for `cloud_api`) answer `404 NOT_FOUND` before any verification, as if
+not mounted; the platform cannot choose it (§6.1, §6.2: `422 INVALID_VALUE`); `GET
+/platform/settings` lists the enabled ones (`enabledWhatsappProviders`) so the console greys the
+others out. Production requires `WAHA_URL`, `WAHA_API_KEY`, `WAHA_WEBHOOK_SECRET` only while `waha`
+is enabled and `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN` only while `cloud_api` is;
+`FCM_SERVICE_ACCOUNT_JSON`, `SMS_API_KEY`, `SMS_SENDER_ID` and `PLATFORM_ALERT_EMAIL` stay required.
 
 ---
 
@@ -617,7 +634,9 @@ delivery row.
 | platform | — | — | — | `email` to `PLATFORM_ALERT_EMAIL` (no row) |
 
 - "Urgent" sends WhatsApp **and** SMS together for a WhatsApp-capable guardian (R149), still
-  subject to the allow list and the cap (R109). "Normal" sends SMS only after WhatsApp fails its
+  subject to the allow list and the cap (R109). Every SMS leg re-checks the allow list as it
+  stands at its attempt (a type removed since the write is `suppressed: not_allowed`); only
+  `messaging_test` bypasses it. "Normal" sends SMS only after WhatsApp fails its
   attempts (R112) — or as the primary when the school's number is not connected. "Low" never
   leaves the app (R138).
 - A WhatsApp-capable guardian while the school's number is `down`, `pending` or absent is routed as
@@ -765,10 +784,15 @@ the row and in the rollup.
 
 Repeatable `outbox-sweep` every **2 minutes**, fan-out per non-terminated school (index leads with
 `school_id`), at most 500 rows per school per run, oldest first:
-- `messages` `queued` with no activity for 2 minutes (`created_at` and the latest attempt older
-  than 2 min) → re-enqueue `message:<id>:<round>` (a still-pending delayed job of the same id is
-  not duplicated);
+- `messages` `queued` with no activity for 2 minutes (`created_at`, `claimed_at` — a round the
+  processor released keeps it — and the latest attempt all older than 2 min) → re-enqueue
+  `message:<id>:<round>` (a still-pending delayed job of the same id is not duplicated);
 - `messages` `sending` with `claimed_at` older than **10 minutes** → `queued`, re-enqueue;
+- a delivery reported `delivered` or `failed` in the last 24 hours (and at least 2 minutes ago)
+  whose message is still `sent` and was last rolled up before the report (`messages.updated_at`:
+  the round's finish, or `message-rollup`'s own touch when it leaves a message `sent`) →
+  `message-rollup`, id `rollup:<deliveryId>:<status>:s<minute>`: a webhook's or the poll's lost
+  enqueue is recovered, and a report the rollup has seen is not re-enqueued;
 - registered by later slices: `announcements` `scheduled` past their time (slice 14),
   `attendance_alerts` `pending` and due (slice 11).
 
@@ -801,13 +825,14 @@ writer is the only `NAMED_EXCEPTION_SITES` entry for `delivery-health.repository
 | Queue | Job | Id | Payload | Trigger |
 |---|---|---|---|---|
 | `messaging` | `message` | `message:<messageId>:<round>` | `{ schoolId, messageId }` | after commit; delayed retry; sweep |
-| `messaging` | `message-rollup` | `rollup:<deliveryId>:<status>` | `{ schoolId, messageId }` | webhook, SMS poll |
+| `messaging` | `message-rollup` | `rollup:<deliveryId>:<status>` (sweep recovery: `…:s<minute>`) | `{ schoolId, messageId }` | webhook, SMS poll, outbox sweep (§7.9) |
 | `messaging` | `whatsapp-health` | `wa-health:<whatsappNumberId>:<minute>` | `{ schoolId, whatsappNumberId }` | `session.status` webhook |
 | `scheduled` | `outbox-sweep` | repeatable, 2 min | none (in-process fan-out) | — |
 | `scheduled` | `whatsapp-health-sweep` | repeatable, 5 min | none | — |
 | `scheduled` | `sms-delivery-poll` | repeatable, 2 min | none | — |
 | `scheduled` | `delivery-health-rollup` | repeatable, 15 min | none | — |
-| `scheduled` | `staged-upload-sweep`, `session-purge` | repeatable, daily (moved from the HTTP process) | none | — |
+| `scheduled` | `staged-upload-sweep` | repeatable, daily 02:30 Asia/Karachi (moved from the HTTP process) | none | — |
+| `scheduled` | `session-purge` | repeatable, daily 03:00 Asia/Karachi (§1.5) | none (fan-out over every school) | — |
 
 Payloads are zod-validated strictly (`schoolId` and the id fields match `^[1-9][0-9]{0,18}$`, no
 other key); a bad payload is **dropped**, not retried, and logged without ids. A payload naming
@@ -832,6 +857,8 @@ runs while Redis is down.
 - Handlers never mint a `SchoolId` and never call a scoped repository: they call
   `DeliveryWebhookRepository` (§8.5) and enqueue `{ schoolId, … }` jobs that pass through
   `fromQueuePayload`.
+- A route of a WhatsApp provider not enabled on the deployment (§6.4) answers `404` before the
+  throttle and the signature check.
 - Logs carry the provider, event name and outcome — never a body, number, chat id or reference
   (redact paths `*.to`, `*.from`, `*.chatId`, `*.body`, `*.text`, `*.phone`).
 
@@ -911,7 +938,10 @@ statement shapes:
   <key> = $1 AND status <> 'disabled' RETURNING school_id, id`, where `<key>` is `waha_session`
   (WAHA) or `cloud_phone_number_id` (Meta) — two prepared variants of one shape.
 
-Nothing else; zero rows returned → `204` and a counter.
+Nothing else; zero rows returned → `204` and a counter. Each statement's `school_id` is branded
+by `schoolIdFromDeliveryReport` (`src/tenancy/school-id.mint.ts`), called only here — the row was
+just written by the server, matched by a globally unique key — so the webhook enqueues a typed
+`SchoolId`; the job still resolves it again through `fromQueuePayload`.
 
 ---
 
@@ -930,25 +960,31 @@ The owner fills in the answers; the adapter is not written until each row has on
 
 | # | Question (research report) | Answer | Adapter consequence |
 |---|---|---|---|
-| 1 | HTTPS only? Can the API key go in the POST body or an `Authorization` header, not the query string? | *pending* | Refuse the vendor if the key must travel in a URL |
-| 2 | Exact success response per message; is the returned ID stable and queryable later? Its format and length? | *pending* | Parse rule; `poll_ref` length; transient error forms |
-| 3 | Delivery reports: callback URL? If yes: payload, statuses, retry policy, signature. If no: the status-query endpoint, response schema, retention, rate limit | *pending* | §7.10 query shape, budget per run, give-up time |
-| 4 | Which statuses exist (submitted / delivered / failed / expired / DND-blocked); handset receipts on all four networks? | *pending* | Status → `DeliveryStatus` / `DeliveryErrorCode` mapping table, written here |
+| 1 | HTTPS only? Can the API key go in the POST body or an `Authorization` header, not the query string? | *pending* — **assumed (adapter as built):** HTTPS; the key in the POST body (form-encoded `api_key`) | Refuse the vendor if the key must travel in a URL |
+| 2 | Exact success response per message; is the returned ID stable and queryable later? Its format and length? | *pending* — **assumed:** exactly `OK ID:<n>`, `<n>` 1–64 of `[0-9A-Za-z_-]`, stable and queryable; no transient form, so any other text is a hard failure (a 5xx or a network error is `provider_unavailable` and retried) | Parse rule; `poll_ref` length; transient error forms |
+| 3 | Delivery reports: callback URL? If yes: payload, statuses, retry policy, signature. If no: the status-query endpoint, response schema, retention, rate limit | *pending* — **assumed:** no callback; `POST api/delivery.php` with `api_key` and `id` in the body, answering a status word; 100 queries per school per run; give-up 24 h | §7.10 query shape, budget per run, give-up time |
+| 4 | Which statuses exist (submitted / delivered / failed / expired / DND-blocked); handset receipts on all four networks? | *pending* — **assumed mapping** (case-insensitive word): `delivered` → `delivered`; `undelivered` / `failed` / `rejected` → `failed: rejected`; `expired` → `failed: expired`; `dnd` / `dncr` / "do not disturb" → `failed: dnd_blocked`; "invalid number" → `failed: invalid_number`; anything else → still pending (`sendpkStatus` in `src/messaging/drivers/sms.ts`) | Status → `DeliveryStatus` / `DeliveryErrorCode` mapping table, written here |
 | 5 | On Telenor and Ufone, does the registered mask appear, or a shortcode? | *pending* | Confirms "school name in every body" (already required) |
 | 6 | Are content templates pre-approved (operator "fixed SMS"), is `template_id` mandatory, turnaround, variables allowed? | *pending* | Whether §7.5 templates need registration; announcement SMS feasibility |
 | 7 | Mask registration: documents, fee, renewal, turnaround, the three-month inactivity rule; transactional registration? | *pending* | Keep-alive need; go-live date |
-| 8 | Billed on submit or on delivery? Failures refunded? | *pending* | §7.7 refund rule (now: no refund) |
+| 8 | Billed on submit or on delivery? Failures refunded? | *pending* — **assumed:** billed on submit; no refund (reserved segments are not returned) | §7.7 refund rule (now: no refund) |
 | 9 | Does unused credit expire, and when? | *pending* | Operational note only |
-| 10 | Sandbox or `test_mode`? | *pending* | Driver contract tests under `RUN_DRIVER_TESTS=1` |
+| 10 | Sandbox or `test_mode`? | *pending* — **assumed:** none; real calls only in `drivers.contract.spec.ts` under `RUN_DRIVER_TESTS=1` | Driver contract tests under `RUN_DRIVER_TESTS=1` |
 | 11 | Direct operator routes or via another aggregator (grey route)? In writing | *pending* | Go / no-go |
-| 12 | How are segments counted and charged for a 200-character English message? | *pending* | §7.7 segment counting (now: GSM-7 160 / 153) |
-| 13 | Sending rate limit; a burst of 2,000 absence alerts at 09:30 — queued or rejected? | *pending* | SMS pacing in the driver (§7.6) |
+| 12 | How are segments counted and charged for a 200-character English message? | *pending* — **assumed:** GSM-7, 160 in one segment, 153 per part (`smsSegments`) | §7.7 segment counting (now: GSM-7 160 / 153) |
+| 13 | Sending rate limit; a burst of 2,000 absence alerts at 09:30 — queued or rejected? | *pending* — **assumed:** no vendor limit; the adapter sends at the worker `messaging` concurrency (10) | SMS pacing in the driver (§7.6) |
 | 14 | Multiple masks on one account (platform now, per-school later)? Per-mask fee? | *pending* | Future per-school mask |
-| 15 | Is DNCR applied to transactional traffic, and is the reject reason returned? | *pending* | `dnd_blocked` mapping |
+| 15 | Is DNCR applied to transactional traffic, and is the reject reason returned? | *pending* — **assumed:** a DND reject comes back from the delivery query as a `dnd` / `dncr` word (mapped in row 4) | `dnd_blocked` mapping |
 
 Also to record with the answers: the number format the API expects (`92XXXXXXXXXX` assumed; the
 driver converts from E.164) and the `mobile` field's batch behaviour (one number per request
 assumed).
+
+**Status (slice 9 part A, 2026-10-04).** The adapter is written on the assumptions marked above
+(owner's instruction: build now and record the assumptions; nothing in the code is a TODO). Each
+assumption is isolated in `src/messaging/drivers/sms.ts` (`sendpkSendOutcome`, `sendpkStatus`, the
+POST field names `api_key`, `sender`, `mobile`, `message`, `id`) and pinned by
+`src/messaging/legs.spec.ts`. A vendor answer that differs changes that file and its test only.
 
 ---
 
@@ -1136,4 +1172,12 @@ rollup). No audit row carries a phone number, token, QR, push token or message b
 24. **`MeAssignmentDto` carries `subjectId`/`subjectName` and `academicYearId`** beyond the plan's
     list: the diary composer (slice 16) needs the subject of a subject-teacher row.
 25. **The session purge deletes a purged session's device rows first**: devices reference sessions
-    with no cascade.
+    with no cascade. Device rows are push addresses, not history (main thread, 2026-10-04, wave-D
+    finding A2): `devices_no_delete` and `devices_no_truncate` are dropped; the purge is the only
+    delete.
+26. **`WHATSAPP_PROVIDERS_ENABLED`** (security finding M1, §6.4): a deployment that runs one
+    WhatsApp provider needs none of the other's credentials, and the other's webhook is not
+    reachable; a disabled provider is refused, never silently swapped.
+27. **A lost `message-rollup` is recovered by the outbox sweep** (finding L6, §7.9), with
+    `messages.updated_at` as the "last rolled up" mark: no new column, and a report the rollup
+    has evaluated is never re-enqueued.

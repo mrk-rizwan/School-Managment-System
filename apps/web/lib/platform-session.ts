@@ -25,6 +25,8 @@ export const platformKeys = {
   me: ['platform', 'me'] as const,
   schools: ['platform', 'schools'] as const,
   school: (id: string) => ['platform', 'schools', 'detail', id] as const,
+  settings: ['platform', 'settings'] as const,
+  deliveryHealth: ['platform', 'messaging', 'health'] as const,
 };
 
 /** Where a session in this state belongs: enrolment first, then the password, then the console. */

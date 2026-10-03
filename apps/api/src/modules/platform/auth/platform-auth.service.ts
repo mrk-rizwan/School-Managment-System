@@ -9,7 +9,7 @@ import {
 } from '../../../common/auth/platform-session';
 import { FieldDecryptionError, FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
-import { failureLog } from '../../../common/errors/all-exceptions.filter';
+import { failureLog } from '../../../common/errors/failure-log';
 import { ApiException } from '../../../common/errors/api-exception';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { PlatformSessionRepository } from '../../../repositories/platform/platform-session.repository';

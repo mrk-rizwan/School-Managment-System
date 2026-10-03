@@ -319,6 +319,53 @@
         ],
         "type": "string"
       },
+      "CalendarHolidayDto": {
+        "properties": {
+          "endsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayKind"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "startsOn",
+          "endsOn",
+          "name",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "CancelHolidayDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "Capability": {
         "enum": [
           "school.settings.manage",
@@ -447,6 +494,14 @@
         ],
         "type": "string"
       },
+      "Capacity": {
+        "enum": [
+          "staff",
+          "guardian",
+          "student"
+        ],
+        "type": "string"
+      },
       "ChangeClassDto": {
         "properties": {
           "classId": {
@@ -454,7 +509,7 @@
             "type": "string"
           },
           "effectiveOn": {
-            "description": "On or after the current enrolment started, no later than today",
+            "description": "The first day in the new class: on or after the current enrolment started, no later than today. The current enrolment ends the day before.",
             "format": "date",
             "type": "string"
           },
@@ -520,18 +575,26 @@
       },
       "ChangeSectionDto": {
         "properties": {
+          "effectiveOn": {
+            "description": "The first day in the new section: on or after the current enrolment started, no later than today. The current enrolment ends the day before.",
+            "format": "date",
+            "type": "string"
+          },
           "reason": {
             "maxLength": 500,
             "minLength": 3,
             "type": "string"
           },
           "sectionId": {
+            "description": "Another section of the same class",
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
           }
         },
         "required": [
-          "sectionId"
+          "sectionId",
+          "effectiveOn",
+          "reason"
         ],
         "type": "object"
       },
@@ -653,6 +716,30 @@
           "archived"
         ],
         "type": "string"
+      },
+      "ConnectCloudApiDto": {
+        "properties": {
+          "accessToken": {
+            "maxLength": 1024,
+            "minLength": 20,
+            "pattern": "^[A-Za-z0-9_.|-]+$",
+            "type": "string",
+            "writeOnly": true
+          },
+          "phone": {
+            "type": "string"
+          },
+          "phoneNumberId": {
+            "pattern": "^[0-9]{5,20}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "phoneNumberId",
+          "accessToken"
+        ],
+        "type": "object"
       },
       "ContactCapability": {
         "enum": [
@@ -924,6 +1011,48 @@
         ],
         "type": "object"
       },
+      "CreateHolidayDto": {
+        "properties": {
+          "appliesToStaff": {
+            "default": true,
+            "type": "boolean"
+          },
+          "description": {
+            "description": "'' and null store null",
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "Default startsOn; at most 365 days after it",
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayKind"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "startsOn": {
+            "description": "Within today − 366 days … today + 731 days",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startsOn",
+          "name",
+          "kind"
+        ],
+        "type": "object"
+      },
       "CreateSectionDto": {
         "properties": {
           "capacity": {
@@ -1004,7 +1133,14 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
           },
+          "coversAssignmentId": {
+            "description": "Cover only: the class-teacher row of the section being covered; absent or null = a section with no class teacher",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
           "endsOn": {
+            "description": "Required for a cover (it always ends)",
             "format": "date",
             "nullable": true,
             "type": "string"
@@ -1021,7 +1157,7 @@
             ]
           },
           "sectionId": {
-            "description": "Required for a class teacher; null for a subject teacher = every section",
+            "description": "Required for a class teacher and a cover; null for a subject teacher = every section",
             "nullable": true,
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
@@ -1111,6 +1247,59 @@
           "archived"
         ],
         "type": "string"
+      },
+      "DeviceDto": {
+        "properties": {
+          "appVersion": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevicePlatform"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "appVersion",
+          "createdAt",
+          "lastSeenAt"
+        ],
+        "type": "object"
+      },
+      "DevicePlatform": {
+        "enum": [
+          "android",
+          "ios"
+        ],
+        "type": "string"
+      },
+      "DisableWhatsAppDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
       },
       "DocumentMime": {
         "enum": [
@@ -1923,6 +2112,141 @@
         ],
         "type": "object"
       },
+      "HolidayDto": {
+        "properties": {
+          "announcementId": {
+            "description": "Always null until announcements (slice 14)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "appliesToStaff": {
+            "description": "False: a teaching holiday on which staff still work",
+            "type": "boolean"
+          },
+          "cancelReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "cancelledBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "cancelledByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "Equals startsOn for a single day",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayKind"
+              }
+            ],
+            "description": "Informational: both kinds count the same"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "publishedBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "publishedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayStatus"
+              }
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "startsOn",
+          "endsOn",
+          "name",
+          "description",
+          "kind",
+          "appliesToStaff",
+          "status",
+          "publishedAt",
+          "publishedBy",
+          "publishedByName",
+          "cancelledAt",
+          "cancelledBy",
+          "cancelledByName",
+          "cancelReason",
+          "announcementId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "HolidayKind": {
+        "description": "Informational: both kinds count the same",
+        "enum": [
+          "public",
+          "school"
+        ],
+        "type": "string"
+      },
+      "HolidaySort": {
+        "enum": [
+          "startsOn",
+          "-startsOn"
+        ],
+        "type": "string"
+      },
+      "HolidayStatus": {
+        "enum": [
+          "draft",
+          "published",
+          "cancelled"
+        ],
+        "type": "string"
+      },
       "IssueLoginDto": {
         "properties": {
           "reason": {
@@ -1956,6 +2280,21 @@
         ],
         "type": "object"
       },
+      "LateCountsAs": {
+        "enum": [
+          "present",
+          "half_day",
+          "absent_after_cutoff"
+        ],
+        "type": "string"
+      },
+      "LeaveCountsAs": {
+        "enum": [
+          "excused",
+          "absent"
+        ],
+        "type": "string"
+      },
       "LoginOffersDto": {
         "properties": {
           "guardians": {
@@ -1975,11 +2314,28 @@
         ],
         "type": "object"
       },
-      "MeDto": {
+      "LoginResultDto": {
         "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/MeAssignmentDto"
+            },
+            "type": "array"
+          },
+          "bearerToken": {
+            "description": "Bearer sessions only; null for cookie.",
+            "nullable": true,
+            "type": "string"
+          },
           "capabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "capacities": {
+            "items": {
+              "$ref": "#/components/schemas/Capacity"
             },
             "type": "array"
           },
@@ -2022,7 +2378,145 @@
           "school",
           "roles",
           "capabilities",
-          "sessionExpiresAt"
+          "sessionExpiresAt",
+          "capacities",
+          "assignments",
+          "bearerToken"
+        ],
+        "type": "object"
+      },
+      "MeAssignmentDto": {
+        "properties": {
+          "academicYearId": {
+            "type": "string"
+          },
+          "attendanceMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMode"
+              }
+            ]
+          },
+          "classId": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TeacherRole"
+              }
+            ]
+          },
+          "sectionId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "subjectId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subjectName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "academicYearId",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "subjectId",
+          "subjectName",
+          "attendanceMode",
+          "startsOn",
+          "endsOn"
+        ],
+        "type": "object"
+      },
+      "MeDto": {
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/MeAssignmentDto"
+            },
+            "type": "array"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "capacities": {
+            "items": {
+              "$ref": "#/components/schemas/Capacity"
+            },
+            "type": "array"
+          },
+          "email": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "hasVerifiedEmail": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "passwordIsDefault": {
+            "type": "boolean"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolRole"
+            },
+            "type": "array"
+          },
+          "school": {
+            "$ref": "#/components/schemas/MeSchoolDto"
+          },
+          "sessionExpiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "hasVerifiedEmail",
+          "passwordIsDefault",
+          "school",
+          "roles",
+          "capabilities",
+          "sessionExpiresAt",
+          "capacities",
+          "assignments"
         ],
         "type": "object"
       },
@@ -2050,6 +2544,154 @@
           "name",
           "shortCode",
           "status"
+        ],
+        "type": "object"
+      },
+      "MessageChannel": {
+        "enum": [
+          "push",
+          "whatsapp",
+          "sms",
+          "email",
+          "in_app"
+        ],
+        "type": "string"
+      },
+      "MessageType": {
+        "enum": [
+          "absence_alert",
+          "late_advice",
+          "attendance_corrected",
+          "announcement_urgent",
+          "announcement_normal",
+          "holiday_notice",
+          "diary_posted",
+          "remark_posted",
+          "register_unrecorded",
+          "sms_cap_reached",
+          "messaging_test",
+          "whatsapp_session_down",
+          "cover_assigned"
+        ],
+        "type": "string"
+      },
+      "MessagingTestChannel": {
+        "enum": [
+          "whatsapp",
+          "sms",
+          "push"
+        ],
+        "type": "string"
+      },
+      "MessagingTestDto": {
+        "properties": {
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagingTestChannel"
+              }
+            ]
+          }
+        },
+        "required": [
+          "channel"
+        ],
+        "type": "object"
+      },
+      "MessagingTestResultDto": {
+        "properties": {
+          "messageId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "type": "object"
+      },
+      "MessagingUsageDto": {
+        "properties": {
+          "cap": {
+            "description": "SMS segments a month, set by the platform",
+            "type": "integer"
+          },
+          "months": {
+            "description": "This month, then last month (Asia/Karachi)",
+            "items": {
+              "$ref": "#/components/schemas/UsageMonthDto"
+            },
+            "type": "array"
+          },
+          "remaining": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "months",
+          "cap",
+          "remaining"
+        ],
+        "type": "object"
+      },
+      "MyCalendarDto": {
+        "properties": {
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "holidays": {
+            "items": {
+              "$ref": "#/components/schemas/MyCalendarHolidayDto"
+            },
+            "type": "array"
+          },
+          "weeklyOffDays": {
+            "description": "Weekly-off days ascending, 0 = Sunday … 6 = Saturday",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "dateFrom",
+          "dateTo",
+          "weeklyOffDays",
+          "holidays"
+        ],
+        "type": "object"
+      },
+      "MyCalendarHolidayDto": {
+        "properties": {
+          "endsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayKind"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startsOn",
+          "endsOn",
+          "name",
+          "kind"
         ],
         "type": "object"
       },
@@ -2165,12 +2807,42 @@
         ],
         "type": "object"
       },
+      "RegisterDeviceDto": {
+        "properties": {
+          "platform": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DevicePlatform"
+              }
+            ]
+          },
+          "pushToken": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "pushToken"
+        ],
+        "type": "object"
+      },
       "Relationship": {
         "enum": [
           "father",
           "mother",
           "guardian",
           "other"
+        ],
+        "type": "string"
+      },
+      "RemarkVisibility": {
+        "enum": [
+          "internal",
+          "guardian",
+          "student"
         ],
         "type": "string"
       },
@@ -2213,6 +2885,14 @@
       },
       "SchoolLoginDto": {
         "properties": {
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionChannel"
+              }
+            ],
+            "default": "cookie"
+          },
           "password": {
             "format": "password",
             "maxLength": 128,
@@ -2247,9 +2927,73 @@
       },
       "SchoolSettingsDto": {
         "properties": {
+          "absenceAlertTime": {
+            "example": "09:30",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "attendanceAmendWindowDays": {
+            "maximum": 30,
+            "minimum": 0,
+            "type": "number"
+          },
           "feeDueDay": {
             "maximum": 28,
             "minimum": 1,
+            "type": "number"
+          },
+          "lateAdviceEnabled": {
+            "type": "boolean"
+          },
+          "lateCountsAs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LateCountsAs"
+              }
+            ]
+          },
+          "lateCutoffTime": {
+            "example": "09:30",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "leaveCountsAs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaveCountsAs"
+              }
+            ]
+          },
+          "periodsPerDay": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "registerDeadlineTime": {
+            "example": "09:30",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "remarkDefaultVisibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkVisibility"
+              }
+            ]
+          },
+          "remarkNotifyGuardians": {
+            "type": "boolean"
+          },
+          "smsAllowedTypes": {
+            "items": {
+              "$ref": "#/components/schemas/MessageType"
+            },
+            "type": "array"
+          },
+          "smsMonthlyCap": {
+            "minimum": 0,
+            "readOnly": true,
             "type": "number"
           },
           "studentLoginEnabled": {
@@ -2258,11 +3002,34 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "weeklyOffDays": {
+            "description": "Weekly off days, 0 = Sunday ... 6 = Saturday; distinct, not all seven; ascending.",
+            "items": {
+              "maximum": 6,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 6,
+            "type": "array"
           }
         },
         "required": [
           "feeDueDay",
           "studentLoginEnabled",
+          "periodsPerDay",
+          "weeklyOffDays",
+          "attendanceAmendWindowDays",
+          "registerDeadlineTime",
+          "absenceAlertTime",
+          "lateAdviceEnabled",
+          "lateCountsAs",
+          "lateCutoffTime",
+          "leaveCountsAs",
+          "smsMonthlyCap",
+          "smsAllowedTypes",
+          "remarkDefaultVisibility",
+          "remarkNotifyGuardians",
           "updatedAt"
         ],
         "type": "object"
@@ -2275,6 +3042,21 @@
           "terminated"
         ],
         "type": "string"
+      },
+      "SectionChangeResultDto": {
+        "properties": {
+          "closed": {
+            "$ref": "#/components/schemas/EnrolmentDto"
+          },
+          "opened": {
+            "$ref": "#/components/schemas/EnrolmentDto"
+          }
+        },
+        "required": [
+          "closed",
+          "opened"
+        ],
+        "type": "object"
       },
       "SectionDto": {
         "properties": {
@@ -2325,6 +3107,25 @@
           "-name"
         ],
         "type": "string"
+      },
+      "SessionChannel": {
+        "enum": [
+          "cookie",
+          "bearer"
+        ],
+        "type": "string"
+      },
+      "SessionsRevokedDto": {
+        "properties": {
+          "revoked": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "type": "object"
       },
       "StaffDto": {
         "properties": {
@@ -2934,6 +3735,17 @@
           "className": {
             "type": "string"
           },
+          "coversAssignmentId": {
+            "description": "Cover only: the class-teacher row covered",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "coversStaffFullName": {
+            "description": "Cover only: the covered class teacher",
+            "nullable": true,
+            "type": "string"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -3006,6 +3818,8 @@
           "endsOn",
           "voidedAt",
           "activeToday",
+          "coversAssignmentId",
+          "coversStaffFullName",
           "createdAt"
         ],
         "type": "object"
@@ -3025,6 +3839,44 @@
           "cover"
         ],
         "type": "string"
+      },
+      "TeachingDaysDto": {
+        "properties": {
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "holidays": {
+            "description": "Published holidays overlapping the range",
+            "items": {
+              "$ref": "#/components/schemas/CalendarHolidayDto"
+            },
+            "type": "array"
+          },
+          "teachingDays": {
+            "description": "Informational for past ranges (R116): nothing stored depends on it",
+            "type": "number"
+          },
+          "weeklyOffDays": {
+            "description": "Weekly-off days ascending, 0 = Sunday … 6 = Saturday",
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "dateFrom",
+          "dateTo",
+          "teachingDays",
+          "weeklyOffDays",
+          "holidays"
+        ],
+        "type": "object"
       },
       "UpdateAcademicYearDto": {
         "properties": {
@@ -3168,15 +4020,120 @@
         },
         "type": "object"
       },
+      "UpdateHolidayDto": {
+        "properties": {
+          "appliesToStaff": {
+            "type": "boolean"
+          },
+          "description": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HolidayKind"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateSchoolSettingsDto": {
         "properties": {
+          "absenceAlertTime": {
+            "example": "09:30",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "attendanceAmendWindowDays": {
+            "maximum": 30,
+            "minimum": 0,
+            "type": "number"
+          },
           "feeDueDay": {
             "maximum": 28,
             "minimum": 1,
             "type": "number"
           },
+          "lateAdviceEnabled": {
+            "type": "boolean"
+          },
+          "lateCountsAs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LateCountsAs"
+              }
+            ]
+          },
+          "lateCutoffTime": {
+            "example": "09:30",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "leaveCountsAs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LeaveCountsAs"
+              }
+            ]
+          },
+          "periodsPerDay": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "registerDeadlineTime": {
+            "example": "09:30",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "remarkDefaultVisibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkVisibility"
+              }
+            ]
+          },
+          "remarkNotifyGuardians": {
+            "type": "boolean"
+          },
+          "smsAllowedTypes": {
+            "description": "SMS-eligible types only (contracts/slice-9.md §7.2).",
+            "items": {
+              "$ref": "#/components/schemas/MessageType"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
           "studentLoginEnabled": {
             "type": "boolean"
+          },
+          "weeklyOffDays": {
+            "description": "Weekly off days, 0 = Sunday ... 6 = Saturday; distinct, not all seven; ascending.",
+            "items": {
+              "maximum": 6,
+              "minimum": 0,
+              "type": "number"
+            },
+            "maxItems": 6,
+            "type": "array",
+            "uniqueItems": true
           }
         },
         "type": "object"
@@ -3287,6 +4244,44 @@
         },
         "required": [
           "file"
+        ],
+        "type": "object"
+      },
+      "UsageChannelDto": {
+        "properties": {
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageChannel"
+              }
+            ]
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channel",
+          "count"
+        ],
+        "type": "object"
+      },
+      "UsageMonthDto": {
+        "properties": {
+          "byChannel": {
+            "items": {
+              "$ref": "#/components/schemas/UsageChannelDto"
+            },
+            "type": "array"
+          },
+          "yearMonth": {
+            "pattern": "^[0-9]{4}-[0-9]{2}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "yearMonth",
+          "byChannel"
         ],
         "type": "object"
       },
@@ -3517,6 +4512,147 @@
           "token"
         ],
         "type": "object"
+      },
+      "WhatsAppErrorCode": {
+        "enum": [
+          "unreachable",
+          "logged_out",
+          "session_failed",
+          "token_rejected",
+          "number_mismatch",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "WhatsAppNumberDto": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "inboundIgnoredCount": {
+            "type": "integer"
+          },
+          "lastErrorCode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppErrorCode"
+              }
+            ],
+            "nullable": true
+          },
+          "lastHealthyAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "pairedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "phoneMasked": {
+            "example": "+9230*****67",
+            "type": "string"
+          },
+          "provider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProvider"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "phoneMasked",
+          "status",
+          "lastHealthyAt",
+          "lastErrorCode",
+          "inboundIgnoredCount",
+          "pairedAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "WhatsAppPairDto": {
+        "properties": {
+          "phone": {
+            "description": "The school number; required for the first pairing",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WhatsAppPairingDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "qr": {
+            "description": "data:image/png;base64,...; never stored or logged",
+            "type": "string"
+          }
+        },
+        "required": [
+          "qr",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "WhatsAppProvider": {
+        "enum": [
+          "waha",
+          "cloud_api"
+        ],
+        "type": "string"
+      },
+      "WhatsAppSettingsDto": {
+        "properties": {
+          "effectiveProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProvider"
+              }
+            ]
+          },
+          "number": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppNumberDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "effectiveProvider",
+          "number"
+        ],
+        "type": "object"
+      },
+      "WhatsAppStatus": {
+        "enum": [
+          "pending",
+          "connected",
+          "down",
+          "disabled"
+        ],
+        "type": "string"
       }
     }
   },
@@ -4357,7 +5493,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MeDto"
+                  "$ref": "#/components/schemas/LoginResultDto"
                 }
               }
             },
@@ -4384,6 +5520,16 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
             "content": {
               "application/json": {
                 "schema": {
@@ -4448,6 +5594,16 @@
             "description": ""
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
             "content": {
               "application/json": {
                 "schema": {
@@ -4638,6 +5794,97 @@
         },
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/calendar/teaching-days": {
+      "get": {
+        "operationId": "CalendarController_teachingDays",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeachingDaysDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
         ]
       }
     },
@@ -6359,7 +7606,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrolmentDto"
+                  "$ref": "#/components/schemas/SectionChangeResultDto"
                 }
               }
             },
@@ -6470,7 +7717,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrolmentDto"
+                  "$ref": "#/components/schemas/SectionChangeResultDto"
                 }
               }
             },
@@ -7738,6 +8985,663 @@
         ]
       }
     },
+    "/api/v1/holidays": {
+      "get": {
+        "operationId": "HolidaysController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Holidays overlapping the range (open-ended alone)",
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Not before dateFrom",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "draft without holiday.manage: an empty page",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HolidayStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HolidayKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HolidaySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/HolidayDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      },
+      "post": {
+        "operationId": "HolidaysController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHolidayDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/holidays/{id}": {
+      "get": {
+        "operationId": "HolidaysController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      },
+      "patch": {
+        "operationId": "HolidaysController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHolidayDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/holidays/{id}/cancel": {
+      "post": {
+        "operationId": "HolidaysController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelHolidayDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/holidays/{id}/publish": {
+      "post": {
+        "operationId": "HolidaysController_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "MeController_get",
@@ -7754,6 +9658,127 @@
             "description": ""
           },
           "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/calendar": {
+      "get": {
+        "operationId": "MyCalendarController_myCalendar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCalendarDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7899,7 +9924,543 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MeDto"
+                  "$ref": "#/components/schemas/LoginResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/devices": {
+      "post": {
+        "operationId": "MeSessionsController_registerDevice",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDto"
+                }
+              }
+            },
+            "description": "Refreshed."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDto"
+                }
+              }
+            },
+            "description": "Registered for this session."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/sessions/revoke-others": {
+      "post": {
+        "operationId": "MeSessionsController_revokeOthers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsRevokedDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/messaging/test": {
+      "post": {
+        "operationId": "MessagingController_test",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessagingTestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingTestResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/api/v1/messaging/usage": {
+      "get": {
+        "operationId": "MessagingController_usage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagingUsageDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/api/v1/messaging/whatsapp": {
+      "get": {
+        "operationId": "MessagingController_whatsapp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/api/v1/messaging/whatsapp/connect-cloud-api": {
+      "post": {
+        "operationId": "MessagingController_connectCloudApi",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectCloudApiDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppSettingsDto"
                 }
               }
             },
@@ -7977,7 +10538,179 @@
           }
         },
         "tags": [
-          "me"
+          "messaging"
+        ]
+      }
+    },
+    "/api/v1/messaging/whatsapp/disable": {
+      "post": {
+        "operationId": "MessagingController_disable",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisableWhatsAppDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "messaging"
+        ]
+      }
+    },
+    "/api/v1/messaging/whatsapp/pair": {
+      "post": {
+        "operationId": "MessagingController_pair",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppPairDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppPairingDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "messaging"
         ]
       }
     },
@@ -12995,6 +15728,107 @@
             "description": ""
           },
           "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/sign-out-everywhere": {
+      "post": {
+        "operationId": "UsersController_signOutEverywhere",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsRevokedDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
             "content": {
               "application/json": {
                 "schema": {

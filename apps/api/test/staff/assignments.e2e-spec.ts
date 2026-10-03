@@ -163,6 +163,8 @@ describe('teacher assignments (e2e)', () => {
         endsOn: null,
         voidedAt: null,
         activeToday: true,
+        coversAssignmentId: null,
+        coversStaffFullName: null,
         createdAt: expect.any(String),
       });
       const id = (res.body as Assignment).id;
@@ -177,6 +179,7 @@ describe('teacher assignments (e2e)', () => {
             subjectId: null,
             startsOn: schoolDay(),
             endsOn: null,
+            coversAssignmentId: null,
           },
           principal.userId,
         ],

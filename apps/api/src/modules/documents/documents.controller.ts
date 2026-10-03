@@ -31,7 +31,7 @@ import { SingleFileInterceptor, uploadedFile, UploadThrottleGuard } from './uplo
 import { UploadsService } from './uploads.service';
 
 // contracts/slice-6.md §6.1-§6.2. Common to every route: 401, 403 PERMISSION_DENIED /
-// SCHOOL_SUSPENDED / ORIGIN_REJECTED, 429.
+// ORIGIN_REJECTED, 429.
 const COMMON = [401, 403, 429];
 
 /**

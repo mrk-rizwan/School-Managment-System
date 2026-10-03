@@ -20,7 +20,8 @@ import { ApiError, describeApiError } from '@/lib/api/errors';
  * Errors come from the zod resolver or from the API via `applyApiError`.
  * With `options` it renders a native select instead of a text input; the value is a string.
  */
-export type FormFieldOption = { value: string; label: string };
+/** `disabled` greys an option out (e.g. a provider switched off on this deployment). */
+export type FormFieldOption = { value: string; label: string; disabled?: boolean };
 
 type FormFieldProps<T extends FieldValues> = {
   control: Control<T>;
@@ -64,7 +65,7 @@ export function FormField<T extends FieldValues>({
           aria-describedby={describedBy}
         >
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option key={option.value} value={option.value} disabled={option.disabled}>
               {option.label}
             </option>
           ))}

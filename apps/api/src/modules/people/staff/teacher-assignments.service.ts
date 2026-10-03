@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../../common/auth/school-session';
 import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
-import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
+import { recoverConstraint } from '../../../common/errors/prisma-errors';
 import { readLocked } from '../../../common/locking';
 import { toPage, type Page } from '../../../common/pagination';
 import { SchoolContext, type Actor } from '../../../common/school-context';
@@ -20,6 +20,8 @@ import {
   type TeacherAssignmentRecord,
 } from '../../../repositories/teacher-assignment.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
+import { NotificationService } from '../../../messaging/notification.service';
+import { PermissionsService } from '../../access/permissions.service';
 import {
   classArchived,
   fromDateString,
@@ -73,6 +75,8 @@ export function toTeacherAssignmentDto(
     endsOn: row.endsOn === null ? null : toDateString(row.endsOn),
     voidedAt: row.voidedAt,
     activeToday: isActiveOn(row, today),
+    coversAssignmentId: row.coversAssignmentId?.toString() ?? null,
+    coversStaffFullName: row.coversStaffFullName,
     createdAt: row.createdAt,
   };
 }
@@ -106,6 +110,8 @@ export class TeacherAssignmentsService {
     private readonly subjects: SubjectRepository,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly permissions: PermissionsService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async list(
@@ -143,27 +149,27 @@ export class TeacherAssignmentsService {
   ): Promise<TeacherAssignmentDto> {
     const actor = this.context.actor();
     assertShape(dto);
-    try {
-      return await this.createInTransaction(actor, session, staffId, dto);
-    } catch (error) {
-      if (summariseDatabaseError(error)?.constraint !== CLASS_TEACHER_EXCL || !dto.sectionId) {
-        throw error;
-      }
-      // The default start depends on the class's year, so it is resolved as the transaction did.
-      const klass = await this.classes.findById(actor.schoolId, BigInt(dto.classId));
-      const year = klass && (await this.years.findById(actor.schoolId, klass.academicYearId));
-      if (!year) throw error;
-      const today = await this.clock.today(actor.schoolId);
-      const startsOn = resolveStartsOn(dto, today, year.startsOn);
-      const endsOn = dto.endsOn ? fromDateString(dto.endsOn) : null;
-      const conflicts = await this.assignments.findClassTeacherConflicts(
-        actor.schoolId,
-        BigInt(dto.sectionId),
-        startsOn,
-        endsOn,
-      );
-      throw conflicts.length > 0 ? classTeacherExists(conflicts) : error;
-    }
+    return recoverConstraint(
+      CLASS_TEACHER_EXCL,
+      () => this.createInTransaction(actor, session, staffId, dto),
+      async (error) => {
+        if (!dto.sectionId) throw error;
+        // The default start depends on the class's year, so it is resolved as the transaction did.
+        const klass = await this.classes.findById(actor.schoolId, BigInt(dto.classId));
+        const year = klass && (await this.years.findById(actor.schoolId, klass.academicYearId));
+        if (!year) throw error;
+        const today = await this.clock.today(actor.schoolId);
+        const startsOn = resolveStartsOn(dto, today, year.startsOn);
+        const endsOn = dto.endsOn ? fromDateString(dto.endsOn) : null;
+        const conflicts = await this.assignments.findClassTeacherConflicts(
+          actor.schoolId,
+          BigInt(dto.sectionId),
+          startsOn,
+          endsOn,
+        );
+        throw conflicts.length > 0 ? classTeacherExists(conflicts) : error;
+      },
+    );
   }
 
   async end(id: bigint, dto: EndTeacherAssignmentDto): Promise<TeacherAssignmentDto> {
@@ -255,6 +261,13 @@ export class TeacherAssignmentsService {
       );
     }
 
+    // A cover's class-teacher row (contracts/slice-10.md §6), read under the class lock and not
+    // locked: the cover does not change it.
+    const coversAssignmentId =
+      dto.role === 'cover' && section && endsOn
+        ? await this.coveredRow(schoolId, staffId, section.id, startsOn, endsOn, dto.coversAssignmentId)
+        : null;
+
     // State refusals, in contract order.
     if (staff.status !== 'active') throw staffNotActive();
     if (year.status === 'closed') throw yearClosed();
@@ -265,6 +278,9 @@ export class TeacherAssignmentsService {
     if (subject?.deletedAt) {
       throw new ApiException(409, ErrorCode.SUBJECT_ARCHIVED, 'An archived subject cannot be assigned.');
     }
+    // R132: whoever covers must be able to mark the register (any source, any scope). Checked
+    // once here; the register routes re-check the capability on every request (R69).
+    if (dto.role === 'cover') await this.assertCanMark(schoolId, staff.userId);
 
     const data: NewTeacherAssignment = {
       staffId,
@@ -275,6 +291,7 @@ export class TeacherAssignmentsService {
       role: dto.role,
       startsOn,
       endsOn,
+      ...(coversAssignmentId === null ? {} : { coversAssignmentId }),
     };
     // Retry-safety: under the staff lock, the same live assignment is a pointer, not a duplicate.
     const same = await this.assignments.findSameOverlapping(schoolId, data);
@@ -325,8 +342,23 @@ export class TeacherAssignmentsService {
         subjectId: data.subjectId?.toString() ?? null,
         startsOn: toDateString(startsOn),
         endsOn: endsOn === null ? null : toDateString(endsOn),
+        coversAssignmentId: coversAssignmentId?.toString() ?? null,
       },
     });
+    // R132: the covering teacher is told; the message is enqueued after commit (slice 9).
+    if (created.role === 'cover' && created.sectionName !== null && created.endsOn !== null) {
+      await this.notifications.send(schoolId, {
+        type: 'cover_assigned',
+        subject: { type: SUBJECT, id: created.id },
+        recipients: [{ staffId }],
+        vars: {
+          className: created.className,
+          sectionName: created.sectionName,
+          startsOn: created.startsOn,
+          endsOn: created.endsOn,
+        },
+      });
+    }
     for (const { row, outcome } of replaced) {
       await this.auditEnded(schoolId, userId, row.id, outcome, undefined, created.id);
     }
@@ -425,6 +457,54 @@ export class TeacherAssignmentsService {
     });
   }
 
+  /**
+   * contracts/slice-10.md §6 `coversAssignmentId`: absent or null covers a section with no class
+   * teacher. Otherwise a live class-teacher row of the same section overlapping the cover's dates
+   * by at least a day, and not the covering staff member's own row.
+   */
+  private async coveredRow(
+    schoolId: SchoolId,
+    coveringStaffId: bigint,
+    sectionId: bigint,
+    startsOn: Date,
+    endsOn: Date,
+    value: string | null | undefined,
+  ): Promise<bigint | null> {
+    if (value === undefined || value === null) return null;
+    const row = await this.assignments.findById(schoolId, BigInt(value));
+    if (!row) {
+      throw fieldRefused('coversAssignmentId', ErrorCode.REFERENCE_NOT_FOUND, 'No such assignment');
+    }
+    const overlaps = row.startsOn <= endsOn && (row.endsOn === null || row.endsOn >= startsOn);
+    if (
+      row.role !== 'class_teacher' ||
+      row.sectionId !== sectionId ||
+      row.voidedAt !== null ||
+      !overlaps ||
+      row.staffId === coveringStaffId
+    ) {
+      throw fieldRefused(
+        'coversAssignmentId',
+        ErrorCode.INVALID_VALUE,
+        'Must be another teacher’s class-teacher row of the section, live on the cover dates',
+      );
+    }
+    return row.id;
+  }
+
+  /** R132: 409 CAPABILITY_NOT_HELD unless the covering staff member's login can mark registers. */
+  private async assertCanMark(schoolId: SchoolId, userId: bigint | null): Promise<void> {
+    const access = userId === null ? null : await this.permissions.load(schoolId, userId);
+    if (!access || !this.permissions.holds(access, Capability.ATTENDANCE_STUDENT_MARK)) {
+      throw new ApiException(
+        409,
+        ErrorCode.CAPABILITY_NOT_HELD,
+        'This staff member cannot mark registers, so cannot cover a class.',
+        { capability: Capability.ATTENDANCE_STUDENT_MARK },
+      );
+    }
+  }
+
   private lockRow(schoolId: SchoolId, id: bigint): Promise<TeacherAssignmentRecord> {
     return readLocked(
       () => this.assignments.findById(schoolId, id),
@@ -435,10 +515,24 @@ export class TeacherAssignmentsService {
 
 /** Role-dependent presence (contract §4.3), before any database read. */
 function assertShape(dto: CreateTeacherAssignmentDto): void {
-  // The database knows `cover` from the Phase 2 groundwork; its rules (contracts/slice-10.md §6)
-  // arrive with slice 10, which replaces this refusal.
+  if (dto.role !== 'cover' && dto.coversAssignmentId !== undefined && dto.coversAssignmentId !== null) {
+    throw fieldRefused('coversAssignmentId', ErrorCode.INVALID_VALUE, 'Only a cover covers a row');
+  }
   if (dto.role === 'cover') {
-    throw fieldRefused('role', ErrorCode.INVALID_VALUE, 'Cover assignments are not available yet');
+    // contracts/slice-10.md §6 (R132): a dated class-teacher scope for one section that ends.
+    if (!dto.sectionId) {
+      throw fieldRefused('sectionId', ErrorCode.INVALID_VALUE, 'A cover needs a section');
+    }
+    if (dto.subjectId) {
+      throw fieldRefused('subjectId', ErrorCode.INVALID_VALUE, 'A cover has no subject');
+    }
+    if (!dto.endsOn) {
+      throw fieldRefused('endsOn', ErrorCode.INVALID_VALUE, 'A cover needs a last day');
+    }
+    if (dto.replaceCurrent !== undefined) {
+      throw fieldRefused('replaceCurrent', ErrorCode.INVALID_VALUE, 'A cover never replaces the class teacher');
+    }
+    return;
   }
   if (dto.role === 'class_teacher') {
     if (!dto.sectionId) {

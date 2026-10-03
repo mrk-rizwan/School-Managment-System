@@ -811,7 +811,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     table: 'enrolments',
     name: 'enrolments_columns_immutable',
     definition:
-      "BEFORE UPDATE ON public.enrolments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'academic_year_id', 'class_id')",
+      "BEFORE UPDATE ON public.enrolments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'academic_year_id', 'class_id', 'section_id')",
   },
   {
     kind: 'trigger',
@@ -1208,7 +1208,8 @@ function PHASE_2_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       name: 'devices_columns_immutable',
       definition: "EXECUTE FUNCTION asms_forbid_columns_change('user_id')",
     },
-    ...noDeleteTriggers('devices'),
+    // No DELETE refusal: a device row is a push address, not history; the session purge deletes
+    // a purged session's devices (migration 20261004090000_devices_purgeable).
     // ---- messages
     {
       kind: 'constraint',

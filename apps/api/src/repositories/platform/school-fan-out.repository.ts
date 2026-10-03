@@ -26,4 +26,17 @@ export class SchoolFanOutRepository {
     });
     return schoolIdsForFanOut(rows);
   }
+
+  /**
+   * Every school that is not terminated (Phase 2 messaging jobs, contracts/slice-9.md §7.8-§7.11):
+   * a terminated school's rows are left as they are, and its jobs would be dropped anyway (R113).
+   */
+  async listLiveForFanOut(): Promise<SchoolId[]> {
+    const rows = await this.txHost.tx.school.findMany({
+      where: { status: { not: 'terminated' } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return schoolIdsForFanOut(rows);
+  }
 }

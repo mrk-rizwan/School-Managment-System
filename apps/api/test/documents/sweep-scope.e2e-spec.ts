@@ -2,10 +2,10 @@
 // isolation of the slice-6B tables (R62) and the re-encode concurrency limit.
 import { randomBytes } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { ulid } from 'ulid';
 import { Capability } from '@asms/shared';
 import { ObjectNotFoundError, ObjectStorage } from '../../src/common/storage/object-storage';
+import { SCHEDULES } from '../../src/jobs/worker-host';
 import { PermissionsService } from '../../src/modules/access/permissions.service';
 import { StagedUploadSweep, SWEEP_GRACE_MS } from '../../src/modules/documents/staged-upload.sweep';
 import { ConcurrencyLimit } from '../../src/modules/documents/upload-processing';
@@ -117,8 +117,16 @@ describe('staged uploads, scope and isolation (e2e)', () => {
     });
 
     it('R86: idempotency keys are never purged: the only scheduled job leaves a years-old key in place', async () => {
-      // The sweep is the one scheduled job; a new one (a purge) must be a reviewed change here.
-      expect([...app.get(SchedulerRegistry).getCronJobs().keys()]).toEqual(['staged-upload-sweep']);
+      // No scheduled job purges idempotency keys; a new one (a purge) must be a reviewed change
+      // here. Since slice 9 the schedule is the worker's (src/jobs/worker-host.ts).
+      expect(SCHEDULES.map((s) => s.job)).toEqual([
+        'outbox-sweep',
+        'whatsapp-health-sweep',
+        'sms-delivery-poll',
+        'delivery-health-rollup',
+        'staged-upload-sweep',
+        'session-purge',
+      ]);
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });
       const created = new Date(Date.now() - 2 * 365 * 24 * HOUR);

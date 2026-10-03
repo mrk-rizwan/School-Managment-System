@@ -38,7 +38,7 @@ export type CreateStaffBody = Schemas['CreateStaffDto'];
 export type UpdateStaffBody = Schemas['UpdateStaffDto'];
 export type CreateTeacherAssignmentBody = Schemas['CreateTeacherAssignmentDto'];
 
-/** `details` of 409 CLASS_TEACHER_EXISTS (§4.3); error details are not in the OpenAPI document. */
+/** One entry of `details.conflicts` of 409 CLASS_TEACHER_EXISTS (§4.3); error details are not in the OpenAPI document. */
 export type ClassTeacherConflict = {
   assignmentId: string;
   staffId: string;

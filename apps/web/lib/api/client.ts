@@ -7,15 +7,15 @@ import { toApiError } from './errors';
 // session cookie is first-party. Never call these from a server component or route handler:
 // school data is fetched by the browser with the user's cookie, never by the Next server
 // (plan §1), and the relative base URL fails on the server by design.
-const common = {
+export const clientOptions = {
   credentials: 'same-origin',
   headers: { Accept: 'application/json' },
 } as const;
 
 // The generated paths already carry the full prefix (/api/v1/..., /api/v1/platform/...), so the
 // base URL is empty: requests are origin-relative.
-export const schoolApi = createClient<SchoolPaths>({ ...common, baseUrl: '' });
-export const platformApi = createClient<PlatformPaths>({ ...common, baseUrl: '' });
+export const schoolApi = createClient<SchoolPaths>({ ...clientOptions, baseUrl: '' });
+export const platformApi = createClient<PlatformPaths>({ ...clientOptions, baseUrl: '' });
 
 /** Largest page the API serves (plan §3.9); dropdowns ask for it. */
 export const OPTIONS_LIMIT = 50;

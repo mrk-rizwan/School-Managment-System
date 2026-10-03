@@ -337,6 +337,12 @@ export type TeacherAssignmentOptions = {
 } & (
   | { role: Extract<TeacherAssignmentRole, 'class_teacher'>; section: TestSection }
   | {
+      role: Extract<TeacherAssignmentRole, 'cover'>;
+      section: TestSection;
+      /** The class-teacher row covered (contracts/slice-10.md §6). */
+      coversAssignmentId?: bigint;
+    }
+  | {
       role: Extract<TeacherAssignmentRole, 'subject_teacher'>;
       subjectId: bigint;
       /** One section, or every section of `klass` when absent (R54). */
@@ -375,6 +381,7 @@ export async function createTeacherAssignment(
       endsOn: opts.endsOn ? day(opts.endsOn) : null,
       voidedAt: opts.voidedBy === undefined ? null : new Date(),
       voidedBy: opts.voidedBy ?? null,
+      coversAssignmentId: opts.role === 'cover' ? (opts.coversAssignmentId ?? null) : null,
     },
   });
   return { id: row.id };

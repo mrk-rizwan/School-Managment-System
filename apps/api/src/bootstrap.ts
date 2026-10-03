@@ -3,9 +3,16 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { API_PREFIX, originCheck, requestIdAndNoStore, requireJsonBody } from './common/http';
+import {
+  API_PREFIX,
+  appVersionFloor,
+  originCheck,
+  requestIdAndNoStore,
+  requireJsonBody,
+} from './common/http';
 import { buildOpenApiDocuments } from './openapi-documents';
-import { ENV, type Env, loadEnv } from './config/env';
+import { captureWebhookRawBody } from './webhooks/raw-body';
+import { ENV, type Env, loadEnv, mobileMinAppVersion } from './config/env';
 
 /**
  * Express-level settings that a module cannot express. Shared by main and the e2e tests
@@ -29,10 +36,16 @@ export function configureApp(app: NestExpressApplication): void {
   );
   app.setGlobalPrefix(API_PREFIX);
   app.use(requestIdAndNoStore);
+  // contracts/slice-9.md §1.2: the app-version floor, then the Origin check, both before any
+  // guard (so before the per-IP throttle and session resolution).
+  app.use(appVersionFloor(mobileMinAppVersion(app.get<Env>(ENV))));
   app.use(originCheck(app.get<Env>(ENV).APP_URL));
   app.use(requireJsonBody);
-  // JSON only (no urlencoded parser), 100 kB; larger bodies are 413.
-  app.useBodyParser('json', { limit: '100kb' });
+  // JSON only (no urlencoded parser), 100 kB; larger bodies are 413. Webhook paths keep their raw
+  // bytes for the HMAC check (R172, contracts/slice-9.md §8.1).
+  // Nest passes the options to express.json unchanged; its type omits `verify`, hence the variable.
+  const jsonOptions = { limit: '100kb', verify: captureWebhookRawBody };
+  app.useBodyParser('json', jsonOptions);
 }
 
 export async function bootstrap(): Promise<void> {

@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { CryptoModule } from '../../common/crypto/crypto.module';
+import { SchoolContext } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { ClassRepository } from '../../repositories/class.repository';
+import { DeviceRepository } from '../../repositories/device.repository';
 import { SchoolLookupRepository } from '../../repositories/school-lookup.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserTokenRepository } from '../../repositories/user-token.repository';
@@ -44,6 +47,11 @@ import { MeService } from './me.service';
     UserRepository,
     UserTokenRepository,
     AuditLogRepository,
+    // Slice 9: logout ends the device; password change moves it; /me reads assignments and is
+    // throttled per user.
+    DeviceRepository,
+    ClassRepository,
+    SchoolContext,
   ],
 })
 export class SchoolAuthModule {}

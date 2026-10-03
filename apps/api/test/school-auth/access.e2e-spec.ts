@@ -4,7 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
-import { createSchoolSession, createSchoolUser } from '../support/school-session';
+import { createSchoolSession, createSchoolUser, TEST_APP_VERSION } from '../support/school-session';
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
 import { AccessProbeModule, createGuardianUser, ORIGIN } from './support';
 
@@ -41,7 +41,7 @@ describe('school session resolution and the access guard', () => {
   it('a bearer session is accepted on the bearer channel', async () => {
     const user = await createSchoolUser(db(), school, { systemRole: 'teacher' });
     const session = await createSchoolSession(db(), school, user, { channel: 'bearer' });
-    await http().get('/api/v1/test-access/staff').set('Authorization', session.authorization).expect(200);
+    await http().get('/api/v1/test-access/staff').set(session.bearer).expect(200);
   });
 
   describe('R64: refused sessions are 401 AUTH_REQUIRED', () => {
@@ -81,7 +81,7 @@ describe('school session resolution and the access guard', () => {
       const user = await createSchoolUser(db(), school, { systemRole: 'teacher' });
       const cookie = await createSchoolSession(db(), school, user);
       const bearer = await createSchoolSession(db(), school, user, { channel: 'bearer' });
-      await http().get('/api/v1/test-access/authenticated').set('Authorization', cookie.authorization).expect(401);
+      await http().get('/api/v1/test-access/authenticated').set(cookie.bearer).expect(401);
       await http().get('/api/v1/test-access/authenticated').set('Cookie', bearer.cookie).expect(401);
     });
 
@@ -92,12 +92,12 @@ describe('school session resolution and the access guard', () => {
       await http()
         .get('/api/v1/test-access/authenticated')
         .set('Cookie', cookie.cookie)
-        .set('Authorization', bearer.authorization)
+        .set(bearer.bearer)
         .expect(401);
     });
 
     it('a malformed bearer value', async () => {
-      await http().get('/api/v1/test-access/authenticated').set('Authorization', 'Bearer short').expect(401);
+      await http().get('/api/v1/test-access/authenticated').set({ Authorization: 'Bearer short', 'X-App-Version': TEST_APP_VERSION }).expect(401);
       await http().get('/api/v1/test-access/authenticated').set('Authorization', 'Basic abc').expect(401);
     });
 
@@ -210,7 +210,8 @@ describe('school session resolution and the access guard', () => {
     await http().get('/api/v1/test-access/either').set('Cookie', cookie).expect(200);
   });
 
-  describe('R80: a suspended school is read-only', () => {
+  // Phase 1 R80 lifted by contracts/slice-9.md §10: a suspended school works like an active one.
+  describe('R80 lifted: a suspended school is not read-only', () => {
     let cookie: string;
     beforeAll(async () => {
       const suspended = await createSchool({ status: 'suspended' });
@@ -222,13 +223,16 @@ describe('school session resolution and the access guard', () => {
       await http().get('/api/v1/test-access/staff').set('Cookie', cookie).expect(200);
     });
 
-    it('a non-GET is 403 SCHOOL_SUSPENDED', async () => {
-      const res = await http().post('/api/v1/test-access/staff').set('Cookie', cookie).set('Origin', ORIGIN).expect(403);
-      expect(codeOf(res)).toBe('SCHOOL_SUSPENDED');
+    it('R80 lifted (§10 a): a non-GET works', async () => {
+      await http().post('/api/v1/test-access/staff').set('Cookie', cookie).set('Origin', ORIGIN).expect(201);
     });
 
-    it('a non-GET marked @AllowWhenSuspended works', async () => {
-      await http().post('/api/v1/test-access/staff-suspended-ok').set('Cookie', cookie).set('Origin', ORIGIN).expect(201);
+    it('R80 lifted (§10 e): a terminated school is unchanged, every session 401', async () => {
+      const terminated = await createSchool({ status: 'terminated' });
+      const user = await createSchoolUser(db(), terminated, { systemRole: 'principal' });
+      const s = await createSchoolSession(db(), terminated, user);
+      await http().get('/api/v1/test-access/staff').set('Cookie', s.cookie).expect(401);
+      await http().post('/api/v1/test-access/staff').set('Cookie', s.cookie).set('Origin', ORIGIN).expect(401);
     });
   });
 

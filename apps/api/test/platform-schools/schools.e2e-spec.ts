@@ -154,6 +154,10 @@ describe('platform schools', () => {
         shortCode,
         status: 'trial',
         timezone: 'Asia/Karachi',
+        // contracts/slice-9.md §2.2: the messaging knobs, at their defaults.
+        smsMonthlyCap: 500,
+        whatsappProvider: 'platform_default',
+        smsProvider: 'platform_default',
         createdAt: expect.stringMatching(ISO),
         updatedAt: expect.stringMatching(ISO),
       });

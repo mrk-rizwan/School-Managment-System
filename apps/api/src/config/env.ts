@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { isEmail } from 'class-validator';
 import { z } from 'zod';
+import { APP_VERSION_PATTERN, WHATSAPP_PROVIDERS, type WhatsAppProvider } from '@asms/shared';
 
 // The only place that reads process.env. Everything else injects ENV, so a missing or
 // malformed key stops the process at boot instead of failing on the first request that needs it.
@@ -31,6 +32,38 @@ export const normaliseEmail = (value: string): string => value.trim().toLowerCas
 /** Contract slice-1: platform passwords are 12-128 characters. */
 export const PLATFORM_PASSWORD_MIN = 12;
 export const PLATFORM_PASSWORD_MAX = 128;
+
+/**
+ * Driver credentials that must be present in production (R112): no silent log driver there. Push,
+ * SMS and the alert mailbox always; each WhatsApp provider's only while it is enabled
+ * (WHATSAPP_PROVIDERS_ENABLED).
+ */
+const PRODUCTION_DRIVER_KEYS = [
+  'FCM_SERVICE_ACCOUNT_JSON',
+  'SMS_API_KEY',
+  'SMS_SENDER_ID',
+  'PLATFORM_ALERT_EMAIL',
+] as const;
+const PRODUCTION_WHATSAPP_KEYS = {
+  waha: ['WAHA_URL', 'WAHA_API_KEY', 'WAHA_WEBHOOK_SECRET'],
+  cloud_api: ['META_APP_SECRET', 'META_WEBHOOK_VERIFY_TOKEN'],
+} as const satisfies Record<WhatsAppProvider, readonly string[]>;
+
+const isWhatsAppProvider = (value: string): value is WhatsAppProvider =>
+  (WHATSAPP_PROVIDERS as readonly string[]).includes(value);
+
+/** `waha,cloud_api` (either or both, deduplicated); unset or empty means both. */
+const whatsappProviders = z.preprocess(
+  (value) => (value === undefined || value === '' ? WHATSAPP_PROVIDERS.join(',') : value),
+  z
+    .string()
+    .transform((value) => value.split(',').map((entry) => entry.trim()))
+    .refine(
+      (entries) => entries.every(isWhatsAppProvider),
+      `must be a comma-separated list of ${WHATSAPP_PROVIDERS.join(', ')}`,
+    )
+    .transform((entries) => [...new Set(entries.filter(isWhatsAppProvider))] as readonly WhatsAppProvider[]),
+);
 
 const port = z.coerce.number().int().min(1).max(65535);
 
@@ -97,11 +130,61 @@ const schema = z.object({
     .enum(['0', '1'])
     .default('0')
     .transform((value) => value === '1'),
+  // R161: the lowest mobile app version the API serves (contracts/slice-9.md §1.4). Required in
+  // production; elsewhere absent means 0.0.0 (mobileMinAppVersion).
+  MOBILE_MIN_APP_VERSION: optional(
+    z.string().regex(APP_VERSION_PATTERN, 'must be a version such as 1.0.0'),
+  ),
+  // Messaging drivers (Phase 2 plan §3, contracts/slice-9.md). Each is optional outside production,
+  // where an absent credential selects the log driver; in production every one is required (R112).
+  /** Base64 of the Firebase service-account JSON. */
+  FCM_SERVICE_ACCOUNT_JSON: optional(z.string().min(1)),
+  /**
+   * The WhatsApp providers this deployment runs (M1): a disabled one's driver refuses every send
+   * as `session_down`, its webhook routes answer 404, and the platform cannot choose it.
+   */
+  WHATSAPP_PROVIDERS_ENABLED: whatsappProviders,
+  WAHA_URL: optional(z.url({ protocol: /^https?$/ })),
+  WAHA_API_KEY: optional(z.string().min(16)),
+  /** HMAC-SHA512 key WAHA signs its webhooks with (§8.2). */
+  WAHA_WEBHOOK_SECRET: optional(z.string().min(16)),
+  /** Meta app secret: HMAC-SHA256 key of the Cloud API webhooks (§8.3). */
+  META_APP_SECRET: optional(z.string().min(16)),
+  META_WEBHOOK_VERIFY_TOKEN: optional(z.string().min(16)),
+  /** The pinned Graph API version, recorded in WORKLOG.md. */
+  META_GRAPH_VERSION: z.string().regex(/^v[0-9]{1,3}\.[0-9]$/).default('v23.0'),
+  /** Sendpk (§9): the key travels in the POST body only. */
+  SMS_API_KEY: optional(z.string().min(8)),
+  /** The platform's registered transactional mask. */
+  SMS_SENDER_ID: optional(z.string().min(1).max(11)),
+  SMS_API_URL: z.url({ protocol: /^https$/ }).default('https://sendpk.com/api'),
+  /** The worker's own health endpoint (contracts/slice-9.md §7.12). */
+  WORKER_HEALTH_PORT: port.default(3002),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV === 'production') {
+    const required = [
+      ...PRODUCTION_DRIVER_KEYS,
+      ...env.WHATSAPP_PROVIDERS_ENABLED.flatMap((provider) => PRODUCTION_WHATSAPP_KEYS[provider]),
+    ];
+    for (const key of required) {
+      if (env[key] === undefined) ctx.addIssue({ code: 'custom', path: [key], message: 'required in production' });
+    }
+  }
+  if (env.NODE_ENV === 'production' && env.MOBILE_MIN_APP_VERSION === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['MOBILE_MIN_APP_VERSION'], message: 'required in production' });
+  }
 });
 
 export type Env = Readonly<z.infer<typeof schema>>;
 
 export class EnvError extends Error {}
+
+/** Whether this deployment runs `provider` (WHATSAPP_PROVIDERS_ENABLED). */
+export const whatsappProviderEnabled = (env: Env, provider: WhatsAppProvider): boolean =>
+  env.WHATSAPP_PROVIDERS_ENABLED.includes(provider);
+
+/** The app-version floor (R161); outside production an absent value serves every version. */
+export const mobileMinAppVersion = (env: Env): string => env.MOBILE_MIN_APP_VERSION ?? '0.0.0';
 
 /** Validates the environment. The error names each bad key and never echoes a value. */
 export function parseEnv(source: NodeJS.ProcessEnv): Env {

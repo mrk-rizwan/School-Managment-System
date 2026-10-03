@@ -70,7 +70,8 @@ export function SchoolConsole({ children }: { children: React.ReactNode }) {
 
 /**
  * Persistent notices above every screen: the default-password prompt (CLAUDE.md rule 12:
- * prompt, never force) and the suspended-school notice (contract §1.3).
+ * prompt, never force) and the suspended-school banner. A suspended school keeps working exactly
+ * as an active one (contracts/slice-9.md §10, R80 lifted): the banner is the only effect.
  */
 function SessionNotices({ me }: { me: MeDto }) {
   const pathname = usePathname();
@@ -80,12 +81,11 @@ function SessionNotices({ me }: { me: MeDto }) {
   return (
     <div className="mb-6 grid gap-3">
       {me.school.status === 'suspended' && (
-        <Alert role="status">
+        <Alert role="status" data-testid="suspended-banner">
           <PauseCircleIcon />
-          <AlertTitle>This school is suspended</AlertTitle>
+          <AlertTitle>Subscription suspended</AlertTitle>
           <AlertDescription>
-            You can look at records, but changes are turned off until the school is restored. You
-            can still change your own email and password.
+            This school’s subscription is suspended. Contact the platform.
           </AlertDescription>
         </Alert>
       )}

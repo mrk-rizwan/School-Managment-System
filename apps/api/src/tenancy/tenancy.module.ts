@@ -1,12 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { ClsModule } from 'nestjs-cls';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { AccessModule } from '../modules/access/access.module';
 import { DatabaseModule } from '../repositories/database.module';
-import { PRISMA_CLIENT, type GuardedPrismaClient } from '../repositories/prisma';
+import { PRISMA_CLIENT } from '../repositories/prisma';
 import { OwnSchoolRepository } from '../repositories/own-school.repository';
 import { SessionRepository } from '../repositories/session.repository';
+import { AfterCommit, AfterCommitPrismaAdapter } from './after-commit';
 import { RequestContextService } from './request-context';
 import { SchoolSessionResolver } from './school-session-resolver';
 import { SessionEstablisher } from './session-establisher';
@@ -23,7 +23,9 @@ import { SessionEstablisher } from './session-establisher';
       plugins: [
         new ClsPluginTransactional({
           imports: [DatabaseModule],
-          adapter: new TransactionalAdapterPrisma<GuardedPrismaClient>({
+          // The Prisma adapter plus an after-commit step (after-commit.ts): queue dispatch runs only
+          // once the transaction has committed.
+          adapter: new AfterCommitPrismaAdapter({
             prismaInjectionToken: PRISMA_CLIENT,
             // Enables nested @Transactional() via savepoints.
             sqlFlavor: 'postgresql',
@@ -45,7 +47,8 @@ import { SessionEstablisher } from './session-establisher';
     SchoolSessionResolver,
     SessionRepository,
     OwnSchoolRepository,
+    AfterCommit,
   ],
-  exports: [RequestContextService, SchoolSessionResolver, SessionRepository, OwnSchoolRepository],
+  exports: [AfterCommit, RequestContextService, SchoolSessionResolver, SessionRepository, OwnSchoolRepository],
 })
 export class TenancyModule {}

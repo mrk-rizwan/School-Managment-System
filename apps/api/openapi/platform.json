@@ -125,6 +125,15 @@
         ],
         "type": "object"
       },
+      "DeliveryHealthSort": {
+        "enum": [
+          "name",
+          "-name",
+          "-failedToday",
+          "-smsUsed"
+        ],
+        "type": "string"
+      },
       "ErrorCode": {
         "enum": [
           "MALFORMED_REQUEST",
@@ -240,6 +249,91 @@
         ],
         "type": "string"
       },
+      "HealthChannel": {
+        "enum": [
+          "push",
+          "whatsapp",
+          "sms",
+          "email"
+        ],
+        "type": "string"
+      },
+      "HealthDayChannelDto": {
+        "properties": {
+          "accepted": {
+            "type": "integer"
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HealthChannel"
+              }
+            ]
+          },
+          "delivered": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "suppressed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channel",
+          "accepted",
+          "delivered",
+          "failed",
+          "suppressed"
+        ],
+        "type": "object"
+      },
+      "HealthSmsDto": {
+        "properties": {
+          "cap": {
+            "type": "integer"
+          },
+          "used": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "used",
+          "cap"
+        ],
+        "type": "object"
+      },
+      "HealthWhatsAppDto": {
+        "properties": {
+          "lastErrorCode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppErrorCode"
+              }
+            ],
+            "nullable": true
+          },
+          "lastHealthyAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppHealthStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "lastHealthyAt",
+          "lastErrorCode"
+        ],
+        "type": "object"
+      },
       "IssuePrincipalLoginDto": {
         "properties": {
           "cnic": {
@@ -292,6 +386,62 @@
           "staffId",
           "fullName",
           "linkedExistingUser"
+        ],
+        "type": "object"
+      },
+      "PlatformDeliveryHealthDto": {
+        "properties": {
+          "computedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schoolId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "schoolStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SchoolStatus"
+              }
+            ]
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "sms": {
+            "$ref": "#/components/schemas/HealthSmsDto"
+          },
+          "today": {
+            "items": {
+              "$ref": "#/components/schemas/HealthDayChannelDto"
+            },
+            "type": "array"
+          },
+          "whatsapp": {
+            "$ref": "#/components/schemas/HealthWhatsAppDto"
+          },
+          "yesterday": {
+            "items": {
+              "$ref": "#/components/schemas/HealthDayChannelDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schoolId",
+          "name",
+          "shortCode",
+          "schoolStatus",
+          "whatsapp",
+          "today",
+          "yesterday",
+          "sms",
+          "computedAt"
         ],
         "type": "object"
       },
@@ -363,6 +513,41 @@
         ],
         "type": "string"
       },
+      "PlatformSettingsDto": {
+        "properties": {
+          "defaultSmsProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SmsProvider"
+              }
+            ]
+          },
+          "defaultWhatsappProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProvider"
+              }
+            ]
+          },
+          "enabledWhatsappProviders": {
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppProvider"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "defaultWhatsappProvider",
+          "defaultSmsProvider",
+          "enabledWhatsappProviders",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "SchoolDto": {
         "properties": {
           "createdAt": {
@@ -380,6 +565,19 @@
             "pattern": "^[a-z0-9]{3,12}$",
             "type": "string"
           },
+          "smsMonthlyCap": {
+            "description": "SMS segments a month",
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "smsProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SmsProviderChoice"
+              }
+            ]
+          },
           "status": {
             "allOf": [
               {
@@ -394,6 +592,13 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "whatsappProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProviderChoice"
+              }
+            ]
           }
         },
         "required": [
@@ -402,6 +607,9 @@
           "shortCode",
           "status",
           "timezone",
+          "smsMonthlyCap",
+          "whatsappProvider",
+          "smsProvider",
           "createdAt",
           "updatedAt"
         ],
@@ -437,6 +645,19 @@
         ],
         "type": "string"
       },
+      "SmsProvider": {
+        "enum": [
+          "sendpk"
+        ],
+        "type": "string"
+      },
+      "SmsProviderChoice": {
+        "enum": [
+          "sendpk",
+          "platform_default"
+        ],
+        "type": "string"
+      },
       "TotpEnrolmentDto": {
         "properties": {
           "otpauthUri": {
@@ -453,6 +674,25 @@
         ],
         "type": "object"
       },
+      "UpdatePlatformSettingsDto": {
+        "properties": {
+          "defaultSmsProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SmsProvider"
+              }
+            ]
+          },
+          "defaultWhatsappProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProvider"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
       "UpdateSchoolDto": {
         "properties": {
           "name": {
@@ -464,12 +704,76 @@
             "description": "Never accepted: present with any value is 409 SCHOOL_SHORT_CODE_IMMUTABLE",
             "type": "string"
           },
+          "smsMonthlyCap": {
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "smsProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SmsProviderChoice"
+              }
+            ]
+          },
           "timezone": {
             "description": "IANA time zone",
             "type": "string"
+          },
+          "whatsappProvider": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WhatsAppProviderChoice"
+              }
+            ]
           }
         },
         "type": "object"
+      },
+      "WhatsAppErrorCode": {
+        "enum": [
+          "unreachable",
+          "logged_out",
+          "session_failed",
+          "token_rejected",
+          "number_mismatch",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "WhatsAppHealthFilter": {
+        "enum": [
+          "pending",
+          "connected",
+          "down",
+          "none"
+        ],
+        "type": "string"
+      },
+      "WhatsAppHealthStatus": {
+        "enum": [
+          "pending",
+          "connected",
+          "down",
+          "disabled",
+          "none"
+        ],
+        "type": "string"
+      },
+      "WhatsAppProvider": {
+        "enum": [
+          "waha",
+          "cloud_api"
+        ],
+        "type": "string"
+      },
+      "WhatsAppProviderChoice": {
+        "enum": [
+          "waha",
+          "cloud_api",
+          "platform_default"
+        ],
+        "type": "string"
       }
     }
   },
@@ -897,6 +1201,163 @@
         },
         "tags": [
           "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/messaging/health": {
+      "get": {
+        "operationId": "DeliveryHealthController_health",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "whatsappStatus",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/WhatsAppHealthFilter"
+            }
+          },
+          {
+            "description": "Absent: all but terminated",
+            "in": "query",
+            "name": "schoolStatus",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SchoolStatus"
+            }
+          },
+          {
+            "description": "Name contains, or short code starts with (case-insensitive)",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DeliveryHealthSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PlatformDeliveryHealthDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: messaging"
         ]
       }
     },
@@ -1546,6 +2007,156 @@
         },
         "tags": [
           "platform schools"
+        ]
+      }
+    },
+    "/api/v1/platform/settings": {
+      "get": {
+        "operationId": "PlatformSettingsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: settings"
+        ]
+      },
+      "patch": {
+        "operationId": "PlatformSettingsController_update",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlatformSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: settings"
         ]
       }
     }

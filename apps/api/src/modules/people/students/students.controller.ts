@@ -35,7 +35,7 @@ import {
 } from './students.dto';
 import { StudentsService } from './students.service';
 
-// contracts/slice-6.md §3-§4. Common to every route: 401, 403 PERMISSION_DENIED / SCHOOL_SUSPENDED
+// contracts/slice-6.md §3-§4. Common to every route: 401, 403 PERMISSION_DENIED
 // / ORIGIN_REJECTED, 429. Scoped routes 404 a student outside the caller's sections (§1).
 // Documents, the photo and readmission are slice 6B's routes under the same prefix.
 const COMMON = [401, 403, 429];

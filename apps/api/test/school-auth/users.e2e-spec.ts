@@ -1,5 +1,5 @@
 // Users administration (contract slice-2 §5): R4, R5, R6, R9, R10, R12, R14, R57, R62 (users via
-// the API), R67, R72, R73, R80 (office reset and disable while suspended), R99.
+// the API), R67, R72, R73, R80 lifted (every write works while suspended), R99.
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { Mailer } from '../../src/modules/auth/mailer';
@@ -175,7 +175,7 @@ describe('users administration', () => {
       expect((await mailer.next(email)).subject).toBe('Your password was reset by the school office');
       // The first login after it is audited, as a default-password login after an office reset.
       const logins = await auditFor(target.userId, 'user.login_on_default_password');
-      expect(logins.map((a) => a.metadata)).toEqual([{ afterOfficeReset: true }]);
+      expect(logins.map((a) => a.metadata)).toEqual([{ afterOfficeReset: true, channel: 'cookie' }]);
     });
 
     it('R4: clearEmail removes the address and its verification', async () => {
@@ -278,7 +278,7 @@ describe('users administration', () => {
       const res = await post(`/users/${target.userId}/disable`, principalCookie, { reason: 'Left the office' }).expect(200);
       expect((res.body as UserBody).status).toBe('disabled');
       await http().get('/api/v1/me').set('Cookie', cookie.cookie).expect(401);
-      await http().get('/api/v1/me').set('Authorization', bearer.authorization).expect(401);
+      await http().get('/api/v1/me').set(bearer.bearer).expect(401);
       await http().post('/api/v1/auth/login').set('Origin', ORIGIN).set('X-Forwarded-For', nextIp())
         .send({ schoolCode: school.shortCode, username: target.cnic, password: 'disable-me-1' }).expect(401); // pragma: allowlist secret
       // Already disabled: 200, no second audit row.
@@ -332,15 +332,14 @@ describe('users administration', () => {
       expect(active).toBe(1);
     });
 
-    it('R80: in a suspended school disable and office reset work; enable does not', async () => {
+    it('R80 lifted (contracts/slice-9.md §10 a): in a suspended school disable, office reset and enable all work', async () => {
       const suspended = await createSchool({ status: 'suspended' });
       const p = await createSchoolUser(db(), suspended, { systemRole: 'principal' });
       const cookie = (await createSchoolSession(db(), suspended, p)).cookie;
       const target = await createSchoolUser(db(), suspended, { systemRole: 'teacher' });
       await post(`/users/${target.userId}/reset-password`, cookie, { reason: 'Suspended reset', clearEmail: false }).expect(200);
       await post(`/users/${target.userId}/disable`, cookie, { reason: 'Suspended disable' }).expect(200);
-      const res = await post(`/users/${target.userId}/enable`, cookie, { reason: 'Suspended enable' }).expect(403);
-      expect(codeOf(res)).toBe('SCHOOL_SUSPENDED');
+      await post(`/users/${target.userId}/enable`, cookie, { reason: 'Suspended enable' }).expect(200);
       await get('/users', cookie).expect(200);
     });
   });

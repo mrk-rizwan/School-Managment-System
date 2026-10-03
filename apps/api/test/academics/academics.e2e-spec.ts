@@ -122,12 +122,11 @@ describe('academic structure (e2e)', () => {
       }
     });
 
-    it('a suspended school can read but not write (403 SCHOOL_SUSPENDED)', async () => {
+    it('R80 lifted (contracts/slice-9.md §10 a): a suspended school reads and writes (subject create)', async () => {
       const school = await createSchool({ status: 'suspended' });
       const principal = await signIn('principal', school);
       expect((await get('/subjects', principal)).status).toBe(200);
-      const res = await post('/subjects', { name: 'Science' }, principal);
-      expect([res.status, errorOf(res).code]).toEqual([403, 'SCHOOL_SUSPENDED']);
+      expect((await post('/subjects', { name: 'Science' }, principal)).status).toBe(201);
     });
 
     it('refuses a cookie write from another origin (403 ORIGIN_REJECTED)', async () => {

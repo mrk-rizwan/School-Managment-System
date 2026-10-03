@@ -483,9 +483,15 @@ describe('session resolution (R56: only the platform cookie, only platform_sessi
       .get('/api/v1/platform/me')
       .set('Cookie', cookieOf(token))
       .set('Authorization', `Bearer ${token}`)
+      // The app-version floor (R161) checks every bearer request first; with a current version
+      // the request reaches platform resolution, which refuses the bearer.
+      .set('X-App-Version', '1.0.0')
       .expect(401);
     expect(errorOf(withBearer).code).toBe('AUTH_REQUIRED');
-    await http.get('/api/v1/platform/me').set('Authorization', `Bearer ${token}`).expect(401);
+    await http
+      .get('/api/v1/platform/me')
+      .set({ Authorization: `Bearer ${token}`, 'X-App-Version': '1.0.0' })
+      .expect(401);
     await http.get('/api/v1/platform/me').expect(401);
     // The platform token in the school cookie is not read.
     await http.get('/api/v1/platform/me').set('Cookie', `__Host-asms_session=${token}`).expect(401);

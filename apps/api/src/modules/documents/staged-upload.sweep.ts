@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
 import { ObjectStorage } from '../../common/storage/object-storage';
 // CLAUDE.md named exception 3, the scheduler fan-out: this file is listed in
 // NAMED_EXCEPTION_SITES (eslint.config.mjs) and is the only importer of the fan-out repository.
@@ -38,7 +37,7 @@ export class StagedUploadSweep {
     private readonly storage: ObjectStorage,
   ) {}
 
-  @Cron('0 30 2 * * *', { name: 'staged-upload-sweep', timeZone: 'Asia/Karachi' })
+  /** Run daily at 02:30 Asia/Karachi by the worker's repeatable job (src/jobs/worker-host.ts). */
   async runDaily(): Promise<void> {
     try {
       const result = await this.sweepAll(new Date());

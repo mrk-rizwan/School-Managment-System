@@ -133,6 +133,12 @@ export class TeacherAssignmentDto {
   @ApiProperty({ description: 'Counts today in the school’s time zone' })
   activeToday: boolean;
 
+  @ApiProperty({ ...NULLABLE_ID, description: 'Cover only: the class-teacher row covered' })
+  coversAssignmentId: string | null;
+
+  @ApiProperty({ type: String, nullable: true, description: 'Cover only: the covered class teacher' })
+  coversStaffFullName: string | null;
+
   @ApiProperty(DATE_TIME)
   createdAt: Date;
 }
@@ -336,7 +342,8 @@ export class CreateTeacherAssignmentDto {
 
   @ApiPropertyOptional({
     ...NULLABLE_ID,
-    description: 'Required for a class teacher; null for a subject teacher = every section',
+    description:
+      'Required for a class teacher and a cover; null for a subject teacher = every section',
   })
   @IfPresentNotNull()
   @IsIdString()
@@ -352,7 +359,7 @@ export class CreateTeacherAssignmentDto {
   @IsCalendarDate()
   startsOn?: string;
 
-  @ApiPropertyOptional({ ...DATE, nullable: true })
+  @ApiPropertyOptional({ ...DATE, nullable: true, description: 'Required for a cover (it always ends)' })
   @IfPresentNotNull()
   @IsCalendarDate()
   endsOn?: string | null;
@@ -361,6 +368,15 @@ export class CreateTeacherAssignmentDto {
   @IfPresent()
   @IsBoolean()
   replaceCurrent?: boolean;
+
+  @ApiPropertyOptional({
+    ...NULLABLE_ID,
+    description:
+      'Cover only: the class-teacher row of the section being covered; absent or null = a section with no class teacher',
+  })
+  @IfPresentNotNull()
+  @IsIdString()
+  coversAssignmentId?: string | null;
 }
 
 export class EndTeacherAssignmentDto {

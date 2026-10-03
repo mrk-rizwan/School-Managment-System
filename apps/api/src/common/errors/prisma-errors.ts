@@ -66,6 +66,26 @@ export function summariseDatabaseError(error: unknown): DatabaseErrorSummary | u
   return { prismaCode, constraint };
 }
 
+/**
+ * The race loser of a unique or exclusion constraint. `run` is a whole transaction; when it fails
+ * on `constraint` the transaction is already rolled back, so `recover` answers from a fresh
+ * statement outside it: it returns a result, or throws the refusal the in-transaction check would
+ * have given (or the original `error` when the winner cannot be found). Any other error is
+ * rethrown unchanged.
+ */
+export async function recoverConstraint<T>(
+  constraint: string,
+  run: () => Promise<T>,
+  recover: (error: unknown) => Promise<T>,
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (summariseDatabaseError(error)?.constraint !== constraint) throw error;
+    return recover(error);
+  }
+}
+
 const fieldInvalid = (path: string, message: string) =>
   new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
     fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
@@ -144,6 +164,9 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     taken(ErrorCode.ROLL_NO_TAKEN, 'rollNo', 'That roll number is taken in the section.'),
   users_school_id_student_id_key: () =>
     taken(ErrorCode.LOGIN_ALREADY_EXISTS, 'studentId', 'This student already has a login.'),
+  // contracts/slice-10.md §10. HolidaysService answers it with details.holidayId first.
+  holidays_live_excl: () =>
+    new ApiException(409, ErrorCode.HOLIDAY_DATES_TAKEN, 'Those dates overlap another holiday.'),
 };
 
 /**

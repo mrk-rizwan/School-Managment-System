@@ -183,11 +183,16 @@ describe('school login, logout and /me', () => {
       await login(body()).expect(429);
     });
 
-    it('throttles 30/min per IP', async () => {
+    it('R166: throttles 300/min per IP (raised from 30 for carrier NAT)', async () => {
       const ip = nextIp();
-      for (let i = 0; i < 30; i++) {
-        await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(401);
+      // 298 hits written straight to the bucket the guard counts in (300 logins would spend
+      // minutes in argon2), then the last two real requests: the 300th passes, the 301st is 429.
+      const storage = app.get(ThrottlerStorageRedisService);
+      for (let i = 0; i < 298; i++) {
+        await storage.increment(`asms:school-login-ip:${ip}`, 60_000, 300, 60_000, 'school-login-ip');
       }
+      await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(401);
+      await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(401);
       await login({ schoolCode: randomCode(), username: randomUsername(), password: 'x' }, ip).expect(429);
     });
 
@@ -212,11 +217,13 @@ describe('school login, logout and /me', () => {
       await login({ schoolCode: school.shortCode, username: '1234567890123', password: 'x', schoolId: '1' }).expect(422);
     });
 
-    it('a suspended school may log in (it is read-only afterwards)', async () => {
+    it('R80 lifted (contracts/slice-9.md §10 c): a suspended school logs in, and GET /me shows the status', async () => {
       const suspended = await createSchool({ status: 'suspended' });
       const user = await createSchoolUser(db(), suspended, { systemRole: 'principal', password: 'suspended-pass' }); // pragma: allowlist secret
       const res = await login({ schoolCode: suspended.shortCode, username: user.cnic, password: 'suspended-pass' }).expect(200); // pragma: allowlist secret
       expect((res.body as Me).school.status).toBe('suspended');
+      const me = await http().get('/api/v1/me').set('Cookie', sessionCookie(res)).expect(200);
+      expect((me.body as Me).school.status).toBe('suspended');
     });
 
     it('a parent-only account logs in with role parent and no capabilities', async () => {
@@ -244,8 +251,8 @@ describe('school login, logout and /me', () => {
       await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
       const rows = await defaultPasswordLogins(user.userId);
       expect(rows.map((r) => [r.actorUserId, r.subjectType, r.metadata])).toEqual([
-        [user.userId, 'user', { afterOfficeReset: false }],
-        [user.userId, 'user', { afterOfficeReset: false }],
+        [user.userId, 'user', { afterOfficeReset: false, channel: 'cookie' }],
+        [user.userId, 'user', { afterOfficeReset: false, channel: 'cookie' }],
       ]);
       // No identity data in the row: the metadata is the one flag, and no column holds the digits.
       expect(JSON.stringify(rows, (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v))).not.toContain(user.cnic);
@@ -264,8 +271,8 @@ describe('school login, logout and /me', () => {
       await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
       await login({ schoolCode: school.shortCode, username: user.cnic, password: user.cnic }).expect(200);
       expect((await defaultPasswordLogins(user.userId)).map((r) => r.metadata)).toEqual([
-        { afterOfficeReset: true },
-        { afterOfficeReset: false },
+        { afterOfficeReset: true, channel: 'cookie' },
+        { afterOfficeReset: false, channel: 'cookie' },
       ]);
       // The single row replaced the old action (contract slice-2 §3.1 step 5, §9).
       expect(
@@ -297,8 +304,8 @@ describe('school login, logout and /me', () => {
     it('a bearer logout needs no Origin', async () => {
       const user = await createSchoolUser(db(), school, { systemRole: 'teacher' });
       const s = await createSchoolSession(db(), school, user, { channel: 'bearer' });
-      await http().post('/api/v1/auth/logout').set('Authorization', s.authorization).expect(204);
-      await http().get('/api/v1/me').set('Authorization', s.authorization).expect(401);
+      await http().post('/api/v1/auth/logout').set(s.bearer).expect(204);
+      await http().get('/api/v1/me').set(s.bearer).expect(401);
     });
 
     it('works in a suspended school', async () => {
@@ -330,7 +337,7 @@ describe('school login, logout and /me', () => {
       expect(me.capabilities[0]).toBe('user.account.manage');
       expect(me.capabilities).not.toContain('role.manage');
       expect(Object.keys(me).sort()).toEqual(
-        ['capabilities', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt'],
+        ['assignments', 'capabilities', 'capacities', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt'],
       );
       expect(JSON.stringify(me)).not.toMatch(/[0-9]{13}/);
     });

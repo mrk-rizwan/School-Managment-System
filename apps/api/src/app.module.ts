@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
-import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { RouteAccessGuard } from './common/auth/route-access';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
@@ -19,7 +18,9 @@ import { AdmissionsModule } from './modules/people/admissions/admissions.module'
 import { DocumentsModule } from './modules/documents/documents.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { MeModule } from './modules/me/me.module';
+import { JobsModule } from './jobs/jobs.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { MessagingRoutesModule } from './modules/messaging/messaging-routes.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { DatabaseModule } from './repositories/database.module';
@@ -32,8 +33,6 @@ import { TenancyModule } from './tenancy/tenancy.module';
     EnvModule,
     LoggingModule,
     ThrottlingModule,
-    // The scheduler, once for the app: cron jobs live in their feature modules.
-    ScheduleModule.forRoot(),
     DatabaseModule,
     TenancyModule,
     HealthModule,
@@ -48,7 +47,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     DocumentsModule,
     // Phase 2 (empty until slices 9 and 10 fill them).
     MessagingModule,
+    MessagingRoutesModule,
     WebhooksModule,
+    // Queue consumers and repeatable jobs; started only in the worker process (ENV.WORKER).
+    JobsModule,
     CalendarModule,
     MeModule,
   ],

@@ -35,6 +35,16 @@ export function schoolIdFromQueuePayload(school: { readonly id: bigint }): Schoo
   return brand(school.id);
 }
 
+/**
+ * Named exception 5 (contracts/slice-9.md §8.5): the school_id a DeliveryWebhookRepository
+ * statement returned from the row it has just updated, matched by a globally unique key (the
+ * hashed provider reference, the WAHA session, the Cloud API phone-number id). Called only by that
+ * repository; the webhook enqueues it, and the job resolves it again through fromQueuePayload.
+ */
+export function schoolIdFromDeliveryReport(row: { readonly school_id: bigint }): SchoolId {
+  return brand(row.school_id);
+}
+
 /** Exception 3: the scheduler fan-out, one job per active school. */
 export function schoolIdsForFanOut(schools: readonly { readonly id: bigint }[]): SchoolId[] {
   return schools.map((school) => brand(school.id));

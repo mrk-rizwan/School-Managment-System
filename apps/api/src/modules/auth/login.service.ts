@@ -2,11 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import type { Request } from 'express';
+import { readCookie } from '../../common/auth/platform-session';
+import {
+  SCHOOL_COOKIE,
+  type SchoolSessionContext,
+  type SessionChannelName,
+} from '../../common/auth/school-session';
 import { PasswordHasher } from '../../common/crypto/password';
-import { failureLog } from '../../common/errors/all-exceptions.filter';
+import { failureLog } from '../../common/errors/failure-log';
 import { ApiException } from '../../common/errors/api-exception';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { DeviceRepository } from '../../repositories/device.repository';
 import { SchoolLookupRepository } from '../../repositories/school-lookup.repository';
+import { SessionRepository } from '../../repositories/session.repository';
 import { UserRepository, type UserCredentialRow } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { SchoolSessionResolver } from '../../tenancy/school-session-resolver';
@@ -43,9 +51,18 @@ export class LoginService {
     private readonly me: MeService,
     private readonly audit: AuditLogRepository,
     private readonly spikes: LoginSpikeRecorder,
+    private readonly sessions: SessionRepository,
+    private readonly devices: DeviceRepository,
   ) {}
 
   async login(dto: SchoolLoginDto, req: Request, meta: RequestMeta): Promise<IssuedSession> {
+    const channel = dto.channel ?? 'cookie';
+    // contracts/slice-9.md §3.1 step 4 (R170): a bearer token is never minted for a request a
+    // browser page could have made, one with an Origin header or a school cookie. The same body
+    // as a credential failure, and not counted: it is not a password guess.
+    if (channel === 'bearer' && (req.headers.origin !== undefined || readCookie(req, SCHOOL_COOKIE) !== undefined)) {
+      throw authFailed();
+    }
     const usernameHash = this.keys.usernameHash(dto.username);
     const account = this.keys.account(dto.schoolCode, usernameHash);
     // First, so an unreachable Redis is a 503 before any work, never a login without it (R81).
@@ -90,7 +107,7 @@ export class LoginService {
 
     let issued: IssuedSession;
     try {
-      issued = await this.complete(school.id, user, req, meta);
+      issued = await this.complete(school.id, user, channel, req, meta);
     } catch (error) {
       if (!(error instanceof LoginRefused)) throw error;
       await this.fail(account, school.id);
@@ -110,6 +127,7 @@ export class LoginService {
   private async complete(
     schoolId: SchoolId,
     checked: UserCredentialRow,
+    channel: SessionChannelName,
     req: Request,
     meta: RequestMeta,
   ): Promise<IssuedSession> {
@@ -125,6 +143,8 @@ export class LoginService {
       throw new LoginRefused();
     }
     const now = new Date();
+    // The presented session, cookie or bearer, in any school, is revoked; its device dies with it
+    // by the push join (R159: a phone handed to a second parent stops the first parent's push).
     await this.resolver.revokePresented(req, now);
     // Read before recordLogin overwrites last_login_at (contract §3.1 step 5).
     const afterOfficeReset =
@@ -139,11 +159,26 @@ export class LoginService {
         action: 'user.login_on_default_password',
         subjectType: 'user',
         subjectId: user.id,
-        metadata: { afterOfficeReset },
+        metadata: { afterOfficeReset, channel },
       });
     }
-    const { token, expiresAt } = await this.me.mint(schoolId, user.id, meta, now);
-    return { token, expiresAt, me: await this.me.build(schoolId, user.id, access, expiresAt) };
+    // R154: the absolute lifetime from the channel and the capacities held now.
+    const { token, expiresAt } = await this.me.mint(schoolId, user.id, channel, access.capacities, meta, now);
+    return { token, channel, expiresAt, me: await this.me.build(schoolId, user.id, access, expiresAt) };
+  }
+
+  /**
+   * POST /auth/logout (contracts/slice-9.md §3.2, R159): the presented session ends and, on a
+   * bearer session, its device row is ended as sign_out in the same transaction, server-side
+   * before the app discards the token. Sessions before devices (lock order §1.7).
+   */
+  @Transactional()
+  async logout(session: SchoolSessionContext): Promise<void> {
+    const now = new Date();
+    await this.sessions.revoke(session.schoolId, session.sessionId, now);
+    if (session.channel === 'bearer') {
+      await this.devices.unregisterForSession(session.schoolId, session.sessionId, 'sign_out', now);
+    }
   }
 
   /**

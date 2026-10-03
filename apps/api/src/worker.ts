@@ -9,7 +9,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { failureLog } from './common/errors/all-exceptions.filter';
+import { failureLog } from './common/errors/failure-log';
 import { EnvError, loadEnv } from './config/env';
 
 async function bootstrapWorker(): Promise<void> {

@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/messaging/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DeliveryHealthController_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/schools": {
         parameters: {
             query?: never;
@@ -164,6 +180,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformSettingsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformSettingsController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -205,7 +237,28 @@ export interface components {
             timezone?: string;
         };
         /** @enum {string} */
+        DeliveryHealthSort: "name" | "-name" | "-failedToday" | "-smsUsed";
+        /** @enum {string} */
         ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "UNEXPECTED_RESPONSE";
+        /** @enum {string} */
+        HealthChannel: "push" | "whatsapp" | "sms" | "email";
+        HealthDayChannelDto: {
+            accepted: number;
+            channel: components["schemas"]["HealthChannel"];
+            delivered: number;
+            failed: number;
+            suppressed: number;
+        };
+        HealthSmsDto: {
+            cap: number;
+            used: number;
+        };
+        HealthWhatsAppDto: {
+            lastErrorCode: components["schemas"]["WhatsAppErrorCode"] | null;
+            /** Format: date-time */
+            lastHealthyAt: string | null;
+            status: components["schemas"]["WhatsAppHealthStatus"];
+        };
         IssuePrincipalLoginDto: {
             /** @description 13 digits; dashes allowed (5-7-1). */
             cnic: string;
@@ -220,6 +273,18 @@ export interface components {
             linkedExistingUser: boolean;
             staffId: string;
             userId: string;
+        };
+        PlatformDeliveryHealthDto: {
+            /** Format: date-time */
+            computedAt: string | null;
+            name: string;
+            schoolId: string;
+            schoolStatus: components["schemas"]["SchoolStatus"];
+            shortCode: string;
+            sms: components["schemas"]["HealthSmsDto"];
+            today: components["schemas"]["HealthDayChannelDto"][];
+            whatsapp: components["schemas"]["HealthWhatsAppDto"];
+            yesterday: components["schemas"]["HealthDayChannelDto"][];
         };
         PlatformLoginDto: {
             /** Format: email */
@@ -239,17 +304,28 @@ export interface components {
         };
         /** @enum {string} */
         PlatformSessionStage: "totp_enrolment" | "full";
+        PlatformSettingsDto: {
+            defaultSmsProvider: components["schemas"]["SmsProvider"];
+            defaultWhatsappProvider: components["schemas"]["WhatsAppProvider"];
+            enabledWhatsappProviders: components["schemas"]["WhatsAppProvider"][];
+            /** Format: date-time */
+            updatedAt: string;
+        };
         SchoolDto: {
             /** Format: date-time */
             createdAt: string;
             id: string;
             name: string;
             shortCode: string;
+            /** @description SMS segments a month */
+            smsMonthlyCap: number;
+            smsProvider: components["schemas"]["SmsProviderChoice"];
             status: components["schemas"]["SchoolStatus"];
             /** @description IANA time zone */
             timezone: string;
             /** Format: date-time */
             updatedAt: string;
+            whatsappProvider: components["schemas"]["WhatsAppProviderChoice"];
         };
         /** @enum {string} */
         SchoolSort: "name" | "-name" | "shortCode" | "-shortCode" | "status" | "-status" | "createdAt" | "-createdAt";
@@ -257,18 +333,39 @@ export interface components {
         SchoolStatus: "trial" | "active" | "suspended" | "terminated";
         /** @enum {string} */
         SchoolStatusTarget: "active" | "suspended" | "terminated";
+        /** @enum {string} */
+        SmsProvider: "sendpk";
+        /** @enum {string} */
+        SmsProviderChoice: "sendpk" | "platform_default";
         TotpEnrolmentDto: {
             otpauthUri: string;
             /** @description Base32, for manual entry. */
             secret: string;
         };
+        UpdatePlatformSettingsDto: {
+            defaultSmsProvider?: components["schemas"]["SmsProvider"];
+            defaultWhatsappProvider?: components["schemas"]["WhatsAppProvider"];
+        };
         UpdateSchoolDto: {
             name?: string;
             /** @description Never accepted: present with any value is 409 SCHOOL_SHORT_CODE_IMMUTABLE */
             shortCode?: string;
+            smsMonthlyCap?: number;
+            smsProvider?: components["schemas"]["SmsProviderChoice"];
             /** @description IANA time zone */
             timezone?: string;
+            whatsappProvider?: components["schemas"]["WhatsAppProviderChoice"];
         };
+        /** @enum {string} */
+        WhatsAppErrorCode: "unreachable" | "logged_out" | "session_failed" | "token_rejected" | "number_mismatch" | "unknown";
+        /** @enum {string} */
+        WhatsAppHealthFilter: "pending" | "connected" | "down" | "none";
+        /** @enum {string} */
+        WhatsAppHealthStatus: "pending" | "connected" | "down" | "disabled" | "none";
+        /** @enum {string} */
+        WhatsAppProvider: "waha" | "cloud_api";
+        /** @enum {string} */
+        WhatsAppProviderChoice: "waha" | "cloud_api" | "platform_default";
     };
     responses: never;
     parameters: never;
@@ -601,6 +698,79 @@ export interface operations {
                 };
             };
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DeliveryHealthController_health: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                whatsappStatus?: components["schemas"]["WhatsAppHealthFilter"];
+                /** @description Absent: all but terminated */
+                schoolStatus?: components["schemas"]["SchoolStatus"];
+                /** @description Name contains, or short code starts with (case-insensitive) */
+                q?: string;
+                sort?: components["schemas"]["DeliveryHealthSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PlatformDeliveryHealthDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1047,6 +1217,128 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PlatformSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PlatformSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlatformSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

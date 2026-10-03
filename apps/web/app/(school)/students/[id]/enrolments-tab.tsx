@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { unwrap } from '@/lib/api/client';
 import { describeApiError } from '@/lib/api/errors';
+import { calendarApi, type SectionChangeResultDto } from '@/lib/api/school-calendar-contract';
 import {
   studentsApi,
   type EnrolmentDto,
@@ -31,12 +32,13 @@ import {
 import { formatDay, todayInSchool } from '@/lib/format';
 import { useCapabilities } from '@/lib/school-session';
 import { useSections } from '../../academics/_lib/options';
+import { addDays } from '../../calendar/_lib/calendar-ui';
 import { PlacementSelects, type Placement } from '../_lib/placement';
 import { ENROLMENT_STATUS_LABELS, studentsKeys } from '../_lib/students-ui';
 
 const LIMIT = 25;
 
-/** contracts/slice-6.md §5 (R37–R39). Only the active enrolment can be changed. */
+/** contracts/slice-6.md §5 (R37–R39), amended by slice-10 §8. Only the active enrolment can be changed. */
 export function EnrolmentsTab({ student }: { student: StudentDetailDto }) {
   const { can } = useCapabilities();
   const canManage = can(Capability.ENROLMENT_MANAGE);
@@ -84,6 +86,10 @@ export function EnrolmentsTab({ student }: { student: StudentDetailDto }) {
         header: 'Dates',
         cell: (info) => {
           const { startedOn, endedOn } = info.row.original;
+          // slice-10 §8.1: a same-day correction leaves a zero-length enrolment, kept as history.
+          if (endedOn && endedOn < startedOn) {
+            return <span className="text-muted-foreground">Not in force (corrected)</span>;
+          }
           return endedOn ? `${formatDay(startedOn)} – ${formatDay(endedOn)}` : `From ${formatDay(startedOn)}`;
         },
       }),
@@ -240,7 +246,73 @@ function RollNoForm({
   );
 }
 
-/** POST /enrolments/:id/change-section — in place, same class; the roll number is cleared. */
+/**
+ * The sentence both change dialogs show (contracts/slice-10.md §8.1, §13): a change closes the
+ * current enrolment the day before and opens a new one, without a roll number.
+ */
+function closeOpenSentence(effectiveOn: string): string {
+  if (!effectiveOn) return 'Closes the current enrolment and opens a new one. The roll number must be set again.';
+  return `Closes the current enrolment on ${formatDay(addDays(effectiveOn, -1))} and opens a new one from ${formatDay(effectiveOn)}. The roll number must be set again.`;
+}
+
+/** The toast after a change names both enrolments (§8.2's `{ closed, opened }`). */
+function changedMessage({ closed, opened }: SectionChangeResultDto): string {
+  const from = `${closed.className} ${closed.sectionName}`;
+  const ended =
+    closed.endedOn === null
+      ? ''
+      : closed.endedOn < closed.startedOn
+        ? ` ${from} is kept as not in force (corrected).`
+        : ` ${from} ended on ${formatDay(closed.endedOn)}.`;
+  return `Now in ${opened.className} ${opened.sectionName} from ${formatDay(opened.startedOn)}.${ended}`;
+}
+
+const effectiveOnProblem = (enrolment: EnrolmentDto, value: string): string | null =>
+  value === ''
+    ? 'Choose the date.'
+    : value > todayInSchool()
+      ? 'The date cannot be in the future.'
+      : value < enrolment.startedOn
+        ? 'The date cannot be before the current enrolment started.'
+        : null;
+
+/** The date a change takes effect: no later than today, not before the enrolment began. */
+function EffectiveOnField({
+  enrolment,
+  value,
+  onChange,
+  disabled,
+}: {
+  enrolment: EnrolmentDto;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  const id = useId();
+  const problem = effectiveOnProblem(enrolment, value);
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>Effective from</Label>
+      <Input
+        id={id}
+        type="date"
+        value={value}
+        min={enrolment.startedOn}
+        max={todayInSchool()}
+        disabled={disabled}
+        aria-invalid={problem ? true : undefined}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {problem && <p className="text-xs text-destructive">{problem}</p>}
+    </div>
+  );
+}
+
+/**
+ * POST /enrolments/:id/change-section — close-old/open-new within the class (R174): the current
+ * enrolment ends the day before `effectiveOn` and a new one opens without a roll number. A reason
+ * is required.
+ */
 function ChangeSectionDialog({
   enrolment,
   onClose,
@@ -252,23 +324,25 @@ function ChangeSectionDialog({
 }) {
   const id = useId();
   const [sectionId, setSectionId] = useState('');
+  const [effectiveOn, setEffectiveOn] = useState(todayInSchool());
   const sections = useSections(enrolment?.classId ?? '');
-  const options = (sections.data?.data ?? []).filter((s) => s.id !== enrolment?.sectionId);
+  const options = (sections.data?.data ?? []).filter((s) => s.id !== enrolment?.sectionId && s.archivedAt === null);
   const close = () => {
     change.reset();
     setSectionId('');
+    setEffectiveOn(todayInSchool());
     onClose();
   };
   const change = useMutation({
     mutationFn: (reason: string) =>
       unwrap(
-        studentsApi.POST('/api/v1/enrolments/{id}/change-section', {
+        calendarApi.POST('/api/v1/enrolments/{id}/change-section', {
           params: { path: { id: enrolment!.id } },
-          body: { sectionId, ...(reason && { reason }) },
+          body: { sectionId, effectiveOn, reason },
         }),
       ),
-    onSuccess: (updated) => {
-      toast.success(`Moved to ${updated.className} ${updated.sectionName}.`);
+    onSuccess: (result) => {
+      toast.success(changedMessage(result));
       onDone();
       close();
     },
@@ -278,25 +352,30 @@ function ChangeSectionDialog({
       open={enrolment !== null}
       onOpenChange={(open) => !open && close()}
       title="Change section"
-      description={`Within ${enrolment?.className ?? 'the class'}. The roll number is cleared; set a new one afterwards. A reason is optional.`}
+      description={`Within ${enrolment?.className ?? 'the class'}. ${closeOpenSentence(effectiveOn)}`}
       confirmLabel="Change section"
-      minLength={0}
+      minLength={3}
       maxLength={500}
       pending={change.isPending}
-      confirmDisabled={sectionId === ''}
+      confirmDisabled={sectionId === '' || enrolment === null || effectiveOnProblem(enrolment, effectiveOn) !== null}
       onConfirm={(reason) => change.mutate(reason)}
     >
-      <div className="grid gap-1.5">
-        <Label htmlFor={id}>New section</Label>
-        <NativeSelect id={id} value={sectionId} disabled={change.isPending} onChange={(e) => setSectionId(e.target.value)}>
-          <option value="">{sections.isPending ? 'Loading…' : 'Choose…'}</option>
-          {options.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
+      {enrolment && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor={id}>New section</Label>
+            <NativeSelect id={id} value={sectionId} disabled={change.isPending} onChange={(e) => setSectionId(e.target.value)}>
+              <option value="">{sections.isPending ? 'Loading…' : 'Choose…'}</option>
+              {options.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <EffectiveOnField enrolment={enrolment} value={effectiveOn} onChange={setEffectiveOn} disabled={change.isPending} />
+        </div>
+      )}
       {change.error && (
         <Alert variant="destructive">
           <AlertDescription>{describeApiError(change.error)}</AlertDescription>
@@ -307,8 +386,8 @@ function ChangeSectionDialog({
 }
 
 /**
- * POST /enrolments/:id/change-class — a class of the same year (R38). The old enrolment is
- * closed and a new one opened on the same date (R39); never an edit.
+ * POST /enrolments/:id/change-class — a class of the same year (R38), close-old/open-new like a
+ * section change (slice-10 §8.3): the current enrolment ends the day before `effectiveOn`.
  */
 function ChangeClassDialog({
   enrolment,
@@ -319,10 +398,8 @@ function ChangeClassDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const dateId = useId();
-  const today = todayInSchool();
   const [placement, setPlacement] = useState<Placement>({ academicYearId: '', classId: '', sectionId: '' });
-  const [effectiveOn, setEffectiveOn] = useState(today);
+  const [effectiveOn, setEffectiveOn] = useState(todayInSchool());
   const close = () => {
     change.reset();
     setPlacement({ academicYearId: '', classId: '', sectionId: '' });
@@ -332,36 +409,36 @@ function ChangeClassDialog({
   const change = useMutation({
     mutationFn: (reason: string) =>
       unwrap(
-        studentsApi.POST('/api/v1/enrolments/{id}/change-class', {
+        calendarApi.POST('/api/v1/enrolments/{id}/change-class', {
           params: { path: { id: enrolment!.id } },
           body: { classId: placement.classId, sectionId: placement.sectionId, effectiveOn, reason },
         }),
       ),
-    onSuccess: (created) => {
-      toast.success(`Moved to ${created.className} ${created.sectionName}.`);
+    onSuccess: (result) => {
+      toast.success(changedMessage(result));
       onDone();
       close();
     },
   });
   const sameClass = enrolment !== null && placement.classId === enrolment.classId;
-  const dateProblem =
-    effectiveOn > today
-      ? 'The date cannot be in the future.'
-      : enrolment && effectiveOn < enrolment.startedOn
-        ? 'The date cannot be before the current enrolment started.'
-        : null;
 
   return (
     <ConfirmWithReasonDialog
       open={enrolment !== null}
       onOpenChange={(open) => !open && close()}
       title="Change class"
-      description={`Within ${enrolment?.academicYearName ?? 'the same year'}. The current enrolment ends and a new one starts on the date below, without a roll number.`}
+      description={`Within ${enrolment?.academicYearName ?? 'the same year'}. ${closeOpenSentence(effectiveOn)}`}
       confirmLabel="Change class"
       minLength={3}
       maxLength={500}
       pending={change.isPending}
-      confirmDisabled={!placement.classId || !placement.sectionId || sameClass || dateProblem !== null}
+      confirmDisabled={
+        !placement.classId ||
+        !placement.sectionId ||
+        sameClass ||
+        enrolment === null ||
+        effectiveOnProblem(enrolment, effectiveOn) !== null
+      }
       onConfirm={(reason) => change.mutate(reason)}
     >
       {enrolment && (
@@ -373,20 +450,7 @@ function ChangeClassDialog({
             disabled={change.isPending}
             errors={sameClass ? { classId: 'This is the current class. Use Change section.' } : undefined}
           />
-          <div className="grid gap-1.5">
-            <Label htmlFor={dateId}>Effective from</Label>
-            <Input
-              id={dateId}
-              type="date"
-              value={effectiveOn}
-              min={enrolment.startedOn}
-              max={today}
-              disabled={change.isPending}
-              aria-invalid={dateProblem ? true : undefined}
-              onChange={(event) => setEffectiveOn(event.target.value)}
-            />
-            {dateProblem && <p className="text-xs text-destructive">{dateProblem}</p>}
-          </div>
+          <EffectiveOnField enrolment={enrolment} value={effectiveOn} onChange={setEffectiveOn} disabled={change.isPending} />
         </div>
       )}
       {change.error && (

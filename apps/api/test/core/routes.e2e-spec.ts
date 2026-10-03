@@ -11,12 +11,13 @@ import { MetadataScanner, ModulesContainer, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import {
-  AllowWhenSuspended,
   AuthenticatedOnly,
   PlatformSession,
   Public,
   RequireCapability,
+  RequireCapacity,
   RequireStaff,
+  Webhook,
 } from '../../src/common/auth/route-access';
 import { Capability } from '@asms/shared';
 import { API_PREFIX } from '../../src/common/http';
@@ -24,7 +25,14 @@ import { buildOpenApiDocuments } from '../../src/openapi-documents';
 import { PlatformModule } from '../../src/modules/platform/platform.module';
 import { createTestApp } from './app';
 
-type Access = 'public' | 'authenticated-only' | 'capability' | 'platform-session' | 'staff';
+type Access =
+  | 'public'
+  | 'authenticated-only'
+  | 'capability'
+  | 'platform-session'
+  | 'staff'
+  | 'capacity'
+  | 'webhook';
 interface Route {
   method: string;
   path: string;
@@ -34,8 +42,6 @@ interface Route {
   level: string | undefined;
   /** Whether the controller belongs to PlatformModule's module tree. */
   inPlatformModule: boolean;
-  /** Marked @AllowWhenSuspended (contract slice-2 §1.3). */
-  allowWhenSuspended: boolean;
 }
 
 // The metadata keys are private to route-access.ts. Rather than restating the strings here,
@@ -54,20 +60,10 @@ const ACCESS_KEYS: [Access, string][] = [
   ['capability', keyOf(RequireCapability(Capability.STUDENT_VIEW))],
   ['platform-session', keyOf(PlatformSession())],
   ['staff', keyOf(RequireStaff())],
+  ['capacity', keyOf(RequireCapacity('guardian'))],
+  ['webhook', keyOf(Webhook('waha'))],
 ];
 const PLATFORM_KEY = keyOf(PlatformSession());
-const ALLOW_WHEN_SUSPENDED_KEY = (() => {
-  class Probe {
-    handler(): void {}
-  }
-  const descriptor = Object.getOwnPropertyDescriptor(Probe.prototype, 'handler');
-  if (!descriptor) throw new Error('no probe handler');
-  AllowWhenSuspended()(Probe.prototype, 'handler', descriptor);
-  const value: unknown = descriptor.value;
-  const [key] = Reflect.getMetadataKeys(value as object) as unknown[];
-  if (typeof key !== 'string') throw new Error('AllowWhenSuspended wrote no string metadata key');
-  return key;
-})();
 
 /** PlatformModule and every module it imports, recursively. */
 function platformModuleTree(): Set<unknown> {
@@ -135,8 +131,6 @@ function nestRoutes(app: NestExpressApplication): Route[] {
               handler: `${controller.name}.${name}`,
               level: reflector.getAllAndOverride<string | undefined>(PLATFORM_KEY, [handler, controller]),
               inPlatformModule: platformTree.has(module.metatype),
-              allowWhenSuspended:
-                reflector.get<unknown>(ALLOW_WHEN_SUSPENDED_KEY, handler) !== undefined,
             });
           }
         }
@@ -181,26 +175,23 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['POST', '/api/v1/auth/logout', 'authenticated-only'],
   ['POST', '/api/v1/auth/reset-password', 'public'],
   ['POST', '/api/v1/auth/verify-email', 'public'],
+  ['GET', '/api/v1/calendar/teaching-days', 'staff'],
   ['GET', '/api/v1/classes', 'staff'],
   ['GET', '/api/v1/classes/:id', 'staff'],
   ['GET', '/api/v1/classes/:id/sections', 'staff'],
   ['GET', '/api/v1/health', 'public'],
+  ['GET', '/api/v1/holidays', 'staff'],
+  ['GET', '/api/v1/holidays/:id', 'staff'],
   ['GET', '/api/v1/me', 'authenticated-only'],
+  ['GET', '/api/v1/me/calendar', 'authenticated-only'],
   ['POST', '/api/v1/me/change-email', 'authenticated-only'],
   ['POST', '/api/v1/me/change-password', 'authenticated-only'],
+  ['POST', '/api/v1/me/devices', 'authenticated-only'],
+  ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
   ['GET', '/api/v1/sections/:id', 'staff'],
   ['GET', '/api/v1/subjects', 'staff'],
   ['GET', '/api/v1/subjects/:id', 'staff'],
-];
-
-// Contract slice-2 §1.3 / R80: exactly these non-GET handlers still work in a suspended school.
-const ALLOW_WHEN_SUSPENDED_ROUTES: [string, string][] = [
-  ['POST', '/api/v1/auth/logout'],
-  ['POST', '/api/v1/me/change-email'],
-  ['POST', '/api/v1/me/change-password'],
-  ['POST', '/api/v1/users/:id/disable'],
-  ['POST', '/api/v1/users/:id/reset-password'],
 ];
 
 // Contract slice-1 §1: the platform auth routes and their @PlatformSession level. Reviewed like
@@ -244,6 +235,11 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'PATCH /api/v1/enrolments/:id': ['enrolment.roll_no_set'],
   'POST /api/v1/enrolments/:id/change-class': ['enrolment.class_changed'],
   'POST /api/v1/enrolments/:id/change-section': ['enrolment.section_changed'],
+  // contracts/slice-10.md §11. A repeated publish or cancel is an unchanged 200 with no row.
+  'POST /api/v1/holidays': ['holiday.created'],
+  'PATCH /api/v1/holidays/:id': ['holiday.updated'],
+  'POST /api/v1/holidays/:id/cancel': ['holiday.cancelled'],
+  'POST /api/v1/holidays/:id/publish': ['holiday.published'],
   'POST /api/v1/grants/:id/end': ['capability_grant.ended'],
   'PATCH /api/v1/guardian-links/:id': ['guardian_link.updated'],
   'POST /api/v1/guardian-links/:id/end': ['guardian_link.ended'],
@@ -253,6 +249,13 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/guardians/lookup': 'none: a read carried in a body so the CNIC stays out of the URL',
   'POST /api/v1/me/change-email': ['user.email_changed'],
   'POST /api/v1/me/change-password': ['user.password_changed'],
+  'POST /api/v1/me/devices': 'none: a push address of the caller own session, refreshed often; grants nothing',
+  'POST /api/v1/me/sessions/revoke-others': ['user.sessions_revoked'],
+  // contracts/slice-9.md §5, §12.
+  'POST /api/v1/messaging/test': ['messaging.test_sent'],
+  'POST /api/v1/messaging/whatsapp/connect-cloud-api': ['whatsapp.cloud_api_connected'],
+  'POST /api/v1/messaging/whatsapp/disable': ['whatsapp.disabled'],
+  'POST /api/v1/messaging/whatsapp/pair': ['whatsapp.pairing_started'],
   'POST /api/v1/platform/auth/change-password': ['platform_user.password_changed'],
   'POST /api/v1/platform/auth/login': ['platform_user.login'],
   'POST /api/v1/platform/auth/logout': 'none: ends the caller own session only',
@@ -261,6 +264,7 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/platform/schools': ['school.created'],
   'PATCH /api/v1/platform/schools/:id': ['school.updated'],
   'POST /api/v1/platform/schools/:id/change-status': ['school.status_changed'],
+  'PATCH /api/v1/platform/settings': ['platform_settings.updated'],
   'POST /api/v1/platform/schools/:id/issue-principal-login': [
     'staff.created',
     'user.principal_login_issued',
@@ -292,6 +296,10 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/users/:id/grants': ['capability_grant.created'],
   'POST /api/v1/users/:id/reset-password': ['user.office_reset'],
   'POST /api/v1/users/:id/roles': ['user_role.assigned'],
+  'POST /api/v1/users/:id/sign-out-everywhere': ['user.signed_out_everywhere'],
+  // contracts/slice-9.md §8, §12: provider reports have no actor; counters only.
+  'POST /api/v1/webhooks/meta': 'none: a provider report with no actor; it moves a delivery forward or counts an inbound message',
+  'POST /api/v1/webhooks/waha': 'none: a provider report with no actor; it moves a delivery forward or triggers a health check',
 };
 
 /** The text of every non-generated, non-test source file under src/. */
@@ -428,7 +436,10 @@ describe('Routes and OpenAPI over the real AppModule', () => {
     const open = routes
       .flatMap(({ method, path, access: [only, ...more] }): [string, string, Access][] =>
         only !== undefined &&
-        (only === 'public' || only === 'authenticated-only' || only === 'staff') &&
+        (only === 'public' ||
+          only === 'authenticated-only' ||
+          only === 'staff' ||
+          only === 'capacity') &&
         more.length === 0
           ? [[method, path, only]]
           : [],
@@ -437,17 +448,37 @@ describe('Routes and OpenAPI over the real AppModule', () => {
     expect(open).toEqual(NO_CAPABILITY_ROUTES);
   });
 
-  it('R80: the @AllowWhenSuspended handlers are exactly the reviewed set (contract slice-2 §1.3)', () => {
-    const marked = routes
-      .filter((r) => r.allowWhenSuspended)
-      .map((r): [string, string] => [r.method, r.path])
-      .sort((a, b) => a[1].localeCompare(b[1]));
-    expect(marked).toEqual(ALLOW_WHEN_SUSPENDED_ROUTES);
+  it('R172: every @Webhook route lives under /webhooks/ and appears in no OpenAPI document', () => {
+    const hooks = routes.filter((r) => r.access.includes('webhook'));
+    expect(hooks.map((r) => `${r.method} ${r.path}`).sort()).toEqual([
+      'GET /api/v1/webhooks/meta',
+      'POST /api/v1/webhooks/meta',
+      'POST /api/v1/webhooks/waha',
+    ]);
+    for (const [, doc] of docs) {
+      expect(Object.keys(doc.paths).filter((path) => path.includes('webhooks'))).toEqual([]);
+    }
+    // §8.4: no SMS webhook is mounted while Sendpk is pull-only.
+    expect(routes.some((r) => r.path.startsWith('/api/v1/webhooks/sms'))).toBe(false);
   });
 
-  it('R78: @AuthenticatedOnly is only on /auth/logout and /me/*, so parent and student sessions reach nothing else', () => {
+  it('R80 lifted (contracts/slice-9.md §10 b): no source file under src references ErrorCode.SCHOOL_SUSPENDED, so no route answers it', () => {
+    const text = sourceText();
+    expect(text).not.toMatch(/ErrorCode\.SCHOOL_SUSPENDED/);
+    expect(text).not.toMatch(/AllowWhenSuspended/);
+  });
+
+  it('R68, R163: every @RequireCapacity route lives under /me/ (the capacity tree names the capacity)', () => {
     const wrong = routes
-      .filter((r) => r.access.includes('authenticated-only'))
+      .filter((r) => r.access.includes('capacity'))
+      .filter((r) => !r.path.startsWith('/api/v1/me/'))
+      .map((r) => `${r.method} ${r.path}`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('R78: @AuthenticatedOnly and @RequireCapacity are only on /auth/logout and /me/*, so parent and student sessions reach nothing else', () => {
+    const wrong = routes
+      .filter((r) => r.access.includes('authenticated-only') || r.access.includes('capacity'))
       .filter((r) => !(r.path === '/api/v1/auth/logout' || r.path === '/api/v1/me' || r.path.startsWith('/api/v1/me/')))
       .map((r) => `${r.method} ${r.path}`);
     expect(wrong).toEqual([]);

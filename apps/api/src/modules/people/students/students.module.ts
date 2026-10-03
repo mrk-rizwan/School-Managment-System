@@ -13,6 +13,7 @@ import { StudentGuardianRepository } from '../../../repositories/student-guardia
 import { StudentStatusChangeRepository } from '../../../repositories/student-status-change.repository';
 import { StudentRepository } from '../../../repositories/student.repository';
 import { UserRepository } from '../../../repositories/user.repository';
+import { AttendanceHistoryProbe, NoAttendanceHistory } from './attendance-history-probe';
 import { EnrolmentsController } from './enrolments.controller';
 import { EnrolmentsService } from './enrolments.service';
 import { GuardianLinksController } from './guardian-links.controller';
@@ -37,6 +38,7 @@ import { StudentsService } from './students.service';
     StudentsService,
     GuardianLinksService,
     EnrolmentsService,
+    { provide: AttendanceHistoryProbe, useClass: NoAttendanceHistory },
     StudentLoginService,
     IdentityProbeThrottleGuard,
     BFormPatchThrottleGuard,

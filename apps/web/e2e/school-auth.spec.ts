@@ -1,7 +1,8 @@
 import { Capability, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import { expect as baseExpect, test, type Page, type Request } from '@playwright/test';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
-import type { MeDto, SchoolSettingsDto, UserDto } from '../lib/api/school-contract';
+import type { MeDto, UserDto } from '../lib/api/school-contract';
+import type { SchoolSettingsDto } from '../lib/api/school-messaging-contract';
 
 // School sign-in, account, users and settings screens against a mocked API
 // (contracts/slice-2.md §10). Every school /api/v1/* request is answered in the browser by
@@ -25,6 +26,8 @@ const OFFICE_ME: MeDto = {
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
+  capacities: ['staff'],
+  assignments: [],
 };
 const PRINCIPAL_ME: MeDto = {
   ...OFFICE_ME,
@@ -126,8 +129,10 @@ async function mockSchoolApi(page: Page, state: MockState) {
       return json(200, state.me);
     }
     if (method === 'POST' && path === '/me/change-password') {
+      // The API answers with LoginResultDto: the session rotates, so the cookie is re-set and the
+      // body carries `bearerToken` (null on the cookie channel).
       state.me = { ...me, passwordIsDefault: false };
-      return json(200, state.me);
+      return json(200, { ...state.me, bearerToken: null });
     }
     if (method === 'GET' && path === '/users') {
       if (state.usersReply) return reply(state.usersReply);
@@ -540,11 +545,32 @@ test.describe('user accounts', () => {
   });
 });
 
+/** contracts/slice-9.md §4: the slice-2 fields plus the plan §4.5 additions, at their defaults. */
+const settingsFixture = (extra: Partial<SchoolSettingsDto> = {}): SchoolSettingsDto => ({
+  feeDueDay: 10,
+  studentLoginEnabled: false,
+  periodsPerDay: 8,
+  weeklyOffDays: [0],
+  attendanceAmendWindowDays: 3,
+  registerDeadlineTime: '10:00',
+  absenceAlertTime: '09:30',
+  lateAdviceEnabled: false,
+  lateCountsAs: 'present',
+  lateCutoffTime: null,
+  leaveCountsAs: 'excused',
+  smsMonthlyCap: 500,
+  smsAllowedTypes: ['absence_alert', 'late_advice', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'],
+  remarkDefaultVisibility: 'guardian',
+  remarkNotifyGuardians: false,
+  updatedAt: '2026-10-01T00:00:00.000Z',
+  ...extra,
+});
+
 test.describe('school settings', () => {
   test('sends only what changed', async ({ page }) => {
     const requests = await mockSchoolApi(page, {
       me: PRINCIPAL_ME,
-      settings: { feeDueDay: 10, studentLoginEnabled: false, updatedAt: '2026-10-01T00:00:00.000Z' },
+      settings: settingsFixture(),
     });
     await open(page, '/settings');
     const dueDay = page.getByLabel('Fee due day');
@@ -562,26 +588,18 @@ test.describe('school settings', () => {
     });
   });
 
-  test('the suspended notice shows and a refused save lands on the form', async ({ page }) => {
-    await mockSchoolApi(page, {
+  test('a suspended school shows the banner and keeps working (R80 lifted)', async ({ page }) => {
+    const requests = await mockSchoolApi(page, {
       me: { ...PRINCIPAL_ME, school: { ...PRINCIPAL_ME.school, status: 'suspended' } },
-      settings: { feeDueDay: 10, studentLoginEnabled: false, updatedAt: '2026-10-01T00:00:00.000Z' },
+      settings: settingsFixture(),
     });
-    await page.route('**/api/v1/school/settings', (route) =>
-      route.request().method() === 'PATCH'
-        ? route.fulfill({
-            status: 403,
-            contentType: 'application/json',
-            body: JSON.stringify(
-              errorBody('SCHOOL_SUSPENDED', 'This school is suspended. Changes are not allowed.'),
-            ),
-          })
-        : route.fallback(),
-    );
     await open(page, '/settings');
-    await expect(page.getByText('This school is suspended', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('suspended-banner')).toContainText(
+      'This school’s subscription is suspended. Contact the platform.',
+    );
     await page.getByLabel('Fee due day').selectOption('12');
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByText('This school is suspended. Changes are not allowed.')).toBeVisible();
+    await expect(page.getByText('Settings saved.')).toBeVisible();
+    expect(posted(requests, '/school/settings')[0].postDataJSON()).toEqual({ feeDueDay: 12 });
   });
 });

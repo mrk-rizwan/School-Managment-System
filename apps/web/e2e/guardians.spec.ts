@@ -23,6 +23,8 @@ const OFFICE_ME: MeDto = {
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
+  capacities: ['staff'],
+  assignments: [],
 };
 const PRINCIPAL_ME: MeDto = {
   ...OFFICE_ME,

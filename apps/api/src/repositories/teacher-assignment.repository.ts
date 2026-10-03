@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
+import type { SectionRoles } from '../tenancy/scope';
 import type { Prisma, TeacherAssignmentRole } from './generated/prisma/client';
 import type { PrismaTxAdapter } from './prisma';
 
@@ -24,6 +25,10 @@ export interface TeacherAssignmentRecord {
   startsOn: Date;
   endsOn: Date | null;
   voidedAt: Date | null;
+  /** A cover's class-teacher row (contracts/slice-10.md §6); null otherwise. */
+  coversAssignmentId: bigint | null;
+  /** The covered class teacher's name; null when nothing is covered. */
+  coversStaffFullName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +42,8 @@ export interface NewTeacherAssignment {
   role: TeacherAssignmentRole;
   startsOn: Date;
   endsOn: Date | null;
+  /** Cover rows only (contracts/slice-10.md §6). */
+  coversAssignmentId?: bigint | null;
 }
 
 export type TeacherAssignmentSort = '-startsOn' | 'startsOn' | 'className';
@@ -64,6 +71,7 @@ const SELECT = {
   startsOn: true,
   endsOn: true,
   voidedAt: true,
+  coversAssignmentId: true,
   createdAt: true,
   updatedAt: true,
 } as const satisfies Prisma.TeacherAssignmentSelect;
@@ -208,29 +216,88 @@ export class TeacherAssignmentRepository {
   }
 
   /**
-   * Teacher scope (R53, R54): the sections of every row of the staff member active on `today`.
-   * A row with a section gives that section; a subject-teacher row without one gives every
-   * section of its class, archived included. Two sequential statements.
+   * Teacher scope on `on` (R53, R54, R175; contracts/slice-10.md §7.1): every section the staff
+   * member holds any role in on that date, with the roles. A row counts iff not voided, begun and
+   * not ended. `class_teacher` sets classTeacher, `cover` sets cover, `subject_teacher` adds its
+   * subject; a subject row without a section applies to every section of its class, archived
+   * included. Two sequential statements.
+   */
+  async sectionsOn(
+    schoolId: SchoolId,
+    staffId: bigint,
+    on: Date,
+  ): Promise<ReadonlyMap<bigint, SectionRoles>> {
+    const rows = await this.txHost.tx.teacherAssignment.findMany({
+      where: { schoolId, staffId, ...liveOverlapping(on, on) },
+      select: { classId: true, sectionId: true, subjectId: true, role: true },
+      orderBy: { id: 'asc' },
+    });
+    const wholeClasses = [
+      ...new Set(rows.filter((row) => row.sectionId === null).map((row) => row.classId)),
+    ];
+    const classSections =
+      wholeClasses.length === 0
+        ? []
+        : await this.txHost.tx.section.findMany({
+            where: { schoolId, classId: { in: wholeClasses } },
+            select: { id: true, classId: true },
+          });
+    const roles = new Map<bigint, { classTeacher: boolean; cover: boolean; subjectIds: Set<bigint> }>();
+    const entry = (sectionId: bigint) => {
+      let value = roles.get(sectionId);
+      if (!value) {
+        value = { classTeacher: false, cover: false, subjectIds: new Set() };
+        roles.set(sectionId, value);
+      }
+      return value;
+    };
+    for (const row of rows) {
+      const sectionIds =
+        row.sectionId === null
+          ? classSections.filter((s) => s.classId === row.classId).map((s) => s.id)
+          : [row.sectionId];
+      for (const sectionId of sectionIds) {
+        const value = entry(sectionId);
+        if (row.role === 'class_teacher') value.classTeacher = true;
+        else if (row.role === 'cover') value.cover = true;
+        else if (row.subjectId !== null) value.subjectIds.add(row.subjectId);
+      }
+    }
+    const sorted = [...roles.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return new Map(
+      sorted.map(([sectionId, value]) => [
+        sectionId,
+        {
+          classTeacher: value.classTeacher,
+          cover: value.cover,
+          subjectIds: [...value.subjectIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+        },
+      ]),
+    );
+  }
+
+  /** The roles in one section on `on`; all false and no subjects when none (§7.1). */
+  async rolesOn(
+    schoolId: SchoolId,
+    staffId: bigint,
+    sectionId: bigint,
+    on: Date,
+  ): Promise<SectionRoles> {
+    return (
+      (await this.sectionsOn(schoolId, staffId, on)).get(sectionId) ?? {
+        classTeacher: false,
+        cover: false,
+        subjectIds: [],
+      }
+    );
+  }
+
+  /**
+   * Today's teacher scope (R53, R54): the key set of sectionsOn(today), so today's scope and the
+   * dated scope cannot disagree (contracts/slice-10.md §7.1). Ascending ids.
    */
   async activeSectionIds(schoolId: SchoolId, staffId: bigint, today: Date): Promise<bigint[]> {
-    const rows = await this.txHost.tx.teacherAssignment.findMany({
-      where: { schoolId, staffId, ...liveOverlapping(today, today) },
-      select: { classId: true, sectionId: true },
-    });
-    const ids = new Set<bigint>();
-    const wholeClasses: bigint[] = [];
-    for (const row of rows) {
-      if (row.sectionId === null) wholeClasses.push(row.classId);
-      else ids.add(row.sectionId);
-    }
-    if (wholeClasses.length > 0) {
-      const sections = await this.txHost.tx.section.findMany({
-        where: { schoolId, classId: { in: wholeClasses } },
-        select: { id: true },
-      });
-      for (const section of sections) ids.add(section.id);
-    }
-    return [...ids].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return [...(await this.sectionsOn(schoolId, staffId, today)).keys()];
   }
 
   async create(schoolId: SchoolId, data: NewTeacherAssignment): Promise<TeacherAssignmentRecord> {
@@ -291,10 +358,34 @@ export class TeacherAssignmentRepository {
             where: { schoolId, id: { in: subjectIds } },
             select: { id: true, name: true },
           });
-    const staffNames = new Map(staff.map((s) => [s.id, s.fullName]));
+    // Covered class-teacher rows (cover rows only), then their staff names: two more reads.
+    const coveredIds = unique(rows.map((r) => r.coversAssignmentId));
+    const covered =
+      coveredIds.length === 0
+        ? []
+        : await this.txHost.tx.teacherAssignment.findMany({
+            where: { schoolId, id: { in: coveredIds } },
+            select: { id: true, staffId: true },
+          });
+    const coveredStaffIds = unique(covered.map((c) => c.staffId)).filter(
+      (id) => !staff.some((s) => s.id === id),
+    );
+    const coveredStaff =
+      coveredStaffIds.length === 0
+        ? []
+        : await this.txHost.tx.staff.findMany({
+            where: { schoolId, id: { in: coveredStaffIds } },
+            select: { id: true, fullName: true },
+          });
+    const staffNames = new Map([...staff, ...coveredStaff].map((s) => [s.id, s.fullName]));
+    const coveredStaffById = new Map(covered.map((c) => [c.id, c.staffId]));
     const classById = new Map(classes.map((c) => [c.id, c]));
     const sectionNames = new Map(sections.map((s) => [s.id, s.name]));
     const subjectNames = new Map(subjects.map((s) => [s.id, s.name]));
+    const coveredName = (id: bigint | null): string | null => {
+      const staffId = id === null ? undefined : coveredStaffById.get(id);
+      return staffId === undefined ? null : (staffNames.get(staffId) ?? null);
+    };
     return rows.map((row) => {
       const klass = classById.get(row.classId);
       return {
@@ -304,6 +395,7 @@ export class TeacherAssignmentRepository {
         className: klass?.name ?? '',
         sectionName: row.sectionId === null ? null : (sectionNames.get(row.sectionId) ?? null),
         subjectName: row.subjectId === null ? null : (subjectNames.get(row.subjectId) ?? null),
+        coversStaffFullName: coveredName(row.coversAssignmentId),
       };
     });
   }

@@ -13,19 +13,24 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
-import { platform, type SchoolDto, type UpdateSchoolBody } from '@/lib/api/platform-contract';
+import {
+  platformMessagingApi,
+  type SchoolDto,
+  type UpdateSchoolBody,
+} from '@/lib/api/platform-messaging-contract';
 import { formatDateTime } from '@/lib/format';
 import { platformKeys } from '@/lib/platform-session';
 import { nameSchema } from '@/lib/validation';
 import { SchoolStatusBadge, useTimezoneOptions } from '../school-ui';
 import { IssuePrincipalLogin } from './issue-principal-login';
+import { MessagingKnobsForm } from './messaging-knobs';
 import { StatusChange } from './status-change';
 
 export function SchoolDetail({ id }: { id: string }) {
   const school = useQuery({
     queryKey: platformKeys.school(id),
     queryFn: () =>
-      unwrap(platform.GET('/api/v1/platform/schools/{id}', { params: { path: { id } } })),
+      unwrap(platformMessagingApi.GET('/api/v1/platform/schools/{id}', { params: { path: { id } } })),
   });
 
   return (
@@ -57,8 +62,11 @@ export function SchoolDetail({ id }: { id: string }) {
                 }
               />
               <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                {/* Keyed by the last update so the form restarts from the saved values. */}
-                <EditSchoolForm key={data.updatedAt} school={data} />
+                {/* Keyed by the last update so the forms restart from the saved values. */}
+                <div className="grid gap-6">
+                  <EditSchoolForm key={data.updatedAt} school={data} />
+                  <MessagingKnobsForm key={`messaging-${data.updatedAt}`} school={data} />
+                </div>
                 <Card>
                   <CardHeader>
                     <CardTitle>Record</CardTitle>
@@ -117,7 +125,7 @@ function EditSchoolForm({ school }: { school: SchoolDto }) {
   const save = useMutation({
     mutationFn: (body: UpdateSchoolBody) =>
       unwrap(
-        platform.PATCH('/api/v1/platform/schools/{id}', {
+        platformMessagingApi.PATCH('/api/v1/platform/schools/{id}', {
           params: { path: { id: school.id } },
           body,
         }),

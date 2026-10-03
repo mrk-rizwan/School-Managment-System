@@ -3,7 +3,18 @@ import { expect as baseExpect, test, type Page } from '@playwright/test';
 import type { components as PlatformSchemas } from '../lib/api/platform';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
 import type { AcademicYearDto, ClassDto, SectionDto, SubjectDto } from '../lib/api/school-academics-contract';
-import type { MeDto, SchoolSettingsDto, UserDto } from '../lib/api/school-contract';
+import type {
+  PlatformDeliveryHealthDto,
+  PlatformSettingsDto,
+  SchoolDto as PlatformSchoolDto,
+} from '../lib/api/platform-messaging-contract';
+import type { HolidayDto, TeachingDaysDto } from '../lib/api/school-calendar-contract';
+import type { MeDto, UserDto } from '../lib/api/school-contract';
+import type {
+  MessagingUsageDto,
+  SchoolSettingsDto,
+  WhatsAppSettingsDto,
+} from '../lib/api/school-messaging-contract';
 import type { GuardianDetailDto, GuardianStudentDto } from '../lib/api/school-guardians-contract';
 import type { CustomRoleDto } from '../lib/api/school-roles-contract';
 import type { StaffDto, TeacherAssignmentDto } from '../lib/api/school-staff-contract';
@@ -26,7 +37,7 @@ const TOKEN = 'Abcdefghij_klmnopqrst-uvwxyz0123456789ABCDE';
 const STAMP = '2026-09-01T05:00:00.000Z';
 
 type PlatformMe = PlatformSchemas['schemas']['PlatformMeDto'];
-type School = PlatformSchemas['schemas']['SchoolDto'];
+type School = PlatformSchoolDto;
 
 const PRINCIPAL_ME: MeDto = {
   id: 'u-principal',
@@ -38,6 +49,8 @@ const PRINCIPAL_ME: MeDto = {
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
+  capacities: ['staff'],
+  assignments: [],
 };
 
 const YEARS: AcademicYearDto[] = [
@@ -116,6 +129,8 @@ const ASSIGNMENTS: TeacherAssignmentDto[] = [
     endsOn: null,
     voidedAt: null,
     activeToday: true,
+    coversAssignmentId: null,
+    coversStaffFullName: null,
     createdAt: STAMP,
   },
 ];
@@ -263,7 +278,105 @@ const CUSTOM_ROLES = [
   customRole('cr2', 'Exams desk', [Capability.PAYMENT_RECORD], 1),
 ];
 
-const SETTINGS: SchoolSettingsDto = { feeDueDay: 10, studentLoginEnabled: true, updatedAt: STAMP };
+const SETTINGS: SchoolSettingsDto = {
+  feeDueDay: 10,
+  studentLoginEnabled: true,
+  periodsPerDay: 8,
+  weeklyOffDays: [0],
+  attendanceAmendWindowDays: 3,
+  registerDeadlineTime: '10:00',
+  absenceAlertTime: '09:30',
+  lateAdviceEnabled: true,
+  lateCountsAs: 'absent_after_cutoff',
+  lateCutoffTime: '08:15',
+  leaveCountsAs: 'excused',
+  smsMonthlyCap: 500,
+  smsAllowedTypes: ['absence_alert', 'late_advice', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'],
+  remarkDefaultVisibility: 'guardian',
+  remarkNotifyGuardians: false,
+  updatedAt: STAMP,
+};
+
+// Wave D (contracts/slice-9.md, slice-10.md): messaging, calendar, platform delivery health.
+const WHATSAPP: WhatsAppSettingsDto = {
+  effectiveProvider: 'waha',
+  number: {
+    id: 'wn1',
+    provider: 'waha',
+    phoneMasked: '+9230*****67',
+    status: 'down',
+    lastHealthyAt: '2026-10-03T04:00:00.000Z',
+    lastErrorCode: 'logged_out',
+    inboundIgnoredCount: 3,
+    pairedAt: STAMP,
+    createdAt: STAMP,
+  },
+};
+const USAGE: MessagingUsageDto = {
+  months: [
+    { yearMonth: '2026-10', byChannel: [{ channel: 'sms', count: 120 }, { channel: 'whatsapp', count: 2400 }, { channel: 'push', count: 310 }, { channel: 'email', count: 4 }] },
+    { yearMonth: '2026-09', byChannel: [{ channel: 'sms', count: 480 }, { channel: 'whatsapp', count: 9100 }, { channel: 'push', count: 1200 }, { channel: 'email', count: 12 }] },
+  ],
+  cap: 500,
+  remaining: 380,
+};
+const holiday = (id: string, name: string, startsOn: string, endsOn: string, status: HolidayDto['status']): HolidayDto => ({
+  id,
+  startsOn,
+  endsOn,
+  name,
+  description: null,
+  kind: 'school',
+  appliesToStaff: true,
+  status,
+  publishedAt: status === 'draft' ? null : STAMP,
+  publishedBy: status === 'draft' ? null : 'u-principal',
+  publishedByName: status === 'draft' ? null : 'Amina Principal',
+  cancelledAt: null,
+  cancelledBy: null,
+  cancelledByName: null,
+  cancelReason: null,
+  announcementId: null,
+  createdAt: STAMP,
+  updatedAt: STAMP,
+});
+const HOLIDAYS = [
+  holiday('h1', 'Iqbal Day', '2026-11-09', '2026-11-09', 'published'),
+  holiday('h2', 'Winter vacation for all classes and staff', '2026-12-22', '2027-01-04', 'draft'),
+];
+const TEACHING_DAYS: TeachingDaysDto = {
+  dateFrom: '2026-10-01',
+  dateTo: '2026-10-31',
+  teachingDays: 26,
+  weeklyOffDays: [0],
+  holidays: [],
+};
+const PLATFORM_SETTINGS: PlatformSettingsDto = { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], updatedAt: STAMP };
+const healthRow = (schoolId: string, name: string, shortCode: string): PlatformDeliveryHealthDto => ({
+  schoolId,
+  name,
+  shortCode,
+  schoolStatus: 'active',
+  whatsapp: { status: 'down', lastHealthyAt: '2026-10-03T04:00:00.000Z', lastErrorCode: 'logged_out' },
+  today: [
+    { channel: 'whatsapp', accepted: 1200, delivered: 1100, failed: 14, suppressed: 0 },
+    { channel: 'sms', accepted: 80, delivered: 75, failed: 2, suppressed: 9 },
+    { channel: 'push', accepted: 300, delivered: 0, failed: 0, suppressed: 0 },
+    { channel: 'email', accepted: 0, delivered: 0, failed: 0, suppressed: 0 },
+  ],
+  yesterday: [
+    { channel: 'whatsapp', accepted: 900, delivered: 890, failed: 3, suppressed: 0 },
+    { channel: 'sms', accepted: 40, delivered: 40, failed: 0, suppressed: 0 },
+    { channel: 'push', accepted: 0, delivered: 0, failed: 0, suppressed: 0 },
+    { channel: 'email', accepted: 1, delivered: 1, failed: 0, suppressed: 0 },
+  ],
+  sms: { used: 480, cap: 500 },
+  computedAt: '2026-10-04T05:00:00.000Z',
+});
+const HEALTH = [
+  healthRow('s1', 'Green Valley Higher Secondary School', 'greenvalley'),
+  healthRow('s3', 'The City Grammar School, Model Town Campus', 'citygram'),
+];
 
 const FULL_PLATFORM_ME: PlatformMe = {
   id: '1',
@@ -281,6 +394,10 @@ const school = (id: string, name: string, shortCode: string, status: School['sta
   timezone: 'Asia/Karachi',
   createdAt: STAMP,
   updatedAt: STAMP,
+  // contracts/slice-9.md §6.1: the messaging knobs on the school record.
+  smsMonthlyCap: 500,
+  whatsappProvider: 'platform_default',
+  smsProvider: 'platform_default',
 });
 const SCHOOLS = [
   school('s1', 'Green Valley Higher Secondary School', 'greenvalley', 'active'),
@@ -316,6 +433,8 @@ async function mockApi(page: Page, session: Session) {
         });
       }
       if (method === 'GET' && p === '/schools') return json(200, page1(SCHOOLS));
+      if (method === 'GET' && p === '/settings') return json(200, PLATFORM_SETTINGS);
+      if (method === 'GET' && p === '/messaging/health') return json(200, page1(HEALTH));
       const detail = p.match(/^\/schools\/([^/]+)$/);
       const found = detail && SCHOOLS.find((s) => s.id === detail[1]);
       if (method === 'GET' && found) return json(200, found);
@@ -337,6 +456,7 @@ async function mockApi(page: Page, session: Session) {
       '/guardians': GUARDIANS,
       '/students': STUDENTS,
       '/custom-roles': CUSTOM_ROLES,
+      '/holidays': HOLIDAYS,
       '/classes/c5/sections': SECTIONS,
       '/classes/c6/sections': [],
       '/classes/c9/sections': [],
@@ -351,6 +471,9 @@ async function mockApi(page: Page, session: Session) {
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
+    if (path === '/messaging/whatsapp') return json(200, WHATSAPP);
+    if (path === '/messaging/usage') return json(200, USAGE);
+    if (path === '/calendar/teaching-days') return json(200, TEACHING_DAYS);
     if (lists[path]) return json(200, page1(lists[path]));
     const one: Record<string, unknown> = {
       '/classes/c5': CLASSES[0],
@@ -388,6 +511,8 @@ const SCREENS: Screen[] = [
   { path: '/account', heading: 'Your account', session: 'school' },
   { path: '/users', heading: 'User accounts', session: 'school' },
   { path: '/settings', heading: 'School settings', session: 'school' },
+  { path: '/settings/messaging', heading: 'Messaging', session: 'school' },
+  { path: '/calendar', heading: 'Calendar', session: 'school' },
   { path: '/staff', heading: 'Staff', session: 'school' },
   { path: '/staff/new', heading: 'New staff member', session: 'school' },
   { path: '/staff/st1', heading: 'Ayesha Malik', session: 'school' },
@@ -408,6 +533,8 @@ const SCREENS: Screen[] = [
   { path: '/platform/schools', heading: 'Schools', session: 'platform' },
   { path: '/platform/schools/new', heading: 'New school', session: 'platform' },
   { path: '/platform/schools/s1', heading: 'Green Valley Higher Secondary School', session: 'platform' },
+  { path: '/platform/messaging', heading: 'Delivery health', session: 'platform' },
+  { path: '/platform/settings', heading: 'Platform settings', session: 'platform' },
 ];
 
 function sessionFor(kind: Screen['session']): Session {

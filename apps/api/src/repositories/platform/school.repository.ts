@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
-import type { SchoolStatus } from '@asms/shared';
+import type { SchoolStatus, SmsProviderChoice, WhatsAppProviderChoice } from '@asms/shared';
 import type { CreatedSchoolRow } from '../../tenancy/school-id';
 import {
   createdSchoolRow,
@@ -17,6 +17,10 @@ export interface SchoolRecord {
   shortCode: string;
   status: SchoolStatus;
   timezone: string;
+  /** Messaging knobs set by the platform (contracts/slice-9.md §6.1). */
+  smsMonthlyCap: number;
+  whatsappProvider: WhatsAppProviderChoice;
+  smsProvider: SmsProviderChoice;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +44,9 @@ const SELECT = {
   shortCode: true,
   status: true,
   timezone: true,
+  smsMonthlyCap: true,
+  whatsappProvider: true,
+  smsProvider: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.SchoolSelect;
@@ -116,6 +123,9 @@ export class SchoolRepository {
         name: school.name,
         timezone: school.timezone,
         status: school.status,
+        smsMonthlyCap: school.smsMonthlyCap,
+        whatsappProvider: school.whatsappProvider,
+        smsProvider: school.smsProvider,
         updatedAt: school.updatedAt,
       },
       data: { updatedAt: school.updatedAt },
@@ -142,7 +152,16 @@ export class SchoolRepository {
   }
 
   /** Plain attributes. The caller holds the row lock (lockIfUnchanged) and has checked status. */
-  async update(id: bigint, data: { name?: string; timezone?: string }): Promise<void> {
+  async update(
+    id: bigint,
+    data: {
+      name?: string;
+      timezone?: string;
+      smsMonthlyCap?: number;
+      whatsappProvider?: WhatsAppProviderChoice;
+      smsProvider?: SmsProviderChoice;
+    },
+  ): Promise<void> {
     await this.txHost.tx.school.update({ where: { id }, data, select: { id: true } });
   }
 

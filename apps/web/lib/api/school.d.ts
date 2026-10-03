@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/calendar/teaching-days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CalendarController_teachingDays"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes": {
         parameters: {
             query?: never;
@@ -500,6 +516,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HolidaysController_list"];
+        put?: never;
+        post: operations["HolidaysController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/holidays/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HolidaysController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["HolidaysController_update"];
+        trace?: never;
+    };
+    "/api/v1/holidays/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["HolidaysController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/holidays/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["HolidaysController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -508,6 +588,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MeController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyCalendarController_myCalendar"];
         put?: never;
         post?: never;
         delete?: never;
@@ -542,6 +638,134 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["MeController_changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MeSessionsController_registerDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MeSessionsController_revokeOthers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MessagingController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MessagingController_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MessagingController_whatsapp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/whatsapp/connect-cloud-api": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MessagingController_connectCloudApi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/whatsapp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MessagingController_disable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging/whatsapp/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MessagingController_pair"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1076,6 +1300,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/sign-out-everywhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["UsersController_signOutEverywhere"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1164,6 +1404,18 @@ export interface components {
         };
         /** @enum {string} */
         AttendanceMode: "daily" | "period";
+        CalendarHolidayDto: {
+            /** Format: date */
+            endsOn: string;
+            id: string;
+            kind: components["schemas"]["HolidayKind"];
+            name: string;
+            /** Format: date */
+            startsOn: string;
+        };
+        CancelHolidayDto: {
+            reason: string;
+        };
         /** @enum {string} */
         Capability: "school.settings.manage" | "academic_year.manage" | "class.manage" | "section.manage" | "subject.manage" | "fee_head.manage" | "holiday.manage" | "user.account.manage" | "role.manage" | "student.view" | "student.create" | "student.update" | "student.status.change" | "enrolment.manage" | "guardian.manage" | "document.view" | "document.upload" | "document.verify" | "staff.view" | "staff.create" | "staff.update" | "staff.contract.manage" | "staff.status.change" | "staff.leave.approve" | "payroll.view" | "payroll.run" | "attendance.student.mark" | "attendance.student.view_all" | "attendance.staff.manage" | "assessment.define" | "marks.enter" | "marks.view_all" | "result.approve" | "result.publish" | "diary.write" | "remark.write" | "timetable.manage" | "certificate.issue" | "charge.create" | "charge.campaign.send" | "concession.grant" | "payment.record" | "payment.verify" | "payment.void" | "collection.handover.confirm" | "expense.record" | "expense.approve" | "finance.report.view" | "fee.statement.view" | "announcement.send.scope" | "announcement.send.school";
         /** @enum {string} */
@@ -1179,11 +1431,13 @@ export interface components {
         };
         /** @enum {string} */
         CapabilitySourceKind: "system_role" | "custom_role" | "grant";
+        /** @enum {string} */
+        Capacity: "staff" | "guardian" | "student";
         ChangeClassDto: {
             classId: string;
             /**
              * Format: date
-             * @description On or after the current enrolment started, no later than today
+             * @description The first day in the new class: on or after the current enrolment started, no later than today. The current enrolment ends the day before.
              */
             effectiveOn: string;
             reason: string;
@@ -1202,7 +1456,13 @@ export interface components {
             newPassword: string;
         };
         ChangeSectionDto: {
-            reason?: string;
+            /**
+             * Format: date
+             * @description The first day in the new section: on or after the current enrolment started, no later than today. The current enrolment ends the day before.
+             */
+            effectiveOn: string;
+            reason: string;
+            /** @description Another section of the same class */
             sectionId: string;
         };
         ChangeStaffStatusDto: {
@@ -1235,6 +1495,11 @@ export interface components {
         ClassSort: "sortOrder" | "-sortOrder" | "name" | "-name";
         /** @enum {string} */
         ClassStatus: "active" | "archived";
+        ConnectCloudApiDto: {
+            accessToken: string;
+            phone: string;
+            phoneNumberId: string;
+        };
         /** @enum {string} */
         ContactCapability: "whatsapp" | "smartphone_data" | "keypad";
         CopySectionsDto: {
@@ -1299,6 +1564,24 @@ export interface components {
             isPrimaryContact: boolean;
             relationship: components["schemas"]["Relationship"];
         };
+        CreateHolidayDto: {
+            /** @default true */
+            appliesToStaff?: boolean;
+            /** @description '' and null store null */
+            description?: string | null;
+            /**
+             * Format: date
+             * @description Default startsOn; at most 365 days after it
+             */
+            endsOn?: string;
+            kind: components["schemas"]["HolidayKind"];
+            name: string;
+            /**
+             * Format: date
+             * @description Within today − 366 days … today + 731 days
+             */
+            startsOn: string;
+        };
         CreateSectionDto: {
             capacity?: number | null;
             name: string;
@@ -1324,12 +1607,17 @@ export interface components {
         CreateTeacherAssignmentDto: {
             /** @description The academic year is the class’s */
             classId: string;
-            /** Format: date */
+            /** @description Cover only: the class-teacher row of the section being covered; absent or null = a section with no class teacher */
+            coversAssignmentId?: string | null;
+            /**
+             * Format: date
+             * @description Required for a cover (it always ends)
+             */
             endsOn?: string | null;
             /** @description Class teacher only: end or void the current one */
             replaceCurrent?: boolean;
             role: components["schemas"]["TeacherRole"];
-            /** @description Required for a class teacher; null for a subject teacher = every section */
+            /** @description Required for a class teacher and a cover; null for a subject teacher = every section */
             sectionId?: string | null;
             /**
              * Format: date
@@ -1357,6 +1645,20 @@ export interface components {
         CustomRoleSort: "name" | "-name" | "createdAt" | "-createdAt";
         /** @enum {string} */
         CustomRoleStatus: "active" | "archived";
+        DeviceDto: {
+            appVersion: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            platform: components["schemas"]["DevicePlatform"];
+        };
+        /** @enum {string} */
+        DevicePlatform: "android" | "ios";
+        DisableWhatsAppDto: {
+            reason: string;
+        };
         /** @enum {string} */
         DocumentMime: "image/jpeg" | "image/png" | "application/pdf";
         /** @enum {string} */
@@ -1535,6 +1837,47 @@ export interface components {
             /** @enum {string} */
             status: "ok";
         };
+        HolidayDto: {
+            /** @description Always null until announcements (slice 14) */
+            announcementId: string | null;
+            /** @description False: a teaching holiday on which staff still work */
+            appliesToStaff: boolean;
+            cancelReason: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelledBy: string | null;
+            cancelledByName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            description: string | null;
+            /**
+             * Format: date
+             * @description Equals startsOn for a single day
+             */
+            endsOn: string;
+            id: string;
+            /** @description Informational: both kinds count the same */
+            kind: components["schemas"]["HolidayKind"];
+            name: string;
+            /** Format: date-time */
+            publishedAt: string | null;
+            publishedBy: string | null;
+            publishedByName: string | null;
+            /** Format: date */
+            startsOn: string;
+            status: components["schemas"]["HolidayStatus"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Informational: both kinds count the same
+         * @enum {string}
+         */
+        HolidayKind: "public" | "school";
+        /** @enum {string} */
+        HolidaySort: "startsOn" | "-startsOn";
+        /** @enum {string} */
+        HolidayStatus: "draft" | "published" | "cancelled";
         IssueLoginDto: {
             reason?: string;
         };
@@ -1543,13 +1886,51 @@ export interface components {
             reason?: string;
             systemRole: components["schemas"]["SystemRole"];
         };
+        /** @enum {string} */
+        LateCountsAs: "present" | "half_day" | "absent_after_cutoff";
+        /** @enum {string} */
+        LeaveCountsAs: "excused" | "absent";
         LoginOffersDto: {
             guardians: components["schemas"]["GuardianLoginOfferDto"][];
             /** @description Student logins are enabled, the student has a B-Form and no login */
             student: boolean;
         };
-        MeDto: {
+        LoginResultDto: {
+            assignments: components["schemas"]["MeAssignmentDto"][];
+            /** @description Bearer sessions only; null for cookie. */
+            bearerToken: string | null;
             capabilities: components["schemas"]["Capability"][];
+            capacities: components["schemas"]["Capacity"][];
+            email: string | null;
+            fullName: string;
+            hasVerifiedEmail: boolean;
+            id: string;
+            passwordIsDefault: boolean;
+            roles: components["schemas"]["SchoolRole"][];
+            school: components["schemas"]["MeSchoolDto"];
+            /** Format: date-time */
+            sessionExpiresAt: string;
+        };
+        MeAssignmentDto: {
+            academicYearId: string;
+            attendanceMode: components["schemas"]["AttendanceMode"];
+            classId: string;
+            className: string;
+            /** Format: date */
+            endsOn: string | null;
+            id: string;
+            role: components["schemas"]["TeacherRole"];
+            sectionId: string | null;
+            sectionName: string | null;
+            /** Format: date */
+            startsOn: string;
+            subjectId: string | null;
+            subjectName: string | null;
+        };
+        MeDto: {
+            assignments: components["schemas"]["MeAssignmentDto"][];
+            capabilities: components["schemas"]["Capability"][];
+            capacities: components["schemas"]["Capacity"][];
             email: string | null;
             fullName: string;
             hasVerifiedEmail: boolean;
@@ -1565,6 +1946,42 @@ export interface components {
             name: string;
             shortCode: string;
             status: components["schemas"]["SchoolStatus"];
+        };
+        /** @enum {string} */
+        MessageChannel: "push" | "whatsapp" | "sms" | "email" | "in_app";
+        /** @enum {string} */
+        MessageType: "absence_alert" | "late_advice" | "attendance_corrected" | "announcement_urgent" | "announcement_normal" | "holiday_notice" | "diary_posted" | "remark_posted" | "register_unrecorded" | "sms_cap_reached" | "messaging_test" | "whatsapp_session_down" | "cover_assigned";
+        /** @enum {string} */
+        MessagingTestChannel: "whatsapp" | "sms" | "push";
+        MessagingTestDto: {
+            channel: components["schemas"]["MessagingTestChannel"];
+        };
+        MessagingTestResultDto: {
+            messageId: string;
+        };
+        MessagingUsageDto: {
+            /** @description SMS segments a month, set by the platform */
+            cap: number;
+            /** @description This month, then last month (Asia/Karachi) */
+            months: components["schemas"]["UsageMonthDto"][];
+            remaining: number;
+        };
+        MyCalendarDto: {
+            /** Format: date */
+            dateFrom: string;
+            /** Format: date */
+            dateTo: string;
+            holidays: components["schemas"]["MyCalendarHolidayDto"][];
+            /** @description Weekly-off days ascending, 0 = Sunday … 6 = Saturday */
+            weeklyOffDays: number[];
+        };
+        MyCalendarHolidayDto: {
+            /** Format: date */
+            endsOn: string;
+            kind: components["schemas"]["HolidayKind"];
+            name: string;
+            /** Format: date */
+            startsOn: string;
         };
         OfficeResetDto: {
             clearEmail: boolean;
@@ -1593,8 +2010,14 @@ export interface components {
         ReasonDto: {
             reason: string;
         };
+        RegisterDeviceDto: {
+            platform: components["schemas"]["DevicePlatform"];
+            pushToken: string;
+        };
         /** @enum {string} */
         Relationship: "father" | "mother" | "guardian" | "other";
+        /** @enum {string} */
+        RemarkVisibility: "internal" | "guardian" | "student";
         RemoveRoleDto: {
             reason: string;
         };
@@ -1605,6 +2028,8 @@ export interface components {
             token: string;
         };
         SchoolLoginDto: {
+            /** @default cookie */
+            channel?: components["schemas"]["SessionChannel"];
             /** Format: password */
             password: string;
             schoolCode: string;
@@ -1614,13 +2039,34 @@ export interface components {
         /** @enum {string} */
         SchoolRole: "principal" | "office_staff" | "teacher" | "parent" | "student";
         SchoolSettingsDto: {
+            /** @example 09:30 */
+            absenceAlertTime: string;
+            attendanceAmendWindowDays: number;
             feeDueDay: number;
+            lateAdviceEnabled: boolean;
+            lateCountsAs: components["schemas"]["LateCountsAs"];
+            /** @example 09:30 */
+            lateCutoffTime: string | null;
+            leaveCountsAs: components["schemas"]["LeaveCountsAs"];
+            periodsPerDay: number;
+            /** @example 09:30 */
+            registerDeadlineTime: string;
+            remarkDefaultVisibility: components["schemas"]["RemarkVisibility"];
+            remarkNotifyGuardians: boolean;
+            smsAllowedTypes: components["schemas"]["MessageType"][];
+            readonly smsMonthlyCap: number;
             studentLoginEnabled: boolean;
             /** Format: date-time */
             updatedAt: string;
+            /** @description Weekly off days, 0 = Sunday ... 6 = Saturday; distinct, not all seven; ascending. */
+            weeklyOffDays: number[];
         };
         /** @enum {string} */
         SchoolStatus: "trial" | "active" | "suspended" | "terminated";
+        SectionChangeResultDto: {
+            closed: components["schemas"]["EnrolmentDto"];
+            opened: components["schemas"]["EnrolmentDto"];
+        };
         SectionDto: {
             /** Format: date-time */
             archivedAt: string | null;
@@ -1636,6 +2082,11 @@ export interface components {
         };
         /** @enum {string} */
         SectionSort: "name" | "-name";
+        /** @enum {string} */
+        SessionChannel: "cookie" | "bearer";
+        SessionsRevokedDto: {
+            revoked: number;
+        };
         StaffDto: {
             /** @description Masked, e.g. 35201-*****-1 */
             cnicMasked: string | null;
@@ -1791,6 +2242,10 @@ export interface components {
             activeToday: boolean;
             classId: string;
             className: string;
+            /** @description Cover only: the class-teacher row covered */
+            coversAssignmentId: string | null;
+            /** @description Cover only: the covered class teacher */
+            coversStaffFullName: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date */
@@ -1812,6 +2267,18 @@ export interface components {
         TeacherAssignmentSort: "-startsOn" | "startsOn" | "className";
         /** @enum {string} */
         TeacherRole: "class_teacher" | "subject_teacher" | "cover";
+        TeachingDaysDto: {
+            /** Format: date */
+            dateFrom: string;
+            /** Format: date */
+            dateTo: string;
+            /** @description Published holidays overlapping the range */
+            holidays: components["schemas"]["CalendarHolidayDto"][];
+            /** @description Informational for past ranges (R116): nothing stored depends on it */
+            teachingDays: number;
+            /** @description Weekly-off days ascending, 0 = Sunday … 6 = Saturday */
+            weeklyOffDays: number[];
+        };
         UpdateAcademicYearDto: {
             /** Format: date */
             endsOn?: string;
@@ -1850,9 +2317,36 @@ export interface components {
             isPrimaryContact?: boolean;
             relationship?: components["schemas"]["Relationship"];
         };
+        UpdateHolidayDto: {
+            appliesToStaff?: boolean;
+            description?: string | null;
+            /** Format: date */
+            endsOn?: string;
+            kind?: components["schemas"]["HolidayKind"];
+            name?: string;
+            /** Format: date */
+            startsOn?: string;
+        };
         UpdateSchoolSettingsDto: {
+            /** @example 09:30 */
+            absenceAlertTime?: string;
+            attendanceAmendWindowDays?: number;
             feeDueDay?: number;
+            lateAdviceEnabled?: boolean;
+            lateCountsAs?: components["schemas"]["LateCountsAs"];
+            /** @example 09:30 */
+            lateCutoffTime?: string | null;
+            leaveCountsAs?: components["schemas"]["LeaveCountsAs"];
+            periodsPerDay?: number;
+            /** @example 09:30 */
+            registerDeadlineTime?: string;
+            remarkDefaultVisibility?: components["schemas"]["RemarkVisibility"];
+            remarkNotifyGuardians?: boolean;
+            /** @description SMS-eligible types only (contracts/slice-9.md §7.2). */
+            smsAllowedTypes?: components["schemas"]["MessageType"][];
             studentLoginEnabled?: boolean;
+            /** @description Weekly off days, 0 = Sunday ... 6 = Saturday; distinct, not all seven; ascending. */
+            weeklyOffDays?: number[];
         };
         UpdateSectionDto: {
             /** @description null clears */
@@ -1891,6 +2385,14 @@ export interface components {
              * @description JPEG, PNG or PDF, at most 5 MB
              */
             file: string;
+        };
+        UsageChannelDto: {
+            channel: components["schemas"]["MessageChannel"];
+            count: number;
+        };
+        UsageMonthDto: {
+            byChannel: components["schemas"]["UsageChannelDto"][];
+            yearMonth: string;
         };
         UserDto: {
             /** Format: date-time */
@@ -1944,6 +2446,41 @@ export interface components {
             schoolCode: string;
             token: string;
         };
+        /** @enum {string} */
+        WhatsAppErrorCode: "unreachable" | "logged_out" | "session_failed" | "token_rejected" | "number_mismatch" | "unknown";
+        WhatsAppNumberDto: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            inboundIgnoredCount: number;
+            lastErrorCode: components["schemas"]["WhatsAppErrorCode"] | null;
+            /** Format: date-time */
+            lastHealthyAt: string | null;
+            /** Format: date-time */
+            pairedAt: string | null;
+            /** @example +9230*****67 */
+            phoneMasked: string;
+            provider: components["schemas"]["WhatsAppProvider"];
+            status: components["schemas"]["WhatsAppStatus"];
+        };
+        WhatsAppPairDto: {
+            /** @description The school number; required for the first pairing */
+            phone?: string;
+        };
+        WhatsAppPairingDto: {
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description data:image/png;base64,...; never stored or logged */
+            qr: string;
+        };
+        /** @enum {string} */
+        WhatsAppProvider: "waha" | "cloud_api";
+        WhatsAppSettingsDto: {
+            effectiveProvider: components["schemas"]["WhatsAppProvider"];
+            number: components["schemas"]["WhatsAppNumberDto"] | null;
+        };
+        /** @enum {string} */
+        WhatsAppStatus: "pending" | "connected" | "down" | "disabled";
     };
     responses: never;
     parameters: never;
@@ -2552,7 +3089,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MeDto"];
+                    "application/json": components["schemas"]["LoginResultDto"];
                 };
             };
             401: {
@@ -2572,6 +3109,14 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2629,6 +3174,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2767,6 +3320,69 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CalendarController_teachingDays: {
+        parameters: {
+            query: {
+                dateFrom: string;
+                /** @description On or after dateFrom, at most 365 days after it */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeachingDaysDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3938,7 +4554,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EnrolmentDto"];
+                    "application/json": components["schemas"]["SectionChangeResultDto"];
                 };
             };
             401: {
@@ -4019,7 +4635,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EnrolmentDto"];
+                    "application/json": components["schemas"]["SectionChangeResultDto"];
                 };
             };
             401: {
@@ -4869,6 +5485,452 @@ export interface operations {
             };
         };
     };
+    HolidaysController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Holidays overlapping the range (open-ended alone) */
+                dateFrom?: string;
+                /** @description Not before dateFrom */
+                dateTo?: string;
+                /** @description draft without holiday.manage: an empty page */
+                status?: components["schemas"]["HolidayStatus"];
+                kind?: components["schemas"]["HolidayKind"];
+                sort?: components["schemas"]["HolidaySort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HolidayDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HolidaysController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHolidayDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HolidaysController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HolidaysController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHolidayDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HolidaysController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelHolidayDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    HolidaysController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MeController_get: {
         parameters: {
             query?: never;
@@ -4887,6 +5949,93 @@ export interface operations {
                 };
             };
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyCalendarController_myCalendar: {
+        parameters: {
+            query: {
+                dateFrom: string;
+                /** @description On or after dateFrom, at most 365 days after it */
+                dateTo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyCalendarDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5001,7 +6150,573 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MeDto"];
+                    "application/json": components["schemas"]["LoginResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MeSessionsController_registerDevice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceDto"];
+            };
+        };
+        responses: {
+            /** @description Refreshed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDto"];
+                };
+            };
+            /** @description Registered for this session. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MeSessionsController_revokeOthers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsRevokedDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessagingTestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingTestResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_usage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingUsageDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_whatsapp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_connectCloudApi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCloudApiDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_disable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisableWhatsAppDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MessagingController_pair: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppPairDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppPairingDto"];
                 };
             };
             401: {
@@ -8349,6 +10064,79 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    UsersController_signOutEverywhere: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsRevokedDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

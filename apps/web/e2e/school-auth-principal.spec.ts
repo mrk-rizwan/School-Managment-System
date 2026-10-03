@@ -26,6 +26,9 @@ const SCHOOL: School = {
   shortCode: 'greenvalley',
   status: 'active',
   timezone: 'Asia/Karachi',
+  smsMonthlyCap: 500,
+  whatsappProvider: 'platform_default',
+  smsProvider: 'platform_default',
   createdAt: '2026-09-01T05:00:00.000Z',
   updatedAt: '2026-09-01T05:00:00.000Z',
 };

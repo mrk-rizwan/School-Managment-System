@@ -2,16 +2,52 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { readLocked } from '../common/locking';
 import type { SchoolId } from '../tenancy/school-id';
+import type { LateCountsAs, LeaveCountsAs, MessageType, RemarkVisibility } from '@asms/shared';
 import type { PrismaTxAdapter } from './prisma';
 
 export interface SchoolSettingsRecord {
   id: bigint;
   feeDueDay: number;
   studentLoginEnabled: boolean;
+  // Phase 2 (contracts/slice-9.md §4). Times are TIME columns, read as 1970-01-01 UTC instants.
+  periodsPerDay: number;
+  weeklyOffDays: number[];
+  attendanceAmendWindowDays: number;
+  registerDeadlineTime: Date;
+  absenceAlertTime: Date;
+  lateAdviceEnabled: boolean;
+  lateCountsAs: LateCountsAs;
+  lateCutoffTime: Date | null;
+  leaveCountsAs: LeaveCountsAs;
+  smsAllowedTypes: MessageType[];
+  remarkDefaultVisibility: RemarkVisibility;
+  remarkNotifyGuardians: boolean;
   updatedAt: Date;
 }
 
-const SELECT = { id: true, feeDueDay: true, studentLoginEnabled: true, updatedAt: true } as const;
+/** The writable attributes (contract slice-2 §6, slice-9 §4). */
+export type SchoolSettingsChanges = Partial<
+  Omit<SchoolSettingsRecord, 'id' | 'updatedAt'>
+>;
+
+const SELECT = {
+  id: true,
+  feeDueDay: true,
+  studentLoginEnabled: true,
+  periodsPerDay: true,
+  weeklyOffDays: true,
+  attendanceAmendWindowDays: true,
+  registerDeadlineTime: true,
+  absenceAlertTime: true,
+  lateAdviceEnabled: true,
+  lateCountsAs: true,
+  lateCutoffTime: true,
+  leaveCountsAs: true,
+  smsAllowedTypes: true,
+  remarkDefaultVisibility: true,
+  remarkNotifyGuardians: true,
+  updatedAt: true,
+} as const;
 
 /** The school's one settings row (tenant table school_settings). */
 @Injectable()
@@ -28,6 +64,24 @@ export class SchoolSettingsRepository {
 
   find(schoolId: SchoolId): Promise<SchoolSettingsRecord | null> {
     return this.txHost.tx.schoolSettings.findFirst({ where: { schoolId }, select: SELECT });
+  }
+
+  /** `weekly_off_days`, ascending (0 = Sunday); Sunday alone when the school has no row. */
+  async weeklyOffDays(schoolId: SchoolId): Promise<number[]> {
+    const row = await this.txHost.tx.schoolSettings.findFirst({
+      where: { schoolId },
+      select: { weeklyOffDays: true },
+    });
+    return [...(row?.weeklyOffDays ?? [0])].sort((a, b) => a - b);
+  }
+
+  /** `student_login_enabled` (students sign in only while it is on); false when the school has no row. */
+  async studentLoginEnabled(schoolId: SchoolId): Promise<boolean> {
+    const row = await this.txHost.tx.schoolSettings.findFirst({
+      where: { schoolId },
+      select: { studentLoginEnabled: true },
+    });
+    return row?.studentLoginEnabled ?? false;
   }
 
   /**
@@ -55,11 +109,8 @@ export class SchoolSettingsRepository {
     return count === 1;
   }
 
-  /** Plain attributes (contract slice-2 §6). */
-  async update(
-    schoolId: SchoolId,
-    data: { feeDueDay?: number; studentLoginEnabled?: boolean },
-  ): Promise<SchoolSettingsRecord> {
+  /** Plain attributes (contract slice-2 §6, slice-9 §4). */
+  async update(schoolId: SchoolId, data: SchoolSettingsChanges): Promise<SchoolSettingsRecord> {
     await this.txHost.tx.schoolSettings.updateMany({ where: { schoolId }, data });
     const row = await this.find(schoolId);
     if (!row) throw new Error('school_settings row missing');

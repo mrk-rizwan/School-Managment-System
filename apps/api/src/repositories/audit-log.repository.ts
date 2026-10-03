@@ -28,7 +28,13 @@ export class AuditLogRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
 
   async record(schoolId: SchoolId, entry: AuditEntry): Promise<void> {
-    await this.txHost.tx.auditLog.create({
+    await this.recordReturningId(schoolId, entry);
+  }
+
+  /** As record, returning the new row's id (a messaging test's subject id, slice-9 §5.1). */
+  async recordReturningId(schoolId: SchoolId, entry: AuditEntry): Promise<bigint> {
+    const { id } = await this.txHost.tx.auditLog.create({
+      select: { id: true },
       data: {
         schoolId,
         actorUserId: entry.actorUserId,
@@ -42,5 +48,6 @@ export class AuditLogRepository {
         metadata: entry.metadata ?? {},
       },
     });
+    return id;
   }
 }

@@ -31,6 +31,8 @@ const OFFICE_ME: MeDto = {
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
+  capacities: ['staff'],
+  assignments: [],
 };
 const PRINCIPAL_ME: MeDto = { ...OFFICE_ME, id: 'u-principal', roles: ['principal'], capabilities: Object.values(Capability).sort() };
 const TEACHER_ME: MeDto = {
@@ -204,6 +206,15 @@ async function mockApi(page: Page, state: MockState) {
       return json(200, found);
     }
     const enrolmentMatch = path.match(/^\/enrolments\/([^/]+)(?:\/(change-section|change-class))?$/);
+    if (enrolmentMatch && enrolmentMatch[2]) {
+      // contracts/slice-10.md §8: close-old/open-new, the old one ending the day before.
+      const body = request.postDataJSON() as { sectionId: string; effectiveOn: string };
+      const dayBefore = new Date(Date.parse(`${body.effectiveOn}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+      return json(200, {
+        closed: { ...ENROLMENT, status: 'left', endedOn: dayBefore },
+        opened: { ...ENROLMENT, id: 'e2', sectionId: body.sectionId, sectionName: 'B', rollNo: null, startedOn: body.effectiveOn },
+      });
+    }
     if (enrolmentMatch) return json(200, { ...ENROLMENT, ...(request.postDataJSON() as object) });
 
     const match = path.match(/^\/students\/([^/]+)(?:\/([a-z-]+))?$/);
@@ -560,7 +571,7 @@ function guardianDto(id: string, fullName: string) {
 
 // ---- Enrolment ----
 
-test('enrolment: change section in place; a taken roll number is refused', async ({ page }) => {
+test('enrolment: change section closes and reopens with a reason; a taken roll number is refused', async ({ page }) => {
   const requests = await mockApi(page, {
     me: OFFICE_ME,
     replies: {
@@ -574,9 +585,19 @@ test('enrolment: change section in place; a taken roll number is refused', async
   const dialog = page.getByRole('dialog', { name: 'Change section' });
   await expect(dialog.getByLabel('New section').locator('option')).toHaveText(['Choose…', 'B']);
   await dialog.getByLabel('New section').selectOption('sec-b');
+  await dialog.getByLabel('Effective from').fill('2026-09-15');
+  await expect(dialog).toContainText('Closes the current enrolment on 14 Sept 2026 and opens a new one from 15 Sept 2026.');
+  // A reason is required now (slice-10 §8.2).
+  await expect(dialog.getByRole('button', { name: 'Change section' })).toBeDisabled();
+  await dialog.getByLabel('Reason').fill('Parent request');
   await dialog.getByRole('button', { name: 'Change section' }).click();
   await expect(dialog).toBeHidden();
-  expect(calls(requests, 'POST', '/enrolments/e1/change-section')[0].postDataJSON()).toEqual({ sectionId: 'sec-b' });
+  await expect(page.getByText('Now in Class 5 B from 15 Sept 2026. Class 5 A ended on 14 Sept 2026.')).toBeVisible();
+  expect(calls(requests, 'POST', '/enrolments/e1/change-section')[0].postDataJSON()).toEqual({
+    sectionId: 'sec-b',
+    effectiveOn: '2026-09-15',
+    reason: 'Parent request',
+  });
 
   await page.getByRole('button', { name: 'Actions for Class 5 A' }).click();
   await page.getByRole('menuitem', { name: 'Set roll number' }).click();
@@ -585,6 +606,44 @@ test('enrolment: change section in place; a taken roll number is refused', async
   await roll.getByRole('button', { name: 'Save' }).click();
   await expect(roll.getByText('Roll number 3 is already used in this section.')).toBeVisible();
   expect(calls(requests, 'PATCH', '/enrolments/e1')[0].postDataJSON()).toEqual({ rollNo: 3 });
+});
+
+test('enrolment: change class closes the old enrolment the day before; a zero-length row reads not in force', async ({ page }) => {
+  const corrected = { ...ENROLMENT, id: 'e0', sectionId: 'sec-b', sectionName: 'B', status: 'left' as const, startedOn: '2025-04-01', endedOn: '2025-03-31' };
+  const requests = await mockApi(page, {
+    me: OFFICE_ME,
+    replies: {
+      'GET /students/st1/enrolments': { status: 200, body: page1([ENROLMENT, corrected]) },
+      'POST /enrolments/e1/change-class': {
+        status: 200,
+        body: {
+          closed: { ...ENROLMENT, status: 'left', endedOn: '2026-09-30' },
+          opened: { ...ENROLMENT, id: 'e3', classId: 'c6', className: 'Class 6', sectionId: 'sec-6a', sectionName: 'A', rollNo: null, startedOn: '2026-10-01' },
+        },
+      },
+    },
+  });
+  await page.clock.setFixedTime(new Date('2026-10-04T05:00:00Z'));
+  await page.goto('/students/st1');
+  await page.getByRole('tab', { name: 'Enrolment history' }).click();
+  await expect(page.getByText('Not in force (corrected)')).toBeVisible();
+  await page.getByRole('button', { name: 'Actions for Class 5 A' }).click();
+  await page.getByRole('menuitem', { name: 'Change class' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Change class' });
+  await dialog.getByLabel('Class', { exact: true }).selectOption('c6');
+  await dialog.getByLabel('Section', { exact: true }).selectOption('sec-6a');
+  await dialog.getByLabel('Effective from').fill('2026-10-01');
+  await expect(dialog).toContainText('Closes the current enrolment on 30 Sept 2026 and opens a new one from 1 Oct 2026.');
+  await dialog.getByLabel('Reason').fill('Promoted mid-year');
+  await dialog.getByRole('button', { name: 'Change class' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Now in Class 6 A from 1 Oct 2026. Class 5 A ended on 30 Sept 2026.')).toBeVisible();
+  expect(calls(requests, 'POST', '/enrolments/e1/change-class')[0].postDataJSON()).toEqual({
+    classId: 'c6',
+    sectionId: 'sec-6a',
+    effectiveOn: '2026-10-01',
+    reason: 'Promoted mid-year',
+  });
 });
 
 // ---- Documents ----

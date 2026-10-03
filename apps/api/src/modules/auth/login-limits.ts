@@ -48,7 +48,7 @@ export class LoginKeys {
   }
 }
 
-/** POST /auth/login: 5/min per code+username+IP, 10/min per username, 30/min per IP. */
+/** POST /auth/login: 5/min per code+username+IP, 10/min per username, 300/min per IP (R166). */
 @Injectable()
 export class SchoolLoginThrottleGuard implements CanActivate {
   private readonly logger = new Logger('SchoolLoginThrottleGuard');
@@ -68,7 +68,7 @@ export class SchoolLoginThrottleGuard implements CanActivate {
       [
         { name: 'school-login-account-ip', key: `${account}:${ip}`, limit: 5, ttlMs: MINUTE_MS },
         { name: 'school-login-username', key: usernameHash, limit: 10, ttlMs: MINUTE_MS },
-        { name: 'school-login-ip', key: ip, limit: 30, ttlMs: MINUTE_MS },
+        { name: 'school-login-ip', key: ip, limit: 300, ttlMs: MINUTE_MS },
       ],
       this.logger,
     );

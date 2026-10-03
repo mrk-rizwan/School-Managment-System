@@ -17,7 +17,7 @@ import { AdmissionsService } from './admissions.service';
 import { ReadmissionService } from './readmission.service';
 
 // contracts/slice-6.md §3.7 and §6.3. Both `student.create`, school-wide. Common to every route:
-// 401, 403 PERMISSION_DENIED / SCHOOL_SUSPENDED / ORIGIN_REJECTED, 429.
+// 401, 403 PERMISSION_DENIED / ORIGIN_REJECTED, 429.
 const COMMON = [401, 403, 429];
 
 /** `value[key]` when `value` is a plain object: guards read the raw body, before validation. */

@@ -8,8 +8,9 @@ import { studentInScope } from './student.repository';
 
 // contracts/slice-6.md §5 (rule 6: enrolment is the hub). One `active` row per student
 // (enrolments_student_active_key); roll numbers unique per section among active rows
-// (enrolments_section_roll_no_key, R37). student_id, academic_year_id and class_id never change
-// (trigger enrolments_columns_immutable): a class move closes the row and opens another (R39).
+// (enrolments_section_roll_no_key, R37). student_id, academic_year_id, class_id and section_id
+// never change (trigger enrolments_columns_immutable): a class or section move closes the row and
+// opens another (R39, R174).
 //
 // Shared interface (slice 6B's admission and readmission call these inside their transaction;
 // keep the signatures stable):
@@ -195,13 +196,14 @@ export class EnrolmentRepository {
   }
 
   /**
-   * Roll number and, for an in-place section change, the section (R37: the caller clears the roll
-   * number with it). A taken roll number fails enrolments_section_roll_no_key.
+   * The roll number (R37); a taken one fails enrolments_section_roll_no_key. Nothing else on an
+   * enrolment is edited: the section is frozen by trigger since slice 10 (R174), and a section
+   * or class change closes the row and opens another.
    */
   update(
     schoolId: SchoolId,
     id: bigint,
-    data: { rollNo?: number | null; sectionId?: bigint },
+    data: { rollNo: number | null },
   ): Promise<EnrolmentRecord> {
     return this.txHost.tx.enrolment.update({
       where: { schoolId_id: { schoolId, id } },

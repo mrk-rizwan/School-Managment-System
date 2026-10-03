@@ -274,7 +274,7 @@ describe('password and email flows', () => {
       const rotated = raw.split(';')[0] ?? '';
       expect(rotated).not.toBe(mine.cookie);
       await http().get('/api/v1/me').set('Cookie', mine.cookie).expect(401);
-      await http().get('/api/v1/me').set('Authorization', other.authorization).expect(401);
+      await http().get('/api/v1/me').set(other.bearer).expect(401);
       await http().get('/api/v1/me').set('Cookie', rotated).expect(200);
       expect(await liveSessions(user)).toBe(1);
       expect((await mailer.next(user.email)).subject).toBe('Your password was changed');

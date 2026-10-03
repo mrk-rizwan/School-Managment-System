@@ -41,9 +41,9 @@ describe('scrubbingStream', () => {
     expect(out).toBe('{"url":"/api/v1/users?q=[id]&page=1"}');
   });
 
-  it('leaves ISO timestamps and short numbers alone', () => {
+  it('leaves ISO timestamps and short numbers alone; a phone number is masked since slice 9 (R111)', () => {
     const line = '{"time":"2026-10-03T10:11:12.345Z","limit":50,"phone":"+923001234567"}';
-    expect(scrub(line)).toBe(line);
+    expect(scrub(line)).toBe('{"time":"2026-10-03T10:11:12.345Z","limit":50,"phone":"[phone]"}');
   });
 });
 

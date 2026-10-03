@@ -170,6 +170,11 @@ describe('R16: identity numbers never reach logs, responses, audit or idempotenc
     expect(logs.filter((l) => l.includes('/api/v1/users?q=[id]') || l.includes('/api/v1/guardians?q=[id]'))).not.toEqual([]);
   });
 
+  it('R111 (slice 9): the scanner gains the phone pattern: no captured log line holds a phone number', () => {
+    // Phones were sent in this run's bodies (staff, guardians, admission); none reaches the logs.
+    expect(logs.filter((l) => /\+?92[0-9]{10}|(?<![0-9])03[0-9]{9}(?![0-9])/.test(l))).toEqual([]);
+  });
+
   it('R16: no response body holds an identity number', () => {
     const all = bodies.join('\n');
     for (const d of used) {

@@ -2,21 +2,22 @@ import { Body, Controller, HttpCode, Post, Query, Req, Res, UseGuards } from '@n
 import { ApiAcceptedResponse, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import { AllowWhenSuspended, AuthenticatedOnly, Public } from '../../common/auth/route-access';
+import { AuthenticatedOnly, Public } from '../../common/auth/route-access';
 import {
   clearSchoolCookie,
   CurrentSchoolSession,
   setSchoolCookie,
   type SchoolSessionContext,
 } from '../../common/auth/school-session';
+import { ErrorCode } from '@asms/shared';
+import { ApiException } from '../../common/errors/api-exception';
 import { ApiErrors } from '../../common/openapi';
 import { NoQueryDto } from '../../common/validation';
-import { SessionRepository } from '../../repositories/session.repository';
 import { CredentialsService } from './credentials.service';
-import { ForgotPasswordDto, MeDto, ResetPasswordDto, SchoolLoginDto, VerifyEmailDto } from './dto';
+import { ForgotPasswordDto, LoginResultDto, ResetPasswordDto, SchoolLoginDto, VerifyEmailDto } from './dto';
 import { ForgotPasswordThrottleGuard, SchoolLoginThrottleGuard, TokenThrottleGuard } from './login-limits';
 import { LoginService } from './login.service';
-import { metaOf } from './me.service';
+import { loginResult, metaOf } from './me.service';
 
 /** The empty 202 body of forgot-password: identical whatever happened (R2). */
 class AcceptedDto {}
@@ -31,7 +32,6 @@ export class AuthController {
   constructor(
     private readonly login: LoginService,
     private readonly credentials: CredentialsService,
-    private readonly sessions: SessionRepository,
   ) {}
 
   @Post('login')
@@ -39,32 +39,39 @@ export class AuthController {
   @Public()
   @SkipThrottle()
   @UseGuards(SchoolLoginThrottleGuard)
-  @ApiOkResponse({ type: MeDto })
-  @ApiErrors(401, 403, 422, 429, 503)
+  @ApiOkResponse({ type: LoginResultDto })
+  @ApiErrors(401, 403, 422, 426, 429, 503)
   async signIn(
     @Body() body: SchoolLoginDto,
     @Query() _query: NoQueryDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<MeDto> {
+  ): Promise<LoginResultDto> {
+    // contracts/slice-9.md §3.1 step 3: only the app asks for a bearer session, and it always
+    // sends its version (the floor itself was checked before this, in middleware).
+    if (body.channel === 'bearer' && req.headers['x-app-version'] === undefined) {
+      throw new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
+        fields: [{ path: 'channel', code: ErrorCode.INVALID_VALUE, message: 'The app must send its version' }],
+      });
+    }
     const issued = await this.login.login(body, req, metaOf(req));
-    setSchoolCookie(res, issued.token, issued.expiresAt);
-    return issued.me;
+    // R153: a cookie client never sees a token in a body; a bearer client never gets a cookie.
+    if (issued.channel === 'cookie') setSchoolCookie(res, issued.token, issued.expiresAt);
+    return loginResult(issued);
   }
 
   @Post('logout')
   @HttpCode(204)
   @AuthenticatedOnly()
-  @AllowWhenSuspended()
   @ApiNoContentResponse()
-  @ApiErrors(401, 403)
+  @ApiErrors(401, 403, 426)
   async signOut(
     @Query() _query: NoQueryDto,
     @CurrentSchoolSession() session: SchoolSessionContext,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    await this.sessions.revoke(session.schoolId, session.sessionId, new Date());
-    clearSchoolCookie(res);
+    await this.login.logout(session);
+    if (session.channel === 'cookie') clearSchoolCookie(res);
   }
 
   @Post('forgot-password')

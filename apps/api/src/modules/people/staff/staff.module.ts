@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CryptoModule } from '../../../common/crypto/crypto.module';
+import { MessagingModule } from '../../../messaging/messaging.module';
 import { CnicProbeThrottleGuard } from '../../../common/rate-limit';
 import { SchoolContext } from '../../../common/school-context';
 import { AcademicYearRepository } from '../../../repositories/academic-year.repository';
@@ -25,7 +26,7 @@ import { UserRolesService } from './user-roles.service';
  * AccessModule; SessionRepository from the global TenancyModule.
  */
 @Module({
-  imports: [CryptoModule],
+  imports: [CryptoModule, MessagingModule],
   controllers: [StaffController, TeacherAssignmentsController, UserRolesController],
   providers: [
     SchoolContext,

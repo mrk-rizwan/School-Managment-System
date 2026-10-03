@@ -21,7 +21,7 @@ import {
   UserPermissionsQueryDto,
 } from './roles.dto';
 
-// contracts/slice-7.md. Common to every route: 401, 403 PERMISSION_DENIED / SCHOOL_SUSPENDED /
+// contracts/slice-7.md. Common to every route: 401, 403 PERMISSION_DENIED /
 // ORIGIN_REJECTED, 429. No route here is section-scoped. Every write needs role.manage (R48, R55).
 const COMMON = [401, 403, 429];
 

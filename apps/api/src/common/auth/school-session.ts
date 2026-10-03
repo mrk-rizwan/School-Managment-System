@@ -27,6 +27,28 @@ export const SCHOOL_SESSION_LIMITS = {
 
 export type SessionChannelName = 'cookie' | 'bearer';
 
+const DAY_MS = 24 * 60 * 60_000;
+
+/**
+ * Session lifetimes per channel and capacity (contracts/slice-9.md §1.5, R154). Cookie sessions
+ * keep slice 2's 24 h idle / 30 d absolute. Bearer sessions: a login holding staff capacity gets
+ * 14 d / 90 d (a lost teacher phone writes registers); guardian and student only, 30 d / 180 d.
+ * The absolute lifetime is chosen at mint and stored in expires_at; idle is computed at every
+ * resolution from the capacities then held, so gaining staff capacity tightens it at once.
+ * Push resolution uses the same idle window (DeviceRepository.liveForUsers).
+ */
+export function sessionLifetime(
+  channel: SessionChannelName,
+  capacities: { readonly staff: boolean },
+): { idleMs: number; absoluteMs: number } {
+  if (channel === 'cookie') {
+    return { idleMs: SCHOOL_SESSION_LIMITS.idleMs, absoluteMs: SCHOOL_SESSION_LIMITS.absoluteMs };
+  }
+  return capacities.staff
+    ? { idleMs: 14 * DAY_MS, absoluteMs: 90 * DAY_MS }
+    : { idleMs: 30 * DAY_MS, absoluteMs: 180 * DAY_MS };
+}
+
 /** What a school handler receives for the caller (built by SchoolSessionResolver). */
 export interface SchoolSessionContext {
   schoolId: SchoolId;
@@ -39,7 +61,11 @@ export interface SchoolSessionContext {
   access: UserAccess;
 }
 
-/** The presented credential: cookie or bearer, never both (contract §1.1 step 1). */
+/**
+ * The presented credential: cookie or bearer, never both (contract slice-2 §1.1 step 1). A bearer
+ * token sent with an `Origin` header is refused too (contracts/slice-9.md §1.3, R170): a script
+ * running in a browser page can neither use nor mint a long-lived token.
+ */
 export type PresentedToken =
   | { kind: 'none' }
   | { kind: 'invalid' }
@@ -49,7 +75,7 @@ export function presentedSchoolToken(req: Request): PresentedToken {
   const header = req.headers.authorization;
   const cookieToken = readCookie(req, SCHOOL_COOKIE);
   if (header !== undefined) {
-    if (cookieToken !== undefined) return { kind: 'invalid' };
+    if (cookieToken !== undefined || req.headers.origin !== undefined) return { kind: 'invalid' };
     const match = /^Bearer (.+)$/.exec(header);
     const token = match?.[1];
     if (token === undefined || !BEARER_TOKEN.test(token)) return { kind: 'invalid' };

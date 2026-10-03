@@ -1,8 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, Length, Matches } from 'class-validator';
+import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 import {
+  ATTENDANCE_MODES,
+  CAPACITIES,
   Capability,
+  SESSION_CHANNELS,
+  TEACHER_ROLES,
+  type AttendanceMode,
+  type Capacity,
+  type SessionChannel,
+  type TeacherRole,
   SCHOOL_STATUSES,
   SHORT_CODE_PATTERN,
   type SchoolStatus,
@@ -25,6 +33,12 @@ class SchoolCodeDto {
 }
 
 export class SchoolLoginDto extends SchoolCodeDto {
+  /** contracts/slice-9.md §3.1: bearer is the mobile app's channel and needs X-App-Version. */
+  @ApiPropertyOptional({ enum: SESSION_CHANNELS, enumName: 'SessionChannel', default: 'cookie' })
+  @IsOptional()
+  @IsIn(SESSION_CHANNELS)
+  channel?: SessionChannel;
+
   /** CNIC or B-Form digits, dashes allowed; normalised to 13 digits. No example (§3.9). */
   @ApiProperty({ description: '13 digits; dashes allowed (5-7-1).' })
   @CnicField()
@@ -94,7 +108,7 @@ export class MeSchoolDto {
   status: SchoolStatus;
 }
 
-/** contracts/slice-2.md §4.1. Never carries a username or identity number. */
+/** contracts/slice-2.md §4.1, slice-9.md §2.2. Never carries a token, username or identity number. */
 export class MeDto {
   @ApiProperty({ type: String })
   id: string;
@@ -122,4 +136,61 @@ export class MeDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   sessionExpiresAt: Date;
+
+  /** Active capacities, in the order staff, guardian, student (the app composes its tabs, R156). */
+  @ApiProperty({ enum: CAPACITIES, enumName: 'Capacity', isArray: true })
+  capacities: Capacity[];
+
+  /** Teacher assignments active today, cover included; [] without staff capacity (slice-9 §2.2). */
+  @ApiProperty({ type: () => MeAssignmentDto, isArray: true })
+  assignments: MeAssignmentDto[];
+}
+
+// ----------------------------------------------------------- contracts/slice-9.md §2.2, §3
+
+/** One of the caller's teacher assignments active today (cover included). */
+export class MeAssignmentDto {
+  @ApiProperty({ type: String })
+  id: string;
+
+  @ApiProperty({ enum: TEACHER_ROLES, enumName: 'TeacherRole' })
+  role: TeacherRole;
+
+  @ApiProperty({ type: String })
+  academicYearId: string;
+
+  @ApiProperty({ type: String })
+  classId: string;
+
+  @ApiProperty()
+  className: string;
+
+  /** Null for a whole-class subject teacher (R54). */
+  @ApiProperty({ type: String, nullable: true })
+  sectionId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  sectionName: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  subjectId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  subjectName: string | null;
+
+  @ApiProperty({ enum: ATTENDANCE_MODES, enumName: 'AttendanceMode' })
+  attendanceMode: AttendanceMode;
+
+  @ApiProperty({ type: String, format: 'date' })
+  startsOn: string;
+
+  @ApiProperty({ type: String, format: 'date', nullable: true })
+  endsOn: string | null;
+}
+
+/** Login and password change (contracts/slice-9.md §2.2, R153). */
+export class LoginResultDto extends MeDto {
+  /** The 43-character token only on a bearer session; null for cookie (the token is in the cookie). */
+  @ApiProperty({ type: String, nullable: true, description: 'Bearer sessions only; null for cookie.' })
+  bearerToken: string | null;
 }

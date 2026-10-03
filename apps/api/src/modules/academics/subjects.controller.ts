@@ -16,7 +16,7 @@ import {
 import { SubjectsService } from './subjects.service';
 
 // Common to every route (contracts/slice-3.md §1): 401 AUTH_REQUIRED, 403 PERMISSION_DENIED /
-// SCHOOL_SUSPENDED / ORIGIN_REJECTED, 429 RATE_LIMITED.
+// ORIGIN_REJECTED, 429 RATE_LIMITED.
 const COMMON = [401, 403, 429];
 
 @ApiTags('subjects')

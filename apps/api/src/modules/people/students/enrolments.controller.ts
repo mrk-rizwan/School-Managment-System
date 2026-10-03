@@ -10,7 +10,13 @@ import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { NoQueryDto } from '../../../common/validation';
 import { EnrolmentsService } from './enrolments.service';
-import { ChangeClassDto, ChangeSectionDto, EnrolmentDto, UpdateEnrolmentDto } from './students.dto';
+import {
+  ChangeClassDto,
+  ChangeSectionDto,
+  EnrolmentDto,
+  SectionChangeResultDto,
+  UpdateEnrolmentDto,
+} from './students.dto';
 
 // contracts/slice-6.md §5 (R37-R39). All `enrolment.manage`, scoped through the student.
 const COMMON = [401, 403, 404, 429];
@@ -34,34 +40,35 @@ export class EnrolmentsController {
     return this.enrolments.setRollNo(session, id, body);
   }
 
+  /** Closes the enrolment on effectiveOn − 1 and opens one in the section (R174). */
   @Post(':id/change-section')
   @HttpCode(200)
   @RequireCapability(Capability.ENROLMENT_MANAGE)
   @ApiIdParam()
-  @ApiOkResponse({ type: EnrolmentDto })
+  @ApiOkResponse({ type: SectionChangeResultDto })
   @ApiErrors(...COMMON, 409, 422)
   changeSection(
     @CurrentSchoolSession() session: SchoolSessionContext,
     @IdParam() id: bigint,
     @Body() body: ChangeSectionDto,
     @Query() _query: NoQueryDto,
-  ): Promise<EnrolmentDto> {
+  ): Promise<SectionChangeResultDto> {
     return this.enrolments.changeSection(session, id, body);
   }
 
-  /** Returns the new enrolment. */
+  /** Closes the enrolment on effectiveOn − 1 and opens one in the class (R39, R174). */
   @Post(':id/change-class')
   @HttpCode(200)
   @RequireCapability(Capability.ENROLMENT_MANAGE)
   @ApiIdParam()
-  @ApiOkResponse({ type: EnrolmentDto })
+  @ApiOkResponse({ type: SectionChangeResultDto })
   @ApiErrors(...COMMON, 409, 422)
   changeClass(
     @CurrentSchoolSession() session: SchoolSessionContext,
     @IdParam() id: bigint,
     @Body() body: ChangeClassDto,
     @Query() _query: NoQueryDto,
-  ): Promise<EnrolmentDto> {
+  ): Promise<SectionChangeResultDto> {
     return this.enrolments.changeClass(session, id, body);
   }
 }

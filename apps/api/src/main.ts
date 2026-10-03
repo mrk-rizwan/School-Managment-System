@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { bootstrap } from './bootstrap';
-import { failureLog } from './common/errors/all-exceptions.filter';
+import { failureLog } from './common/errors/failure-log';
 import { EnvError } from './config/env';
 
 bootstrap().catch((error: unknown) => {

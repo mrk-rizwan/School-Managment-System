@@ -11,7 +11,7 @@ import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { ErrorCode } from '@asms/shared';
 import type { Request, Response } from 'express';
-import { failureLog } from './errors/all-exceptions.filter';
+import { failureLog } from './errors/failure-log';
 import { ApiException } from './errors/api-exception';
 import { SchoolContext } from './school-context';
 

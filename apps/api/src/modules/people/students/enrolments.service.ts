@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../../common/auth/school-session';
 import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
-import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
+import { recoverConstraint } from '../../../common/errors/prisma-errors';
 import { readLocked } from '../../../common/locking';
 import { toPage, type Page, type PageQueryDto } from '../../../common/pagination';
 import { SchoolContext } from '../../../common/school-context';
@@ -20,14 +20,21 @@ import {
 import { SectionRepository, type SectionRecord } from '../../../repositories/section.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
 import type { Scope } from '../../../tenancy/scope';
-import { SchoolClock } from '../../../common/school-clock';
-import { classArchived, fromDateString, yearClosed } from '../../academics/academics.shared';
+import { addDays, SchoolClock } from '../../../common/school-clock';
+import {
+  classArchived,
+  fromDateString,
+  toDateString,
+  yearClosed,
+} from '../../academics/academics.shared';
 import type {
   ChangeClassDto,
   ChangeSectionDto,
   EnrolmentDto,
+  SectionChangeResultDto,
   UpdateEnrolmentDto,
 } from './students.dto';
+import { AttendanceHistoryProbe } from './attendance-history-probe';
 import {
   assertNotFuture,
   enrolmentNotActive,
@@ -36,7 +43,7 @@ import {
 } from './students.shared';
 import { StudentsService, toEnrolmentDto } from './students.service';
 
-// contracts/slice-6.md §5 (R37-R39). Every write locks the enrolment's student first (as every
+// contracts/slice-6.md §5 (R37-R39), amended by contracts/slice-10.md §8 (R174). Every write locks the enrolment's student first (as every
 // other student write does), then reads the enrolment again under that lock. A target section,
 // class and year are locked in that order, the same order section archiving takes them, so a
 // section or class cannot be archived, nor a year closed, under a new or moved enrolment.
@@ -61,6 +68,7 @@ export class EnrolmentsService {
     private readonly sections: SectionRepository,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly attendance: AttendanceHistoryProbe,
   ) {}
 
   async listForStudent(
@@ -88,28 +96,28 @@ export class EnrolmentsService {
     id: bigint,
     dto: UpdateEnrolmentDto,
   ): Promise<EnrolmentDto> {
-    try {
-      return await this.setRollNoInTransaction(session, id, dto);
-    } catch (error) {
-      throw await this.rollNoConflict(error, scopeOf(session), id, dto.rollNo);
-    }
+    return recoverConstraint(
+      ROLL_NO_UNIQUE,
+      () => this.setRollNoInTransaction(session, id, dto),
+      (error) => this.rollNoConflict(error, scopeOf(session), id, dto.rollNo),
+    );
   }
 
   /**
-   * In place (R37): the section changes and the roll number is cleared. Another class's section
-   * is 422 (use change-class); the same section is an unchanged 200.
+   * R174 (contracts/slice-10.md §8.2): close-old/open-new, never an edit. The old enrolment ends
+   * on effectiveOn − 1 keeping its section and roll number; a new one opens on effectiveOn in the
+   * target section without a roll number. Another class's section, or the current one, is 422.
    */
   @Transactional()
   async changeSection(
     session: SchoolSessionContext,
     id: bigint,
     dto: ChangeSectionDto,
-  ): Promise<EnrolmentDto> {
+  ): Promise<SectionChangeResultDto> {
     const { schoolId, userId } = this.context.actor();
     const enrolment = await this.lockEnrolment(schoolId, scopeOf(session), id);
     if (enrolment.status !== 'active') throw enrolmentNotActive();
     const sectionId = BigInt(dto.sectionId);
-    if (sectionId === enrolment.sectionId) return this.dto(schoolId, enrolment);
     const target = await this.sections.findById(schoolId, sectionId);
     if (!target) {
       throw fieldRefused('sectionId', ErrorCode.REFERENCE_NOT_FOUND, 'No such section');
@@ -121,33 +129,39 @@ export class EnrolmentsService {
         'That section is of another class: use change-class',
       );
     }
-    await this.lockTarget(schoolId, enrolment.classId, sectionId);
-
-    const updated = await this.enrolments.update(schoolId, id, { sectionId, rollNo: null });
+    if (sectionId === enrolment.sectionId) {
+      throw fieldRefused('sectionId', ErrorCode.INVALID_VALUE, 'Already in that section');
+    }
+    const effectiveOn = await this.assertEffectiveOn(schoolId, enrolment, dto.effectiveOn);
+    const locked = await this.lockTarget(schoolId, enrolment.classId, sectionId);
+    const result = await this.move(schoolId, enrolment, locked, effectiveOn);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'enrolment.section_changed',
       subjectType: SUBJECT,
       subjectId: id,
-      ...(dto.reason === undefined ? {} : { reason: dto.reason }),
+      reason: dto.reason,
       metadata: {
         fromSectionId: enrolment.sectionId.toString(),
         toSectionId: dto.sectionId,
+        newEnrolmentId: result.opened.id,
+        effectiveOn: dto.effectiveOn,
       },
     });
-    return this.dto(schoolId, updated);
+    return result;
   }
 
   /**
-   * R38, R39: in-year only; the old enrolment is closed (`left`, ended on effectiveOn) and a new
-   * one opened on the same date, without a roll number. Never an edit. Returns the new one.
+   * R38, R39, aligned with R174 (contracts/slice-10.md §8.3): in-year only; the old enrolment is
+   * closed (`left`, ended on effectiveOn − 1) and a new one opened on effectiveOn, without a roll
+   * number. Never an edit.
    */
   @Transactional()
   async changeClass(
     session: SchoolSessionContext,
     id: bigint,
     dto: ChangeClassDto,
-  ): Promise<EnrolmentDto> {
+  ): Promise<SectionChangeResultDto> {
     const { schoolId, userId } = this.context.actor();
     const enrolment = await this.lockEnrolment(schoolId, scopeOf(session), id);
     if (enrolment.status !== 'active') throw enrolmentNotActive();
@@ -168,7 +182,31 @@ export class EnrolmentsService {
         'A student moves only between classes of the same academic year.',
       );
     }
-    const effectiveOn = fromDateString(dto.effectiveOn);
+    const effectiveOn = await this.assertEffectiveOn(schoolId, enrolment, dto.effectiveOn);
+    const target = await this.lockTarget(schoolId, classId, BigInt(dto.sectionId));
+    const result = await this.move(schoolId, enrolment, target, effectiveOn);
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'enrolment.class_changed',
+      subjectType: SUBJECT,
+      subjectId: id,
+      reason: dto.reason,
+      metadata: {
+        newEnrolmentId: result.opened.id,
+        toClassId: dto.classId,
+        effectiveOn: dto.effectiveOn,
+      },
+    });
+    return result;
+  }
+
+  /** effectiveOn: on or after the enrolment started, not in the future (422 on effectiveOn). */
+  private async assertEffectiveOn(
+    schoolId: SchoolId,
+    enrolment: EnrolmentRecord,
+    value: string,
+  ): Promise<Date> {
+    const effectiveOn = fromDateString(value);
     assertNotFuture(effectiveOn, await this.clock.today(schoolId), 'effectiveOn');
     if (effectiveOn < enrolment.startedOn) {
       throw fieldRefused(
@@ -177,26 +215,52 @@ export class EnrolmentsService {
         'effectiveOn must be on or after the current enrolment started',
       );
     }
-    const target = await this.lockTarget(schoolId, classId, BigInt(dto.sectionId));
+    return effectiveOn;
+  }
 
-    await this.enrolments.close(schoolId, id, effectiveOn);
-    const created = await this.enrolments.create(schoolId, {
+  /**
+   * The close/open of a section or class change (contracts/slice-10.md §8.1). No date belongs to
+   * two enrolments: the old one ends on effectiveOn − 1 (zero-length when effectiveOn is its first
+   * day: in force on no date, kept as history), the new one starts on effectiveOn. Refused when a
+   * mark on the old enrolment is dated on or after effectiveOn (step 5). The old row is closed
+   * before the insert (one active enrolment per student).
+   */
+  private async move(
+    schoolId: SchoolId,
+    enrolment: EnrolmentRecord,
+    target: EnrolmentTarget,
+    effectiveOn: Date,
+  ): Promise<SectionChangeResultDto> {
+    const lastRecordedOn = await this.attendance.lastRecordedOn(schoolId, enrolment.id);
+    if (lastRecordedOn !== null && lastRecordedOn >= effectiveOn) {
+      throw new ApiException(
+        409,
+        ErrorCode.ATTENDANCE_RECORDED_AFTER,
+        'Attendance is recorded on or after that date: date the move after the last mark.',
+        { lastRecordedOn: toDateString(lastRecordedOn) },
+      );
+    }
+    const endedOn = addDays(effectiveOn, -1);
+    // Under the student lock the row is still active, so exactly one row closes.
+    if ((await this.enrolments.close(schoolId, enrolment.id, endedOn)) !== 1) {
+      throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
+    }
+    const opened = await this.enrolments.create(schoolId, {
       studentId: enrolment.studentId,
       academicYearId: target.klass.academicYearId,
-      classId,
+      classId: target.klass.id,
       sectionId: target.section.id,
       rollNo: null,
       startedOn: effectiveOn,
     });
-    await this.audit.record(schoolId, {
-      actorUserId: userId,
-      action: 'enrolment.class_changed',
-      subjectType: SUBJECT,
-      subjectId: id,
-      reason: dto.reason,
-      metadata: { newEnrolmentId: created.id.toString(), toClassId: dto.classId },
-    });
-    return this.dto(schoolId, created);
+    // The closed row as written (the target section may lie outside the caller's scope, so it is
+    // not read back through it).
+    const closed: EnrolmentRecord = { ...enrolment, status: 'left', endedOn };
+    const [closedView, openedView] = await this.enrolments.withNames(schoolId, [closed, opened]);
+    if (!closedView || !openedView) {
+      throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
+    }
+    return { closed: toEnrolmentDto(closedView), opened: toEnrolmentDto(openedView) };
   }
 
   /**
@@ -290,14 +354,13 @@ export class EnrolmentsService {
     scope: Scope,
     id: bigint,
     rollNo: number | null,
-  ): Promise<unknown> {
-    if (rollNo === null || summariseDatabaseError(error)?.constraint !== ROLL_NO_UNIQUE)
-      return error;
+  ): Promise<never> {
+    if (rollNo === null) throw error;
     const schoolId = this.context.schoolId;
     const own = await this.enrolments.findById(schoolId, scope, id);
     const holder =
       own && (await this.enrolments.findActiveByRollNo(schoolId, own.sectionId, rollNo));
-    return holder ? rollNoTaken(holder.id) : error;
+    throw holder ? rollNoTaken(holder.id) : error;
   }
 
   private async dto(schoolId: SchoolId, row: EnrolmentRecord): Promise<EnrolmentDto> {

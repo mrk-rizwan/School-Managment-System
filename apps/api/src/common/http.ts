@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { ErrorCode } from '@asms/shared';
-import { PLATFORM_COOKIE } from './auth/platform-session';
+import { APP_VERSION_PATTERN, ErrorCode } from '@asms/shared';
 import { ApiException, notFound } from './errors/api-exception';
 
 export const API_PREFIX = 'api/v1';
@@ -47,33 +46,84 @@ export function requireJsonBody(req: Request, _res: Response, next: NextFunction
   next();
 }
 
-// Session cookies whose presence makes a request cookie-authenticated.
-const SESSION_COOKIES = [PLATFORM_COOKIE, '__Host-asms_session'];
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const PLATFORM_PATH = `/${API_PREFIX}/platform/`;
+const WEBHOOK_PATH = `/${API_PREFIX}/webhooks/`;
+const HEALTH_PATH = `/${API_PREFIX}/health`;
 
 /**
- * R65 / contract slice-1 §1, slice-2 §1.2: a state-changing request that a browser could have
- * been tricked into sending must carry `Origin` exactly equal to the origin of APP_URL; missing
- * or different is 403 ORIGIN_REJECTED. Applies to every non-GET without an Authorization header
- * (the public auth routes included: login CSRF), every non-GET under /platform, and every non-GET
- * carrying a session cookie. Only a bearer request with no session cookie is exempt: a browser
- * never attaches a bearer token on its own.
+ * R65, R170 / contract slice-1 §1, slice-9 §1.3: a state-changing request that a browser could
+ * have been tricked into sending must carry `Origin` exactly equal to the origin of APP_URL;
+ * missing or different is 403 ORIGIN_REJECTED. Applies to every non-GET under /platform (the
+ * platform API accepts no bearer and no app header), and to every school non-GET that carries
+ * neither `Authorization` nor `X-App-Version` (the public auth routes included: login CSRF). A
+ * browser cannot send either header cross-origin without a CORS preflight, which the API never
+ * answers. Webhooks are exempt: their signature is their check. The reverse rule (a bearer token
+ * together with `Origin` is refused) is in session resolution.
  */
 export function originCheck(appUrl: string) {
   const allowed = new URL(appUrl).origin;
   return (req: Request, _res: Response, next: NextFunction): void => {
-    if (SAFE_METHODS.has(req.method)) {
+    // Lower-cased: Express matches routes case-insensitively, so /API/v1/Platform/... reaches them.
+    const path = req.path.toLowerCase();
+    if (SAFE_METHODS.has(req.method) || path.startsWith(WEBHOOK_PATH)) {
       next();
       return;
     }
-    const cookie = req.headers.cookie ?? '';
-    const cookieAuthenticated = SESSION_COOKIES.some((name) => cookie.includes(`${name}=`));
-    // Lower-cased: Express matches routes case-insensitively, so /API/v1/Platform/... reaches them.
-    const platform = req.path.toLowerCase().startsWith(PLATFORM_PATH);
-    const bearerOnly = req.headers.authorization !== undefined && !cookieAuthenticated;
-    if ((platform || !bearerOnly) && req.headers.origin !== allowed) {
+    const platform = path.startsWith(PLATFORM_PATH);
+    const appClient =
+      req.headers.authorization !== undefined || req.headers['x-app-version'] !== undefined;
+    if ((platform || !appClient) && req.headers.origin !== allowed) {
       next(new ApiException(403, ErrorCode.ORIGIN_REJECTED, 'This request came from an unexpected origin.'));
+      return;
+    }
+    next();
+  };
+}
+
+/** `1.4.12` → [1, 4, 12]; null unless it matches APP_VERSION_PATTERN. */
+export function parseAppVersion(value: unknown): [number, number, number] | null {
+  if (typeof value !== 'string' || !APP_VERSION_PATTERN.test(value)) return null;
+  const [major = 0, minor = 0, patch = 0] = value.split('.').map(Number);
+  return [major, minor, patch];
+}
+
+/** Compares left to right: negative when `a` is below `b`. */
+const compareVersions = (a: readonly number[], b: readonly number[]): number =>
+  a.reduce((result, part, i) => (result !== 0 ? result : part - (b[i] ?? 0)), 0);
+
+/**
+ * R161 / contract slice-9 §1.4: the mobile app-version floor, before session resolution. Every
+ * request carrying `Authorization: Bearer` or `X-App-Version` must send a well-formed version at
+ * or above MOBILE_MIN_APP_VERSION; a bearer request without the header is below every floor.
+ * Otherwise 426 UPGRADE_REQUIRED with details.minimumVersion, and nothing is read or counted.
+ * Cookie clients (neither header), /health and webhooks are exempt.
+ */
+export function appVersionFloor(minimumVersion: string) {
+  const floor = parseAppVersion(minimumVersion);
+  if (floor === null) throw new Error('MOBILE_MIN_APP_VERSION is not a version');
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    const path = req.path.toLowerCase();
+    const header = req.headers['x-app-version'];
+    const bearer = /^bearer\b/i.test(req.headers.authorization ?? '');
+    if (
+      (header === undefined && !bearer) ||
+      path === HEALTH_PATH ||
+      path.startsWith(WEBHOOK_PATH)
+    ) {
+      next();
+      return;
+    }
+    const version = parseAppVersion(header);
+    if (version === null || compareVersions(version, floor) < 0) {
+      next(
+        new ApiException(
+          426,
+          ErrorCode.UPGRADE_REQUIRED,
+          'This version of the app is no longer supported. Update the app to continue.',
+          { minimumVersion },
+        ),
+      );
       return;
     }
     next();

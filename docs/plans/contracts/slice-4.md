@@ -68,7 +68,7 @@ Amended 2026-10-03 to match the code; the wave-B audit found no deadlock path, f
 ## 2. Shapes
 
 `StaffStatus`: `active | suspended | left`. `SystemRole`: `principal | office_staff | teacher`.
-`TeacherRole`: `class_teacher | subject_teacher`.
+`TeacherRole`: `class_teacher | subject_teacher | cover` (*`cover` added by `slice-10.md` §6*).
 
 `StaffDto`:
 
@@ -90,7 +90,9 @@ Amended 2026-10-03 to match the code; the wave-B audit found no deadlock path, f
 `TeacherAssignmentDto`: `id`, `staffId`, `staffFullName`, `academicYearId`, `academicYearName`,
 `classId`, `className`, `sectionId | null`, `sectionName | null`, `subjectId | null`, `subjectName
 | null`, `role`, `startsOn` (date), `endsOn` (date | null), `voidedAt` (datetime | null),
-`activeToday` (boolean), `createdAt`.
+`activeToday` (boolean), `createdAt`. *Amended by `slice-10.md` §2:* `coversAssignmentId`
+(string | null) and `coversStaffFullName` (string | null — the covered class teacher), both null
+except on a cover row; `role` may be `cover`.
 
 `UserRoleDto`: `id`, `userId`, `systemRole` (`SystemRole | null`), `customRoleId` (string | null,
 always null until slice 7), `assignedBy` (string | null — null for platform-issued), `assignedAt`,
@@ -240,6 +242,14 @@ today`), `academicYearId`. Sort `-startsOn` (default), `startsOn`, `className`. 
 | `startsOn` | optional date, default `max(today, year.startsOn)`; must be ≥ today (no backdating scope) and within the year |
 | `endsOn` | optional date or `null`; ≥ `startsOn`, ≤ `year.endsOn` |
 | `replaceCurrent` | optional boolean, `class_teacher` only |
+| `coversAssignmentId` | *slice 10:* `cover` only (any other role → `422 INVALID_VALUE`) |
+
+**Cover (amended by `slice-10.md` §6, R132).** `role: cover` requires `sectionId` and `endsOn`,
+refuses `subjectId` and `replaceCurrent` (`422 INVALID_VALUE`); `coversAssignmentId` optional, a
+live `class_teacher` row of the same section overlapping the dates and not the covering staff
+member's own. The covering staff member must hold `attendance.student.mark` → else `409
+CAPABILITY_NOT_HELD` `details: { capability }`. Never `CLASS_TEACHER_EXISTS`; the covering
+teacher gets one `cover_assigned` message. Full rules, order and refusals: `slice-10.md` §6.
 
 **Self (R74, amended 2026-10-03 after the Phase 1 security review, F1).** The staff member's
 login is the caller's and the caller does not hold `role.manage` → `409 SELF_ACTION_FORBIDDEN`,

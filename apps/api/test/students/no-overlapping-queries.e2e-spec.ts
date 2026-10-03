@@ -100,12 +100,14 @@ describe('no overlapping statements in a transaction (students)', () => {
 
     await call('patch', `/enrolments/${enrolment.id}`, 200, { rollNo: 3 });
     const sibling = await createSection(db, school, klass);
-    await call('post', `/enrolments/${enrolment.id}/change-section`, 200, {
+    const moved = await call('post', `/enrolments/${enrolment.id}/change-section`, 200, {
       sectionId: sibling.id.toString(),
+      effectiveOn: isoDay(),
+      reason: 'Overlap check',
     });
     const target = await createClass(db, school, { id: klass.academicYearId });
     const targetSection = await createSection(db, school, target);
-    await call('post', `/enrolments/${enrolment.id}/change-class`, 200, {
+    await call('post', `/enrolments/${(moved.opened as { id: string }).id}/change-class`, 200, {
       classId: target.id.toString(),
       sectionId: targetSection.id.toString(),
       effectiveOn: isoDay(),

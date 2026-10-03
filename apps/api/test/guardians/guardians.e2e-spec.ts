@@ -416,17 +416,17 @@ describe('guardians (e2e)', () => {
     expect(errorOf(noOrigin).code).toBe('ORIGIN_REJECTED');
   });
 
-  it('a suspended school cannot write guardians (read-only)', async () => {
+  it('R80 lifted (contracts/slice-9.md §10 a): a suspended school writes guardians (admission-side create)', async () => {
     const suspended = await createSchool({ status: 'suspended' });
     const cookie = await sessionFor(suspended, 'principal');
     expect((await get(BASE, cookie)).status).toBe(200);
     const res = await send(
       'post',
       BASE,
-      { fullName: 'Blocked', contactCapability: 'keypad' },
+      { fullName: 'Not Blocked', contactCapability: 'keypad' },
       cookie,
     );
-    expect(errorOf(res).code).toBe('SCHOOL_SUSPENDED');
+    expect(res.status).toBe(201);
   });
 
   it('R16: no identity number in any response body or log line of this suite', () => {

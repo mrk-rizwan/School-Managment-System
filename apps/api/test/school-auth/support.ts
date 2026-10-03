@@ -5,9 +5,9 @@ import { Body, Controller, Get, Module, Post, Query } from '@nestjs/common';
 import { Capability } from '@asms/shared';
 import { FieldCipher } from '../../src/common/crypto/field-encryption';
 import {
-  AllowWhenSuspended,
   AuthenticatedOnly,
   RequireCapability,
+  RequireCapacity,
   RequireStaff,
 } from '../../src/common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../src/common/auth/school-session';
@@ -89,11 +89,17 @@ export class AccessProbeController {
     return { ok: true };
   }
 
-  @Post('staff-suspended-ok')
-  @RequireStaff()
-  @AllowWhenSuspended()
+  @Get('guardian')
+  @RequireCapacity('guardian')
   @ApiErrors(401, 403)
-  staffWriteWhenSuspended(@Query() _q: NoQueryDto, @Body() _b: NoQueryDto) {
+  guardian(@Query() _q: NoQueryDto, @CurrentSchoolSession() s: SchoolSessionContext) {
+    return this.report(s);
+  }
+
+  @Get('student')
+  @RequireCapacity('student')
+  @ApiErrors(401, 403)
+  student(@Query() _q: NoQueryDto) {
     return { ok: true };
   }
 

@@ -24,22 +24,32 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { unwrap } from '@/lib/api/client';
+import { NativeSelect } from '@/components/ui/native-select';
+import { OPTIONS_LIMIT, unwrap } from '@/lib/api/client';
 import { ApiError, refusalMessage } from '@/lib/api/errors';
+import {
+  calendarApi,
+  type CapabilityNotHeld,
+  type TeacherAssignmentDto,
+} from '@/lib/api/school-calendar-contract';
 import {
   staffApi,
   type ClassTeacherConflict,
   type CreateTeacherAssignmentBody,
   type StaffDto,
-  type TeacherAssignmentDto,
   type TeacherRole,
 } from '@/lib/api/school-staff-contract';
+import { CAPABILITY_LABELS } from '@/lib/capability-labels';
+import { useDebounced } from '@/lib/hooks';
 import { formatDay, todayInSchool } from '@/lib/format';
 import { useCapabilities } from '@/lib/school-session';
 import { useClasses, useSections, useSubjectOptions, useYears } from '../../academics/_lib/options';
 import { TEACHER_ROLE_LABELS, optionalDateSchema, staffKeys } from '../_lib/staff-ui';
 
-/** contracts/slice-4.md §4 and §8. The whole tab needs class.manage (§1). */
+/**
+ * contracts/slice-4.md §4 and §8, with slice-10 §6's cover: "Arrange cover" on a class-teacher row
+ * posts a cover assignment to the covering teacher. The whole tab needs class.manage (§1).
+ */
 const LIMIT = 25;
 
 export function AssignmentsTab({ staff }: { staff: StaffDto }) {
@@ -50,6 +60,7 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
   const [includeEnded, setIncludeEnded] = useState(false);
   const [adding, setAdding] = useState(false);
   const [ending, setEnding] = useState<TeacherAssignmentDto | null>(null);
+  const [covering, setCovering] = useState<TeacherAssignmentDto | null>(null);
   const today = todayInSchool();
 
   const query = { page, limit: LIMIT, includeEnded, sort: '-startsOn' } as const;
@@ -57,7 +68,7 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
     queryKey: [...staffKeys.assignments(staff.id), query],
     queryFn: () =>
       unwrap(
-        staffApi.GET('/api/v1/staff/{id}/teacher-assignments', {
+        calendarApi.GET('/api/v1/staff/{id}/teacher-assignments', {
           params: { path: { id: staff.id }, query },
         }),
       ),
@@ -87,6 +98,16 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
         header: 'Teaches',
         cell: (info) => {
           const a = info.row.original;
+          if (a.role === 'cover') {
+            return (
+              <span className="grid">
+                <span>{TEACHER_ROLE_LABELS.cover}</span>
+                {a.coversStaffFullName && (
+                  <span className="text-xs text-muted-foreground">Covering for {a.coversStaffFullName}</span>
+                )}
+              </span>
+            );
+          }
           return a.role === 'class_teacher' ? TEACHER_ROLE_LABELS.class_teacher : (a.subjectName ?? TEACHER_ROLE_LABELS.subject_teacher);
         },
       }),
@@ -118,6 +139,10 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
             <RowActions
               label={`${a.className} ${a.sectionName ?? ''}`.trim()}
               actions={[
+                // slice-10 §13: cover for the absent class teacher of this section.
+                ...(a.role === 'class_teacher' && staff.status === 'active'
+                  ? [{ label: 'Arrange cover', onSelect: () => setCovering(a) }]
+                  : []),
                 {
                   // §4.4: a row that has not begun (or began today) is withdrawn, never ended.
                   label: a.startsOn < today ? 'End assignment' : 'Withdraw assignment',
@@ -130,7 +155,7 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
         },
       }),
     ];
-  }, [canWrite, today]);
+  }, [canWrite, today, staff.status]);
 
   const notTeacher = !staff.systemRoles.includes('teacher');
 
@@ -177,6 +202,7 @@ export function AssignmentsTab({ staff }: { staff: StaffDto }) {
       />
       {adding && <AddAssignmentDialog staff={staff} onClose={() => setAdding(false)} />}
       <EndAssignmentDialog staff={staff} assignment={ending} today={today} onClose={() => setEnding(null)} />
+      {covering && <ArrangeCoverDialog absent={staff} assignment={covering} onClose={() => setCovering(null)} />}
     </section>
   );
 }
@@ -540,5 +566,230 @@ function EndAssignmentDialog({
         </Alert>
       )}
     </ConfirmWithReasonDialog>
+  );
+}
+
+// ---- Cover (contracts/slice-10.md §6, §13) ----
+
+function coverErrorMessage(error: unknown, coverName: string): string {
+  if (error instanceof ApiError && error.fieldErrors.length === 0) {
+    switch (error.code) {
+      case ErrorCode.CAPABILITY_NOT_HELD: {
+        const capability = (error.details as Partial<CapabilityNotHeld> | null)?.capability;
+        const label = capability ? (CAPABILITY_LABELS as Record<string, string>)[capability] : undefined;
+        return `${coverName} cannot mark registers${label ? ` (${label})` : ''}. Give them that permission first, or choose someone else.`;
+      }
+      case ErrorCode.SELF_ACTION_FORBIDDEN:
+        return 'You cannot assign cover to yourself. Ask your principal to arrange it.';
+      case ErrorCode.ASSIGNMENT_EXISTS:
+        return `${coverName} already covers this section on some of these dates.`;
+      case ErrorCode.STAFF_NOT_ACTIVE:
+        return `${coverName} is not an active member of staff.`;
+    }
+  }
+  return refusalMessage(error, 'record');
+}
+
+/**
+ * "Arrange cover" on the absent class teacher's row: pick the covering staff member and the
+ * dates (the last day is required: a cover always lapses), then post a `cover` assignment to the
+ * covering teacher's record, naming this row as the one covered unless unticked.
+ */
+function ArrangeCoverDialog({
+  absent,
+  assignment,
+  onClose,
+}: {
+  absent: StaffDto;
+  assignment: TeacherAssignmentDto;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const searchId = useId();
+  const staffId = useId();
+  const fromId = useId();
+  const toId = useId();
+  const standsInId = useId();
+  const today = todayInSchool();
+  const firstAllowed = assignment.startsOn > today ? assignment.startsOn : today;
+  const [search, setSearch] = useState('');
+  const [cover, setCover] = useState<{ id: string; name: string } | null>(null);
+  const [startsOn, setStartsOn] = useState(firstAllowed);
+  const [endsOn, setEndsOn] = useState('');
+  const [standsIn, setStandsIn] = useState(true);
+
+  const term = useDebounced(search.trim());
+  // A covering teacher needs a login (to mark the register), so only staff with one are offered.
+  const staffQuery = {
+    status: 'active',
+    hasLogin: true,
+    sort: 'fullName',
+    limit: OPTIONS_LIMIT,
+    ...(term.length >= 2 && { q: term }),
+  } as const;
+  const candidates = useQuery({
+    queryKey: [...staffKeys.list, 'cover-options', staffQuery],
+    queryFn: () => unwrap(staffApi.GET('/api/v1/staff', { params: { query: staffQuery } })),
+  });
+  const options = (candidates.data?.data ?? []).filter((s) => s.id !== absent.id);
+
+  const section = `${assignment.className} ${assignment.sectionName ?? ''}`.trim();
+  const problem = !startsOn
+    ? 'Choose the first day.'
+    : startsOn < today
+      ? 'Cover cannot start in the past.'
+      : !endsOn
+        ? 'Choose the last day: cover always ends.'
+        : endsOn < startsOn
+          ? 'The last day cannot be before the first.'
+          : standsIn && assignment.endsOn !== null && startsOn > assignment.endsOn
+            ? `${absent.fullName}’s assignment ends before this cover starts.`
+            : null;
+  // The "choose the last day" prompt waits until a date has been touched.
+  const showProblem = problem !== null && (startsOn !== firstAllowed || endsOn !== '');
+
+  const create = useMutation({
+    mutationFn: (coverId: string) =>
+      unwrap(
+        calendarApi.POST('/api/v1/staff/{id}/teacher-assignments', {
+          params: { path: { id: coverId } },
+          body: {
+            role: 'cover',
+            classId: assignment.classId,
+            sectionId: assignment.sectionId,
+            startsOn,
+            endsOn,
+            coversAssignmentId: standsIn ? assignment.id : null,
+          },
+        }),
+      ),
+    onSuccess: (row) => {
+      toast.success(
+        `${row.staffFullName} is covering ${section} from ${formatDay(row.startsOn)} to ${row.endsOn ? formatDay(row.endsOn) : 'open'}.`,
+      );
+      void queryClient.invalidateQueries({ queryKey: staffKeys.assignments(absent.id) });
+      void queryClient.invalidateQueries({ queryKey: staffKeys.assignments(row.staffId) });
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !create.isPending && onClose()}>
+      <DialogContent showCloseButton={!create.isPending}>
+        <form
+          noValidate
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (cover && !problem && !create.isPending) create.mutate(cover.id);
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Arrange cover: {section}</DialogTitle>
+            <DialogDescription>
+              The covering teacher keeps this section’s register for the dates below and is told by the app.
+              Access ends by itself after the last day.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5">
+            <Label htmlFor={searchId}>Find staff</Label>
+            <Input
+              id={searchId}
+              type="search"
+              value={search}
+              maxLength={100}
+              autoComplete="off"
+              placeholder="Name"
+              disabled={create.isPending}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor={staffId}>Covering teacher</Label>
+            <NativeSelect
+              id={staffId}
+              value={cover?.id ?? ''}
+              disabled={create.isPending}
+              aria-describedby={`${staffId}-hint`}
+              onChange={(event) => {
+                const found = options.find((s) => s.id === event.target.value);
+                setCover(found ? { id: found.id, name: found.fullName } : null);
+                create.reset();
+              }}
+            >
+              <option value="">
+                {candidates.isPending ? 'Loading…' : options.length ? 'Choose…' : 'No staff found'}
+              </option>
+              {cover && !options.some((s) => s.id === cover.id) && <option value={cover.id}>{cover.name}</option>}
+              {options.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.fullName}
+                  {s.designation ? ` · ${s.designation}` : ''}
+                </option>
+              ))}
+            </NativeSelect>
+            <p id={`${staffId}-hint`} className="text-xs text-muted-foreground">
+              Active staff with a login. They must be able to mark registers.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor={fromId}>First day</Label>
+              <Input
+                id={fromId}
+                type="date"
+                value={startsOn}
+                min={firstAllowed}
+                disabled={create.isPending}
+                onChange={(event) => setStartsOn(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={toId}>Last day</Label>
+              <Input
+                id={toId}
+                type="date"
+                value={endsOn}
+                min={startsOn || firstAllowed}
+                required
+                disabled={create.isPending}
+                onChange={(event) => setEndsOn(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <input
+              id={standsInId}
+              type="checkbox"
+              className="mt-0.5 size-4 accent-primary"
+              checked={standsIn}
+              disabled={create.isPending}
+              onChange={(event) => setStandsIn(event.target.checked)}
+            />
+            <Label htmlFor={standsInId} className="font-normal">
+              Covering for {absent.fullName}, the class teacher
+            </Label>
+          </div>
+          {showProblem && (
+            <p className="text-xs text-destructive" role="alert">
+              {problem}
+            </p>
+          )}
+          {create.error && (
+            <Alert variant="destructive">
+              <AlertDescription>{coverErrorMessage(create.error, cover?.name ?? 'This teacher')}</AlertDescription>
+            </Alert>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={create.isPending} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!cover || problem !== null || create.isPending}>
+              {create.isPending ? 'Saving…' : 'Arrange cover'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -185,17 +185,23 @@ Primary → `409 PRIMARY_CONTACT_REQUIRED`; last fee payer → `409 FEE_PAYER_RE
 Not `active` → `409 ENROLMENT_NOT_ACTIVE`; taken in the section → `409 ROLL_NO_TAKEN` `details: {
 enrolmentId }` (R37; constraint `enrolments_section_roll_no_key`). **200** `EnrolmentDto`.
 
-`POST /enrolments/:id/change-section` — `{ sectionId, reason?: TextField(3, 500) }`. Edited in
-place: `section_id` set, **`roll_no` cleared** (R37). Section of another class → `422 INVALID_VALUE`
-("use change-class"); same section → `200` unchanged. Refusals: `ENROLMENT_NOT_ACTIVE`,
-`SECTION_ARCHIVED`, `CLASS_ARCHIVED`, `ACADEMIC_YEAR_CLOSED`. **200** `EnrolmentDto`.
+`POST /enrolments/:id/change-section` — **superseded by `slice-10.md` §8.2 (R174)**: `{
+sectionId, effectiveOn: date, reason: TextField(3, 500) }` (`effectiveOn` and `reason` now
+required). Close-old/open-new, never an edit: the old enrolment ends `left` on `effectiveOn − 1`
+keeping its section and roll number; a new `active` enrolment opens on `effectiveOn` in the target
+section without a roll number. The current section → `422 INVALID_VALUE` (was `200` unchanged);
+another class's section → `422 INVALID_VALUE`. Refusals as before plus `409
+ATTENDANCE_RECORDED_AFTER` (slice 11). **200** `SectionChangeResultDto { closed, opened }`.
+`enrolments.section_id` is frozen by the database from slice 10.
 
 `POST /enrolments/:id/change-class` — `{ classId, sectionId, effectiveOn: date, reason:
 TextField(3, 500) }`. Class in another academic year → `409 CLASS_IN_OTHER_YEAR` (R38); same class
 → `422` ("use change-section"). `effectiveOn` ≥ `started_on`, ≤ today. One transaction (R39): old
-enrolment `left`, `ended_on = effectiveOn`; new `active` enrolment, `started_on = effectiveOn`,
-`roll_no` null. Never an edit. Retry: a resubmit is `ENROLMENT_NOT_ACTIVE`. **200** the new
-`EnrolmentDto`.
+enrolment `left`, `ended_on = effectiveOn − 1` (*amended by `slice-10.md` §8.3: was `effectiveOn`,
+which put the child on two rosters that day; zero-length when `effectiveOn = started_on`*); new
+`active` enrolment, `started_on = effectiveOn`, `roll_no` null. Never an edit. Retry: a resubmit
+is `ENROLMENT_NOT_ACTIVE`. **200** `SectionChangeResultDto { closed, opened }` (*slice 10; was the
+new `EnrolmentDto`*). Audit metadata gains `effectiveOn`.
 
 ---
 
@@ -339,7 +345,7 @@ Reused: `USERNAME_IN_USE` (slice 4), `ILLEGAL_STATUS_TRANSITION`, `IDENTITY_NUMB
 | `student.updated` | student | — | `{ changes }`; `bForm` as `{ changed: true }` |
 | `student.status_changed` | student | required | `{ from, to, effectiveOn, enrolmentClosed }` |
 | `guardian_link.created` / `.updated` / `.ended` | student_guardian | end: required | `{ studentId, guardianId }`; `{ changes }`; `{}` |
-| `enrolment.roll_no_set` / `.section_changed` / `.class_changed` | enrolment | as given | `{ from, to }`; `{ fromSectionId, toSectionId }`; `{ newEnrolmentId, toClassId }` |
+| `enrolment.roll_no_set` / `.section_changed` / `.class_changed` | enrolment (the closed one for a change) | as given (required for a change from slice 10) | `{ from, to }`; `{ fromSectionId, toSectionId, newEnrolmentId, effectiveOn }`; `{ newEnrolmentId, toClassId, effectiveOn }` (*slice-10.md §11*) |
 | `document.added` | student_document | — | `{ studentId, type, mime, sizeBytes }` |
 | `user.login_issued` | user | as given, else `'Login issued from the student record'` (or `'Login issued at admission'` from the wizard) (R57) | `{ capacity: 'student', linkedExistingUser: false }` |
 

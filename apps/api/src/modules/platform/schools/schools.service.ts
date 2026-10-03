@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import {
   canChangeSchoolStatus,
@@ -7,13 +7,16 @@ import {
   ErrorCode,
   type SchoolStatus,
 } from '@asms/shared';
+import { diffFields } from '../../../common/diff';
 import { ApiException, notFound } from '../../../common/errors/api-exception';
 import { toPage, type Page } from '../../../common/pagination';
+import { ENV, type Env } from '../../../config/env';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository, type SchoolRecord } from '../../../repositories/platform/school.repository';
 import { SchoolCounterRepository } from '../../../repositories/school-counter.repository';
 import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { fromPlatformSchool } from '../../../tenancy/school-id.mint';
+import { refuseDisabledWhatsappProvider } from '../whatsapp-providers';
 import type {
   ChangeSchoolStatusDto,
   CreateSchoolDto,
@@ -27,6 +30,9 @@ const SUBJECT = 'school';
 /** Reads before giving up when the row keeps changing between the read and the lock or write. */
 const ATTEMPTS = 3;
 
+/** The PATCHable attributes; the messaging knobs join the same audit action (slice-9 §6.1). */
+const EDITABLE = ['name', 'timezone', 'smsMonthlyCap', 'whatsappProvider', 'smsProvider'] as const;
+
 const terminated = () =>
   new ApiException(409, ErrorCode.SCHOOL_TERMINATED, 'A terminated school cannot be changed.');
 
@@ -37,6 +43,9 @@ export function toSchoolDto(school: SchoolRecord): SchoolDto {
     shortCode: school.shortCode,
     status: school.status,
     timezone: school.timezone,
+    smsMonthlyCap: school.smsMonthlyCap,
+    whatsappProvider: school.whatsappProvider,
+    smsProvider: school.smsProvider,
     createdAt: school.createdAt,
     updatedAt: school.updatedAt,
   };
@@ -46,6 +55,7 @@ export function toSchoolDto(school: SchoolRecord): SchoolDto {
 @Injectable()
 export class SchoolsService {
   constructor(
+    @Inject(ENV) private readonly env: Env,
     private readonly schools: SchoolRepository,
     private readonly settings: SchoolSettingsRepository,
     private readonly counters: SchoolCounterRepository,
@@ -114,20 +124,12 @@ export class SchoolsService {
         );
       }
       if (school.status === 'terminated') throw terminated();
+      refuseDisabledWhatsappProvider(this.env, 'whatsappProvider', dto.whatsappProvider);
       // An empty body: nothing to compare, so nothing to lock.
-      if (dto.name === undefined && dto.timezone === undefined) return toSchoolDto(school);
+      if (EDITABLE.every((key) => dto[key] === undefined)) return toSchoolDto(school);
       if (!(await this.schools.lockIfUnchanged(school))) continue;
 
-      const data: { name?: string; timezone?: string } = {};
-      const changes: Record<string, { from: string; to: string }> = {};
-      if (dto.name !== undefined && dto.name !== school.name) {
-        data.name = dto.name;
-        changes.name = { from: school.name, to: dto.name };
-      }
-      if (dto.timezone !== undefined && dto.timezone !== school.timezone) {
-        data.timezone = dto.timezone;
-        changes.timezone = { from: school.timezone, to: dto.timezone };
-      }
+      const { data, changes } = diffFields(school, dto, EDITABLE);
       // Nothing actually changes: no write, no audit row.
       if (Object.keys(changes).length === 0) return toSchoolDto(school);
 

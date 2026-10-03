@@ -114,6 +114,28 @@ export const NameField = (
     NoIdentityNumber(),
   );
 
+/**
+ * A Pakistani mobile number in free text (plan §4.2's R16 phone pattern), plain, spaced or dashed.
+ * Text that reaches a phone or the messages table must not carry one (R111).
+ */
+const PHONE_IN_TEXT = /(\+?92|0)3[0-9]{2}[\s-]?[0-9]{7}/;
+
+export const NoPhoneNumber = (): PropertyDecorator =>
+  ValidateBy({
+    name: 'noPhoneNumber',
+    validator: {
+      validate: (value: unknown) => typeof value === 'string' && !PHONE_IN_TEXT.test(value),
+      defaultMessage: () => '$property must not contain a phone number',
+    },
+  });
+
+/**
+ * Text that may travel in a notice (contracts/slice-10.md §1): a NameField (trimmed, whitespace
+ * collapsed, no control characters, no identity number) that also refuses a phone number.
+ */
+export const NoticeTextField = (min: number, max: number): PropertyDecorator =>
+  applyDecorators(NameField(min, max), NoPhoneNumber());
+
 /** Free text (a reason, an address): trimmed, `min`-`max` characters, no identity number. */
 export const TextField = (min: number, max: number): PropertyDecorator =>
   applyDecorators(Transform(trim), IsString(), Length(min, max), NoIdentityNumber());

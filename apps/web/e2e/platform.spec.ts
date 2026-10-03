@@ -28,6 +28,9 @@ const school = (id: string, name: string, status: School['status']): School => (
   shortCode: name.toLowerCase().replace(/[^a-z]/g, '').slice(0, 8),
   status,
   timezone: 'Asia/Karachi',
+  smsMonthlyCap: 500,
+  whatsappProvider: 'platform_default',
+  smsProvider: 'platform_default',
   createdAt: '2026-09-01T05:00:00.000Z',
   updatedAt: '2026-09-01T05:00:00.000Z',
 });

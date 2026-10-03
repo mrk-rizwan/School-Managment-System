@@ -148,7 +148,15 @@ export interface TestSchoolSession {
   cookie: string;
   /** For supertest `.set('Authorization', ...)` on a bearer session. */
   authorization: string;
+  /**
+   * For supertest `.set(session.bearer)`: the bearer header plus the app version the mobile app
+   * always sends (a bearer request without it is 426, R161).
+   */
+  bearer: Record<string, string>;
 }
+
+/** The X-App-Version tests send; at or above every development floor. */
+export const TEST_APP_VERSION = '1.0.0';
 
 /** A live session for `user`, stored as the server stores it (SHA-256 lower hex of the token). */
 export async function createSchoolSession(
@@ -187,5 +195,6 @@ export async function createSchoolSession(
     token,
     cookie: `${SCHOOL_SESSION_COOKIE}=${token}`,
     authorization: `Bearer ${token}`,
+    bearer: { Authorization: `Bearer ${token}`, 'X-App-Version': TEST_APP_VERSION },
   };
 }

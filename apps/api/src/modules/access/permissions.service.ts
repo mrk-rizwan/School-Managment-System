@@ -8,8 +8,14 @@ import {
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { UserRepository, type UserStatusValue } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import type { Scope } from '../../tenancy/scope';
-import { scopeAll, scopeSections } from '../../tenancy/scope.mint';
+import type { SchoolSessionContext } from '../../common/auth/school-session';
+import type { DatedScope, Scope } from '../../tenancy/scope';
+import {
+  datedScopeAll,
+  datedScopeSections,
+  scopeAll,
+  scopeSections,
+} from '../../tenancy/scope.mint';
 import { SchoolClock } from '../../common/school-clock';
 import {
   capabilityOrder,
@@ -54,6 +60,14 @@ export interface UserAccess {
   lines: readonly EffectiveLine[];
   /** Effective capabilities: exactly the keys of `lines`. */
   capabilities: ReadonlySet<Capability>;
+}
+
+/**
+ * The ordinary row scope of a dated scope (contracts/slice-10.md §7.2), for a student-linked
+ * repository call: school-wide stays school-wide, otherwise the sections held on that date.
+ */
+export function rowScope(dated: DatedScope): Scope {
+  return dated.kind === 'all' ? scopeAll() : scopeSections([...dated.sections.keys()]);
 }
 
 /**
@@ -185,6 +199,31 @@ export class PermissionsService {
     );
     const schoolWide = held.some((key) => !teacherOnly.has(key));
     return schoolWide ? scopeAll() : scopeSections(await this.teacherSections(schoolId, access));
+  }
+
+  /**
+   * Dated, role-aware scope (R175, contracts/slice-10.md §7.2): null when the caller does not hold
+   * `capability` (no staff capacity counts as not held, R59); school-wide when it has a
+   * school-wide source (as canAny); otherwise the sections the caller holds a role in **on `on`**,
+   * with the roles. An empty map means no rows. The route decorator gates the route; this gates
+   * the row on the row's own date. Distinct from the synchronous `scopeOf(session)` (today's guard
+   * scope), which is unchanged.
+   */
+  async scopeOf(
+    session: SchoolSessionContext,
+    { capability, on }: { capability: Capability; on: Date },
+  ): Promise<DatedScope | null> {
+    const { access, schoolId } = session;
+    if (!access.capacities.staff || !access.capabilities.has(capability)) return null;
+    const teacherOnly = access.lines.some(
+      (line) => line.capability === capability && line.scope === 'assigned_sections',
+    );
+    if (!teacherOnly) return datedScopeAll(on);
+    const sections =
+      access.staffId === null
+        ? new Map()
+        : await this.assignments.sectionsOn(schoolId, access.staffId, on);
+    return datedScopeSections(on, sections);
   }
 
   /**

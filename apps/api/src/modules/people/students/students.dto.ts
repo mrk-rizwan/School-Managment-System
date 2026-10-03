@@ -31,6 +31,7 @@ import {
   IsCalendarDate,
   NameField,
   NoIdentityNumber,
+  NoticeTextField,
   QueryBoolean,
   TextField,
   trim,
@@ -469,15 +470,32 @@ export class UpdateEnrolmentDto {
   rollNo: number | null;
 }
 
+/** contracts/slice-10.md §8.2: close-old/open-new from `effectiveOn` (R174). */
 export class ChangeSectionDto {
-  @ApiProperty(ID)
+  @ApiProperty({ ...ID, description: 'Another section of the same class' })
   @IsIdString()
   sectionId: string;
 
-  @ApiPropertyOptional({ minLength: 3, maxLength: 500 })
-  @IfPresent()
-  @Reason()
-  reason?: string;
+  @ApiProperty({
+    ...DATE,
+    description:
+      'The first day in the new section: on or after the current enrolment started, no later than today. The current enrolment ends the day before.',
+  })
+  @IsCalendarDate()
+  effectiveOn: string;
+
+  @ApiProperty({ minLength: 3, maxLength: 500 })
+  @NoticeTextField(3, 500)
+  reason: string;
+}
+
+/** The closed enrolment and the one opened in its place (contracts/slice-10.md §2, §8). */
+export class SectionChangeResultDto {
+  @ApiProperty({ type: EnrolmentDto })
+  closed: EnrolmentDto;
+
+  @ApiProperty({ type: EnrolmentDto })
+  opened: EnrolmentDto;
 }
 
 export class ChangeClassDto {
@@ -491,7 +509,8 @@ export class ChangeClassDto {
 
   @ApiProperty({
     ...DATE,
-    description: 'On or after the current enrolment started, no later than today',
+    description:
+      'The first day in the new class: on or after the current enrolment started, no later than today. The current enrolment ends the day before.',
   })
   @IsCalendarDate()
   effectiveOn: string;

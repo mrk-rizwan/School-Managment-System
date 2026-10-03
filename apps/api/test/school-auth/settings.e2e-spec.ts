@@ -117,10 +117,104 @@ describe('school settings', () => {
     expect(await db().auditLog.count({ where: { schoolId: school.id, action: 'school_settings.updated' } })).toBe(0);
   });
 
-  it('R80: a suspended school can read but not change its settings', async () => {
+  it('R80 lifted (contracts/slice-9.md §10 a): a suspended school reads and patches its settings', async () => {
     const school = await schoolWithSettings('suspended');
     const cookie = await principalOf(school);
     await http().get('/api/v1/school/settings').set('Cookie', cookie).expect(200);
-    await patch(cookie, { feeDueDay: 12 }).expect(403);
+    await patch(cookie, { feeDueDay: 12 }).expect(200);
+  });
+
+  // ---------------------------------------------------------- contracts/slice-9.md §4 (plan §4.5)
+
+  it('§4.5: GET returns the Phase 2 defaults and the platform-set SMS cap', async () => {
+    const school = await schoolWithSettings();
+    await db().school.update({ where: { id: school.id }, data: { smsMonthlyCap: 750 } });
+    const cookie = await principalOf(school);
+    const body = (await http().get('/api/v1/school/settings').set('Cookie', cookie).expect(200)).body as Record<string, unknown>;
+    expect(body).toMatchObject({
+      periodsPerDay: 8,
+      weeklyOffDays: [0],
+      attendanceAmendWindowDays: 3,
+      registerDeadlineTime: '10:00',
+      absenceAlertTime: '09:30',
+      lateAdviceEnabled: false,
+      lateCountsAs: 'present',
+      lateCutoffTime: null,
+      leaveCountsAs: 'excused',
+      smsMonthlyCap: 750,
+      smsAllowedTypes: ['absence_alert', 'late_advice', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'],
+      remarkDefaultVisibility: 'guardian',
+      remarkNotifyGuardians: false,
+    });
+  });
+
+  it('§4.5: PATCH writes every new field, normalises arrays and audits one action with scalar changes', async () => {
+    const school = await schoolWithSettings();
+    const cookie = await principalOf(school);
+    const res = await patch(cookie, {
+      periodsPerDay: 6,
+      weeklyOffDays: [6, 0],
+      attendanceAmendWindowDays: 0,
+      registerDeadlineTime: '09:15',
+      absenceAlertTime: '10:45',
+      lateAdviceEnabled: true,
+      lateCountsAs: 'absent_after_cutoff',
+      lateCutoffTime: '08:30',
+      leaveCountsAs: 'absent',
+      smsAllowedTypes: ['holiday_notice', 'absence_alert', 'announcement_normal'],
+      remarkDefaultVisibility: 'student',
+      remarkNotifyGuardians: true,
+    }).expect(200);
+    expect(res.body).toMatchObject({
+      periodsPerDay: 6,
+      weeklyOffDays: [0, 6],
+      registerDeadlineTime: '09:15',
+      absenceAlertTime: '10:45',
+      lateCutoffTime: '08:30',
+      smsAllowedTypes: ['absence_alert', 'announcement_normal', 'holiday_notice'],
+    });
+    const rows = await db().auditLog.findMany({ where: { schoolId: school.id, action: 'school_settings.updated' } });
+    expect(rows).toHaveLength(1);
+    const changes = (rows[0]?.metadata as { changes: Record<string, { from: unknown; to: unknown }> }).changes;
+    expect(changes.weeklyOffDays).toEqual({ from: '0', to: '0,6' });
+    expect(changes.smsAllowedTypes?.to).toBe('absence_alert,announcement_normal,holiday_notice');
+    expect(changes.lateCutoffTime).toEqual({ from: null, to: '08:30' });
+    // The same values again change nothing and audit nothing; [] is a real value for both arrays.
+    await patch(cookie, { weeklyOffDays: [0, 6], smsAllowedTypes: ['announcement_normal', 'holiday_notice', 'absence_alert'] }).expect(200);
+    expect(await db().auditLog.count({ where: { schoolId: school.id, action: 'school_settings.updated' } })).toBe(1);
+    const cleared = await patch(cookie, { weeklyOffDays: [], smsAllowedTypes: [] }).expect(200);
+    expect(cleared.body).toMatchObject({ weeklyOffDays: [], smsAllowedTypes: [] });
+  });
+
+  it('§4.5: 422 for out-of-range values, a read-only cap, ineligible SMS types and a missing late cut-off', async () => {
+    const school = await schoolWithSettings();
+    const cookie = await principalOf(school);
+    const refused: [object, string, string][] = [
+      [{ periodsPerDay: 0 }, 'periodsPerDay', 'INVALID_VALUE'],
+      [{ periodsPerDay: 13 }, 'periodsPerDay', 'INVALID_VALUE'],
+      [{ weeklyOffDays: [0, 1, 2, 3, 4, 5, 6] }, 'weeklyOffDays', 'INVALID_VALUE'],
+      [{ weeklyOffDays: [1, 1] }, 'weeklyOffDays', 'INVALID_VALUE'],
+      [{ weeklyOffDays: [7] }, 'weeklyOffDays', 'INVALID_VALUE'],
+      [{ weeklyOffDays: null }, 'weeklyOffDays', 'INVALID_VALUE'],
+      [{ attendanceAmendWindowDays: 31 }, 'attendanceAmendWindowDays', 'INVALID_VALUE'],
+      [{ registerDeadlineTime: '24:00' }, 'registerDeadlineTime', 'INVALID_VALUE'],
+      [{ absenceAlertTime: '9:30' }, 'absenceAlertTime', 'INVALID_VALUE'],
+      [{ lateCountsAs: 'sometimes' }, 'lateCountsAs', 'INVALID_VALUE'],
+      [{ smsMonthlyCap: 10 }, 'smsMonthlyCap', 'UNKNOWN_FIELD'],
+      [{ smsAllowedTypes: ['diary_posted'] }, 'smsAllowedTypes', 'INVALID_VALUE'],
+      [{ smsAllowedTypes: ['absence_alert', 'absence_alert'] }, 'smsAllowedTypes', 'INVALID_VALUE'],
+      [{ lateCountsAs: 'absent_after_cutoff' }, 'lateCutoffTime', 'INVALID_VALUE'],
+      [{ lateCountsAs: 'absent_after_cutoff', lateCutoffTime: null }, 'lateCutoffTime', 'INVALID_VALUE'],
+    ];
+    for (const [body, path, code] of refused) {
+      const res = await patch(cookie, body).expect(422);
+      const fields = (res.body as { error: { details: { fields: { path: string; code: string }[] } } }).error.details.fields;
+      expect(fields.map((f) => [f.path.replace(/\[\d+\]$/, ''), f.code])).toContainEqual([path, code]);
+    }
+    // With a cut-off already stored, switching the rule needs no cut-off in the same patch; clearing it then is refused.
+    await patch(cookie, { lateCutoffTime: '08:45' }).expect(200);
+    await patch(cookie, { lateCountsAs: 'absent_after_cutoff' }).expect(200);
+    await patch(cookie, { lateCutoffTime: null }).expect(422);
+    expect(await db().auditLog.count({ where: { schoolId: school.id, action: 'school_settings.updated' } })).toBe(2);
   });
 });

@@ -407,57 +407,6 @@ describe('guardian links and enrolments (e2e)', () => {
     expect(lost && errorOf(lost).code).toBe('ROLL_NO_TAKEN');
   });
 
-  it('change-section: in place, roll number cleared; same section unchanged; other class 422', async () => {
-    const { school, office, klass, section, enrolment } = await setup();
-    await db.enrolment.update({
-      where: { schoolId_id: { schoolId: school.id, id: enrolment.id } },
-      data: { rollNo: 3 },
-    });
-    const target = await createSection(db, school, klass, { name: 'B' });
-    const path = `/enrolments/${enrolment.id}/change-section`;
-
-    const same = await h.send('post', path, { sectionId: section.id.toString() }, office.cookie);
-    expect(same.body).toMatchObject({ sectionId: section.id.toString(), rollNo: 3 });
-    const res = await h.send(
-      'post',
-      path,
-      { sectionId: target.id.toString(), reason: 'Balance sizes' },
-      office.cookie,
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      id: enrolment.id.toString(),
-      sectionId: target.id.toString(),
-      sectionName: 'B',
-      rollNo: null,
-      status: 'active',
-    });
-    const audits = await auditFor(school, 'enrolment', enrolment.id);
-    expect(audits).toEqual([
-      expect.objectContaining({
-        action: 'enrolment.section_changed',
-        reason: 'Balance sizes',
-        metadata: { fromSectionId: section.id.toString(), toSectionId: target.id.toString() },
-      }),
-    ]);
-
-    const otherClass = await createClass(db, school, { id: klass.academicYearId });
-    const foreign = await createSection(db, school, otherClass);
-    const refused = await h.send('post', path, { sectionId: foreign.id.toString() }, office.cookie);
-    expect(refused.status).toBe(422);
-    expect(errorOf(refused).details).toMatchObject({
-      fields: [{ path: 'sectionId', code: 'INVALID_VALUE' }],
-    });
-    const archived = await createSection(db, school, klass, { deletedAt: new Date() });
-    expect(
-      errorOf(await h.send('post', path, { sectionId: archived.id.toString() }, office.cookie))
-        .code,
-    ).toBe('SECTION_ARCHIVED');
-    expect((await h.send('post', path, { sectionId: '999999999999' }, office.cookie)).status).toBe(
-      422,
-    );
-  });
-
   it('R38, R39: change-class closes the old enrolment and opens a new one, in-year only', async () => {
     const { school, office, year, section } = await setup();
     const student = await createStudent(db, school, { admittedOn: isoDay(-20) });
@@ -518,7 +467,14 @@ describe('guardian links and enrolments (e2e)', () => {
 
     const res = await h.send('post', path, body(), office.cookie);
     expect(res.status).toBe(200);
-    const created = res.body as Enrolment;
+    // contracts/slice-10.md §8.3: { closed, opened }, the old one ended the day before.
+    const { closed, opened: created } = res.body as { closed: Enrolment; opened: Enrolment };
+    expect(closed).toMatchObject({
+      id: enrolment.id.toString(),
+      status: 'left',
+      endedOn: isoDay(-6),
+      rollNo: 5,
+    });
     expect(created).toMatchObject({
       studentId: student.id.toString(),
       classId: target.id.toString(),
@@ -532,7 +488,7 @@ describe('guardian links and enrolments (e2e)', () => {
     const old = await db.enrolment.findFirst({ where: { schoolId: school.id, id: enrolment.id } });
     expect(old).toMatchObject({
       status: 'left',
-      endedOn: day(isoDay(-5)),
+      endedOn: day(isoDay(-6)),
       classId: section.classId,
       rollNo: 5,
     });
@@ -540,7 +496,11 @@ describe('guardian links and enrolments (e2e)', () => {
     expect(audit).toMatchObject({
       action: 'enrolment.class_changed',
       reason: 'Promoted mid-year',
-      metadata: { newEnrolmentId: created.id, toClassId: target.id.toString() },
+      metadata: {
+        newEnrolmentId: created.id,
+        toClassId: target.id.toString(),
+        effectiveOn: isoDay(-5),
+      },
     });
     // Retry: the old enrolment is no longer active.
     expect(errorOf(await h.send('post', path, body(), office.cookie)).code).toBe(
@@ -559,7 +519,10 @@ describe('guardian links and enrolments (e2e)', () => {
     const { enrolment } = await setup();
     const intruder = await signIn(await createSchool(), 'principal');
     for (const [path, body] of [
-      [`/enrolments/${enrolment.id}/change-section`, { sectionId: '1' }],
+      [
+        `/enrolments/${enrolment.id}/change-section`,
+        { sectionId: '1', effectiveOn: isoDay(), reason: 'Intrusion' },
+      ],
       [
         `/enrolments/${enrolment.id}/change-class`,
         { classId: '1', sectionId: '1', effectiveOn: isoDay(), reason: 'Intrusion' },

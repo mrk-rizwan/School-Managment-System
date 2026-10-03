@@ -8,5 +8,6 @@ import { SchoolSettingsService } from './school-settings.service';
 @Module({
   controllers: [SchoolSettingsController],
   providers: [SchoolSettingsService, SchoolSettingsRepository, AuditLogRepository],
+  // OwnSchoolRepository (smsMonthlyCap) is exported by the global TenancyModule.
 })
 export class SchoolSettingsModule {}

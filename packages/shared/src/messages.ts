@@ -37,6 +37,13 @@ export type MessagePriority = (typeof MESSAGE_PRIORITIES)[number];
 export const MESSAGE_CHANNELS = ['push', 'whatsapp', 'sms', 'email', 'in_app'] as const;
 export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
 
+/**
+ * The channels that leave the platform and have delivery rows: every channel but `in_app`. The
+ * one list routing, the processor, usage and the delivery-health view share.
+ */
+export const EXTERNAL_CHANNELS = ['push', 'whatsapp', 'sms', 'email'] as const satisfies readonly MessageChannel[];
+export type ExternalChannel = (typeof EXTERNAL_CHANNELS)[number];
+
 /** A `messages` row: one per person per subject (R107). */
 export const MESSAGE_STATUSES = ['queued', 'sending', 'sent', 'delivered', 'failed', 'suppressed'] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];

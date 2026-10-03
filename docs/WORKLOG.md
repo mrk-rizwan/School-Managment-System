@@ -11,14 +11,12 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** **Phase 1 (Foundation) complete** (2026-10-03), slices 0–8: scaffold and isolation
-  guardrails; platform console and school record; school logins, sessions, users, settings;
-  academic structure; guardians; staff and teacher assignments; students, enrolment, admission,
-  documents; custom roles, grants and the permissions screen; phase close. Project progress
-  30 / 155 days ≈ 19.4 %. **Phase 2 is planned** (`docs/plans/phase-2-daily-operations.md`,
-  2026-10-03, reviewed by four specialists, findings folded in). **Next: Opus executes wave D
-  (slices 9 + 10) after the groundwork commit** — but read the plan's §1.2 first: seven owner
-  answers gate specific slices, and the Phase 1 CI run is still unconfirmed.
+- **Phase:** Phase 1 complete and closed (CI green on `4dc5819`). **Phase 2 wave D done**
+  (2026-10-04): slices 9 (messaging core, worker, bearer sessions, devices) and 10 (calendar,
+  holidays, cover, section-change history). **Next: wave E** = slices 11 (student attendance),
+  12 (staff attendance), 13 (diary and remarks) and 15 (mobile foundation) in parallel, per
+  `docs/plans/phase-2-daily-operations.md`. Project progress ≈ 41.5 / 157 days ≈ 26 % (Phase 2
+  re-estimated at 42 days: both WhatsApp drivers).
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
   was **red** — the API test process ran out of heap on the runner after 17 of 72 suites (local
   Node allows 4.3 GB, the runner's 2 GB). Fixed by running Jest with two recycled workers
@@ -181,6 +179,60 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-04 — Phase 2 wave D: slices 9 and 10 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
+
+**Groundwork** (`7f57476`): shared enums, 27 error codes, the message-type table, teaching-day
+functions, office staff gain `attendance.student.mark`; messaging and calendar schema; worker
+entry point (`pnpm --filter @asms/api worker`), queue tenancy mint with `runAsSchool`, lint
+boundaries (bullmq, drivers, the mint). Contracts `docs/plans/contracts/slice-9.md` and
+`slice-10.md`. Dependencies pinned: `bullmq` 6.3.11, `firebase-admin` 14.5.0;
+`@nestjs/schedule` removed.
+
+**Slice 9:** `NotificationService` (one row per person, routing by contact capability and
+priority, templates with the school name first), outbox dispatched after commit, a claim-first
+processor, WhatsApp through WAHA **and** the Cloud API (selectable per school, platform default,
+and `WHATSAPP_PROVIDERS_ENABLED` per deployment — only enabled providers need keys), Sendpk SMS
+with polled delivery status, FCM push, email; webhooks verified over raw bytes (exception 5);
+platform delivery-health rollup (exception 6); SMS cap by segment; daily `session-purge`.
+Bearer sessions for the app (token in the body only, refused with `Origin` or a cookie,
+lifetimes by capacity), `X-App-Version` floor (426), devices, revoke-others,
+sign-out-everywhere, `MeDto.capacities/assignments`. **R80 lifted:** a suspended school is no
+longer read-only (owner, 2026-10-03); the platform's suspend dialog offers to set the school's
+SMS allowance to 0, ticked by default.
+**Slice 10:** holidays as date ranges with an exclusion constraint, one notice per person,
+cancellation withdraws unsent notices; teaching days (shared function); cover assignments with
+full class-teacher scope for their dates; `scopeOf(session, { capability, on })` and
+`rolesOn`; section and class changes close the old enrolment on `effectiveOn − 1` and open a
+new one (R174; `section_id` frozen).
+
+**Reviews:** security PASS (two medium — provider keys forced in production, suspended
+schools' SMS spend — and five low, all fixed); correctness found no behaviour defects in the
+core flows; fixed a worker test that scanned the whole test DB, the missing session purge (the
+shipped migration forbade deleting devices — dropped, owner-side decision taken by the main
+thread), sweep churn on paced messages, after-commit callbacks running inside the closed
+transaction, a cap-reached retry loop, allow-list check at attempt time. Refactors: one
+`diffFields`, one `recoverConstraint`, one `ContactResolver`, one title source.
+
+**Also fixed this wave:**
+- The "flaky" `students-real` admission failure, seen three times since wave B, was real: the
+  web wizard's idempotency key was a dashless UUID, and about one in twenty-five holds 13
+  digits in a row, which the API refuses as identity-shaped. `newIdempotencyKey()` in
+  `packages/shared` keeps the dashes (no run can exceed 12); test `test/core/idempotency-key.spec.ts`.
+- A test helper read "today" in UTC while the API reads the school clock; it failed only
+  between 00:00 and 05:00 Karachi.
+- The seed script stopped compiling when `failureLog` moved into an import chain carrying
+  pino types; `failureLog` now lives in `common/errors/failure-log.ts`.
+
+**Results:** lint and typecheck clean; API 100 suites / 1,298 tests (2 skipped — real-provider
+contract tests, run only with `RUN_DRIVER_TESTS=1`); web build; Playwright 192/192 including
+the real-API specs; hook clean.
+
+**Left from this wave:** the SMS poll and delivery-health rollup scan `message_deliveries` per
+school with no supporting index (performance-engineer at slice 17); Prettier reports
+line-ending differences on many files (not enforced); a cover cannot yet be arranged for a
+section with no class teacher; Sendpk's real answers to the 15 vendor questions replace the
+adapter's recorded assumptions before the first real send.
 
 ## 2026-10-03 — Phase 2 plan written and reviewed (Fable 5.1) — DONE
 

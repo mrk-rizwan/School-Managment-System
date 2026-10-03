@@ -4,7 +4,7 @@ import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { FieldDecryptionError, FieldEncryption } from '../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../common/crypto/password';
-import { failureLog } from '../../common/errors/all-exceptions.filter';
+import { failureLog } from '../../common/errors/failure-log';
 import { ApiException, notFound } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
@@ -229,6 +229,35 @@ export class UsersService {
       reason,
       metadata: {},
     });
+  }
+
+  // -------------------------------------------------------------------- sign out everywhere
+
+  /**
+   * contracts/slice-9.md §3.7 (R169): the target's every live session, any channel, ends; their
+   * devices die by the push join. Password, email, tokens and status are untouched. Refusals as
+   * office reset (R10, R12, R14). Audited only when something was revoked.
+   */
+  @Transactional()
+  async signOutEverywhere(
+    session: SchoolSessionContext,
+    id: bigint,
+    dto: ReasonDto,
+  ): Promise<{ revoked: number }> {
+    const { schoolId } = session;
+    const target = await this.lockTarget(session, id);
+    const revoked = await this.sessions.revokeAllForUser(schoolId, target.id, new Date());
+    if (revoked > 0) {
+      await this.audit.record(schoolId, {
+        actorUserId: session.access.userId,
+        action: 'user.signed_out_everywhere',
+        subjectType: 'user',
+        subjectId: target.id,
+        reason: dto.reason,
+        metadata: { revoked },
+      });
+    }
+    return { revoked };
   }
 
   // -------------------------------------------------------------------------- target rules

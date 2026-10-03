@@ -150,6 +150,21 @@ const NAMED_EXCEPTION_SITES = {
     repository: 'school-by-id.repository',
     exempt: [...TENANCY_IMPORTS, 'schoolByIdRepository'],
   },
+  // Exception 3 in the worker (contracts/slice-9.md §7.9-§7.11): the messaging housekeeping jobs
+  // fan out over the live schools, then work per school in runAsSchool with scoped repositories.
+  'src/jobs/job-runner.ts': {
+    repository: 'school-fan-out.repository',
+    exempt: ['bullmq', 'queueMint'],
+  },
+  // Named exception 6 (contracts/slice-9.md §7.11): the only writer of platform_delivery_health
+  // outside the platform module, run per school by the rollup job.
+  'src/jobs/delivery-health-rollup.ts': {
+    repository: 'delivery-health.repository',
+    exempt: ['bullmq', 'queueMint'],
+  },
+  // Named exception 5 (contracts/slice-9.md §8.5): provider webhooks correlate a report with its
+  // row by a global key before any tenant is known. The only importer of that repository.
+  'src/webhooks/webhooks.service.ts': { repository: 'delivery-webhook.repository' },
 };
 
 /** The platform-repositories pattern with one repository file let through. */
@@ -167,6 +182,9 @@ const RAW_SQL_FILES = [
   // UserRepository.list: the users page sorted by COALESCE(staff, guardian) name; tenant
   // predicate on the WHERE and every join (test/school-auth/repositories.e2e-spec.ts).
   'src/repositories/user.repository.ts',
+  // Named exception 5: DeliveryWebhookRepository's two statement shapes (contracts/slice-9.md
+  // §8.5), each returning the school it touched (test/webhooks/webhooks.e2e-spec.ts).
+  'src/repositories/platform/delivery-webhook.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -539,8 +557,12 @@ export default tseslint.config(
   },
   {
     // The queue-payload resolution and runAsSchool are tested directly, as a job would call them.
-    files: ['test/jobs/**/*.ts'],
-    rules: restrictImports({ exempt: ['queueMint'] }),
+    // The messaging suites replace the drivers with fakes (a real driver is never called in a
+    // test), so they import the driver interfaces, and type their seeds with the client type.
+    files: ['test/jobs/**/*.ts', 'test/messaging/**/*.ts', 'test/webhooks/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['queueMint', 'messagingDrivers', 'repositoryInternals', 'platformRepositories'],
+    }),
   },
   {
     // Test support builds schools and tenant ids directly.

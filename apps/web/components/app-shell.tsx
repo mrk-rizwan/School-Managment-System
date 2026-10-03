@@ -87,11 +87,16 @@ export function AppShell({
 
 function SidebarNav({ items, onNavigate }: { items: NavItem[]; onNavigate: () => void }) {
   const pathname = usePathname();
+  // The longest matching entry is the current one, so /settings/messaging lights Messaging only.
+  const current = items
+    .map((item) => item.href)
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
   return (
     <nav className="flex-1 overflow-y-auto p-2">
       <ul className="grid gap-0.5">
         {items.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const active = href === current;
           return (
             <li key={href}>
               <Link

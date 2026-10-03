@@ -1,6 +1,6 @@
 // Constructors of Scope. Importable only from src/modules/access/** (the permission service),
 // enforced by lint.
-import type { Scope } from './scope';
+import type { DatedScope, Scope, SectionRoles } from './scope';
 
 type UnbrandedScope =
   { readonly kind: 'all' } | { readonly kind: 'sections'; readonly ids: readonly bigint[] };
@@ -14,4 +14,19 @@ export function scopeAll(): Scope {
 export function scopeSections(ids: readonly bigint[]): Scope {
   // Copied so a caller cannot widen the scope by mutating its array afterwards.
   return brand({ kind: 'sections', ids: [...ids] });
+}
+
+const brandDated = (
+  scope:
+    | { readonly kind: 'all'; readonly on: Date }
+    | { readonly kind: 'sections'; readonly on: Date; readonly sections: ReadonlyMap<bigint, SectionRoles> },
+): DatedScope => scope as DatedScope;
+
+export function datedScopeAll(on: Date): DatedScope {
+  return brandDated({ kind: 'all', on: new Date(on.getTime()) });
+}
+
+export function datedScopeSections(on: Date, sections: ReadonlyMap<bigint, SectionRoles>): DatedScope {
+  // Copied so a caller cannot widen the scope by mutating its map afterwards.
+  return brandDated({ kind: 'sections', on: new Date(on.getTime()), sections: new Map(sections) });
 }

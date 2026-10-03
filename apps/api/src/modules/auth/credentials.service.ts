@@ -4,11 +4,12 @@ import { ErrorCode } from '@asms/shared';
 import { newSessionToken, sha256Hex } from '../../common/auth/platform-session';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { PasswordHasher } from '../../common/crypto/password';
-import { failureLog } from '../../common/errors/all-exceptions.filter';
+import { failureLog } from '../../common/errors/failure-log';
 import { ApiException } from '../../common/errors/api-exception';
 import { identityHash } from '../../common/identity';
 import { ENV, type Env } from '../../config/env';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { DeviceRepository } from '../../repositories/device.repository';
 import { SchoolLookupRepository, type LookedUpSchool } from '../../repositories/school-lookup.repository';
 import { SessionRepository } from '../../repositories/session.repository';
 import { UserRepository, type UserCredentialRow } from '../../repositories/user.repository';
@@ -75,6 +76,7 @@ export class CredentialsService {
     private readonly lockout: SchoolLoginLockout,
     private readonly mailer: Mailer,
     private readonly me: MeService,
+    private readonly devices: DeviceRepository,
   ) {}
 
   // ------------------------------------------------------------------------- forgot password
@@ -259,8 +261,11 @@ export class CredentialsService {
   }
 
   /**
-   * One transaction with the user row locked: verify, replace, revoke every session, rotate.
-   * The new session keeps the presented one's absolute expiry.
+   * One transaction with the user row locked: verify, replace, revoke every session, rotate
+   * (contracts/slice-9.md §3.4, R153). The new session is minted on the presented session's
+   * channel and keeps its absolute expiry (a password change never extends a sign-in); the
+   * presented session's device row moves to it, so push continues without re-registering. Every
+   * other session's device dies by the push join.
    */
   @Transactional()
   private async applyPasswordChange(
@@ -294,13 +299,29 @@ export class CredentialsService {
       action: 'user.password_changed',
       subjectType: 'user',
       subjectId: user.id,
-      metadata: {},
+      metadata: { channel: session.channel },
     });
-    const { token, expiresAt } = await this.me.mint(schoolId, user.id, meta, now, session.expiresAt);
     const access = await this.permissions.load(schoolId, user.id);
     if (!access) throw authRequired();
+    const minted = await this.me.mint(
+      schoolId,
+      user.id,
+      session.channel,
+      access.capacities,
+      meta,
+      now,
+      session.expiresAt,
+    );
+    // Sessions before devices (lock order §1.7).
+    await this.devices.moveToSession(schoolId, session.sessionId, minted.id);
+    const { token, expiresAt } = minted;
     return {
-      issued: { token, expiresAt, me: await this.me.build(schoolId, user.id, access, expiresAt) },
+      issued: {
+        token,
+        channel: session.channel,
+        expiresAt,
+        me: await this.me.build(schoolId, user.id, access, expiresAt),
+      },
       outbox: [this.passwordChangedNotice(user.email)],
     };
   }

@@ -18,7 +18,11 @@ import {
   MIN_FEE_DUE_DAY,
   SCHOOL_STATUSES,
   SHORT_CODE_PATTERN,
+  SMS_PROVIDER_CHOICES,
+  WHATSAPP_PROVIDER_CHOICES,
   type SchoolStatus,
+  type SmsProviderChoice,
+  type WhatsAppProviderChoice,
 } from '@asms/shared';
 import { IfPresent, NameField, SearchField, TextField, trimLower } from '../../../common/fields';
 import { PageQueryDto } from '../../../common/pagination';
@@ -55,6 +59,15 @@ export class SchoolDto {
 
   @ApiProperty({ description: 'IANA time zone' })
   timezone: string;
+
+  @ApiProperty({ type: 'integer', minimum: 0, maximum: 100000, description: 'SMS segments a month' })
+  smsMonthlyCap: number;
+
+  @ApiProperty({ enum: WHATSAPP_PROVIDER_CHOICES, enumName: 'WhatsAppProviderChoice' })
+  whatsappProvider: WhatsAppProviderChoice;
+
+  @ApiProperty({ enum: SMS_PROVIDER_CHOICES, enumName: 'SmsProviderChoice' })
+  smsProvider: SmsProviderChoice;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
@@ -132,6 +145,23 @@ export class UpdateSchoolDto {
   @IfPresent()
   @IsTimezone()
   timezone?: string;
+
+  @ApiPropertyOptional({ type: 'integer', minimum: 0, maximum: 100000 })
+  @IfPresent()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  smsMonthlyCap?: number;
+
+  @ApiPropertyOptional({ enum: WHATSAPP_PROVIDER_CHOICES, enumName: 'WhatsAppProviderChoice' })
+  @IfPresent()
+  @IsIn(WHATSAPP_PROVIDER_CHOICES)
+  whatsappProvider?: WhatsAppProviderChoice;
+
+  @ApiPropertyOptional({ enum: SMS_PROVIDER_CHOICES, enumName: 'SmsProviderChoice' })
+  @IfPresent()
+  @IsIn(SMS_PROVIDER_CHOICES)
+  smsProvider?: SmsProviderChoice;
 
   /** Declared only so it can be refused with its own code (409), not as an unknown field. */
   @ApiPropertyOptional({

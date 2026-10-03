@@ -13,6 +13,7 @@ import { LoginService } from '../../src/modules/auth/login.service';
 import { LoginSpikeRecorder } from '../../src/modules/auth/login-spike.recorder';
 import { MeService } from '../../src/modules/auth/me.service';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
+import { DeviceRepository } from '../../src/repositories/device.repository';
 import { SchoolLookupRepository } from '../../src/repositories/school-lookup.repository';
 import { UserRepository, type UserCredentialRow } from '../../src/repositories/user.repository';
 import { SchoolSessionResolver } from '../../src/tenancy/school-session-resolver';
@@ -62,6 +63,7 @@ describe('LoginService: what runs on each path (F5, R81 / R2)', () => {
         { provide: MeService, useValue: me },
         { provide: AuditLogRepository, useValue: audit },
         { provide: LoginSpikeRecorder, useValue: spikes },
+        { provide: DeviceRepository, useValue: { unregisterForSession: jest.fn() } },
       ],
     }).compile();
     await moduleRef.init();

@@ -31,7 +31,7 @@ import { StaffService } from './staff.service';
 import { TeacherAssignmentsService } from './teacher-assignments.service';
 import { UserRolesService } from './user-roles.service';
 
-// contracts/slice-4.md. Common to every route: 401, 403 PERMISSION_DENIED / SCHOOL_SUSPENDED /
+// contracts/slice-4.md. Common to every route: 401, 403 PERMISSION_DENIED /
 // ORIGIN_REJECTED, 429. No route here is section-scoped (§1).
 const COMMON = [401, 403, 429];
 
