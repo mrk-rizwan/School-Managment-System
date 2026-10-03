@@ -1,0 +1,49 @@
+import { Injectable } from '@nestjs/common';
+import { TransactionHost } from '@nestjs-cls/transactional';
+import type { PrismaTxAdapter } from '../prisma';
+
+/**
+ * A metadata value: JSON without arrays. Ids and timestamps go in as strings (the table's CHECK
+ * refuses any run of 13 digits, so epoch milliseconds and identity numbers cannot land here).
+ */
+export type AuditMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { readonly [key: string]: AuditMetadataValue };
+
+export interface PlatformAuditEntry {
+  /** Null only for the seed (CHECK platform_audit_log_actor_check). */
+  actorPlatformUserId: bigint | null;
+  schoolId: bigint | null;
+  /** e.g. `school.created`; the list is contracts/slice-1.md §6. */
+  action: string;
+  subjectType: string;
+  subjectId: bigint | null;
+  reason?: string;
+  metadata?: Record<string, AuditMetadataValue>;
+}
+
+/**
+ * Appends to platform_audit_log (append-only, enforced by trigger). Writes through the ambient
+ * transaction, so the row commits or rolls back with the change it records.
+ */
+@Injectable()
+export class PlatformAuditRepository {
+  constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
+
+  async record(entry: PlatformAuditEntry): Promise<void> {
+    await this.txHost.tx.platformAuditLog.create({
+      data: {
+        actorPlatformUserId: entry.actorPlatformUserId,
+        schoolId: entry.schoolId,
+        action: entry.action,
+        subjectType: entry.subjectType,
+        subjectId: entry.subjectId,
+        ...(entry.reason === undefined ? {} : { reason: entry.reason }),
+        metadata: entry.metadata ?? {},
+      },
+    });
+  }
+}

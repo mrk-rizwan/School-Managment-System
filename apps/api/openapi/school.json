@@ -59,6 +59,17 @@
           "RATE_LIMITED",
           "SERVICE_UNAVAILABLE",
           "INTERNAL_ERROR",
+          "PASSWORD_CHANGE_REQUIRED",
+          "TOTP_REQUIRED",
+          "TOTP_NOT_ENROLLED",
+          "TOTP_ALREADY_ENROLLED",
+          "TOTP_INVALID",
+          "CURRENT_PASSWORD_INCORRECT",
+          "SCHOOL_SHORT_CODE_TAKEN",
+          "SCHOOL_SHORT_CODE_IMMUTABLE",
+          "SCHOOL_TERMINATED",
+          "ILLEGAL_STATUS_TRANSITION",
+          "CONCURRENT_UPDATE",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"

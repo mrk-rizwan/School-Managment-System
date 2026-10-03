@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { EnvError, parseEnv } from './env';
+import { EnvError, parseEnv, seedAdminCredentials } from './env';
 
 const key = () => randomBytes(32).toString('base64');
 
@@ -22,6 +22,8 @@ const valid = (): NodeJS.ProcessEnv => ({
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: '1025',
   SMTP_FROM: 'ASMS <no-reply@localhost>',
+  PLATFORM_ADMIN_EMAIL: 'admin@localhost',
+  PLATFORM_ADMIN_PASSWORD: 'a-long-enough-password', // pragma: allowlist secret
 });
 
 describe('parseEnv', () => {
@@ -60,5 +62,56 @@ describe('parseEnv', () => {
     for (const FIELD_ENCRYPTION_KEYS of [key(), `k1:${randomBytes(16).toString('base64')}`, `k1:${key()}:x`, `:${key()}`]) {
       expect(() => parseEnv({ ...valid(), FIELD_ENCRYPTION_KEYS })).toThrow(/FIELD_ENCRYPTION_KEYS/);
     }
+  });
+
+  it('validates PLATFORM_ADMIN_EMAIL as an email (no TLD needed) and never prints the password', () => {
+    expect(() => parseEnv({ ...valid(), PLATFORM_ADMIN_EMAIL: ' Admin@Example.COM ' })).not.toThrow();
+    for (const PLATFORM_ADMIN_EMAIL of ['not-an-email', '@localhost', 'admin@']) {
+      expect(() => parseEnv({ ...valid(), PLATFORM_ADMIN_EMAIL })).toThrow(/PLATFORM_ADMIN_EMAIL/);
+    }
+    for (const PLATFORM_ADMIN_PASSWORD of ['short-pass1', 'x'.repeat(129)]) {
+      let message = '';
+      try {
+        parseEnv({ ...valid(), PLATFORM_ADMIN_PASSWORD });
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).toContain('PLATFORM_ADMIN_PASSWORD');
+      expect(message).not.toContain(PLATFORM_ADMIN_PASSWORD);
+    }
+    expect(() => parseEnv({ ...valid(), PLATFORM_ADMIN_PASSWORD: 'x'.repeat(12) })).not.toThrow();
+  });
+
+  it('boots without the seed credentials: the running API never needs the seed password', () => {
+    const absent = valid();
+    delete absent.PLATFORM_ADMIN_EMAIL;
+    delete absent.PLATFORM_ADMIN_PASSWORD;
+    expect(parseEnv(absent).PLATFORM_ADMIN_PASSWORD).toBeUndefined();
+    // Empty, as .env.example ships them, is the same as unset.
+    const empty = parseEnv({ ...valid(), PLATFORM_ADMIN_EMAIL: '', PLATFORM_ADMIN_PASSWORD: '' });
+    expect(empty.PLATFORM_ADMIN_EMAIL).toBeUndefined();
+    expect(empty.PLATFORM_ADMIN_PASSWORD).toBeUndefined();
+  });
+
+  it('the seed path requires both credentials and names only the missing keys', () => {
+    expect(seedAdminCredentials(parseEnv(valid()))).toEqual({
+      email: 'admin@localhost',
+      password: 'a-long-enough-password', // pragma: allowlist secret
+    });
+    const noPassword = parseEnv({ ...valid(), PLATFORM_ADMIN_PASSWORD: '' });
+    expect(() => seedAdminCredentials(noPassword)).toThrow(EnvError);
+    expect(() => seedAdminCredentials(noPassword)).toThrow(/PLATFORM_ADMIN_PASSWORD: missing/);
+    let message = '';
+    try {
+      seedAdminCredentials(noPassword);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).not.toContain('PLATFORM_ADMIN_EMAIL');
+    expect(message).not.toContain('admin@localhost');
+    const neither = parseEnv({ ...valid(), PLATFORM_ADMIN_EMAIL: '', PLATFORM_ADMIN_PASSWORD: '' });
+    expect(() => seedAdminCredentials(neither)).toThrow(
+      /PLATFORM_ADMIN_EMAIL: missing\n {2}PLATFORM_ADMIN_PASSWORD: missing/,
+    );
   });
 });

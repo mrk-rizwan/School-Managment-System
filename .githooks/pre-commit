@@ -4,6 +4,10 @@
 # Enable once per clone:  git config core.hooksPath .githooks
 # Emergency bypass:       git commit --no-verify   (then rotate anything exposed)
 #
+# A line that genuinely holds a fake credential (a test fixture) opts out with the comment
+# `pragma: allowlist secret` on the same line - visible in review, greppable, never silent.
+# Values starting with "/" are paths, not credentials.
+#
 # Paths are read one per line with quoting disabled, so names containing spaces
 # or non-ASCII characters are scanned like any other. Line-separated paths are
 # the only format POSIX sh can iterate safely; a file name containing a newline
@@ -58,7 +62,8 @@ printf '%s\n' "$staged" \
     while IFS= read -r f; do
       [ -f "$f" ] || continue
       git -c core.quotepath=false diff --cached --diff-filter=ACM -U0 -- "$f" 2>/dev/null \
-        | grep '^+' | grep -v '^+++' > "$tmp" || true
+        | grep '^+' | grep -v '^+++' \
+        | grep -v 'pragma: allowlist secret' > "$tmp" || true
       [ -s "$tmp" ] || continue
 
       hit=""
@@ -67,7 +72,7 @@ printf '%s\n' "$staged" \
       grep -qE '"type"[[:space:]]*:[[:space:]]*"service_account"' "$tmp" && hit="service-account credentials"
       grep -qE '(postgres|postgresql|mysql|mongodb)(\+srv)?://[^:/@]+:[^@[:space:]]+@' "$tmp" && hit="database URL with password"
       grep -qE 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}' "$tmp" && hit="JWT"
-      grep -qiE '(api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|client[_-]?secret|password)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' "$tmp" && hit="hardcoded credential"
+      grep -qiE '(api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|client[_-]?secret|password)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"'/][^"'"'"']{7,}' "$tmp" && hit="hardcoded credential"
 
       if [ -n "$hit" ]; then
         subfail=1

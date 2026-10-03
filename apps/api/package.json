@@ -10,10 +10,12 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "prisma": "prisma",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate deploy",
     "db:deploy": "prisma migrate deploy",
     "db:test:deploy": "node scripts/migrate-test-db.js",
-    "openapi": "tsx scripts/generate-openapi.ts"
+    "openapi": "tsx scripts/generate-openapi.ts",
+    "db:migration:new": "prisma migrate dev --create-only",
+    "seed:platform-admin": "dotenv run -f ../../.env -- ts-node scripts/seed-platform-admin.ts"
   },
   "dependencies": {
     "@asms/shared": "workspace:*",

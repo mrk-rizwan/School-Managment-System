@@ -3,9 +3,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { API_PREFIX, requestIdAndNoStore, requireJsonBody } from './common/http';
-import { buildOpenApiDocuments } from './common/openapi';
-import { loadEnv } from './config/env';
+import { API_PREFIX, originCheck, requestIdAndNoStore, requireJsonBody } from './common/http';
+import { buildOpenApiDocuments } from './openapi-documents';
+import { ENV, type Env, loadEnv } from './config/env';
 
 /**
  * Express-level settings that a module cannot express. Shared by main and the e2e tests
@@ -29,6 +29,7 @@ export function configureApp(app: NestExpressApplication): void {
   );
   app.setGlobalPrefix(API_PREFIX);
   app.use(requestIdAndNoStore);
+  app.use(originCheck(app.get<Env>(ENV).APP_URL));
   app.use(requireJsonBody);
   // JSON only (no urlencoded parser), 100 kB; larger bodies are 413.
   app.useBodyParser('json', { limit: '100kb' });

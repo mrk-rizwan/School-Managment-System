@@ -12,14 +12,24 @@ export class ApiError extends Error {
   readonly code: ErrorCode;
   readonly details: unknown;
   readonly requestId: string | null;
+  /** Seconds from a 429's `Retry-After` header; null when absent or not a number of seconds. */
+  readonly retryAfterSeconds: number | null;
 
-  constructor(status: number, code: ErrorCode, message: string, details: unknown, requestId: string | null) {
+  constructor(
+    status: number,
+    code: ErrorCode,
+    message: string,
+    details: unknown,
+    requestId: string | null,
+    retryAfterSeconds: number | null = null,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
     this.requestId = requestId;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   /** Field errors of a 422, or an empty list for anything else. */
@@ -47,7 +57,14 @@ function isEnvelope(body: unknown): body is ApiErrorEnvelope {
 export function toApiError(response: Response, body: unknown): ApiError {
   if (isEnvelope(body)) {
     const { code, message, details, requestId } = body.error;
-    return new ApiError(response.status, code, message, details ?? null, requestId ?? null);
+    return new ApiError(
+      response.status,
+      code,
+      message,
+      details ?? null,
+      requestId ?? null,
+      retryAfterSeconds(response),
+    );
   }
   return new ApiError(
     response.status,
@@ -56,4 +73,25 @@ export function toApiError(response: Response, body: unknown): ApiError {
     null,
     null,
   );
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const value = response.headers.get('Retry-After')?.trim();
+  return value && /^\d+$/.test(value) ? Number(value) : null;
+}
+
+/** The sentence shown for a 429: the wait from `Retry-After` when the API sent one. */
+export function rateLimitMessage(error: ApiError): string {
+  const seconds = error.retryAfterSeconds;
+  if (seconds === null) return 'Too many attempts. Wait a moment and try again.';
+  if (seconds < 60) return `Too many attempts. Try again in ${seconds} seconds.`;
+  const minutes = Math.ceil(seconds / 60);
+  return `Too many attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
+
+/** One sentence for an error shown at form level: the API's message, or the 429 wait. */
+export function describeApiError(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'The request failed. Check your connection and try again.';
+  if (error.status === 429) return rateLimitMessage(error);
+  return error.message;
 }

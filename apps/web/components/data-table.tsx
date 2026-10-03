@@ -1,7 +1,13 @@
 'use client';
 
 import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -149,6 +155,42 @@ export function DataTable<TData extends object>({
         </div>
       </div>
     </Frame>
+  );
+}
+
+/**
+ * A sortable column header for server-side sort. The API's sort value is the field name for
+ * ascending and `-field` for descending; clicking toggles, starting ascending.
+ * Use it as a column `header`: `header: () => <SortHeader field="name" label="Name" ... />`.
+ */
+export function SortHeader<F extends string>({
+  field,
+  label,
+  sort,
+  onSort,
+}: {
+  field: F;
+  label: string;
+  sort: F | `-${F}`;
+  onSort: (sort: F | `-${F}`) => void;
+}) {
+  const direction = sort === field ? 'ascending' : sort === `-${field}` ? 'descending' : null;
+  const Icon =
+    direction === 'ascending'
+      ? ArrowUpIcon
+      : direction === 'descending'
+        ? ArrowDownIcon
+        : ArrowUpDownIcon;
+  return (
+    <button
+      type="button"
+      className="-mx-1 inline-flex items-center gap-1 rounded px-1 font-medium hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      onClick={() => onSort(direction === 'ascending' ? `-${field}` : field)}
+    >
+      {label}
+      <Icon className="size-3.5" aria-hidden="true" />
+      <span className="sr-only">{direction ? `, sorted ${direction}` : ', not sorted'}</span>
+    </button>
   );
 }
 

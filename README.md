@@ -56,7 +56,9 @@ hook blocks it; never commit it.
   TEST_DATABASE_URL=postgresql://<credentials>@127.0.0.1:5432/asms_test
   ```
 - `REDIS_URL` — `redis://:<redis-password>@127.0.0.1:6379`
-- `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` — the seeded platform admin for local use.
+- `PLATFORM_ADMIN_EMAIL`, `PLATFORM_ADMIN_PASSWORD` — read only by the seed command below, to
+  create the first platform admin. The running API does not need them; on a server, remove the
+  password after seeding.
 
 ### Services, dependencies, database
 
@@ -68,6 +70,7 @@ pnpm install
 pnpm --filter @asms/shared build
 pnpm --filter @asms/api db:generate
 pnpm --filter @asms/api db:migrate
+pnpm --filter @asms/api seed:platform-admin   # prints "created" once, then "exists"
 pnpm --filter @asms/api db:test:deploy
 ```
 
@@ -83,11 +86,16 @@ pnpm dev
 | What | Where |
 |---|---|
 | Web admin | http://localhost:3000 |
+| Platform admin console | http://localhost:3000/platform/login |
 | API | http://127.0.0.1:3001 |
 | Mailpit (captured outgoing mail) | http://127.0.0.1:8025 |
 | MinIO console (object storage) | http://127.0.0.1:9001 |
 
 Every service port binds to `127.0.0.1` only.
+
+First platform sign-in: use the seeded email and password, scan the QR with an authenticator app,
+confirm a code, then choose a new password (12 characters or more). Later sign-ins need email,
+password and the current 6-digit code.
 
 ## Tests and checks
 

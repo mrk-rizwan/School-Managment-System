@@ -119,7 +119,8 @@ const memberNamed = (names) =>
 const RAW_UNSAFE = '/^\\$(queryRawUnsafe|executeRawUnsafe)$/';
 const RAW = '/^\\$(queryRaw|executeRaw)$/';
 
-const BRAND = '/^(SchoolId|Scope)$/';
+// CreatedSchoolRow is the brand fromPlatformSchool accepts (src/tenancy/school-id.ts).
+const BRAND = '/^(SchoolId|Scope|CreatedSchoolRow)$/';
 /** A reference to a brand by plain or qualified name (`SchoolId`, `ns.SchoolId`). */
 const brandRef = (name) =>
   `TSTypeReference:matches([typeName.name=${name}], [typeName.right.name=${name}])`;

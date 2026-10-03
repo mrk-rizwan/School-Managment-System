@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@n
 import { ErrorCode } from '@asms/shared';
 import type { Request, Response } from 'express';
 import { ApiException } from './api-exception';
+import { mapDatabaseError, summariseDatabaseError } from './prisma-errors';
 
 // Framework-raised errors get a fixed message per code: their own messages can echo the
 // request (a JSON parse error quotes the body, which may hold a CNIC).
@@ -41,11 +42,32 @@ function toEnvelope(exception: unknown): Envelope {
     const { status, code, message, details } = exception;
     return { status, code, message, details };
   }
+  const database = mapDatabaseError(exception);
+  if (database) {
+    const { status, code, message, details } = database;
+    return { status, code, message, details };
+  }
   const status =
     exception instanceof HttpException ? exception.getStatus() : httpErrorStatus(exception);
   const mapped = status === undefined ? undefined : BY_STATUS[status];
   if (status !== undefined && mapped) return { status, ...mapped, details: null };
   return { ...INTERNAL, details: null };
+}
+
+/**
+ * What a 500 logs. Never the raw exception: its own properties are arbitrary, and a Prisma
+ * error's message and meta carry the failing row (password hashes, ciphertext; prisma-errors.ts).
+ * A database error logs its class, Prisma code and constraint name; any other Prisma client
+ * error only its class (a validation error's message prints the call's arguments); any other
+ * Error its class and stack; anything else only its type.
+ */
+export function failureLog(exception: unknown): Record<string, unknown> {
+  const errorClass = exception instanceof Error ? exception.constructor.name : typeof exception;
+  const database = summariseDatabaseError(exception);
+  if (database) return { errorClass, ...database };
+  if (errorClass.startsWith('PrismaClient')) return { errorClass };
+  if (exception instanceof Error) return { errorClass, stack: exception.stack ?? null };
+  return { errorClass };
 }
 
 /**
@@ -60,9 +82,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const req = host.switchToHttp().getRequest<Request>();
     const res = host.switchToHttp().getResponse<Response>();
     const envelope = toEnvelope(exception);
-    if (envelope.status >= 500) {
-      this.logger.error({ err: exception }, 'request failed');
-    }
+    if (envelope.status >= 500) this.logger.error(failureLog(exception), 'request failed');
     if (res.headersSent) return;
     res.status(envelope.status).json({
       error: {

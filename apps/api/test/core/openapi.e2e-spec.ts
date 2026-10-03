@@ -1,5 +1,5 @@
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { buildOpenApiDocuments } from '../../src/common/openapi';
+import { buildOpenApiDocuments } from '../../src/openapi-documents';
 import { createTestApp } from './app';
 import { TestCoreModule } from './test.controller';
 
@@ -31,7 +31,11 @@ describe('OpenAPI helpers', () => {
     expect(JSON.stringify(responses.default)).toContain('#/components/schemas/ApiErrorDto');
   });
 
-  it('the platform document is separate and empty until slice 1', () => {
-    expect(buildOpenApiDocuments(app).platform.paths).toEqual({});
+  it('the platform document is separate: platform routes there, test and school routes not', () => {
+    const { school, platform } = buildOpenApiDocuments(app);
+    expect(Object.keys(platform.paths)).toContain('/api/v1/platform/auth/login');
+    expect(Object.keys(platform.paths).every((p) => p.startsWith('/api/v1/platform/'))).toBe(true);
+    expect(Object.keys(school.paths)).toContain('/api/v1/test/things');
+    expect(Object.keys(school.paths).some((p) => p.startsWith('/api/v1/platform/'))).toBe(false);
   });
 });

@@ -10,17 +10,22 @@ import {
 } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError } from '@/lib/api/errors';
+import { NativeSelect } from '@/components/ui/native-select';
+import { ApiError, describeApiError } from '@/lib/api/errors';
 
 /**
  * The one form field (plan §3.10): label, input, hint and error, wired to react-hook-form.
- * Errors come from the zod resolver or from the API via `applyApiFieldErrors`.
+ * Errors come from the zod resolver or from the API via `applyApiError`.
+ * With `options` it renders a native select instead of a text input; the value is a string.
  */
+export type FormFieldOption = { value: string; label: string };
+
 type FormFieldProps<T extends FieldValues> = {
   control: Control<T>;
   name: FieldPath<T>;
   label: string;
   hint?: string;
+  options?: readonly FormFieldOption[];
 } & Pick<
   React.ComponentProps<'input'>,
   'type' | 'autoComplete' | 'inputMode' | 'placeholder' | 'maxLength' | 'disabled' | 'autoFocus'
@@ -31,6 +36,7 @@ export function FormField<T extends FieldValues>({
   name,
   label,
   hint,
+  options,
   ...inputProps
 }: FormFieldProps<T>) {
   const { field, fieldState } = useController({ control, name });
@@ -43,13 +49,30 @@ export function FormField<T extends FieldValues>({
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        {...field}
-        {...inputProps}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-      />
+      {options ? (
+        <NativeSelect
+          id={id}
+          {...field}
+          disabled={inputProps.disabled}
+          autoFocus={inputProps.autoFocus}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </NativeSelect>
+      ) : (
+        <Input
+          id={id}
+          {...field}
+          {...inputProps}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+        />
+      )}
       {hint && !error && (
         <p id={hintId} className="text-xs text-muted-foreground">
           {hint}
@@ -104,6 +127,15 @@ export function applyApiFieldErrors<T extends FieldValues>(
     form.setError('root.server', { type: 'server', message: unmatched.join(' ') });
   }
   return true;
+}
+
+/**
+ * Puts any API error on the form: field-level 422s on their fields (`applyApiFieldErrors`),
+ * everything else as the form-level `root.server` message.
+ */
+export function applyApiError<T extends FieldValues>(form: UseFormReturn<T>, error: unknown): void {
+  if (applyApiFieldErrors(form, error)) return;
+  form.setError('root.server', { message: describeApiError(error) });
 }
 
 function valueAt(source: unknown, path: string): unknown {

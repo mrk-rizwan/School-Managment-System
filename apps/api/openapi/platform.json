@@ -1,5 +1,341 @@
 {
-  "components": {},
+  "components": {
+    "schemas": {
+      "ApiErrorBodyDto": {
+        "properties": {
+          "code": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              }
+            ]
+          },
+          "details": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "details",
+          "requestId"
+        ],
+        "type": "object"
+      },
+      "ApiErrorDto": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiErrorBodyDto"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ChangePlatformPasswordDto": {
+        "properties": {
+          "currentPassword": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "newPassword": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 12,
+            "type": "string"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object"
+      },
+      "ChangeSchoolStatusDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SchoolStatusTarget"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ConfirmTotpDto": {
+        "properties": {
+          "code": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "CreateSchoolDto": {
+        "properties": {
+          "feeDueDay": {
+            "default": 10,
+            "maximum": 28,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 2,
+            "type": "string"
+          },
+          "shortCode": {
+            "description": "Trimmed and lower-cased before validation. Cannot be changed later.",
+            "pattern": "^[a-z0-9]{3,12}$",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "Asia/Karachi",
+            "description": "IANA time zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "shortCode"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "MALFORMED_REQUEST",
+          "AUTH_REQUIRED",
+          "AUTH_FAILED",
+          "PERMISSION_DENIED",
+          "SCHOOL_SUSPENDED",
+          "ORIGIN_REJECTED",
+          "NOT_FOUND",
+          "VALIDATION_FAILED",
+          "REFERENCE_NOT_FOUND",
+          "UNKNOWN_FIELD",
+          "INVALID_VALUE",
+          "PAYLOAD_TOO_LARGE",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "RATE_LIMITED",
+          "SERVICE_UNAVAILABLE",
+          "INTERNAL_ERROR",
+          "PASSWORD_CHANGE_REQUIRED",
+          "TOTP_REQUIRED",
+          "TOTP_NOT_ENROLLED",
+          "TOTP_ALREADY_ENROLLED",
+          "TOTP_INVALID",
+          "CURRENT_PASSWORD_INCORRECT",
+          "SCHOOL_SHORT_CODE_TAKEN",
+          "SCHOOL_SHORT_CODE_IMMUTABLE",
+          "SCHOOL_TERMINATED",
+          "ILLEGAL_STATUS_TRANSITION",
+          "CONCURRENT_UPDATE",
+          "UNEXPECTED_RESPONSE"
+        ],
+        "type": "string"
+      },
+      "PlatformLoginDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 3,
+            "type": "string"
+          },
+          "password": {
+            "format": "password",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "totpCode": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
+      "PlatformMeDto": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "sessionExpiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sessionStage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PlatformSessionStage"
+              }
+            ]
+          },
+          "totpEnrolled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "sessionStage",
+          "totpEnrolled",
+          "mustChangePassword",
+          "sessionExpiresAt"
+        ],
+        "type": "object"
+      },
+      "PlatformSessionStage": {
+        "enum": [
+          "totp_enrolment",
+          "full"
+        ],
+        "type": "string"
+      },
+      "SchoolDto": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "pattern": "^[a-z0-9]{3,12}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SchoolStatus"
+              }
+            ]
+          },
+          "timezone": {
+            "description": "IANA time zone",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "shortCode",
+          "status",
+          "timezone",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "SchoolSort": {
+        "enum": [
+          "name",
+          "-name",
+          "shortCode",
+          "-shortCode",
+          "status",
+          "-status",
+          "createdAt",
+          "-createdAt"
+        ],
+        "type": "string"
+      },
+      "SchoolStatus": {
+        "enum": [
+          "trial",
+          "active",
+          "suspended",
+          "terminated"
+        ],
+        "type": "string"
+      },
+      "SchoolStatusTarget": {
+        "enum": [
+          "active",
+          "suspended",
+          "terminated"
+        ],
+        "type": "string"
+      },
+      "TotpEnrolmentDto": {
+        "properties": {
+          "otpauthUri": {
+            "type": "string"
+          },
+          "secret": {
+            "description": "Base32, for manual entry.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "otpauthUri",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "UpdateSchoolDto": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 2,
+            "type": "string"
+          },
+          "shortCode": {
+            "description": "Never accepted: present with any value is 409 SCHOOL_SHORT_CODE_IMMUTABLE",
+            "type": "string"
+          },
+          "timezone": {
+            "description": "IANA time zone",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "contact": {},
     "description": "",
@@ -7,7 +343,975 @@
     "version": "1"
   },
   "openapi": "3.0.0",
-  "paths": {},
+  "paths": {
+    "/api/v1/platform/auth/change-password": {
+      "post": {
+        "operationId": "PlatformAuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePlatformPasswordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/auth/login": {
+      "post": {
+        "operationId": "PlatformAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformLoginDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/auth/logout": {
+      "post": {
+        "operationId": "PlatformAuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/auth/totp/confirm": {
+      "post": {
+        "operationId": "PlatformAuthController_confirm",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTotpDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/auth/totp/enrol": {
+      "post": {
+        "operationId": "PlatformAuthController_enrol",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpEnrolmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/me": {
+      "get": {
+        "operationId": "PlatformAuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformMeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform auth"
+        ]
+      }
+    },
+    "/api/v1/platform/schools": {
+      "get": {
+        "operationId": "SchoolsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SchoolStatus"
+            }
+          },
+          {
+            "description": "Name contains, or short code starts with (case-insensitive)",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SchoolSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SchoolDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: schools"
+        ]
+      },
+      "post": {
+        "operationId": "SchoolsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSchoolDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: schools"
+        ]
+      }
+    },
+    "/api/v1/platform/schools/{id}": {
+      "get": {
+        "operationId": "SchoolsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: schools"
+        ]
+      },
+      "patch": {
+        "operationId": "SchoolsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSchoolDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: schools"
+        ]
+      }
+    },
+    "/api/v1/platform/schools/{id}/change-status": {
+      "post": {
+        "operationId": "SchoolsController_changeStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeSchoolStatusDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform: schools"
+        ]
+      }
+    }
+  },
   "servers": [],
   "tags": []
 }

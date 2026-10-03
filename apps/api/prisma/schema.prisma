@@ -3,10 +3,24 @@
 // constraint name). The `partialIndexes` preview feature stays OFF: with it on, the next
 // migration drops every hand-written partial index.
 //
-// Tenant models declare NO Prisma relation to School: Prisma would add a back-relation on School,
-// a route from platform code into tenant rows. Their FK (school_id) REFERENCES schools (id) and
-// the BEFORE UPDATE trigger calling asms_forbid_school_id_change() are written in migration SQL.
-// The schema guard checks both; test/guardrails/prisma-relations.spec.ts checks this file.
+// A tenant model's relation to School is declared ONLY with @ignore on BOTH sides, e.g.
+//   School:         schoolSettings SchoolSettings[] @ignore
+//   SchoolSettings: school School @relation(fields: [schoolId], references: [id],
+//                     map: "school_settings_school_id_fkey", onDelete: Restrict,
+//                     onUpdate: Restrict) @ignore
+// The declaration exists so Prisma's migration diff knows the FK (school_id) REFERENCES schools
+// (id) and stops emitting `DROP CONSTRAINT "<table>_school_id_fkey"` as drift. @ignore keeps it
+// out of the generated client: School gets no back-relation field, so platform code holding no
+// SchoolId has no route into tenant rows by include, select or a relation filter. Verified on
+// Prisma 7.10.0 (slice 1): `prisma migrate diff --from-migrations prisma/migrations --to-schema
+// prisma/schema.prisma` is empty. A relation without @ignore on both sides fails
+// test/guardrails/prisma-relations.spec.ts. The BEFORE UPDATE trigger calling
+// asms_forbid_school_id_change() stays in migration SQL; the schema guard checks it and the FK.
+//
+// Never run plain `prisma migrate dev`; generate with `--create-only`, review the SQL, apply with
+// `prisma migrate deploy`. A hand-written NON-partial index is seen as drift and dropped by the
+// next generated migration, so every non-partial index is declared here. Hand-written CHECKs,
+// triggers and partial indexes are invisible to the diff and survive.
 
 generator client {
   provider        = "prisma-client"
@@ -20,6 +34,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// Non-tenant (CLAUDE.md named exception 1). Relations among these are allowed; none relates to a
+// tenant model except School's @ignore back-relations, which the generated client does not have.
+// ---------------------------------------------------------------------------------------------
+
 enum SchoolStatus {
   trial
   active
@@ -29,19 +47,171 @@ enum SchoolStatus {
   @@map("school_status")
 }
 
+enum PlatformUserStatus {
+  active
+  disabled
+
+  @@map("platform_user_status")
+}
+
+enum PlatformSessionStage {
+  /// Password accepted, authenticator not yet enrolled: may only enrol, confirm, read /me, log out.
+  totp_enrolment
+  full
+
+  @@map("platform_session_stage")
+}
+
+/// Non-tenant: a group of schools under one owner (rule 11). Each school is still its own tenant.
+model SchoolGroup {
+  id        BigInt   @id(map: "school_groups_pkey") @default(autoincrement())
+  name      String   @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  schools School[]
+
+  @@map("school_groups")
+}
+
 /// Non-tenant: the tenant itself. School-owned settings live in tenant tables, not here.
 model School {
   id            BigInt       @id(map: "schools_pkey") @default(autoincrement())
   name          String       @db.VarChar(200)
-  /// 3-12 lower-case ASCII letters/digits, immutable after creation (CHECK and trigger: slice 1).
+  /// 3-12 lower-case ASCII letters/digits (CHECK schools_short_code_format_check), immutable after
+  /// creation (trigger raising constraint schools_short_code_immutable).
   shortCode     String       @map("short_code") @db.VarChar(12)
+  /// New schools start as trial; nothing returns to trial (contract slice-1 §4.5).
   status        SchoolStatus @default(trial)
-  /// FK to school_groups arrives with that table in slice 1.
   schoolGroupId BigInt?      @map("school_group_id")
   timezone      String       @default("Asia/Karachi") @db.VarChar(64)
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  schoolGroup       SchoolGroup?       @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  platformAuditLogs PlatformAuditLog[]
+  // Tenant back-relations: declared for the migration diff only, absent from the client (header).
+  schoolSettings    SchoolSettings[]   @ignore
+  schoolCounters    SchoolCounter[]    @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
+  @@index([schoolGroupId], map: "schools_school_group_id_idx")
   @@map("schools")
+}
+
+/// Non-tenant: platform administrators. Login is email + password + TOTP.
+model PlatformUser {
+  id                 BigInt             @id(map: "platform_users_pkey") @default(autoincrement())
+  /// Stored trimmed and lower-cased (CHECK platform_users_email_lower_check); unique.
+  email              String             @db.VarChar(254)
+  /// argon2id encoded string (CHECK platform_users_password_hash_check refuses anything else).
+  passwordHash       String             @map("password_hash") @db.VarChar(255)
+  /// AES-256-GCM `v1:...`, AAD `platform|platform_users|totp_secret|<platform_user_id>`. Null until enrolment starts;
+  /// set but unconfirmed while totpEnrolledAt is null.
+  totpSecret         String?            @map("totp_secret") @db.VarChar(255)
+  totpEnrolledAt     DateTime?          @map("totp_enrolled_at") @db.Timestamptz(3)
+  /// Last accepted TOTP time step; a code at or below it is a replay.
+  totpLastStep       BigInt?            @map("totp_last_step")
+  mustChangePassword Boolean            @default(true) @map("must_change_password")
+  passwordChangedAt  DateTime?          @map("password_changed_at") @db.Timestamptz(3)
+  status             PlatformUserStatus @default(active)
+  lastLoginAt        DateTime?          @map("last_login_at") @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions  PlatformSession[]
+  auditLogs PlatformAuditLog[]
+
+  @@unique([email], map: "platform_users_email_key")
+  @@map("platform_users")
+}
+
+/// Non-tenant: server-side platform sessions (cookie __Host-asms_platform).
+model PlatformSession {
+  id             BigInt               @id(map: "platform_sessions_pkey") @default(autoincrement())
+  platformUserId BigInt               @map("platform_user_id")
+  /// Lower-case SHA-256 hex of the token (CHECK platform_sessions_token_hash_check); the token
+  /// itself is never stored.
+  tokenHash      String               @map("token_hash") @db.Char(64)
+  stage          PlatformSessionStage
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt     DateTime             @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt      DateTime             @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime?            @map("revoked_at") @db.Timestamptz(3)
+  /// Truncated to 255 characters by the application.
+  userAgent      String?              @map("user_agent") @db.VarChar(255)
+  ip             String?              @db.Inet
+
+  platformUser PlatformUser @relation(fields: [platformUserId], references: [id], map: "platform_sessions_platform_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([tokenHash], map: "platform_sessions_token_hash_key")
+  @@index([platformUserId], map: "platform_sessions_platform_user_id_idx")
+  @@map("platform_sessions")
+}
+
+/// Non-tenant, append-only (trigger platform_audit_log_append_only). schoolId is nullable: platform
+/// actions on no school (login, seed) have none. actorPlatformUserId is null only for the seed.
+model PlatformAuditLog {
+  id                  BigInt   @id(map: "platform_audit_log_pkey") @default(autoincrement())
+  actorPlatformUserId BigInt?  @map("actor_platform_user_id")
+  schoolId            BigInt?  @map("school_id")
+  action              String   @db.VarChar(64)
+  subjectType         String   @map("subject_type") @db.VarChar(32)
+  subjectId           BigInt?  @map("subject_id")
+  /// Never holds an identity number (CHECK platform_audit_log_reason_no_id_check).
+  reason              String?  @db.VarChar(500)
+  /// Never holds an identity number (CHECK platform_audit_log_metadata_no_id_check); timestamps
+  /// inside are ISO strings, never epoch milliseconds (13 digits).
+  metadata            Json     @default("{}")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor  PlatformUser? @relation(fields: [actorPlatformUserId], references: [id], map: "platform_audit_log_actor_platform_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school School?       @relation(fields: [schoolId], references: [id], map: "platform_audit_log_school_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([schoolId, createdAt], map: "platform_audit_log_school_id_created_at_idx")
+  @@index([actorPlatformUserId, createdAt], map: "platform_audit_log_actor_platform_user_id_created_at_idx")
+  @@index([subjectType, subjectId, createdAt], map: "platform_audit_log_subject_type_subject_id_created_at_idx")
+  @@map("platform_audit_log")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tenant. school_id NOT NULL, UNIQUE (school_id, id); the immutability trigger is in migration
+// SQL. The relation to School is declared with @ignore on both sides (see header).
+// ---------------------------------------------------------------------------------------------
+
+/// Tenant: one row per school, written by the platform in the transaction that creates the school.
+model SchoolSettings {
+  id                  BigInt   @id(map: "school_settings_pkey") @default(autoincrement())
+  schoolId            BigInt   @map("school_id")
+  /// Day of the month fees fall due (rule 15). CHECK 1-28 in migration SQL: every month has it.
+  feeDueDay           Int      @default(10) @map("fee_due_day") @db.SmallInt
+  studentLoginEnabled Boolean  @default(false) @map("student_login_enabled")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "school_settings_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+
+  @@unique([schoolId], map: "school_settings_school_id_key")
+  @@unique([schoolId, id], map: "school_settings_school_id_id_key")
+  @@map("school_settings")
+}
+
+/// Tenant: per-school sequences (admission_no now, certificate numbers later). Advanced by one
+/// UPDATE ... SET value = value + 1 RETURNING value inside the caller's transaction, never
+/// read-then-write.
+model SchoolCounter {
+  id        BigInt   @id(map: "school_counters_pkey") @default(autoincrement())
+  schoolId  BigInt   @map("school_id")
+  /// snake_case key, e.g. admission_no (CHECK school_counters_name_check).
+  name      String   @db.VarChar(32)
+  /// Last value issued; 0 means none yet (CHECK school_counters_value_check: never negative).
+  value     BigInt   @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "school_counters_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+
+  @@unique([schoolId, name], map: "school_counters_school_id_name_key")
+  @@unique([schoolId, id], map: "school_counters_school_id_id_key")
+  @@map("school_counters")
 }

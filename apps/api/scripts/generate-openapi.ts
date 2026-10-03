@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   /* eslint-disable @typescript-eslint/no-require-imports -- loading the build output on purpose */
   const { AppModule } = require(join(dist, 'app.module')) as { AppModule: Type };
   const { API_PREFIX } = require(join(dist, 'common/http')) as { API_PREFIX: string };
-  const { buildOpenApiDocuments } = require(join(dist, 'common/openapi')) as {
+  const { buildOpenApiDocuments } = require(join(dist, 'openapi-documents')) as {
     buildOpenApiDocuments: (app: INestApplication) => Record<'school' | 'platform', OpenAPIObject>;
   };
   /* eslint-enable @typescript-eslint/no-require-imports */

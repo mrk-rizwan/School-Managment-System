@@ -11,11 +11,10 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1, **slice 0 done** (2026-10-02): pnpm monorepo, NestJS API skeleton,
-  Next.js web shell, dev services, CI workflow, and the tenant-isolation guardrails, all tested.
-  No school feature exists yet. **Next: slice 1** (platform and the school record).
-- **CI has never run on GitHub** — nothing has been pushed. Slice 0's gate is conditional on the
-  first push producing a green Actions run.
+- **Phase:** Phase 1, **slices 0 and 1 done** (2026-10-03): scaffold and isolation guardrails;
+  platform admin console and the school record. **Next: wave A = slices 2, 3, 5 in parallel.**
+- **CI status unknown:** the auto-sync pushes to GitHub, but the repo is private and this machine
+  has no GitHub login, so nobody here has seen an Actions run. The product owner must check.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
 - **Phase 1 is unblocked** on decisions. One question is open and does not block: register
@@ -26,20 +25,92 @@ writes the production code.** Do not start application code in a planning sessio
 - Tenant isolation: application-layer scoping, RLS dropped (2026-10-02 final entry), now with
   eight controls in `CLAUDE.md` including a query guard and a schema guard.
 
+## Progress measure (used for the hourly % report)
+
+Whole-project size, in estimated working days. Phase 1 comes from its approved plan; Phases 2–5
+are **rough estimates** (Fable/Opus, 2026-10-03), because those phases have no plan yet. Revise
+them when each phase is planned, and say so in the report.
+
+| Phase | Scope | Est. days |
+|---|---|---|
+| 1 Foundation | slices 0–8 (plan §5) | 30 |
+| 2 Daily operations | attendance, diary, notices, WhatsApp/SMS drivers, first React Native app | 40 |
+| 3 Financial | fee heads, charges, payments, verification, receipts, expenses, payroll | 35 |
+| 4 Academic | assessments, results, report cards, certificates, promotion | 30 |
+| 5 Extended | biometric, advanced reporting, transport | 20 |
+| **Total** | | **155** |
+
+Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
+7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
+slice in progress counts half. **Project % = days done ÷ 155.** Planning and reviews done before
+slice 0 are not counted.
+
 ## Left to do (ordered)
 
-1. **Push and confirm the first GitHub Actions run is green** (closes slice 0's last condition).
-2. **Slice 1**, starting with the carry-overs listed under the slice-0 entry below (Prisma
-   foreign-key drift check first).
-3. Slices 2–8 in order, each gated (tests, `security-reviewer`, `code-auditor`, `phase-gate`),
-   each a commit, each logged here. **Before the first slice where a request handler consumes a
-   `Scope`** (slice 4 or 6), the type-aware lint rule in the slice-0 residual-risk statement must
-   exist.
+1. **Confirm GitHub Actions is green** on the latest push. The repo is private and this machine
+   has no GitHub login, so the product owner checks the Actions tab; a failure is fixed first.
+2. **Wave A: slices 2, 3 and 5 in parallel** (see "Process since 2026-10-03" below).
+3. Wave B: slices 4 and 6. Wave C: slices 7 and 8. **Before the first slice where a request
+   handler consumes a `Scope`** (slice 4 or 6), the type-aware lint rule in the slice-0
+   residual-risk statement must exist.
 4. Product owner: register item 30 (privileged capabilities on a default password); schema-freeze
    items 7–13 and 23–26 before the end of Phase 1; whether a guardian whose children have all left
    keeps a login (part of item 11); CNIC correction after a login exists; numeric reset code or
    emailed link.
 5. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+
+---
+
+## Process since 2026-10-03 (product owner asked for speed)
+
+Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of Phase 1:
+- **Waves, not single slices.** A: slices 2 + 3 + 5 together. B: 4 + 6. C: 7 + 8. Agents own
+  disjoint files; shared files (`app.module.ts`, `eslint.config.mjs`, `packages/shared`,
+  `package.json`, migrations) are edited by the main thread or by one named agent per wave.
+- **No separate design step.** Implementing agents write the schema and the endpoint contract
+  (`docs/plans/contracts/slice-N.md`) themselves; `data-architect` reviews migrations within the
+  wave review.
+- **One review round per wave:** `security-reviewer` (mandatory, every wave) and one combined
+  correctness-and-quality review, in parallel, then one fix round. Low-severity fixes are accepted
+  on their proving tests; only critical or high findings get a re-review.
+- **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
+  (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Slice 1: platform admin and the school record (Opus 5.5) — DONE
+
+**Built** by three parallel agents (platform auth, schools API, web) on a schema and contract
+designed first (`docs/plans/contracts/slice-1.md`). Platform admin: one-step login (password +
+TOTP), authenticator enrolment on first sign-in, forced password change, 2 h idle / 12 h absolute
+sessions in their own table and cookie, lockout and throttles on Redis, Origin check, seed
+command. Schools: list, create (writes `school_settings` and the admission counter in the same
+transaction via `SchoolId.fromPlatformSchool`), edit, status changes per a shared transition
+table, all audited to an append-only `platform_audit_log`. Web: platform console with login,
+enrolment (QR drawn locally), password change, schools list/create/detail/status dialog.
+
+**Decisions taken in this slice**
+- Tenant→School foreign keys are declared in Prisma with `@ignore` on both sides: Prisma's diff
+  otherwise drops hand-written FKs in every migration (measured). Guarded by a schema test.
+- `db:migrate` now runs `prisma migrate deploy`; new migrations come from `db:migration:new`.
+- Database error mapping keys on constraint names; for CHECK and trigger errors the name is read
+  from `DETAIL` (our trigger functions set it), because Prisma 7.10 drops it (measured).
+- 500s never log raw Prisma errors (they carry the whole failing row, including hashes).
+- `CLAUDE.md` exception 1: the platform acts inside a school for two operations (creating it,
+  issuing a principal login); `fromPlatformSchool` accepts only a branded `CreatedSchoolRow`.
+- Seed credentials are needed only by the seed command, not by the running API.
+- TOTP secrets are encrypted with AAD bound to the user's id.
+- Pre-commit hook: values starting with `/` are not credentials; a fake test credential opts out
+  with `pragma: allowlist secret` on the same line.
+
+**Reviews:** security PASS first time (1 medium, 3 low — all fixed with tests proven to fail
+without the fix); correctness audit (1 medium race on school edit, 3 low, 5 weak tests — fixed);
+code quality (~130 lines removed: session store layer, sort tables, duplicate constants).
+
+**Final results:** lint and typecheck clean in all three packages; API 20 suites / 318 tests;
+web build; Playwright 15/15 including a real-API run (first login → enrol → password change →
+create school → activate) against the test database; hook dry run clean.
+
+**Dev database note:** any platform admin enrolled before the AAD change cannot sign in; re-seed
+with a new email, or clear `totp_secret` and `totp_enrolled_at` for that row.
 
 ---
 

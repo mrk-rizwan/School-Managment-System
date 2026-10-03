@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { ErrorCode } from '@asms/shared';
+import { PLATFORM_COOKIE } from './auth/platform-session';
 import { ApiException } from './errors/api-exception';
 
 export const API_PREFIX = 'api/v1';
@@ -44,4 +45,36 @@ export function requireJsonBody(req: Request, _res: Response, next: NextFunction
     return;
   }
   next();
+}
+
+// Session cookies whose presence makes a request cookie-authenticated. The school cookie is
+// issued from slice 2; listing it now means slice 2 inherits the check rather than adding it.
+const SESSION_COOKIES = [PLATFORM_COOKIE, '__Host-asms_session'];
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const PLATFORM_PATH = `/${API_PREFIX}/platform/`;
+
+/**
+ * R65 / contract slice-1 §1: a state-changing request that a browser could have been tricked
+ * into sending must carry `Origin` exactly equal to the origin of APP_URL; missing or different
+ * is 403 ORIGIN_REJECTED. Applies to every non-GET under /platform (login included, which has no
+ * cookie yet) and to every non-GET carrying a session cookie. SameSite=Strict already stops
+ * cross-site cookies; this is the second line, and the one that covers login CSRF.
+ */
+export function originCheck(appUrl: string) {
+  const allowed = new URL(appUrl).origin;
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (SAFE_METHODS.has(req.method)) {
+      next();
+      return;
+    }
+    const cookie = req.headers.cookie ?? '';
+    const cookieAuthenticated = SESSION_COOKIES.some((name) => cookie.includes(`${name}=`));
+    // Lower-cased: Express matches routes case-insensitively, so /API/v1/Platform/... reaches them.
+    const platform = req.path.toLowerCase().startsWith(PLATFORM_PATH);
+    if ((platform || cookieAuthenticated) && req.headers.origin !== allowed) {
+      next(new ApiException(403, ErrorCode.ORIGIN_REJECTED, 'This request came from an unexpected origin.'));
+      return;
+    }
+    next();
+  };
 }

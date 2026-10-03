@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { createGuardedClient, type GuardedPrismaClient } from '../../src/repositories/prisma';
 import type { SchoolStatus } from '../../src/repositories/generated/prisma/client';
 import type { SchoolId } from '../../src/tenancy/school-id';
-import { fromPlatformSchool } from '../../src/tenancy/school-id.mint';
+import { createdSchoolRow, fromPlatformSchool } from '../../src/tenancy/school-id.mint';
 
 let client: GuardedPrismaClient | undefined;
 
@@ -48,7 +48,7 @@ export async function createSchool(
       status: overrides.status ?? 'active',
     },
   });
-  return { id: fromPlatformSchool(row), shortCode: row.shortCode };
+  return { id: fromPlatformSchool(createdSchoolRow(row)), shortCode: row.shortCode };
 }
 
 export interface TwoSchools {

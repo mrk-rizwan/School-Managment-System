@@ -146,9 +146,12 @@ decision recorded here, not a convenience.
    `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
    `platform_users`, `platform_sessions`, `platform_audit_log`), and may be imported only from
    `src/modules/platform/**`. Enforced by the same ESLint rule. **The platform acts inside a
-   school for exactly one operation: issuing a principal's login.** It does so through
-   `SchoolId.fromPlatformSchool`, importable only in the platform module, refused while the school
-   already has an active principal unless a reason is given, and written to both audit logs.
+   school for exactly two operations:** creating the school, which writes its first
+   `school_settings` row and its counters in the same transaction (the tenant comes into being),
+   and issuing a principal's login, which is refused while the school already has an active
+   principal unless a reason is given. Both go through `SchoolId.fromPlatformSchool`, importable
+   only in the platform module, and both are written to the platform audit log (the principal
+   login to both logs).
    Platform login requires a second factor: one platform password would otherwise open every
    school. Tenant code that reads its own school row uses `OwnSchoolRepository`, whose only
    predicate is `id = schoolId`; school-owned settings and counters live in tenant tables, not on

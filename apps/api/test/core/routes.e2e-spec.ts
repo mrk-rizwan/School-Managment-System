@@ -3,20 +3,31 @@
 // envelope, and R66 (every id in the document is a string).
 import { RequestMethod, Type } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { MODULE_METADATA } from '@nestjs/common/constants';
 import { MetadataScanner, ModulesContainer, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { OpenAPIObject } from '@nestjs/swagger';
-import { AuthenticatedOnly, Public, RequireCapability } from '../../src/common/auth/route-access';
+import {
+  AuthenticatedOnly,
+  PlatformSession,
+  Public,
+  RequireCapability,
+} from '../../src/common/auth/route-access';
 import { API_PREFIX } from '../../src/common/http';
-import { buildOpenApiDocuments } from '../../src/common/openapi';
+import { buildOpenApiDocuments } from '../../src/openapi-documents';
+import { PlatformModule } from '../../src/modules/platform/platform.module';
 import { createTestApp } from './app';
 
-type Access = 'public' | 'authenticated-only' | 'capability';
+type Access = 'public' | 'authenticated-only' | 'capability' | 'platform-session';
 interface Route {
   method: string;
   path: string;
   access: Access[];
   handler: string;
+  /** The @PlatformSession level, if declared. */
+  level: string | undefined;
+  /** Whether the controller belongs to PlatformModule's module tree. */
+  inPlatformModule: boolean;
 }
 
 // The metadata keys are private to route-access.ts. Rather than restating the strings here,
@@ -33,7 +44,22 @@ const ACCESS_KEYS: [Access, string][] = [
   ['public', keyOf(Public())],
   ['authenticated-only', keyOf(AuthenticatedOnly())],
   ['capability', keyOf(RequireCapability('probe'))],
+  ['platform-session', keyOf(PlatformSession())],
 ];
+const PLATFORM_KEY = keyOf(PlatformSession());
+
+/** PlatformModule and every module it imports, recursively. */
+function platformModuleTree(): Set<unknown> {
+  const found = new Set<unknown>();
+  const visit = (module: unknown): void => {
+    if (typeof module !== 'function' || found.has(module)) return;
+    found.add(module);
+    const imports: unknown = Reflect.getMetadata(MODULE_METADATA.IMPORTS, module);
+    if (Array.isArray(imports)) imports.forEach(visit);
+  };
+  visit(PlatformModule);
+  return found;
+}
 
 const joinPath = (...parts: string[]): string =>
   '/' +
@@ -60,6 +86,7 @@ function nestRoutes(app: NestExpressApplication): Route[] {
   const reflector = new Reflector();
   const scanner = new MetadataScanner();
   const routes: Route[] = [];
+  const platformTree = platformModuleTree();
   for (const module of app.get(ModulesContainer).values()) {
     for (const wrapper of module.controllers.values()) {
       const controller = wrapper.metatype as Type | null;
@@ -85,6 +112,8 @@ function nestRoutes(app: NestExpressApplication): Route[] {
               path: joinPath(API_PREFIX, c, m),
               access,
               handler: `${controller.name}.${name}`,
+              level: reflector.getAllAndOverride<string | undefined>(PLATFORM_KEY, [handler, controller]),
+              inPlatformModule: platformTree.has(module.metatype),
             });
           }
         }
@@ -120,7 +149,22 @@ function expressRoutes(app: NestExpressApplication): string[] {
 // R68 snapshot: every route reachable without a capability. Adding an entry here is a
 // reviewed change: a new @Public() or @AuthenticatedOnly() route widens what an anonymous or
 // any signed-in caller can reach, and must be agreed in review, not just appended.
-const NO_CAPABILITY_ROUTES: [string, string, Access][] = [['GET', '/api/v1/health', 'public']];
+const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
+  ['GET', '/api/v1/health', 'public'],
+  ['POST', '/api/v1/platform/auth/login', 'public'],
+];
+
+// Contract slice-1 §1: the platform auth routes and their @PlatformSession level. Reviewed like
+// the snapshot above: an 'any' or 'password-change' route is reachable before the second factor
+// or before the seeded password is changed.
+const PLATFORM_AUTH_ROUTES: [string, string, string][] = [
+  ['POST', '/api/v1/platform/auth/change-password', 'password-change'],
+  ['POST', '/api/v1/platform/auth/logout', 'any'],
+  ['POST', '/api/v1/platform/auth/totp/confirm', 'any'],
+  ['POST', '/api/v1/platform/auth/totp/enrol', 'any'],
+  ['GET', '/api/v1/platform/me', 'any'],
+];
+const PLATFORM_PREFIX = '/api/v1/platform/';
 
 const OPERATIONS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
 
@@ -221,12 +265,53 @@ describe('Routes and OpenAPI over the real AppModule', () => {
   it('R68: the routes needing no capability match the reviewed snapshot', () => {
     const open = routes
       .flatMap(({ method, path, access: [only, ...more] }): [string, string, Access][] =>
-        only !== undefined && only !== 'capability' && more.length === 0
+        only !== undefined && (only === 'public' || only === 'authenticated-only') && more.length === 0
           ? [[method, path, only]]
           : [],
       )
       .sort((a, b) => `${a[1]} ${a[0]}`.localeCompare(`${b[1]} ${b[0]}`));
     expect(open).toEqual(NO_CAPABILITY_ROUTES);
+  });
+
+  it('R56: platform routes are exactly the PlatformModule routes, all under /platform', () => {
+    const wrong = routes
+      .filter((r) => r.inPlatformModule !== r.path.startsWith(PLATFORM_PREFIX))
+      .map((r) => `${r.method} ${r.path} (${r.handler})`);
+    expect(wrong).toEqual([]);
+    expect(routes.some((r) => r.inPlatformModule)).toBe(true);
+  });
+
+  it('R56: every platform route is @PlatformSession or the one @Public login; nothing else uses @PlatformSession', () => {
+    const wrong = routes
+      .filter((r) => {
+        const platformSession = r.access.includes('platform-session');
+        if (!r.path.startsWith(PLATFORM_PREFIX)) return platformSession;
+        const isLogin = r.method === 'POST' && r.path === '/api/v1/platform/auth/login';
+        return isLogin ? r.access.join() !== 'public' : r.access.join() !== 'platform-session';
+      })
+      .map((r) => `${r.method} ${r.path} (${r.handler}): [${r.access.join(', ')}]`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('platform auth routes carry the reviewed levels; every other platform route is level full', () => {
+    const platform = routes.filter((r) => r.access.includes('platform-session'));
+    const auth = platform
+      .filter((r) => r.path.startsWith('/api/v1/platform/auth/') || r.path === '/api/v1/platform/me')
+      .map((r): [string, string, string] => [r.method, r.path, r.level ?? ''])
+      .sort((a, b) => a[1].localeCompare(b[1]));
+    expect(auth).toEqual(PLATFORM_AUTH_ROUTES);
+    const notFull = platform
+      .filter((r) => !auth.some(([m, p]) => m === r.method && p === r.path) && r.level !== 'full')
+      .map((r) => `${r.method} ${r.path}: ${r.level}`);
+    expect(notFull).toEqual([]);
+  });
+
+  it('OpenAPI: the platform document holds exactly the platform routes; the school document none', () => {
+    const [[, school], [, platform]] = docs as [[string, OpenAPIObject], [string, OpenAPIObject]];
+    expect(Object.keys(school.paths).filter((p) => p.startsWith(PLATFORM_PREFIX))).toEqual([]);
+    const documented = Object.keys(platform.paths).map((p) => p.replace(/\{(\w+)\}/g, ':$1')).sort();
+    const served = [...new Set(routes.filter((r) => r.inPlatformModule).map((r) => r.path))].sort();
+    expect(documented).toEqual(served);
   });
 
   it('§3.9: every documented operation has a default response with the error envelope', () => {

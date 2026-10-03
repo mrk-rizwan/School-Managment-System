@@ -2,6 +2,7 @@ import { Prisma } from './generated/prisma/client';
 import { NON_TENANT_TABLES } from '../../test/guardrails/schema-checks';
 import {
   assertQueryAllowed,
+  deriveScalarFields,
   deriveTenantModels,
   NON_TENANT_MODELS,
   QueryGuardError,
@@ -175,6 +176,39 @@ describe('query guard (R76)', () => {
         }),
       ).not.toThrow();
       expect(school('createMany', { data: [{ name: 'x' }, { name: 'y' }] })).not.toThrow();
+    });
+
+    it("allows an object as the value of the model's own scalar (Json) field", () => {
+      const audit = (args: unknown) => check('create', args, 'PlatformAuditLog');
+      expect(
+        audit({ data: { action: 'school.created', metadata: { shortCode: 'abc', changes: {} } } }),
+      ).not.toThrow();
+      expect(audit({ data: { action: 'x', metadata: {} } })).not.toThrow();
+    });
+
+    it('still refuses a relation write beside a Json field, and objects on unknown models', () => {
+      expect(
+        check('create', { data: { metadata: {}, school: { create: { name: 'x' } } } }, 'PlatformAuditLog'),
+      ).toThrow(/data\.school is a nested write/);
+      expect(
+        check('create', { data: { actor: { create: { email: 'x' } } } }, 'PlatformAuditLog'),
+      ).toThrow(/data\.actor is a nested write/);
+      // `metadata` is a scalar of PlatformAuditLog, not of School: on School it is still refused.
+      expect(school('create', { data: { name: 'x', metadata: { create: {} } } })).toThrow(
+        /data\.metadata is a nested write/,
+      );
+      expect(check('create', { data: { metadata: {} } }, 'NoSuchModel')).toThrow(
+        /data\.metadata is a nested write/,
+      );
+    });
+
+    it('derives scalar fields from every XScalarFieldEnum', () => {
+      const fields = deriveScalarFields({
+        PlatformAuditLogScalarFieldEnum: { id: 'id', metadata: 'metadata' },
+        SortOrder: { asc: 'asc' },
+      });
+      expect([...fields.keys()]).toEqual(['PlatformAuditLog']);
+      expect([...(fields.get('PlatformAuditLog') ?? [])]).toEqual(['id', 'metadata']);
     });
   });
 

@@ -8,6 +8,7 @@ import { ThrottlingModule } from './common/throttling';
 import { validationPipe } from './common/validation';
 import { EnvModule } from './config/env';
 import { HealthModule } from './modules/health/health.module';
+import { PlatformModule } from './modules/platform/platform.module';
 import { DatabaseModule } from './repositories/database.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
@@ -21,6 +22,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     DatabaseModule,
     TenancyModule,
     HealthModule,
+    PlatformModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -102,6 +102,9 @@ describe('lint boundaries (R61)', () => {
     ['from-platform-school-import.ts', 'src/modules/students/students.service.ts'],
     ['from-platform-school-import.ts', 'src/repositories/platform/school-lookup.repository.ts'],
     ['scope-mint-import.ts', 'src/modules/students/students.service.ts'],
+    ['created-school-row-import.ts', 'src/modules/platform/schools.service.ts'],
+    ['created-school-row-import.ts', 'src/modules/students/students.service.ts'],
+    ['created-school-row-import.ts', 'src/repositories/students.repository.ts'],
   ])('refuses %s at %s', async (fixture, virtualPath) => {
     expect(rules(await lintAs(fixture, virtualPath))).toEqual(['no-restricted-imports']);
   });
@@ -112,6 +115,7 @@ describe('lint boundaries (R61)', () => {
     ['school-id-mint-import.ts', 'src/repositories/platform/school-lookup.repository.ts'],
     ['school-id-mint-import.ts', 'src/repositories/session.repository.ts'],
     ['scope-mint-import.ts', 'src/modules/access/permissions.service.ts'],
+    ['created-school-row-import.ts', 'src/repositories/platform/school.repository.ts'],
     ['legitimate-repository.ts', 'src/repositories/students.repository.ts'],
     ['app-module-import.ts', 'src/app.module.ts'],
   ])('allows %s at %s', async (fixture, virtualPath) => {
@@ -277,6 +281,13 @@ describe('lint boundaries (R61)', () => {
   it('rejects a tenant that is not a SchoolId at compile time, and types the context read', () => {
     const fixture = 'request-context-poisoning.ts';
     expect(typeErrorLinesAs(fixture, 'src/tenancy/session-resolution.ts')).toEqual(
+      markedLines(fixture),
+    );
+  });
+
+  it('fromPlatformSchool takes only the row SchoolRepository.create returns, at compile time', () => {
+    const fixture = 'from-platform-school-row.ts';
+    expect(typeErrorLinesAs(fixture, 'src/modules/platform/issue-login.service.ts')).toEqual(
       markedLines(fixture),
     );
   });

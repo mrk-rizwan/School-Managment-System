@@ -56,7 +56,7 @@ export const schoolNav: NavItem[] = [
 
 // Platform admins hold no capabilities (plan §7): their console shows every entry.
 export const platformNav: NavItem[] = [
-  { href: '/platform', label: 'Schools', icon: SchoolIcon, capability: null },
+  { href: '/platform/schools', label: 'Schools', icon: SchoolIcon, capability: null },
 ];
 
 export function visibleNav(items: NavItem[], capabilities: ReadonlySet<string>): NavItem[] {

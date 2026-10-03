@@ -40,6 +40,25 @@ export function deriveTenantModels(namespace: object): ReadonlySet<string> {
 
 export const TENANT_MODELS = deriveTenantModels(Prisma);
 
+/**
+ * Each generated model's scalar field names, from its XScalarFieldEnum. A scalar field's value is
+ * never a relation write, even when it is an object (a Json column such as
+ * PlatformAuditLog.metadata), so the non-tenant relation check skips these keys.
+ */
+export function deriveScalarFields(
+  namespace: Readonly<Record<string, unknown>>,
+): ReadonlyMap<string, ReadonlySet<string>> {
+  const fields = new Map<string, ReadonlySet<string>>();
+  for (const [key, value] of Object.entries(namespace)) {
+    if (!key.endsWith(SCALAR_FIELD_ENUM) || typeof value !== 'object' || value === null) continue;
+    fields.set(key.slice(0, -SCALAR_FIELD_ENUM.length), new Set(Object.keys(value)));
+  }
+  return fields;
+}
+
+const SCALAR_FIELDS = deriveScalarFields(Prisma);
+const NO_FIELDS: ReadonlySet<string> = new Set();
+
 export class QueryGuardError extends Error {
   override readonly name = 'QueryGuardError';
 }
@@ -115,10 +134,13 @@ function assertTenantUnchanged(at: string, part: string, value: unknown): void {
 /**
  * A non-tenant model (schools, platform tables) must not become a path into tenant rows: no
  * `include`, no relation `select`, no nested write. Relation filters are prevented by the schema
- * rule that non-tenant models declare no relation to a tenant model (test/guardrails).
+ * rule that non-tenant models declare no relation to a tenant model (test/guardrails). An object
+ * under one of the model's scalar field names is that field's value (a Json column), not a
+ * nested write; an unknown model has no scalar fields, so every object in its writes is refused.
  */
-function assertNoRelations(at: string, args: Args): void {
+function assertNoRelations(at: string, model: string, args: Args): void {
   const { include, select, data, create, update } = args;
+  const scalars = SCALAR_FIELDS.get(model) ?? NO_FIELDS;
   if (include !== undefined) throw new QueryGuardError(`${at}: include is not allowed`);
   if (isObject(select)) {
     for (const [key, value] of Object.entries(select)) {
@@ -135,7 +157,7 @@ function assertNoRelations(at: string, args: Args): void {
     for (const row of rows) {
       if (!isObject(row)) continue;
       for (const [key, field] of Object.entries(row)) {
-        if (!isObject(field) || isValueObject(field)) continue;
+        if (scalars.has(key) || !isObject(field) || isValueObject(field)) continue;
         const keys = Object.keys(field);
         if (keys.length === 0 || !keys.every((op) => ATOMIC_OPERATIONS.has(op))) {
           throw new QueryGuardError(`${at}: ${part}.${key} is a nested write`);
@@ -159,7 +181,7 @@ export function assertQueryAllowed(
   const at = `${model}.${operation}`;
 
   if (!tenantModels.has(model)) {
-    assertNoRelations(at, all);
+    assertNoRelations(at, model, all);
     return;
   }
 

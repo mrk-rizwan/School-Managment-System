@@ -64,20 +64,154 @@ export const SCHOOL_ID_IMMUTABLE_FUNCTION = 'asms_forbid_school_id_change';
 /** Indexes on tenant tables that may lead with a column other than school_id: `table.column`. */
 export const NON_SCHOOL_LEADING_INDEXES = new Set(['sessions.token_hash']);
 
-export interface ExpectedObject {
-  kind: 'index' | 'constraint' | 'trigger';
-  table: string;
-  name: string;
-  /** A fragment that must appear in pg_get_indexdef / pg_get_constraintdef / pg_get_triggerdef. */
-  definition?: string;
-}
+export type ExpectedObject =
+  | {
+      kind: 'index' | 'constraint' | 'trigger';
+      table: string;
+      name: string;
+      /** A fragment that must appear in pg_get_indexdef / pg_get_constraintdef / pg_get_triggerdef. */
+      definition?: string;
+    }
+  | {
+      /** A trigger function: its body carries the constraint name the error mapper reads. */
+      kind: 'function';
+      name: string;
+      /** A fragment that must appear in pg_get_functiondef. */
+      definition?: string;
+    };
 
 /**
- * Hand-written partial indexes, CHECKs, the exclusion constraint and the audit trigger. Prisma
- * cannot express them, so nothing else notices when a migration drops one. Each slice appends
- * what it adds.
+ * Hand-written partial indexes, CHECKs, the exclusion constraint, triggers and trigger functions.
+ * Prisma cannot express them, so nothing else notices when a migration drops one. Each slice
+ * appends what it adds.
+ *
+ * Trigger functions raise SQLSTATE 23514 with DETAIL 'constraint: <name>': Prisma 7's pg adapter
+ * forwards detail but drops the constraint field for every code except 23505 and 23503
+ * (migration 20261002163440_trigger_errors_name_constraint).
  */
-export const EXPECTED_OBJECTS: ExpectedObject[] = [];
+export const EXPECTED_OBJECTS: ExpectedObject[] = [
+  // Slice 1: trigger functions.
+  {
+    kind: 'function',
+    name: SCHOOL_ID_IMMUTABLE_FUNCTION,
+    definition: `DETAIL = 'constraint: ' || TG_TABLE_NAME || '_school_id_immutable'`,
+  },
+  {
+    kind: 'function',
+    name: 'asms_forbid_short_code_change',
+    definition: `DETAIL = 'constraint: schools_short_code_immutable'`,
+  },
+  {
+    kind: 'function',
+    name: 'asms_forbid_append_only_change',
+    definition: `DETAIL = 'constraint: ' || TG_TABLE_NAME || '_append_only'`,
+  },
+  // Slice 1: schools.
+  {
+    kind: 'constraint',
+    table: 'schools',
+    name: 'schools_short_code_format_check',
+    definition: `(short_code)::text ~ '^[a-z0-9]{3,12}$'::text`,
+  },
+  {
+    kind: 'trigger',
+    table: 'schools',
+    name: 'schools_short_code_immutable',
+    definition:
+      'BEFORE UPDATE ON public.schools FOR EACH ROW EXECUTE FUNCTION asms_forbid_short_code_change()',
+  },
+  // Slice 1: platform_users.
+  {
+    kind: 'constraint',
+    table: 'platform_users',
+    name: 'platform_users_email_normalised_check',
+    definition: '(email)::text = lower(btrim((email)::text))',
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_users',
+    name: 'platform_users_password_hash_check',
+    definition: `(password_hash)::text ~~ '$argon2id$%'::text`,
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_users',
+    name: 'platform_users_totp_secret_check',
+    definition: `(totp_secret)::text ~~ 'v1:%'::text`,
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_users',
+    name: 'platform_users_totp_enrolled_check',
+    definition: '(totp_enrolled_at IS NULL) OR (totp_secret IS NOT NULL)',
+  },
+  // Slice 1: platform_sessions.
+  {
+    kind: 'constraint',
+    table: 'platform_sessions',
+    name: 'platform_sessions_token_hash_check',
+    definition: `token_hash ~ '^[0-9a-f]{64}$'::text`,
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_sessions',
+    name: 'platform_sessions_expires_at_check',
+    definition: 'expires_at > created_at',
+  },
+  // Slice 1: platform_audit_log.
+  {
+    kind: 'constraint',
+    table: 'platform_audit_log',
+    name: 'platform_audit_log_metadata_no_id_check',
+    definition: `((metadata)::text !~ '[0-9]{13}'::text) AND ((metadata)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)`,
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_audit_log',
+    name: 'platform_audit_log_reason_no_id_check',
+    definition: `((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)`,
+  },
+  {
+    kind: 'constraint',
+    table: 'platform_audit_log',
+    name: 'platform_audit_log_actor_check',
+    definition: `(actor_platform_user_id IS NOT NULL) OR ((action)::text = 'platform_user.seeded'::text)`,
+  },
+  {
+    kind: 'trigger',
+    table: 'platform_audit_log',
+    name: 'platform_audit_log_append_only',
+    definition:
+      'BEFORE DELETE OR UPDATE ON public.platform_audit_log FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  {
+    kind: 'trigger',
+    table: 'platform_audit_log',
+    name: 'platform_audit_log_no_truncate',
+    definition:
+      'BEFORE TRUNCATE ON public.platform_audit_log FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  // Slice 1: tenant tables. Their school_id FK and immutability trigger are checked generically by
+  // checkSchema; these are the table-specific CHECKs.
+  {
+    kind: 'constraint',
+    table: 'school_settings',
+    name: 'school_settings_fee_due_day_check',
+    definition: '(fee_due_day >= 1) AND (fee_due_day <= 28)',
+  },
+  {
+    kind: 'constraint',
+    table: 'school_counters',
+    name: 'school_counters_name_check',
+    definition: `(name)::text ~ '^[a-z][a-z0-9_]{0,31}$'::text`,
+  },
+  {
+    kind: 'constraint',
+    table: 'school_counters',
+    name: 'school_counters_value_check',
+    definition: 'value >= 0',
+  },
+];
 
 interface Column {
   table: string;
@@ -293,6 +427,21 @@ export async function checkExpectedObjects(
 ): Promise<string[]> {
   const violations: string[] = [];
   for (const object of expected) {
+    if (object.kind === 'function') {
+      const { rows } = await db.query<{ def: string }>(
+        `SELECT pg_get_functiondef(p.oid) AS def FROM pg_proc p
+         JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = $1 AND p.proname = $2`,
+        [schema, object.name],
+      );
+      const def = rows[0]?.def;
+      if (def === undefined) {
+        violations.push(`function ${object.name} is missing`);
+      } else if (object.definition && !def.includes(object.definition)) {
+        violations.push(`function ${object.name} has changed: ${def}`);
+      }
+      continue;
+    }
     const sql = {
       index: `SELECT pg_get_indexdef(i.indexrelid) AS def FROM pg_index i
               JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class c ON c.oid = i.indrelid
