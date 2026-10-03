@@ -24,3 +24,10 @@ export type GuardedPrismaClient = ReturnType<typeof createGuardedClient>;
 
 /** Repositories inject `TransactionHost<PrismaTxAdapter>` and query through `txHost.tx`. */
 export type PrismaTxAdapter = TransactionalAdapterPrisma<GuardedPrismaClient>;
+
+/**
+ * A search term for Prisma's contains / startsWith: LIKE wildcards and the escape character
+ * escaped with Postgres's default escape (a backslash). Prisma passes the value into LIKE
+ * unescaped (measured on 7.10), so an unescaped `%` would match everything.
+ */
+export const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (c) => `\\${c}`);

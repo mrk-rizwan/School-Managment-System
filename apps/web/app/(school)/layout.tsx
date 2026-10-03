@@ -1,13 +1,7 @@
-import { AppShell } from '@/components/app-shell';
+import { SchoolConsole } from './school-console';
 
-// Slice 0 stand-in for GET /me's effective capabilities (slice 2 fetches them in the browser).
-// A hardcoded demo list, not a security decision: the API checks every request itself.
-const DEMO_CAPABILITIES = ['student.view', 'staff.view'];
-
+// The school console (plan §1, §3.10): one layout, its sidebar built from GET /me's effective
+// capabilities. Everything inside is fetched by the browser with the school cookie.
 export default function SchoolLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AppShell title="ASMS" nav="school" capabilities={DEMO_CAPABILITIES}>
-      {children}
-    </AppShell>
-  );
+  return <SchoolConsole>{children}</SchoolConsole>;
 }

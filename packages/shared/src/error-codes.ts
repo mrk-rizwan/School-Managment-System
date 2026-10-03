@@ -65,6 +65,8 @@ export const ErrorCode = {
   GUARDIAN_NO_LOGIN_LINK: 'GUARDIAN_NO_LOGIN_LINK',
   GUARDIAN_IS_PRIMARY_CONTACT: 'GUARDIAN_IS_PRIMARY_CONTACT',
   LOGIN_ALREADY_EXISTS: 'LOGIN_ALREADY_EXISTS',
+  // issue-principal-login onto an existing login without confirmLinkExisting: true (wave-A fix).
+  LINK_EXISTING_LOGIN_UNCONFIRMED: 'LINK_EXISTING_LOGIN_UNCONFIRMED',
   // Client-side only: the web app's label for a failed response whose body was not the error
   // envelope (a proxy page, say). The API never sends it.
   UNEXPECTED_RESPONSE: 'UNEXPECTED_RESPONSE',

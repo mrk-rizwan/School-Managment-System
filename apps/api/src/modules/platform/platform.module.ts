@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformAuthModule } from './auth/platform-auth.module';
+import { PrincipalLoginModule } from './principal/principal.module';
 import { PlatformSchoolsModule } from './schools/platform-schools.module';
 
 /**
@@ -7,6 +8,6 @@ import { PlatformSchoolsModule } from './schools/platform-schools.module';
  * from this module's tree and the school document excludes it.
  */
 @Module({
-  imports: [PlatformAuthModule, PlatformSchoolsModule],
+  imports: [PlatformAuthModule, PlatformSchoolsModule, PrincipalLoginModule],
 })
 export class PlatformModule {}

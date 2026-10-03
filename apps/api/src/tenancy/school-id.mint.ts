@@ -39,13 +39,31 @@ export function createdSchoolRow<T extends { readonly id: bigint }>(row: T): T &
   return row as T & CreatedSchoolRow;
 }
 
+declare const principalIssueBrand: unique symbol;
+
+/**
+ * A school row SchoolRepository.lockForPrincipalIssue has just read under SELECT ... FOR UPDATE,
+ * and nothing else (contract slice-2 §7). Like CreatedSchoolRow, the platform module can hold one
+ * only by calling that method: the minting function below is importable from
+ * src/repositories/platform/** and not from src/modules/platform/**.
+ */
+export type PrincipalIssueSchoolRow = { readonly id: bigint } & {
+  readonly [principalIssueBrand]: true;
+};
+
+/** Brands the row SchoolRepository.lockForPrincipalIssue has just locked (its only caller). */
+export function principalIssueSchoolRow<T extends { readonly id: bigint }>(
+  row: T,
+): T & PrincipalIssueSchoolRow {
+  return row as T & PrincipalIssueSchoolRow;
+}
+
 /**
  * Exception 1: the platform acting inside a school, for exactly two operations. Slice 1: creating
  * the school (its settings and counters), from the row SchoolRepository.create returned. Slice 2:
- * issuing the principal's login, which adds its own branded row type rather than widening this
- * one. Never an id from a request or a row read back by id. Importable only from
- * src/modules/platform/**.
+ * issuing the principal's login, from the row SchoolRepository.lockForPrincipalIssue locked. Never
+ * an id from a request or a row read back by id. Importable only from src/modules/platform/**.
  */
-export function fromPlatformSchool(school: CreatedSchoolRow): SchoolId {
+export function fromPlatformSchool(school: CreatedSchoolRow | PrincipalIssueSchoolRow): SchoolId {
   return brand(school.id);
 }

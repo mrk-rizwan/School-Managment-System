@@ -1,12 +1,11 @@
+import type { Capability } from '@asms/shared';
 import {
   BookOpenIcon,
-  CalendarRangeIcon,
   FlaskConicalIcon,
-  LayoutDashboardIcon,
+  CircleUserRoundIcon,
   SchoolIcon,
   SettingsIcon,
   ShieldCheckIcon,
-  UserRoundIcon,
   UsersRoundIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -15,32 +14,23 @@ import {
  * Sidebar entries. `capability` is the key that shows the entry (plan §7); null means every
  * signed-in user of that console sees it. Hiding an entry is a convenience only: the API
  * enforces every capability itself.
- *
- * TODO(slice 2/7): type `capability` with the Capability enum once packages/shared exports it,
- * and feed `visibleNav` from GET /me's effective capabilities.
+ * The school console feeds `visibleNav` from GET /me's effective capabilities.
  */
 export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  capability: string | null;
+  capability: Capability | null;
 };
 
 export const schoolNav: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboardIcon, capability: null },
-  { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
+  // Students and Staff arrive with wave B (slices 4 and 6); no link until the page exists.
   { href: '/guardians', label: 'Guardians', icon: UsersRoundIcon, capability: 'guardian.manage' },
-  { href: '/staff', label: 'Staff', icon: UsersRoundIcon, capability: 'staff.view' },
-  { href: '/classes', label: 'Classes', icon: BookOpenIcon, capability: 'class.manage' },
+  // Every staff member may read the academic structure (@RequireStaff); writes are per capability.
+  { href: '/academics', label: 'Academic structure', icon: BookOpenIcon, capability: null },
   {
-    href: '/academic-years',
-    label: 'Academic years',
-    icon: CalendarRangeIcon,
-    capability: 'academic_year.manage',
-  },
-  {
-    href: '/access',
-    label: 'Users and access',
+    href: '/users',
+    label: 'User accounts',
     icon: ShieldCheckIcon,
     capability: 'user.account.manage',
   },
@@ -50,7 +40,9 @@ export const schoolNav: NavItem[] = [
     icon: SettingsIcon,
     capability: 'school.settings.manage',
   },
-  // Throwaway: the slice-0 component demo. Remove with app/(school)/demo.
+  // Every signed-in school user: email, password (slice 2).
+  { href: '/account', label: 'Your account', icon: CircleUserRoundIcon, capability: null },
+  // Throwaway: the slice-0 component demo. Remove with app/(demo).
   { href: '/demo', label: 'Component demo', icon: FlaskConicalIcon, capability: null },
 ];
 

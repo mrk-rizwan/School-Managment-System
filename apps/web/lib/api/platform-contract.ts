@@ -31,3 +31,6 @@ export type CreateSchoolBody = Schemas['CreateSchoolDto'];
 /** `shortCode` is declared by the API only to be refused (§4.4); the console never sends it. */
 export type UpdateSchoolBody = Omit<Schemas['UpdateSchoolDto'], 'shortCode'>;
 export type ChangeSchoolStatusBody = Schemas['ChangeSchoolStatusDto'];
+/** contracts/slice-2.md §7. */
+export type IssuePrincipalLoginBody = Schemas['IssuePrincipalLoginDto'];
+export type IssuePrincipalLoginDto = Schemas['IssuedPrincipalLoginDto'];

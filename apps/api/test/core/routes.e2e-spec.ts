@@ -8,6 +8,7 @@ import { MetadataScanner, ModulesContainer, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import {
+  AllowWhenSuspended,
   AuthenticatedOnly,
   PlatformSession,
   Public,
@@ -30,6 +31,8 @@ interface Route {
   level: string | undefined;
   /** Whether the controller belongs to PlatformModule's module tree. */
   inPlatformModule: boolean;
+  /** Marked @AllowWhenSuspended (contract slice-2 §1.3). */
+  allowWhenSuspended: boolean;
 }
 
 // The metadata keys are private to route-access.ts. Rather than restating the strings here,
@@ -50,6 +53,18 @@ const ACCESS_KEYS: [Access, string][] = [
   ['staff', keyOf(RequireStaff())],
 ];
 const PLATFORM_KEY = keyOf(PlatformSession());
+const ALLOW_WHEN_SUSPENDED_KEY = (() => {
+  class Probe {
+    handler(): void {}
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(Probe.prototype, 'handler');
+  if (!descriptor) throw new Error('no probe handler');
+  AllowWhenSuspended()(Probe.prototype, 'handler', descriptor);
+  const value: unknown = descriptor.value;
+  const [key] = Reflect.getMetadataKeys(value as object) as unknown[];
+  if (typeof key !== 'string') throw new Error('AllowWhenSuspended wrote no string metadata key');
+  return key;
+})();
 
 /** PlatformModule and every module it imports, recursively. */
 function platformModuleTree(): Set<unknown> {
@@ -117,6 +132,8 @@ function nestRoutes(app: NestExpressApplication): Route[] {
               handler: `${controller.name}.${name}`,
               level: reflector.getAllAndOverride<string | undefined>(PLATFORM_KEY, [handler, controller]),
               inPlatformModule: platformTree.has(module.metatype),
+              allowWhenSuspended:
+                reflector.get<unknown>(ALLOW_WHEN_SUSPENDED_KEY, handler) !== undefined,
             });
           }
         }
@@ -150,11 +167,37 @@ function expressRoutes(app: NestExpressApplication): string[] {
 }
 
 // R68 snapshot: every route reachable without a capability. Adding an entry here is a
-// reviewed change: a new @Public() or @AuthenticatedOnly() route widens what an anonymous or
-// any signed-in caller can reach, and must be agreed in review, not just appended.
+// reviewed change: a new @Public(), @AuthenticatedOnly() or @RequireStaff() route widens what an
+// anonymous caller, any signed-in user or any staff member can reach, and must be agreed in
+// review, not just appended (contract slice-2 §1).
 const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
+  ['GET', '/api/v1/academic-years', 'staff'],
+  ['GET', '/api/v1/academic-years/:id', 'staff'],
+  ['POST', '/api/v1/auth/forgot-password', 'public'],
+  ['POST', '/api/v1/auth/login', 'public'],
+  ['POST', '/api/v1/auth/logout', 'authenticated-only'],
+  ['POST', '/api/v1/auth/reset-password', 'public'],
+  ['POST', '/api/v1/auth/verify-email', 'public'],
+  ['GET', '/api/v1/classes', 'staff'],
+  ['GET', '/api/v1/classes/:id', 'staff'],
+  ['GET', '/api/v1/classes/:id/sections', 'staff'],
   ['GET', '/api/v1/health', 'public'],
+  ['GET', '/api/v1/me', 'authenticated-only'],
+  ['POST', '/api/v1/me/change-email', 'authenticated-only'],
+  ['POST', '/api/v1/me/change-password', 'authenticated-only'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
+  ['GET', '/api/v1/sections/:id', 'staff'],
+  ['GET', '/api/v1/subjects', 'staff'],
+  ['GET', '/api/v1/subjects/:id', 'staff'],
+];
+
+// Contract slice-2 §1.3 / R80: exactly these non-GET handlers still work in a suspended school.
+const ALLOW_WHEN_SUSPENDED_ROUTES: [string, string][] = [
+  ['POST', '/api/v1/auth/logout'],
+  ['POST', '/api/v1/me/change-email'],
+  ['POST', '/api/v1/me/change-password'],
+  ['POST', '/api/v1/users/:id/disable'],
+  ['POST', '/api/v1/users/:id/reset-password'],
 ];
 
 // Contract slice-1 §1: the platform auth routes and their @PlatformSession level. Reviewed like
@@ -268,12 +311,41 @@ describe('Routes and OpenAPI over the real AppModule', () => {
   it('R68: the routes needing no capability match the reviewed snapshot', () => {
     const open = routes
       .flatMap(({ method, path, access: [only, ...more] }): [string, string, Access][] =>
-        only !== undefined && (only === 'public' || only === 'authenticated-only') && more.length === 0
+        only !== undefined &&
+        (only === 'public' || only === 'authenticated-only' || only === 'staff') &&
+        more.length === 0
           ? [[method, path, only]]
           : [],
       )
       .sort((a, b) => `${a[1]} ${a[0]}`.localeCompare(`${b[1]} ${b[0]}`));
     expect(open).toEqual(NO_CAPABILITY_ROUTES);
+  });
+
+  it('R80: the @AllowWhenSuspended handlers are exactly the reviewed set (contract slice-2 §1.3)', () => {
+    const marked = routes
+      .filter((r) => r.allowWhenSuspended)
+      .map((r): [string, string] => [r.method, r.path])
+      .sort((a, b) => a[1].localeCompare(b[1]));
+    expect(marked).toEqual(ALLOW_WHEN_SUSPENDED_ROUTES);
+  });
+
+  it('R78: @AuthenticatedOnly is only on /auth/logout and /me/*, so parent and student sessions reach nothing else', () => {
+    const wrong = routes
+      .filter((r) => r.access.includes('authenticated-only'))
+      .filter((r) => !(r.path === '/api/v1/auth/logout' || r.path === '/api/v1/me' || r.path.startsWith('/api/v1/me/')))
+      .map((r) => `${r.method} ${r.path}`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('R65: no GET route lives under an action path (no GET mutates)', () => {
+    const wrong = routes
+      .filter(
+        (r) =>
+          r.method === 'GET' &&
+          /\/(login|logout|reset-password|verify-email|disable|enable|change-[a-z]+|issue-[a-z-]+)$/.test(r.path),
+      )
+      .map((r) => r.path);
+    expect(wrong).toEqual([]);
   });
 
   it('R56: platform routes are exactly the PlatformModule routes, all under /platform', () => {

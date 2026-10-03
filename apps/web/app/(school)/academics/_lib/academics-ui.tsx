@@ -1,0 +1,218 @@
+'use client';
+
+import { useMutation } from '@tanstack/react-query';
+import { MoreHorizontalIcon } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useId } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { ConfirmWithReasonDialog } from '@/components/confirm-with-reason-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ApiError, describeApiError } from '@/lib/api/errors';
+import type {
+  AcademicYearStatus,
+  AttendanceMode,
+} from '@/lib/api/school-academics-contract';
+import { cn } from '@/lib/utils';
+
+// Pieces shared by the four academic-structure tabs (contracts/slice-3.md §8).
+
+export const academicsKeys = {
+  all: ['school', 'academics'] as const,
+  years: ['school', 'academics', 'years'] as const,
+  classes: ['school', 'academics', 'classes'] as const,
+  class: (id: string) => ['school', 'academics', 'classes', 'detail', id] as const,
+  sections: (classId: string) => ['school', 'academics', 'sections', classId] as const,
+  subjects: ['school', 'academics', 'subjects'] as const,
+};
+
+/** Largest page the API serves (plan §3.9); dropdowns use it. */
+export const OPTIONS_LIMIT = 50;
+
+/** Name rule of §1: trimmed, length-bounded, no control characters (the API also collapses spaces). */
+export function nameSchema(min: number, max: number) {
+  return z
+    .string()
+    .trim()
+    .min(min, min === 1 ? 'Enter a name.' : `Use at least ${min} characters.`)
+    .max(max, `Use at most ${max} characters.`)
+    .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.');
+}
+
+export const YEAR_STATUS_LABELS: Record<AcademicYearStatus, string> = {
+  planned: 'Planned',
+  active: 'Active',
+  closed: 'Closed',
+};
+const YEAR_STATUS_VARIANT = {
+  planned: 'outline',
+  active: 'secondary',
+  closed: 'ghost',
+} as const satisfies Record<AcademicYearStatus, string>;
+
+export function YearStatusBadge({ status }: { status: AcademicYearStatus }) {
+  return <Badge variant={YEAR_STATUS_VARIANT[status]}>{YEAR_STATUS_LABELS[status]}</Badge>;
+}
+
+/** Shown for an archived class, section or subject. */
+export function ArchivedBadge() {
+  return <Badge variant="ghost">Archived</Badge>;
+}
+
+export const ATTENDANCE_MODE_LABELS: Record<AttendanceMode, string> = {
+  daily: 'Once a day',
+  period: 'Every period',
+};
+
+// A YYYY-MM-DD date is a calendar day, not an instant: format it in UTC so no zone moves it.
+const dayFormat = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' });
+export const formatDay = (isoDate: string) => dayFormat.format(new Date(`${isoDate}T00:00:00Z`));
+
+/** The toast for a failed action: a 422's field sentence (an identity number in a reason, say) or the API's message. */
+export function toastApiError(error: unknown) {
+  const fieldMessage = error instanceof ApiError ? error.fieldErrors[0]?.message : undefined;
+  toast.error(fieldMessage ?? describeApiError(error));
+}
+
+const TABS = [
+  { href: '/academics/years', label: 'Academic years' },
+  { href: '/academics/classes', label: 'Classes' },
+  { href: '/academics/subjects', label: 'Subjects' },
+] as const;
+
+/** Sections live under their class (class detail), so they have no tab of their own. */
+export function AcademicsTabs() {
+  const pathname = usePathname();
+  return (
+    <nav aria-label="Academic structure" className="mb-6 flex gap-1 border-b">
+      {TABS.map(({ href, label }) => {
+        const active = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+              active
+                ? 'border-primary font-medium text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+export type RowAction = { label: string; onSelect: () => void; destructive?: boolean };
+
+/** The per-row actions menu. Renders nothing when the user may take no action on the row. */
+export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
+  if (actions.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`} />}
+      >
+        <MoreHorizontalIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            variant={action.destructive ? 'destructive' : 'default'}
+            onClick={action.onSelect}
+          >
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * Archive a class, section or subject through the shared confirm-with-reason dialog. The reason
+ * is optional (3–500 characters when given, §3.5), so an empty box is accepted and nothing is
+ * sent. Archiving cannot be undone in v1.
+ */
+export function ArchiveDialog({
+  target,
+  onClose,
+  noun,
+  archive,
+  onArchived,
+}: {
+  /** The row's display name, or null when the dialog is closed. */
+  target: string | null;
+  onClose: () => void;
+  noun: string;
+  archive: (reason: string | undefined) => Promise<unknown>;
+  onArchived: () => void;
+}) {
+  const mutation = useMutation({
+    mutationFn: (reason: string) => archive(reason || undefined),
+    onSuccess: () => {
+      toast.success(`${target} archived.`);
+      onArchived();
+      onClose();
+    },
+    onError: (error) => {
+      toastApiError(error);
+      // A refusal from the record's state (it changed meanwhile): show the current rows.
+      if (error instanceof ApiError && error.status === 409) {
+        onArchived();
+        onClose();
+      }
+    },
+  });
+  return (
+    <ConfirmWithReasonDialog
+      open={target !== null}
+      onOpenChange={(open) => !open && onClose()}
+      title={`Archive ${noun}: ${target ?? ''}`}
+      description={`An archived ${noun} keeps its history but cannot be edited or restored. A reason is optional.`}
+      confirmLabel="Archive"
+      minLength={0}
+      maxLength={500}
+      destructive
+      pending={mutation.isPending}
+      onConfirm={(reason) => mutation.mutate(reason)}
+    />
+  );
+}
+
+/** The "Show archived" toggle of the classes, sections and subjects tables. */
+export function ShowArchivedToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex h-8 items-center gap-2">
+      <input
+        id={id}
+        type="checkbox"
+        className="size-4 accent-primary"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <Label htmlFor={id}>Show archived</Label>
+    </div>
+  );
+}

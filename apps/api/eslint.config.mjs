@@ -99,11 +99,22 @@ function restrictImports({ exempt = [], narrowed = [] } = {}) {
 // Files that legitimately call the pre-auth school lookup, session resolution or the scheduler
 // fan-out (CLAUDE.md named exceptions 2-4). Each is added here by the slice that writes it;
 // adding one is a recorded decision, not a convenience.
-const NAMED_EXCEPTION_SITES = [];
+const NAMED_EXCEPTION_SITES = [
+  // Exception 2's spray detection: one platform_audit_log row per school per window (contract
+  // slice-2 §3.1 step 6).
+  'src/modules/auth/login-spike.recorder.ts',
+];
 
 // Files allowed tagged $queryRaw / $executeRaw. Each must have its own isolation test.
 // Tests may use raw SQL freely; they are not application code.
-const RAW_SQL_FILES = [];
+const RAW_SQL_FILES = [
+  // Exception 4: SessionRepository.findActiveByTokenHash, the one unscoped tenant read
+  // (test/school-auth/repositories.e2e-spec.ts).
+  'src/repositories/session.repository.ts',
+  // UserRepository.list: the users page sorted by COALESCE(staff, guardian) name; tenant
+  // predicate on the WHERE and every join (test/school-auth/repositories.e2e-spec.ts).
+  'src/repositories/user.repository.ts',
+];
 
 // ------------------------------------------------------------------------------ syntax bans
 
@@ -119,8 +130,8 @@ const memberNamed = (names) =>
 const RAW_UNSAFE = '/^\\$(queryRawUnsafe|executeRawUnsafe)$/';
 const RAW = '/^\\$(queryRaw|executeRaw)$/';
 
-// CreatedSchoolRow is the brand fromPlatformSchool accepts (src/tenancy/school-id.ts).
-const BRAND = '/^(SchoolId|Scope|CreatedSchoolRow)$/';
+// CreatedSchoolRow and PrincipalIssueSchoolRow are the brands fromPlatformSchool accepts (src/tenancy/school-id.ts).
+const BRAND = '/^(SchoolId|Scope|CreatedSchoolRow|PrincipalIssueSchoolRow)$/';
 /** A reference to a brand by plain or qualified name (`SchoolId`, `ns.SchoolId`). */
 const brandRef = (name) =>
   `TSTypeReference:matches([typeName.name=${name}], [typeName.right.name=${name}])`;
@@ -398,8 +409,13 @@ export default tseslint.config(
     rules: restrictSyntaxWith(REPOSITORY_LAYER, 'prismaClient'),
   },
   {
-    // Named exceptions 2-4 are platform/session repositories, the only ones that mint a SchoolId.
-    files: ['src/repositories/platform/**/*.ts', 'src/repositories/session*.ts'],
+    // Named exceptions 2-4 are the platform, school-lookup and session repositories, the only
+    // ones that mint a SchoolId.
+    files: [
+      'src/repositories/platform/**/*.ts',
+      'src/repositories/session*.ts',
+      'src/repositories/school-lookup.repository.ts',
+    ],
     rules: restrictImports({
       exempt: REPOSITORY_IMPORTS,
       narrowed: [{ key: 'schoolIdMint', importNames: ['fromPlatformSchool'] }],

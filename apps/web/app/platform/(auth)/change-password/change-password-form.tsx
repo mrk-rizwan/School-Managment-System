@@ -41,7 +41,7 @@ export function ChangePasswordForm() {
   const router = useRouter();
   const me = usePlatformMe();
   // The authenticator comes first (contract decision 3); a signed-out visitor is redirected by
-  // PlatformSessionRedirects when GET /me answers 401.
+  // SessionRedirects (app/platform/layout.tsx) when GET /me answers 401.
   useEffect(() => {
     if (me.data?.sessionStage === 'totp_enrolment') router.replace(PLATFORM_PATHS.enrol);
   }, [me.data, router]);

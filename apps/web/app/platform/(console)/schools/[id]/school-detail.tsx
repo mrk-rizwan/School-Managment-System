@@ -18,6 +18,7 @@ import { ApiError } from '@/lib/api/errors';
 import { platform, type SchoolDto, type UpdateSchoolBody } from '@/lib/api/platform-contract';
 import { platformKeys } from '@/lib/platform-session';
 import { formatDateTime, schoolNameSchema, SchoolStatusBadge, useTimezoneOptions } from '../school-ui';
+import { IssuePrincipalLogin } from './issue-principal-login';
 import { StatusChange } from './status-change';
 
 export function SchoolDetail({ id }: { id: string }) {
@@ -76,7 +77,14 @@ export function SchoolDetail({ id }: { id: string }) {
       <PageHeader
         title={data.name}
         description={`Short code ${data.shortCode}`}
-        actions={!terminated && <StatusChange school={data} />}
+        actions={
+          !terminated && (
+            <>
+              <IssuePrincipalLogin school={data} />
+              <StatusChange school={data} />
+            </>
+          )
+        }
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Keyed by the last update so the form restarts from the saved values. */}

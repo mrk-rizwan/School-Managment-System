@@ -4,8 +4,13 @@ import pino, { DestinationStream } from 'pino';
 import type { IncomingMessage } from 'node:http';
 import { ENV, Env } from '../config/env';
 
-// A CNIC/B-Form with dashes, or any run of 13+ digits (a CNIC/B-Form without them).
-const IDENTITY_NUMBER = /\d{5}-\d{7}-\d|\d{13,}/g;
+// A CNIC/B-Form split 5-7-1 by dashes, spaces, `+` or their URL encodings (`%20`, `%2B`, `%2D`),
+// as a query string carries it; or any run of 13+ digits (a CNIC/B-Form without separators).
+const SEPARATOR = String.raw`(?:[\s+-]|%20|%2B|%2D){1,3}`;
+const IDENTITY_NUMBER = new RegExp(
+  String.raw`\d{5}${SEPARATOR}\d{7}${SEPARATOR}\d|\d{13,}`,
+  'gi',
+);
 
 /** Where log lines go. Tests override this token to capture output. */
 export const LOG_DESTINATION = Symbol('LOG_DESTINATION');

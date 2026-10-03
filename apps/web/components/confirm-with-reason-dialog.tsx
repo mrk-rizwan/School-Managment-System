@@ -29,6 +29,10 @@ type ConfirmWithReasonDialogProps = {
   maxLength?: number;
   destructive?: boolean;
   pending?: boolean;
+  /** Extra fields shown above the reason (a choice the action needs, say). Optional. */
+  children?: React.ReactNode;
+  /** Keeps Confirm disabled while those extra fields are incomplete. */
+  confirmDisabled?: boolean;
   onConfirm: (reason: string) => void;
 };
 
@@ -56,6 +60,8 @@ function ReasonForm({
   maxLength = 500,
   destructive = false,
   pending,
+  children,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: Omit<ConfirmWithReasonDialogProps, 'open' | 'onOpenChange'> & {
@@ -72,13 +78,14 @@ function ReasonForm({
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!tooShort && !pending) onConfirm(trimmed);
+        if (!tooShort && !pending && !confirmDisabled) onConfirm(trimmed);
       }}
     >
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         {description && <DialogDescription>{description}</DialogDescription>}
       </DialogHeader>
+      {children}
       <div className="grid gap-1.5">
         <Label htmlFor={id}>Reason</Label>
         <Textarea
@@ -103,7 +110,7 @@ function ReasonForm({
         <Button
           type="submit"
           variant={destructive ? 'destructive' : 'default'}
-          disabled={tooShort || pending}
+          disabled={tooShort || pending || confirmDisabled}
         >
           {pending ? 'Working…' : confirmLabel}
         </Button>

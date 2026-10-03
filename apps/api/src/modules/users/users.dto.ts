@@ -1,0 +1,145 @@
+import { applyDecorators } from '@nestjs/common';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsIn, IsOptional, IsString, Length, ValidateBy } from 'class-validator';
+import { containsIdentityNumber, SYSTEM_ROLES, type SystemRole } from '@asms/shared';
+import { PageQueryDto } from '../../common/pagination';
+
+// contracts/slice-2.md §5.
+
+const trim = ({ value }: { value: unknown }): unknown =>
+  typeof value === 'string' ? value.trim() : value;
+
+/** Free text must not carry an identity number, plain or dashed (plan §3.6; audit CHECKs). */
+export const NoIdentityNumber = (): PropertyDecorator =>
+  ValidateBy({
+    name: 'noIdentityNumber',
+    validator: {
+      validate: (value: unknown) => typeof value === 'string' && !containsIdentityNumber(value),
+      defaultMessage: () => '$property must not contain an identity number',
+    },
+  });
+
+/** `reason`: trimmed, 3-500 characters, no identity number. */
+export const ReasonField = (): PropertyDecorator =>
+  applyDecorators(
+    ApiProperty({ minLength: 3, maxLength: 500 }),
+    Transform(trim),
+    IsString(),
+    Length(3, 500),
+    NoIdentityNumber(),
+  );
+
+export const USER_STATUSES = ['active', 'disabled'] as const;
+export type UserStatus = (typeof USER_STATUSES)[number];
+const USER_KINDS = ['staff', 'guardian', 'student'] as const;
+const USER_SORTS = ['fullName', '-fullName', 'lastLoginAt', '-lastLoginAt', 'createdAt', '-createdAt'] as const;
+
+/** `true` / `false` query strings to booleans; anything else is left for @IsBoolean to refuse. */
+const queryBoolean = ({ value }: { value: unknown }): unknown =>
+  value === 'true' ? true : value === 'false' ? false : value;
+
+export class ListUsersQueryDto extends PageQueryDto {
+  @ApiPropertyOptional({ enum: USER_STATUSES, enumName: 'UserStatus' })
+  @IsOptional()
+  @IsIn(USER_STATUSES)
+  status?: UserStatus;
+
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @Transform(queryBoolean)
+  @IsBoolean()
+  passwordIsDefault?: boolean;
+
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @Transform(queryBoolean)
+  @IsBoolean()
+  hasEmail?: boolean;
+
+  @ApiPropertyOptional({ enum: USER_KINDS, enumName: 'UserKind' })
+  @IsOptional()
+  @IsIn(USER_KINDS)
+  kind?: (typeof USER_KINDS)[number];
+
+  /**
+   * Full name, 2-100 characters. An identity number is refused, written plain, dashed or split by
+   * spaces or `+` (`35202 1234567 1`): identity lookups are POST (§3.6), never a URL.
+   */
+  @ApiPropertyOptional({ minLength: 2, maxLength: 100 })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @Length(2, 100)
+  @ValidateBy({
+    name: 'noIdentityNumber',
+    validator: {
+      validate: (value: unknown) =>
+        typeof value === 'string' && !containsIdentityNumber(value.replace(/[\s+-]/g, '')),
+      defaultMessage: () => '$property must not contain an identity number',
+    },
+  })
+  q?: string;
+
+  @ApiPropertyOptional({ enum: USER_SORTS, default: 'fullName' })
+  @IsOptional()
+  @IsIn(USER_SORTS)
+  sort?: (typeof USER_SORTS)[number];
+}
+
+export class UserDto {
+  @ApiProperty({ type: String })
+  id: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  staffId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  guardianId: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  studentId: string | null;
+
+  @ApiProperty()
+  fullName: string;
+
+  @ApiProperty({ enum: SYSTEM_ROLES, enumName: 'SystemRole', isArray: true })
+  systemRoles: SystemRole[];
+
+  @ApiProperty({ enum: USER_STATUSES, enumName: 'UserStatus' })
+  status: UserStatus;
+
+  /** `a***@example.com`. */
+  @ApiProperty({ type: String, nullable: true })
+  emailMasked: string | null;
+
+  @ApiProperty()
+  hasEmail: boolean;
+
+  @ApiProperty()
+  hasVerifiedEmail: boolean;
+
+  @ApiProperty()
+  passwordIsDefault: boolean;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  lastLoginAt: Date | null;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt: Date;
+}
+
+export class OfficeResetDto {
+  @ReasonField()
+  reason: string;
+
+  /** Required: the clerk must choose to keep or clear the address (plan §5 slice 2). */
+  @ApiProperty()
+  @IsBoolean()
+  clearEmail: boolean;
+}
+
+export class ReasonDto {
+  @ReasonField()
+  reason: string;
+}

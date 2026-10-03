@@ -11,8 +11,11 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1, **slices 0 and 1 done** (2026-10-03): scaffold and isolation guardrails;
-  platform admin console and the school record. **Next: wave A = slices 2, 3, 5 in parallel.**
+- **Phase:** Phase 1, **slices 0, 1, 2, 3 and 5 done** (2026-10-03): scaffold and isolation
+  guardrails; platform console and school record; school logins, sessions, users, settings;
+  academic structure; guardians. **Next: wave B = slices 4 (staff, assignments) and 6 (students,
+  enrolment, admission) in parallel.** Paused by the product owner after the wave-A commit, to
+  resume about two hours later.
 - **CI status unknown:** the auto-sync pushes to GitHub, but the repo is private and this machine
   has no GitHub login, so nobody here has seen an Actions run. The product owner must check.
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
@@ -49,15 +52,25 @@ slice 0 are not counted.
 
 1. **Confirm GitHub Actions is green** on the latest push. The repo is private and this machine
    has no GitHub login, so the product owner checks the Actions tab; a failure is fixed first.
-2. **Wave A: slices 2, 3 and 5 in parallel** (see "Process since 2026-10-03" below).
-3. Wave B: slices 4 and 6. Wave C: slices 7 and 8. **Before the first slice where a request
-   handler consumes a `Scope`** (slice 4 or 6), the type-aware lint rule in the slice-0
-   residual-risk statement must exist.
-4. Product owner: register item 30 (privileged capabilities on a default password); schema-freeze
+2. **Start of wave B, small clean-ups left from wave A** (one agent, before the slices): migrate
+   `users.dto.ts`, `principal.dto.ts`, `auth/dto.ts`, `platform/auth/dto.ts` and
+   `school-settings.dto.ts` to `src/common/fields.ts`; `user.repository.ts` to the shared
+   `escapeLike`; the local `notFound` copies to `common/errors/api-exception.ts`; web academics and
+   guardians screens to the status lists now in `@asms/shared`; fold
+   `SchoolSettingsRepository.lock` into `readLocked`; map Postgres 40P01 (deadlock) to 409
+   `CONCURRENT_UPDATE` in `prisma-errors.ts` as a safety net.
+3. **Wave B: slices 4 and 6.** Before the first handler that consumes a `Scope` (slice 4's
+   teacher reads), the type-aware lint rule in the slice-0 residual-risk statement must exist.
+   Services read scope with `scopeOf(session)` (the guard binds it). Slice 4's staff "issue login"
+   must reuse wave A's reset-on-link rule when it links an existing login.
+4. Wave C: slices 7 and 8 (full `phase-gate` at 8).
+5. Product owner: register item 30 (privileged capabilities on a default password); whether a
+   linked principal login should get a one-time random password instead of the CNIC default
+   (wave-A security residual: the clerk who planted the login knows the default); schema-freeze
    items 7–13 and 23–26 before the end of Phase 1; whether a guardian whose children have all left
    keeps a login (part of item 11); CNIC correction after a login exists; numeric reset code or
    emailed link.
-5. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
+6. Product owner, optional: sample seed data (presentation slide 23) so seeders use real shapes.
 
 ---
 
@@ -75,6 +88,59 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-03 — Wave A: slices 2, 3 and 5 (Opus 5.5) — DONE
+
+**Built in parallel** after a shared groundwork commit (`a49e2de`: 11 tenant tables, capability
+list and role defaults, identity and phone helpers, error codes, access decorators, fail-closed
+school routes, audit writer, module stubs). Five agents: slice 2 API, slice 3 API, slice 5 API,
+school-auth web, academics-and-guardians web; then one agent swapped the web to the generated API
+types and added a real-API end-to-end test.
+- **Slice 2:** school login (school code + CNIC digits + password, generic failure, lockout and
+  throttles on Redis, spray detection to the platform log), sessions (cookie or bearer, never
+  both; idle 24 h, absolute 30 d), `/me`, change email/password, forgot/reset/verify with tokens
+  in the URL fragment, users admin (office reset with keep/clear email, disable/enable, R10–R14,
+  last principal R72/R73), school settings, and the platform's issue-principal-login.
+- **Slice 3:** academic years (activate, close), classes per year (archive, copy sections, year
+  immutable once it has sections — also a DB trigger), sections, subjects.
+- **Slice 5:** guardians with encrypted CNIC (school-bound AAD), masked output only, POST lookup
+  with per-user throttle and merge resolution, issue-login linking an existing user by CNIC hash.
+- **Web:** school login, forgot/reset/verify, account, users, settings, academic structure,
+  guardians; platform "issue principal login" with a confirmation step.
+
+**Reviews and what they changed**
+- `security-reviewer`: **FAIL** on one high finding, now fixed and re-checked PASS. Office staff
+  could pre-position a guardian login with an incoming principal's CNIC; issue-principal-login
+  then linked it and the planted session silently became principal. Now linking an existing
+  login needs `confirmLinkExisting: true` (409 `LINK_EXISTING_LOGIN_UNCONFIRMED` otherwise) and
+  resets the account in the same transaction (password to default, email cleared, every session
+  revoked, tokens voided, audited). The re-check found one more medium issue — a request whose
+  session is revoked while it waits for the user lock could still finish its write — fixed by
+  re-checking the session under the lock (`SessionRepository.isLive`), with a test proven to fail
+  without it. Also fixed: R14 bypass on suspended staff, CNIC with spaces reaching logs, SMTP
+  `requireTLS` in production, teacher scope bound to the request (`scopeOf(session)`).
+- Correctness: login-spike alarm wrote nothing (DB CHECK widened by migration
+  `20261003071557_login_spike_actor`, test now asserts the row); reset-vs-office-reset deadlock
+  (one lock order everywhere, plus a clock read moved after the lock — the race test found it);
+  users list sorted parents wrongly (raw SQL page query, isolation-tested); section archive
+  ignored a frozen class; guardian lookup with a null key was a 500; settings lock could rewind
+  `updated_at`.
+- Quality: one rate limiter (`common/rate-limit.ts`), one set of request-field helpers
+  (`common/fields.ts`), one `escapeLike`, one `readLocked`, status lists moved to
+  `@asms/shared`, one tenant-access pattern (`SchoolContext`).
+
+**Final results:** lint and typecheck clean in all three packages; API 41 suites / 563 tests
+(6 `it.todo` stubs for slices 4 and 6); web build; Playwright 60/60 including real-API runs
+against the test database; pre-commit hook clean (fake test passwords carry
+`pragma: allowlist secret`).
+
+**Residual risk recorded for the product owner:** after a principal login is linked, its password
+is the CNIC default, which the clerk who planted the original login knows. The clerk could sign
+in first; this is audited (`user.login_after_office_reset`) and locks the real principal out, so
+it is loud, not silent. Closing it fully needs a departure from rule 12 (e.g. a one-time random
+password for principals) — left to the owner (Left to do, item 5).
+
+---
 
 ## 2026-10-03 — Slice 1: platform admin and the school record (Opus 5.5) — DONE
 

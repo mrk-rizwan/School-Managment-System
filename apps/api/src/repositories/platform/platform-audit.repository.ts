@@ -14,7 +14,7 @@ export type AuditMetadataValue =
   | { readonly [key: string]: AuditMetadataValue };
 
 export interface PlatformAuditEntry {
-  /** Null only for the seed (CHECK platform_audit_log_actor_check). */
+  /** Null only for the seed and login_failure_spike rows (CHECK platform_audit_log_actor_check). */
   actorPlatformUserId: bigint | null;
   schoolId: bigint | null;
   /** e.g. `school.created`; the list is contracts/slice-1.md §6. */

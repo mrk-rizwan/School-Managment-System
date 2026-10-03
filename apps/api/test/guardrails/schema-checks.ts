@@ -188,7 +188,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     kind: 'constraint',
     table: 'platform_audit_log',
     name: 'platform_audit_log_actor_check',
-    definition: `(actor_platform_user_id IS NOT NULL) OR ((action)::text = 'platform_user.seeded'::text)`,
+    definition: `(actor_platform_user_id IS NOT NULL) OR ((action)::text = ANY ((ARRAY['platform_user.seeded'::character varying, 'login_failure_spike'::character varying])::text[]))`,
   },
   {
     kind: 'trigger',

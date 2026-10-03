@@ -23,6 +23,9 @@ describe('API core (slice 0.2)', () => {
   });
 
   const http = () => request(app.getHttpServer());
+  // Every non-GET without a bearer token must carry the app's Origin (R65, contract slice-2 §1.2).
+  const origin = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+  const post = (path: string) => http().post(path).set('Origin', origin);
   type Envelope = {
     error: { code: string; message: string; details: { fields: { path: string; code: string }[] }; requestId: string };
   };
@@ -56,8 +59,7 @@ describe('API core (slice 0.2)', () => {
   });
 
   it('malformed JSON is 400 MALFORMED_REQUEST and does not echo the body', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .set('Content-Type', 'application/json')
       .send(`{"cnic": "${CNIC_DIGITS}",`)
       .expect(400);
@@ -66,8 +68,7 @@ describe('API core (slice 0.2)', () => {
   });
 
   it('a non-JSON body on a state-changing request is 415', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .set('Content-Type', 'application/x-www-form-urlencoded')
       .send('name=x')
       .expect(415);
@@ -75,20 +76,18 @@ describe('API core (slice 0.2)', () => {
   });
 
   it('a bodiless POST is not refused as 415', async () => {
-    await http().post('/api/v1/test/log').expect(201);
+    await post('/api/v1/test/log').expect(201);
   });
 
   it('a body over 100 kB is 413', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .send({ name: 'x'.repeat(110_000) })
       .expect(413);
     expectEnvelope(res.body, 'PAYLOAD_TOO_LARGE');
   });
 
   it('validation is 422 with nested field paths and UNKNOWN_FIELD', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .send({ name: 'x', classId: '012', guardians: [{ phone: 5 }], extra: true })
       .expect(422);
     expectEnvelope(res.body, 'VALIDATION_FAILED');
@@ -105,8 +104,7 @@ describe('API core (slice 0.2)', () => {
   });
 
   it('R63: schoolId in a body is refused 422 UNKNOWN_FIELD', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .send({ name: 'x', classId: '12', guardians: [], schoolId: '1' })
       .expect(422);
     expect(errorOf(res).details.fields).toEqual([
@@ -120,22 +118,20 @@ describe('API core (slice 0.2)', () => {
   });
 
   it('a body id above int8 max is 422 on that field; int8 max itself passes', async () => {
-    const res = await http()
-      .post('/api/v1/test/things')
+    const res = await post('/api/v1/test/things')
       .send({ name: 'x', classId: '9223372036854775808', guardians: [] })
       .expect(422);
     expect(errorOf(res).details.fields).toEqual([
       expect.objectContaining({ path: 'classId', code: 'INVALID_VALUE' }),
     ]);
-    await http()
-      .post('/api/v1/test/things')
+    await post('/api/v1/test/things')
       .send({ name: 'x', classId: '9223372036854775807', guardians: [] })
       .expect(201);
   });
 
   it('a valid body passes through', async () => {
     const body = { name: 'x', classId: '12', guardians: [{ phone: '+923001234567' }] };
-    const res = await http().post('/api/v1/test/things').send(body).expect(201);
+    const res = await post('/api/v1/test/things').send(body).expect(201);
     expect(res.body).toEqual(body);
   });
 
@@ -221,7 +217,7 @@ describe('API core (slice 0.2)', () => {
       .set('Cookie', '__Host-asms_session=cookie-secret-value')
       .set('Authorization', 'Bearer bearer-secret-value')
       .expect(422); // unknown query parameters, but still a logged request
-    await http().post('/api/v1/test/log').expect(201);
+    await post('/api/v1/test/log').expect(201);
     await http().get('/api/v1/test/boom').expect(500);
 
     const output = logLines.join('');

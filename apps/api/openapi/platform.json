@@ -154,9 +154,94 @@
           "SCHOOL_TERMINATED",
           "ILLEGAL_STATUS_TRANSITION",
           "CONCURRENT_UPDATE",
+          "TOKEN_INVALID",
+          "EMAIL_NOT_VERIFIED",
+          "SELF_ACTION_FORBIDDEN",
+          "LAST_PRINCIPAL",
+          "IDENTITY_NUMBER_MISSING",
+          "ACTIVE_PRINCIPAL_EXISTS",
+          "ALREADY_PRINCIPAL",
+          "STAFF_NOT_ACTIVE",
+          "USER_DISABLED",
+          "ACADEMIC_YEAR_NAME_TAKEN",
+          "ACADEMIC_YEAR_CLOSED",
+          "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS",
+          "CLASS_NAME_TAKEN",
+          "CLASS_YEAR_IMMUTABLE",
+          "CLASS_ARCHIVED",
+          "CLASS_HAS_ACTIVE_ENROLMENTS",
+          "SECTION_NAME_TAKEN",
+          "SECTION_ARCHIVED",
+          "SECTION_IN_USE",
+          "SUBJECT_NAME_TAKEN",
+          "SUBJECT_CODE_TAKEN",
+          "SUBJECT_ARCHIVED",
+          "GUARDIAN_CNIC_EXISTS",
+          "GUARDIAN_CNIC_LOCKED",
+          "GUARDIAN_MERGED",
+          "GUARDIAN_CNIC_MISSING",
+          "GUARDIAN_NO_LOGIN_LINK",
+          "GUARDIAN_IS_PRIMARY_CONTACT",
+          "LOGIN_ALREADY_EXISTS",
+          "LINK_EXISTING_LOGIN_UNCONFIRMED",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
+      },
+      "IssuePrincipalLoginDto": {
+        "properties": {
+          "cnic": {
+            "description": "13 digits; dashes allowed (5-7-1).",
+            "pattern": "^[0-9]{13}$",
+            "type": "string"
+          },
+          "confirmLinkExisting": {
+            "type": "boolean"
+          },
+          "fullName": {
+            "maxLength": 200,
+            "minLength": 2,
+            "type": "string"
+          },
+          "phone": {
+            "description": "Pakistani local or international form; stored as E.164.",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fullName",
+          "cnic",
+          "phone"
+        ],
+        "type": "object"
+      },
+      "IssuedPrincipalLoginDto": {
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "linkedExistingUser": {
+            "type": "boolean"
+          },
+          "staffId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "staffId",
+          "fullName",
+          "linkedExistingUser"
+        ],
+        "type": "object"
       },
       "PlatformLoginDto": {
         "properties": {
@@ -1308,6 +1393,107 @@
         },
         "tags": [
           "platform: schools"
+        ]
+      }
+    },
+    "/api/v1/platform/schools/{id}/issue-principal-login": {
+      "post": {
+        "operationId": "PrincipalLoginController_issue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssuePrincipalLoginDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedPrincipalLoginDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform schools"
         ]
       }
     }

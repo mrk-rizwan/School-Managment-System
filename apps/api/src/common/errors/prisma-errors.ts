@@ -53,6 +53,10 @@ const fieldInvalid = (path: string, message: string) =>
     fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
   });
 
+/** A 409 refusal naming the field it concerns. */
+const taken = (code: ErrorCode, field: string, message: string) =>
+  new ApiException(409, code, message, { field });
+
 /** Constraint name → the refusal it means. Every other constraint is a 500 (a bug, not input). */
 const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
   schools_short_code_key: () =>
@@ -68,6 +72,26 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     ),
   school_settings_fee_due_day_check: () =>
     fieldInvalid('feeDueDay', 'feeDueDay must be between 1 and 28'),
+  // Slice 3 (contracts/slice-3.md §6).
+  academic_years_school_id_name_key: () =>
+    taken(ErrorCode.ACADEMIC_YEAR_NAME_TAKEN, 'name', 'That academic year name is already in use.'),
+  academic_years_dates_check: () => fieldInvalid('endsOn', 'endsOn must be after startsOn'),
+  classes_school_id_academic_year_id_name_key: () =>
+    taken(ErrorCode.CLASS_NAME_TAKEN, 'name', 'That year already has a class of that name.'),
+  // The trigger refusing a year change on a class with sections. Slices 4 and 6 add their
+  // (school_id, class_id, academic_year_id) ON UPDATE RESTRICT foreign keys here, same code.
+  classes_academic_year_immutable: () =>
+    taken(
+      ErrorCode.CLASS_YEAR_IMMUTABLE,
+      'academicYearId',
+      'The academic year of a class cannot change once it has sections.',
+    ),
+  sections_school_id_class_id_name_key: () =>
+    taken(ErrorCode.SECTION_NAME_TAKEN, 'name', 'That class already has a section of that name.'),
+  subjects_school_id_name_key: () =>
+    taken(ErrorCode.SUBJECT_NAME_TAKEN, 'name', 'A subject of that name already exists.'),
+  subjects_school_id_code_key: () =>
+    taken(ErrorCode.SUBJECT_CODE_TAKEN, 'code', 'A subject with that code already exists.'),
 };
 
 /** The API error for a database constraint violation, or undefined when it maps to none. */

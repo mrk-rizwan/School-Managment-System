@@ -274,6 +274,7 @@ no-op. Audit `school_settings.updated` `{ changes }` only when something changed
 | `cnic` | `IDENTITY_INPUT_PATTERN`, normalised |
 | `phone` | `normalisePhone`, required |
 | `reason` | optional, 3–500, no identity pattern |
+| `confirmLinkExisting` | optional boolean; must be `true` when a login with this CNIC already exists |
 
 **Branded input.** `SchoolRepository.lockForPrincipalIssue(id)` (`SELECT … FOR UPDATE` on
 `schools`) returns a new brand `PrincipalIssueSchoolRow`, minted only in
@@ -282,11 +283,16 @@ accepts `CreatedSchoolRow | PrincipalIssueSchoolRow`. No id from the request rea
 
 One transaction: lock school (absent → `404`; `terminated` → `409 SCHOOL_TERMINATED`); count
 active principals; ≥ 1 and no `reason` → `409 ACTIVE_PRINCIPAL_EXISTS` (R103). Staff by
-`cnic_hash`: exists and not `active` → `409 STAFF_NOT_ACTIVE`; absent → create (`designation
-'Principal'`, `joined_on` today in the school timezone). User by `username_hash`: `disabled` →
-`409 USER_DISABLED`; exists → set `staff_id` if null (R22); absent → create with the default
-password. Live `principal` row already → `409 ALREADY_PRINCIPAL`; else insert it
-(`assigned_by` null). Audit to both logs. After commit, if `reason` was used, existing principals
+`cnic_hash`: exists and not `active` → `409 STAFF_NOT_ACTIVE`. User by `username_hash`, locked (R99): `disabled` → `409
+USER_DISABLED`; live `principal` row already → `409 ALREADY_PRINCIPAL`; `confirmLinkExisting` not
+`true` → `409 LINK_EXISTING_LOGIN_UNCONFIRMED` (nothing written). Staff absent → create
+(`designation 'Principal'`, `joined_on` today in the school timezone). User exists → set
+`staff_id` if null (R22) and **reset it to a fresh account** in the same transaction: every
+session revoked, outstanding tokens voided, password back to the default digits
+(`password_is_default`), email and its verification cleared, audit `user.reset_on_staff_link`
+`{ capacity: 'principal' }` (wave-A security fix: an office clerk must not be able to pre-position a
+login and keep it once it becomes principal). User absent → create with the default password.
+Insert the `principal` row (`assigned_by` null). Audit to both logs. After commit, if `reason` was used, existing principals
 with a verified email get a notice.
 
 **201** `{ userId, staffId, fullName, linkedExistingUser: boolean }`. Errors: `401` · `403` (slice-1
@@ -308,6 +314,7 @@ which the web shows as done.
 | `ALREADY_PRINCIPAL` | 409 | issue-principal-login on a current principal |
 | `STAFF_NOT_ACTIVE` | 409 | issue-principal-login (later R21) |
 | `USER_DISABLED` | 409 | issue-principal-login onto a disabled user |
+| `LINK_EXISTING_LOGIN_UNCONFIRMED` | 409 | issue-principal-login onto an existing login without `confirmLinkExisting: true` |
 
 Reused: `AUTH_FAILED`, `AUTH_REQUIRED`, `PERMISSION_DENIED`, `SCHOOL_SUSPENDED`,
 `CURRENT_PASSWORD_INCORRECT`, `SCHOOL_TERMINATED`, `RATE_LIMITED`, `SERVICE_UNAVAILABLE`.
@@ -323,6 +330,7 @@ Reused: `AUTH_FAILED`, `AUTH_REQUIRED`, `PERMISSION_DENIED`, `SCHOOL_SUSPENDED`,
 | `user.disabled` / `user.enabled` | user | caller | required | `{}` |
 | `school_settings.updated` | school_settings | caller | — | `{ changes }` |
 | `staff.created`, `user.principal_login_issued` | staff / user | platform user | as given | `{ linkedExistingUser }` |
+| `user.reset_on_staff_link` | user | platform user | — | `{ capacity }` |
 
 Token-driven rows have no user actor: `actor_user_id` is the target. Platform log adds
 `school.principal_login_issued` and `login_failure_spike`.
@@ -341,7 +349,7 @@ Token-driven rows have no user actor: `actor_user_id` is the target. Platform lo
 | `/account` | `POST /me/change-email`, `/me/change-password` | Password form disabled with an explanation until `hasVerifiedEmail` |
 | Users list | `GET /users` | Filters status, kind, default password, no email; reset / disable / enable dialogs (shared confirm-with-reason); reset shows `emailMasked` and a required keep/clear choice |
 | School settings | `GET|PATCH /school/settings` | Fee due day 1–28, student login toggle |
-| Platform school detail | `POST /platform/schools/:id/issue-principal-login` | Reason field appears on `ACTIVE_PRINCIPAL_EXISTS` |
+| Platform school detail | `POST /platform/schools/:id/issue-principal-login` | Reason field appears on `ACTIVE_PRINCIPAL_EXISTS`; on `LINK_EXISTING_LOGIN_UNCONFIRMED` a confirmation (the existing login is reset and signed out) resubmits with `confirmLinkExisting: true` |
 
 ---
 

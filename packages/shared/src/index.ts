@@ -4,3 +4,5 @@ export * from './school-fields';
 export * from './capabilities';
 export * from './identity';
 export * from './phone';
+export * from './academic-structure';
+export * from './guardian';

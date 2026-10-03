@@ -1,7 +1,6 @@
 import { expect as baseExpect, test } from '@playwright/test';
-import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { testApiEnv } from './support/root-env';
+import { seedPlatformAdmin } from './support/seed';
 import { totp } from './support/totp';
 
 // The platform console against the REAL API (started by playwright.config.ts on the TEST
@@ -25,23 +24,7 @@ const schoolName = `E2E School ${runId}`;
 
 test.describe.configure({ mode: 'serial' });
 
-test.beforeAll(() => {
-  const seed = spawnSync('pnpm --filter @asms/api seed:platform-admin', [], {
-    // A fixed command line; shell only so Windows resolves pnpm.cmd.
-    shell: true,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...testApiEnv(),
-      PLATFORM_ADMIN_EMAIL: email,
-      PLATFORM_ADMIN_PASSWORD: initialPassword,
-    },
-    timeout: 120_000,
-  });
-  if (seed.status !== 0 || !/\bcreated\b/.test(seed.stdout)) {
-    throw new Error(`Seeding the e2e platform admin failed:\n${seed.stdout}\n${seed.stderr}`);
-  }
-});
+test.beforeAll(() => seedPlatformAdmin(email, initialPassword));
 
 test('first sign-in through to activating a new school', async ({ page }) => {
   test.setTimeout(120_000);

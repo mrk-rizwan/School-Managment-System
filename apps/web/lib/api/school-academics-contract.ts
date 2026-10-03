@@ -1,0 +1,51 @@
+/**
+ * School API types for the academic-structure screens (contracts/slice-3.md), taken from the
+ * generated OpenAPI document (`school.d.ts`, produced by `pnpm api:generate`). Screens import the
+ * client and the DTO, body and query types from here, so a regenerated document is checked
+ * against them by `pnpm typecheck`.
+ */
+import type { components, operations } from './school';
+
+type Schemas = components['schemas'];
+type Query<Op extends keyof operations> = NonNullable<operations[Op]['parameters']['query']>;
+
+export { schoolApi as academics } from './client';
+
+// ---- Enums (contract §2, §3) ----
+
+export type AcademicYearStatus = Schemas['AcademicYearStatus'];
+export type AttendanceMode = Schemas['AttendanceMode'];
+export type ClassStatus = Schemas['ClassStatus'];
+
+// ---- Responses ----
+
+export type Paginated<T> = { data: T[]; page: number; limit: number; total: number };
+export type AcademicYearDto = Schemas['AcademicYearDto'];
+export type ClassDto = Schemas['ClassDto'];
+export type SectionDto = Schemas['SectionDto'];
+export type SubjectDto = Schemas['SubjectDto'];
+export type CopySectionsResultDto = Schemas['CopySectionsResultDto'];
+
+// ---- Queries ----
+
+export type AcademicYearSort = Schemas['AcademicYearSort'];
+export type AcademicYearListQuery = Query<'AcademicYearsController_list'>;
+export type ClassSort = Schemas['ClassSort'];
+export type ClassListQuery = Query<'ClassesController_list'>;
+export type SectionSort = Schemas['SectionSort'];
+export type SectionListQuery = Query<'SectionsController_list'>;
+export type SubjectSort = Schemas['SubjectSort'];
+export type SubjectListQuery = Query<'SubjectsController_list'>;
+
+// ---- Bodies ----
+
+export type CreateAcademicYearBody = Schemas['CreateAcademicYearDto'];
+export type UpdateAcademicYearBody = Schemas['UpdateAcademicYearDto'];
+export type CreateClassBody = Schemas['CreateClassDto'];
+export type UpdateClassBody = Schemas['UpdateClassDto'];
+export type ArchiveBody = Schemas['ArchiveDto'];
+export type CopySectionsBody = Schemas['CopySectionsDto'];
+export type CreateSectionBody = Schemas['CreateSectionDto'];
+export type UpdateSectionBody = Schemas['UpdateSectionDto'];
+export type CreateSubjectBody = Schemas['CreateSubjectDto'];
+export type UpdateSubjectBody = Schemas['UpdateSubjectDto'];

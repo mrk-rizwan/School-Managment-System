@@ -148,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/schools/{id}/issue-principal-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PrincipalLoginController_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -189,7 +205,22 @@ export interface components {
             timezone?: string;
         };
         /** @enum {string} */
-        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "UNEXPECTED_RESPONSE";
+        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "UNEXPECTED_RESPONSE";
+        IssuePrincipalLoginDto: {
+            /** @description 13 digits; dashes allowed (5-7-1). */
+            cnic: string;
+            confirmLinkExisting?: boolean;
+            fullName: string;
+            /** @description Pakistani local or international form; stored as E.164. */
+            phone: string;
+            reason?: string;
+        };
+        IssuedPrincipalLoginDto: {
+            fullName: string;
+            linkedExistingUser: boolean;
+            staffId: string;
+            userId: string;
+        };
         PlatformLoginDto: {
             /** Format: email */
             email: string;
@@ -943,6 +974,79 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PrincipalLoginController_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssuePrincipalLoginDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedPrincipalLoginDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

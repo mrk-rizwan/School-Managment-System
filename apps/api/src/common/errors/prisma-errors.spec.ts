@@ -107,6 +107,42 @@ describe('database error mapper', () => {
     });
   });
 
+  it('maps the slice 3 constraints to their codes (contracts/slice-3.md §6)', () => {
+    const unique = (index: string) =>
+      adapterError('P2002', 'X', { originalCode: '23505', constraint: { index } });
+    const cases: [string, ErrorCode, string][] = [
+      ['academic_years_school_id_name_key', ErrorCode.ACADEMIC_YEAR_NAME_TAKEN, 'name'],
+      ['classes_school_id_academic_year_id_name_key', ErrorCode.CLASS_NAME_TAKEN, 'name'],
+      ['sections_school_id_class_id_name_key', ErrorCode.SECTION_NAME_TAKEN, 'name'],
+      ['subjects_school_id_name_key', ErrorCode.SUBJECT_NAME_TAKEN, 'name'],
+      ['subjects_school_id_code_key', ErrorCode.SUBJECT_CODE_TAKEN, 'code'],
+    ];
+    for (const [index, code, field] of cases) {
+      expect(mapDatabaseError(unique(index))).toMatchObject({ status: 409, code, details: { field } });
+    }
+    // The trigger forwards its name in DETAIL (as asms_forbid_class_year_change raises it).
+    const yearImmutable = adapterError('P2039', 'Class', {
+      originalCode: '23514',
+      originalMessage: 'academic_year_id cannot change on a class that has sections',
+      detail: 'constraint: classes_academic_year_immutable',
+    });
+    expect(mapDatabaseError(yearImmutable)).toMatchObject({
+      status: 409,
+      code: ErrorCode.CLASS_YEAR_IMMUTABLE,
+      details: { field: 'academicYearId' },
+    });
+    const dates = adapterError('P2039', 'AcademicYear', {
+      originalCode: '23514',
+      originalMessage:
+        'new row for relation "academic_years" violates check constraint "academic_years_dates_check"',
+      detail: `Failing row contains (${SECRET}).`,
+    });
+    expect(mapDatabaseError(dates)).toMatchObject({
+      status: 422,
+      details: { fields: [{ path: 'endsOn', code: ErrorCode.INVALID_VALUE }] },
+    });
+  });
+
   it('leaves unmapped constraints and unnamed errors to the 500 path', () => {
     expect(mapDatabaseError(FOREIGN_KEY)).toBeUndefined();
     expect(mapDatabaseError(UNNAMED_CHECK)).toBeUndefined();

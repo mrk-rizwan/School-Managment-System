@@ -26,6 +26,8 @@ type FormFieldProps<T extends FieldValues> = {
   label: string;
   hint?: string;
   options?: readonly FormFieldOption[];
+  /** Reformats a text input as it is typed (e.g. dashes in a CNIC). The formatted text is the value. */
+  format?: (value: string) => string;
 } & Pick<
   React.ComponentProps<'input'>,
   'type' | 'autoComplete' | 'inputMode' | 'placeholder' | 'maxLength' | 'disabled' | 'autoFocus'
@@ -37,6 +39,7 @@ export function FormField<T extends FieldValues>({
   label,
   hint,
   options,
+  format,
   ...inputProps
 }: FormFieldProps<T>) {
   const { field, fieldState } = useController({ control, name });
@@ -69,6 +72,7 @@ export function FormField<T extends FieldValues>({
           id={id}
           {...field}
           {...inputProps}
+          onChange={format ? (event) => field.onChange(format(event.target.value)) : field.onChange}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
         />

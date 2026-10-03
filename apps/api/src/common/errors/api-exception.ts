@@ -20,3 +20,7 @@ export interface FieldError {
   code: ErrorCode;
   message: string;
 }
+
+/** 404 for a row absent from the caller's school: never "exists elsewhere" (tenant isolation). */
+export const notFound = (): ApiException =>
+  new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');

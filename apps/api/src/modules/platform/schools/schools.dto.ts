@@ -1,4 +1,3 @@
-import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
@@ -7,12 +6,10 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  Length,
   Matches,
   Max,
   Min,
   ValidateBy,
-  ValidateIf,
 } from 'class-validator';
 import {
   DEFAULT_FEE_DUE_DAY,
@@ -23,26 +20,13 @@ import {
   SHORT_CODE_PATTERN,
   type SchoolStatus,
 } from '@asms/shared';
+import { IfPresent, NameField, SearchField, TextField, trimLower } from '../../../common/fields';
 import { PageQueryDto } from '../../../common/pagination';
 
 // contracts/slice-1.md §4.
 
 /** IANA zones this runtime knows, built once at boot. */
 const TIMEZONES: ReadonlySet<string> = new Set(Intl.supportedValuesOf('timeZone'));
-
-// No control characters (C0, DEL, C1) anywhere in a name.
-const NO_CONTROL = /^[^\p{Cc}]*$/u;
-// An identity number, plain (13 digits) or dashed, anywhere in the text. The audit tables refuse
-// one (CHECK *_no_id_check), so it is refused here as a 422 rather than reaching them as a 500.
-const IDENTITY_NUMBER = /[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]/;
-
-const trim = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim() : value;
-const trimLower = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
-
-/** Absent is allowed; present must pass the rest, so `null` is refused rather than skipped. */
-const IfPresent = (): PropertyDecorator => ValidateIf((_object, value) => value !== undefined);
 
 const IsTimezone = (): PropertyDecorator =>
   ValidateBy({
@@ -53,23 +37,8 @@ const IsTimezone = (): PropertyDecorator =>
     },
   });
 
-const NoIdentityNumber = (): PropertyDecorator =>
-  ValidateBy({
-    name: 'noIdentityNumber',
-    validator: {
-      validate: (value: unknown) => typeof value === 'string' && !IDENTITY_NUMBER.test(value),
-      defaultMessage: () => '$property must not contain an identity number',
-    },
-  });
-
-const SchoolName = (): PropertyDecorator =>
-  applyDecorators(
-    Transform(trim),
-    IsString(),
-    Length(2, 200),
-    Matches(NO_CONTROL, { message: '$property must not contain control characters' }),
-    NoIdentityNumber(),
-  );
+/** Trimmed only: a school's name keeps its internal spacing. */
+const SchoolName = (): PropertyDecorator => NameField(2, 200, { collapse: false });
 
 export class SchoolDto {
   @ApiProperty({ type: String, pattern: '^[1-9][0-9]{0,18}$' })
@@ -112,16 +81,7 @@ export class ListSchoolsQueryDto extends PageQueryDto {
   @IsIn(SCHOOL_STATUSES)
   status?: SchoolStatus;
 
-  @ApiPropertyOptional({
-    minLength: 2,
-    maxLength: 100,
-    description: 'Name contains, or short code starts with (case-insensitive)',
-  })
-  @IsOptional()
-  @Transform(trim)
-  @IsString()
-  @Length(2, 100)
-  @NoIdentityNumber()
+  @SearchField('Name contains, or short code starts with (case-insensitive)', 100)
   q?: string;
 
   @ApiPropertyOptional({ enum: SCHOOL_SORTS, enumName: 'SchoolSort', default: 'name' })
@@ -190,9 +150,6 @@ export class ChangeSchoolStatusDto {
   status: (typeof STATUS_TARGETS)[number];
 
   @ApiProperty({ minLength: 3, maxLength: 500 })
-  @Transform(trim)
-  @IsString()
-  @Length(3, 500)
-  @NoIdentityNumber()
+  @TextField(3, 500)
   reason: string;
 }

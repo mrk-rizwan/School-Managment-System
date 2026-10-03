@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolStatus } from '@asms/shared';
 import type { CreatedSchoolRow } from '../../tenancy/school-id';
-import { createdSchoolRow } from '../../tenancy/school-id.mint';
+import {
+  createdSchoolRow,
+  principalIssueSchoolRow,
+  type PrincipalIssueSchoolRow,
+} from '../../tenancy/school-id.mint';
 import type { Prisma } from '../generated/prisma/client';
-import type { PrismaTxAdapter } from '../prisma';
+import { escapeLike, type PrismaTxAdapter } from '../prisma';
 
 /** The school row as the platform module sees it. */
 export interface SchoolRecord {
@@ -39,12 +43,6 @@ const SELECT = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.SchoolSelect;
-
-/**
- * LIKE wildcards and the escape character, escaped with Postgres's default escape (a backslash).
- * Prisma's contains / startsWith pass the value into LIKE unescaped (measured on 7.10).
- */
-const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 function orderBy(sort: SchoolSort): Prisma.SchoolOrderByWithRelationInput[] {
   // SchoolSort admits only the four field names, so the key is one of them.
@@ -123,6 +121,24 @@ export class SchoolRepository {
       data: { updatedAt: school.updatedAt },
     });
     return count === 1;
+  }
+
+  /**
+   * Contract slice-2 §7: locks the school row for the rest of the transaction (an UPDATE holds its
+   * row lock until commit, so touching updated_at is a SELECT ... FOR UPDATE without raw SQL) and
+   * returns it as read under the lock, branded: the only other value fromPlatformSchool accepts.
+   * Null if absent.
+   */
+  async lockForPrincipalIssue(
+    id: bigint,
+  ): Promise<(SchoolRecord & PrincipalIssueSchoolRow) | null> {
+    const { count } = await this.txHost.tx.school.updateMany({
+      where: { id },
+      data: { updatedAt: new Date() },
+    });
+    if (count === 0) return null;
+    const school = await this.findById(id);
+    return school ? principalIssueSchoolRow(school) : null;
   }
 
   /** Plain attributes. The caller holds the row lock (lockIfUnchanged) and has checked status. */

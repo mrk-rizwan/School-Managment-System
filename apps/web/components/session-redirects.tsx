@@ -3,27 +3,29 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { sessionRedirectFor } from '@/lib/platform-session';
 
 /**
- * Sends the user to the right screen when any platform call reports a session problem
- * (contracts/slice-1.md §8): 401 AUTH_REQUIRED → sign in, 403 TOTP_REQUIRED → enrolment,
- * 403 PASSWORD_CHANGE_REQUIRED → password change. Watches the query and mutation caches, so no
- * screen has to remember to do it. Renders nothing.
+ * Sends the user to the right screen when any query or mutation reports a session problem.
+ * `redirectFor` maps an error to a path, or null when the error is not about the session.
+ * Watches the query and mutation caches, so no screen has to remember to do it. Renders nothing.
+ * The school console uses it with lib/school-session.ts; the platform console
+ * (app/platform/layout.tsx) with lib/platform-session.ts.
  */
-export function PlatformSessionRedirects() {
+export function SessionRedirects({ redirectFor }: { redirectFor: (error: unknown) => string | null }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
+  const redirectForRef = useRef(redirectFor);
 
   useEffect(() => {
     pathnameRef.current = pathname;
-  }, [pathname]);
+    redirectForRef.current = redirectFor;
+  }, [pathname, redirectFor]);
 
   useEffect(() => {
     const handle = (error: unknown) => {
-      const target = sessionRedirectFor(error);
+      const target = redirectForRef.current(error);
       if (!target || target === pathnameRef.current) return;
       // No cache clearing here: clearing while the console is mounted makes it refetch, fail
       // and clear again, starving the navigation. The login page clears the cache on arrival.
