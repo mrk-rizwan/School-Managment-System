@@ -184,6 +184,26 @@
           "GUARDIAN_IS_PRIMARY_CONTACT",
           "LOGIN_ALREADY_EXISTS",
           "LINK_EXISTING_LOGIN_UNCONFIRMED",
+          "STAFF_CNIC_EXISTS",
+          "STAFF_CNIC_LOCKED",
+          "USERNAME_IN_USE",
+          "CLASS_TEACHER_EXISTS",
+          "ASSIGNMENT_EXISTS",
+          "ROLE_ALREADY_ASSIGNED",
+          "STUDENT_BFORM_EXISTS",
+          "STUDENT_BFORM_LOCKED",
+          "STUDENT_NOT_ACTIVE",
+          "STUDENT_LOGIN_DISABLED",
+          "IDEMPOTENCY_KEY_REUSED",
+          "ADMISSION_POSSIBLE_DUPLICATE",
+          "GUARDIAN_LINK_EXISTS",
+          "GUARDIAN_LINK_ENDED",
+          "PRIMARY_CONTACT_REQUIRED",
+          "PRIMARY_CONTACT_NEEDS_PHONE",
+          "FEE_PAYER_REQUIRED",
+          "ENROLMENT_NOT_ACTIVE",
+          "ROLL_NO_TAKEN",
+          "CLASS_IN_OTHER_YEAR",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
@@ -192,7 +212,7 @@
         "properties": {
           "cnic": {
             "description": "13 digits; dashes allowed (5-7-1).",
-            "pattern": "^[0-9]{13}$",
+            "pattern": "^[0-9]{5}-?[0-9]{7}-?[0-9]$",
             "type": "string"
           },
           "confirmLinkExisting": {

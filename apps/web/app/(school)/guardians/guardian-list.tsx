@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, DEFAULT_TIMEZONE, containsIdentityNumber } from '@asms/shared';
+import { CONTACT_CAPABILITIES, Capability, DEFAULT_TIMEZONE, containsIdentityNumber } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { PlusIcon, SearchIcon } from 'lucide-react';
@@ -24,7 +24,6 @@ import {
 import { useCapabilities, useDebounced } from '../academics/_lib/hooks';
 import { GuardianLookupDialog } from './_lib/guardian-lookup';
 import {
-  CONTACT_CAPABILITIES,
   CONTACT_CAPABILITY_LABELS,
   MissingBadge,
   guardiansKeys,

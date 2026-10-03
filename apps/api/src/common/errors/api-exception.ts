@@ -24,3 +24,11 @@ export interface FieldError {
 /** 404 for a row absent from the caller's school: never "exists elsewhere" (tenant isolation). */
 export const notFound = (): ApiException =>
   new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');
+
+/** 409 when the row kept changing under the request, or the database rolled it back (deadlock). */
+export const concurrentUpdate = (): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.CONCURRENT_UPDATE,
+    'The record changed while this request ran. Reload and try again.',
+  );

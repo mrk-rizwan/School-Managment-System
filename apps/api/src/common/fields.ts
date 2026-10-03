@@ -12,6 +12,7 @@ import {
   Matches,
   ValidateBy,
   ValidateIf,
+  type ValidationArguments,
 } from 'class-validator';
 import {
   containsIdentityNumber,
@@ -22,6 +23,7 @@ import {
 } from '@asms/shared';
 
 type Raw = { value: unknown };
+type IsEmailOptions = Parameters<typeof IsEmail>[0];
 
 /** No control characters (C0, DEL, C1). */
 export const NO_CONTROL = /^[^\p{Cc}]*$/u;
@@ -128,6 +130,27 @@ export const PhoneField = (): PropertyDecorator =>
     Matches(E164_PATTERN, { message: '$property must be a valid phone number' }),
   );
 
-/** An email address: trimmed and lower-cased, 3-254 characters. */
-export const EmailField = (): PropertyDecorator =>
-  applyDecorators(Transform(trimLower), IsString(), Length(3, 254), IsEmail());
+/**
+ * An email address: trimmed and lower-cased, 3-254 characters. `options` go to IsEmail (the
+ * platform console accepts a TLD-less host).
+ */
+export const EmailField = (options?: IsEmailOptions): PropertyDecorator =>
+  applyDecorators(Transform(trimLower), IsString(), Length(3, 254), IsEmail(options));
+
+// -------------------------------------------------------------------------------- relations
+
+/** The value must differ from the named sibling property. */
+export const DiffersFrom = (property: string): PropertyDecorator =>
+  ValidateBy({
+    name: 'differsFrom',
+    constraints: [property],
+    validator: {
+      validate: (value: unknown, args?: ValidationArguments) => {
+        const object: unknown = args?.object;
+        const other: unknown =
+          typeof object === 'object' && object !== null ? Reflect.get(object, property) : undefined;
+        return value !== other;
+      },
+      defaultMessage: () => `$property must differ from ${property}`,
+    },
+  });

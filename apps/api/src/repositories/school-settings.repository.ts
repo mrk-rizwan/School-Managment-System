@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
-import { ApiException } from '../common/errors/api-exception';
+import { readLocked } from '../common/locking';
 import type { SchoolId } from '../tenancy/school-id';
 import type { PrismaTxAdapter } from './prisma';
 
@@ -11,9 +10,6 @@ export interface SchoolSettingsRecord {
   studentLoginEnabled: boolean;
   updatedAt: Date;
 }
-
-/** Reads before giving up when the row keeps changing between the read and the lock. */
-const LOCK_ATTEMPTS = 3;
 
 const SELECT = { id: true, feeDueDay: true, studentLoginEnabled: true, updatedAt: true } as const;
 
@@ -43,20 +39,20 @@ export class SchoolSettingsRepository {
    * Returns the row as read under the lock; null if the school has none.
    */
   async lock(schoolId: SchoolId): Promise<SchoolSettingsRecord | null> {
-    for (let attempt = 0; attempt < LOCK_ATTEMPTS; attempt++) {
-      const current = await this.find(schoolId);
-      if (!current) return null;
-      const { count } = await this.txHost.tx.schoolSettings.updateMany({
-        where: { schoolId, updatedAt: current.updatedAt },
-        data: { updatedAt: current.updatedAt },
-      });
-      if (count === 1) return current;
-    }
-    throw new ApiException(
-      409,
-      ErrorCode.CONCURRENT_UPDATE,
-      'The record changed while this request ran. Reload and try again.',
+    // Wrapped so an absent row comes back as null instead of readLocked's 404.
+    const { row } = await readLocked(
+      async () => ({ row: await this.find(schoolId) }),
+      ({ row }) => (row === null ? Promise.resolve(true) : this.lockIfUnchanged(schoolId, row)),
     );
+    return row;
+  }
+
+  private async lockIfUnchanged(schoolId: SchoolId, row: SchoolSettingsRecord): Promise<boolean> {
+    const { count } = await this.txHost.tx.schoolSettings.updateMany({
+      where: { schoolId, updatedAt: row.updatedAt },
+      data: { updatedAt: row.updatedAt },
+    });
+    return count === 1;
   }
 
   /** Plain attributes (contract slice-2 §6). */

@@ -6,6 +6,8 @@ import {
   SchoolIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  UserRoundIcon,
+  IdCardIcon,
   UsersRoundIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,7 +26,8 @@ export type NavItem = {
 };
 
 export const schoolNav: NavItem[] = [
-  // Students and Staff arrive with wave B (slices 4 and 6); no link until the page exists.
+  { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
+  { href: '/staff', label: 'Staff', icon: IdCardIcon, capability: 'staff.view' },
   { href: '/guardians', label: 'Guardians', icon: UsersRoundIcon, capability: 'guardian.manage' },
   // Every staff member may read the academic structure (@RequireStaff); writes are per capability.
   { href: '/academics', label: 'Academic structure', icon: BookOpenIcon, capability: null },

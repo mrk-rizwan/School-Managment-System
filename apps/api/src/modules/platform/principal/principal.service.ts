@@ -3,7 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../../common/crypto/password';
-import { ApiException } from '../../../common/errors/api-exception';
+import { ApiException, notFound } from '../../../common/errors/api-exception';
 import { identityHash } from '../../../common/identity';
 import { ENV, type Env } from '../../../config/env';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
@@ -72,7 +72,7 @@ export class PrincipalLoginService {
     defaultHash: string,
   ): Promise<{ result: IssuedPrincipalLoginDto; outbox: MailMessage[] }> {
     const school = await this.schools.lockForPrincipalIssue(schoolRowId);
-    if (!school) throw new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');
+    if (!school) throw notFound();
     if (school.status === 'terminated') {
       throw conflict(ErrorCode.SCHOOL_TERMINATED, 'A terminated school cannot be changed.');
     }

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { ErrorCode } from '@asms/shared';
 import { PLATFORM_COOKIE } from './auth/platform-session';
-import { ApiException } from './errors/api-exception';
+import { ApiException, notFound } from './errors/api-exception';
 
 export const API_PREFIX = 'api/v1';
 
@@ -17,7 +17,7 @@ export function requestIdAndNoStore(req: Request, res: Response, next: NextFunct
   res.setHeader('Cache-Control', 'no-store');
   // Nest's not-found handler only covers the global prefix; everything outside it is ours to refuse.
   if (!req.path.startsWith('/api/')) {
-    next(new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.'));
+    next(notFound());
     return;
   }
   next();

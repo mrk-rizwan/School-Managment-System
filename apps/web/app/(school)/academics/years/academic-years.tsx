@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, ErrorCode } from '@asms/shared';
+import { ACADEMIC_YEAR_STATUSES, Capability, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -47,7 +47,6 @@ import {
 
 const LIMIT = 25;
 const NO_ROWS: AcademicYearDto[] = [];
-const STATUSES = Object.keys(YEAR_STATUS_LABELS) as AcademicYearStatus[];
 
 /** contracts/slice-3.md §2: several years may be active at once; closed is final. */
 export function AcademicYears() {
@@ -136,7 +135,7 @@ export function AcademicYears() {
             onChange={(event) => setStatus(event.target.value as AcademicYearStatus | '')}
           >
             <option value="">All statuses</option>
-            {STATUSES.map((s) => (
+            {ACADEMIC_YEAR_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {YEAR_STATUS_LABELS[s]}
               </option>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorCode } from '@asms/shared';
+import { ATTENDANCE_MODES, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
@@ -43,7 +43,7 @@ export function useYearOptions() {
 const ATTENDANCE_OPTIONS: FormFieldOption[] = [
   // Rule 14: the school chooses per class; there is no default.
   { value: '', label: 'Choose…' },
-  ...(Object.keys(ATTENDANCE_MODE_LABELS) as AttendanceMode[]).map((mode) => ({
+  ...ATTENDANCE_MODES.map((mode) => ({
     value: mode,
     label: ATTENDANCE_MODE_LABELS[mode],
   })),

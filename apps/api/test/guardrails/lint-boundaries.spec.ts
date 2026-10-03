@@ -192,8 +192,13 @@ describe('lint boundaries (R61)', () => {
   it('refuses every type-correct way to forge a brand, and nothing else in the fixture', async () => {
     const fixture = 'brand-forgery.ts';
     const messages = await lintAs(fixture, 'src/modules/students/students.controller.ts');
+    // The decorated parameter typed { schoolId: SchoolId } is also caught by the type-aware rule.
     expect(new Set(rules(messages))).toEqual(
-      new Set(['no-restricted-syntax', '@typescript-eslint/no-unsafe-type-assertion']),
+      new Set([
+        'no-restricted-syntax',
+        '@typescript-eslint/no-unsafe-type-assertion',
+        'asms/no-brand-in-request',
+      ]),
     );
     expect([...new Set(messages.map((m) => m.line))]).toEqual(markedLines(fixture));
   });
@@ -274,7 +279,10 @@ describe('lint boundaries (R61)', () => {
       [6, 'no-restricted-syntax'],
     ]);
     // Session resolution lives in src/tenancy: the import is allowed there.
-    const inTenancy = await lintAs('establish-session-call.ts', 'src/tenancy/session-resolution.ts');
+    const inTenancy = await lintAs(
+      'establish-session-call.ts',
+      'src/tenancy/session-resolution.ts',
+    );
     expect(rules(inTenancy)).not.toContain('no-restricted-imports');
   });
 
@@ -346,6 +354,33 @@ describe('lint boundaries (R61)', () => {
       [23, '@typescript-eslint/no-unsafe-call'],
       [23, '@typescript-eslint/no-unsafe-member-access'],
     ]);
+  });
+
+  it('refuses request-bound types that are not classes or that resolve to a brand, however spelled', async () => {
+    const fixture = 'request-brand.ts';
+    const messages = await lintAs(fixture, 'src/modules/students/students.controller.ts');
+    expect(new Set(rules(messages))).toEqual(new Set(['asms/no-brand-in-request']));
+    expect([...new Set(messages.map((m) => m.line))]).toEqual(markedLines(fixture));
+    const byLine = (line: number) => messages.filter((m) => m.line === line).map((m) => m.message);
+    const has = (...parts: string[]): unknown[] =>
+      parts.map((part): unknown => expect.stringContaining(part));
+    const [inner, nested, scopes, union, body, query, nestedParam, , , params, session] =
+      markedLines(fixture);
+    expect(byLine(inner!)).toEqual(has('A DTO field contains the SchoolId brand (at id)'));
+    expect(byLine(nested!)).toEqual(has('A DTO field contains the SchoolId brand (at inner.id)'));
+    expect(byLine(scopes!)).toEqual(has('A DTO field contains the Scope brand (at scopes[])'));
+    expect(byLine(union!)).toEqual(has('A DTO field contains the Scope brand (at value)'));
+    expect(byLine(body!)).toEqual(has('not an interface'));
+    expect(byLine(query!)).toEqual(has('not a type alias'));
+    expect(byLine(nestedParam!)).toEqual(has('parameter contains the SchoolId brand'));
+    expect(byLine(params!)).toEqual(has('not an intersection', 'contains the SchoolId brand'));
+    expect(byLine(session!)).toEqual(has('not an object type', 'contains the SchoolId brand'));
+  });
+
+  it('allows class DTOs, the session decorators, IdParam, a keyed @Param and @Req/@Res', async () => {
+    expect(
+      await lintAs('request-legitimate.ts', 'src/modules/students/students.controller.ts'),
+    ).toEqual([]);
   });
 
   it('refuses explicit any', async () => {

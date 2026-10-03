@@ -88,22 +88,30 @@ model School {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  schoolGroup       SchoolGroup?       @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  platformAuditLogs PlatformAuditLog[]
+  schoolGroup          SchoolGroup?          @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  platformAuditLogs    PlatformAuditLog[]
   // Tenant back-relations: declared for the migration diff only, absent from the client (header).
-  schoolSettings    SchoolSettings[]   @ignore
-  schoolCounters    SchoolCounter[]    @ignore
-  academicYears     AcademicYear[]     @ignore
-  classes           Class[]            @ignore
-  sections          Section[]          @ignore
-  subjects          Subject[]          @ignore
-  guardians         Guardian[]         @ignore
-  staff             Staff[]            @ignore
-  users             User[]             @ignore
-  sessions          Session[]          @ignore
-  userTokens        UserToken[]        @ignore
-  userRoles         UserRole[]         @ignore
-  auditLogs         AuditLog[]         @ignore
+  schoolSettings       SchoolSettings[]      @ignore
+  schoolCounters       SchoolCounter[]       @ignore
+  academicYears        AcademicYear[]        @ignore
+  classes              Class[]               @ignore
+  sections             Section[]             @ignore
+  subjects             Subject[]             @ignore
+  guardians            Guardian[]            @ignore
+  staff                Staff[]               @ignore
+  users                User[]                @ignore
+  sessions             Session[]             @ignore
+  userTokens           UserToken[]           @ignore
+  userRoles            UserRole[]            @ignore
+  auditLogs            AuditLog[]            @ignore
+  teacherAssignments   TeacherAssignment[]   @ignore
+  students             Student[]             @ignore
+  studentStatusChanges StudentStatusChange[] @ignore
+  studentGuardians     StudentGuardian[]     @ignore
+  enrolments           Enrolment[]           @ignore
+  studentDocuments     StudentDocument[]     @ignore
+  stagedUploads        StagedUpload[]        @ignore
+  idempotencyKeys      IdempotencyKey[]      @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
   @@index([schoolGroupId], map: "schools_school_group_id_idx")
@@ -293,9 +301,11 @@ model Class {
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school       School       @relation(fields: [schoolId], references: [id], map: "classes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  academicYear AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "classes_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  sections     Section[]
+  school             School              @relation(fields: [schoolId], references: [id], map: "classes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear       AcademicYear        @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "classes_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sections           Section[]
+  teacherAssignments TeacherAssignment[]
+  enrolments         Enrolment[]
 
   @@unique([schoolId, id], map: "classes_school_id_id_key")
   /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
@@ -317,8 +327,10 @@ model Section {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school School @relation(fields: [schoolId], references: [id], map: "sections_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  class  Class  @relation(fields: [schoolId, classId], references: [schoolId, id], map: "sections_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school             School              @relation(fields: [schoolId], references: [id], map: "sections_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class              Class               @relation(fields: [schoolId, classId], references: [schoolId, id], map: "sections_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  teacherAssignments TeacherAssignment[]
+  enrolments         Enrolment[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -338,7 +350,8 @@ model Subject {
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school School @relation(fields: [schoolId], references: [id], map: "subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  school             School              @relation(fields: [schoolId], references: [id], map: "subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  teacherAssignments TeacherAssignment[]
 
   @@unique([schoolId, id], map: "subjects_school_id_id_key")
   @@map("subjects")
@@ -388,10 +401,11 @@ model Guardian {
   createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school     School     @relation(fields: [schoolId], references: [id], map: "guardians_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  mergedInto Guardian?  @relation("GuardianMerge", fields: [schoolId, mergedIntoId], references: [schoolId, id], map: "guardians_merged_into_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  mergedFrom Guardian[] @relation("GuardianMerge")
-  user       User?
+  school       School            @relation(fields: [schoolId], references: [id], map: "guardians_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  mergedInto   Guardian?         @relation("GuardianMerge", fields: [schoolId, mergedIntoId], references: [schoolId, id], map: "guardians_merged_into_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  mergedFrom   Guardian[]        @relation("GuardianMerge")
+  user         User?
+  studentLinks StudentGuardian[]
 
   @@unique([schoolId, id], map: "guardians_school_id_id_key")
   @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
@@ -457,14 +471,79 @@ model Staff {
   designation String?     @db.VarChar(100)
   joinedOn    DateTime?   @map("joined_on") @db.Date
   status      StaffStatus @default(active)
+  /// Last day of employment. Set only while status = left (CHECK staff_left_on_check), cleared on
+  /// re-hire (R19); never before joined_on (CHECK staff_left_on_after_joined_check).
+  leftOn      DateTime?   @map("left_on") @db.Date
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school School @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  user   User?
+  school             School              @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user               User?
+  teacherAssignments TeacherAssignment[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@map("staff")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Slice 4: teacher assignments, the only source of a teacher's scope (§3.4, R53, R54).
+// ---------------------------------------------------------------------------------------------
+
+/// Teacher is one role; class teacher and subject teacher are assignments (rule 13).
+enum TeacherAssignmentRole {
+  class_teacher
+  subject_teacher
+
+  @@map("teacher_assignment_role")
+}
+
+/// Tenant: a staff member teaching a class (and section, and subject) between two dates. Active
+/// means active today in the school's timezone: voided_at IS NULL AND starts_on <= today AND
+/// (ends_on IS NULL OR ends_on >= today). Ending sets ends_on; a row that has not begun is voided
+/// instead (voided_at + voided_by, CHECK teacher_assignments_voided_check), never deleted. Every
+/// other column is frozen by trigger teacher_assignments_columns_immutable (R23: reassignment ends
+/// or voids the old row and inserts a new one).
+///
+/// - class_teacher: section set, subject null (CHECK teacher_assignments_class_teacher_check).
+/// - subject_teacher: subject set (CHECK teacher_assignments_subject_teacher_check); a null section
+///   scopes every section of the class (R54).
+/// - One class teacher per section at any date among unvoided rows: EXCLUDE
+///   teacher_assignments_class_teacher_excl (btree_gist), migration SQL.
+/// - (school_id, class_id, academic_year_id) -> classes ON UPDATE RESTRICT: a class's year cannot
+///   change while an assignment names it, even before the class has a section (the trigger
+///   classes_academic_year_immutable covers sections only). (school_id, section_id, class_id) ->
+///   sections: the section is one of the class's.
+model TeacherAssignment {
+  id             BigInt                @id(map: "teacher_assignments_pkey") @default(autoincrement())
+  schoolId       BigInt                @map("school_id")
+  staffId        BigInt                @map("staff_id")
+  academicYearId BigInt                @map("academic_year_id")
+  classId        BigInt                @map("class_id")
+  sectionId      BigInt?               @map("section_id")
+  subjectId      BigInt?               @map("subject_id")
+  role           TeacherAssignmentRole
+  startsOn       DateTime              @map("starts_on") @db.Date
+  /// Inclusive last day; null = open-ended. CHECK teacher_assignments_dates_check: >= starts_on.
+  endsOn         DateTime?             @map("ends_on") @db.Date
+  voidedAt       DateTime?             @map("voided_at") @db.Timestamptz(3)
+  voidedBy       BigInt?               @map("voided_by")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school       School   @relation(fields: [schoolId], references: [id], map: "teacher_assignments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff        Staff    @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "teacher_assignments_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class        Class    @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "teacher_assignments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section      Section? @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "teacher_assignments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  subject      Subject? @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "teacher_assignments_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser User?    @relation(fields: [schoolId, voidedBy], references: [schoolId, id], map: "teacher_assignments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "teacher_assignments_school_id_id_key")
+  @@index([schoolId, staffId], map: "teacher_assignments_school_id_staff_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "teacher_assignments_school_id_class_id_academic_year_id_idx")
+  @@index([schoolId, sectionId, classId], map: "teacher_assignments_school_id_section_id_class_id_idx")
+  @@index([schoolId, subjectId], map: "teacher_assignments_school_id_subject_id_idx")
+  @@index([schoolId, voidedBy], map: "teacher_assignments_school_id_voided_by_idx")
+  @@map("teacher_assignments")
 }
 
 /// Tenant: a login. One per person per school: (school_id, staff_id) and (school_id, guardian_id)
@@ -472,9 +551,8 @@ model Staff {
 /// username is never stored in clear: username_hash is the HMAC of the 13 digits. Email is not
 /// unique (R8). At least one person link (CHECK users_person_check).
 ///
-/// student_id is NOT here yet: it arrives in slice 6 with its composite FK to students, and
-/// users_person_check is then replaced to count it. A *_id column without its FK would fail the
-/// schema guard, and adding a nullable column later needs no data migration.
+/// A student login's username is the B-Form digits (rule 12). Issue-student-login never links to
+/// an existing user (R40); (school_id, student_id) is unique like the other two person links.
 model User {
   id                BigInt     @id(map: "users_pkey") @default(autoincrement())
   schoolId          BigInt     @map("school_id")
@@ -490,6 +568,7 @@ model User {
   status            UserStatus @default(active)
   staffId           BigInt?    @map("staff_id")
   guardianId        BigInt?    @map("guardian_id")
+  studentId         BigInt?    @map("student_id")
   lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
   /// Last office reset (contract slice-2 §5.4). The first login with last_login_at null or older
   /// than this writes the audit row user.login_after_office_reset.
@@ -497,21 +576,28 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school        School      @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff         Staff?      @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  guardian      Guardian?   @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  sessions      Session[]
-  tokens        UserToken[]
-  roles         UserRole[]  @relation("UserRoleHolder")
-  rolesAssigned UserRole[]  @relation("UserRoleAssignedBy")
-  rolesEnded    UserRole[]  @relation("UserRoleEndedBy")
-  auditLogs     AuditLog[]
+  school                   School                @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff                    Staff?                @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian                 Guardian?             @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student                  Student?              @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sessions                 Session[]
+  tokens                   UserToken[]
+  roles                    UserRole[]            @relation("UserRoleHolder")
+  rolesAssigned            UserRole[]            @relation("UserRoleAssignedBy")
+  rolesEnded               UserRole[]            @relation("UserRoleEndedBy")
+  auditLogs                AuditLog[]
+  studentStatusChanges     StudentStatusChange[]
+  studentDocuments         StudentDocument[]
+  stagedUploads            StagedUpload[]
+  idempotencyKeys          IdempotencyKey[]
+  teacherAssignmentsVoided TeacherAssignment[]
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
   // NULLs are distinct: these index the FKs and make "one login per person" a database fact.
   @@unique([schoolId, staffId], map: "users_school_id_staff_id_key")
   @@unique([schoolId, guardianId], map: "users_school_id_guardian_id_key")
+  @@unique([schoolId, studentId], map: "users_school_id_student_id_key")
   @@map("users")
 }
 
@@ -632,4 +718,274 @@ model AuditLog {
   @@index([schoolId, subjectType, subjectId, createdAt], map: "audit_log_school_id_subject_type_subject_id_created_at_idx")
   @@index([schoolId, actorUserId, createdAt], map: "audit_log_school_id_actor_user_id_created_at_idx")
   @@map("audit_log")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Slice 6: students, guardian links, enrolment (the hub, rule 6), documents, uploads, idempotency.
+// The B-Form follows the identity-number pattern above: b_form is the AES-256-GCM envelope (AAD
+// `schoolId|students|b_form`), b_form_hash the HMAC of the 13 digits, both or neither.
+// ---------------------------------------------------------------------------------------------
+
+enum StudentStatus {
+  active
+  suspended
+  withdrawn
+  transferred
+  alumni
+
+  @@map("student_status")
+}
+
+/// As recorded on the B-Form. Adding a value is a normal migration; removing one is not.
+enum Gender {
+  male
+  female
+
+  @@map("gender")
+}
+
+enum GuardianRelationship {
+  father
+  mother
+  guardian
+  other
+
+  @@map("guardian_relationship")
+}
+
+enum EnrolmentStatus {
+  active
+  completed
+  left
+
+  @@map("enrolment_status")
+}
+
+enum StudentDocumentType {
+  b_form
+  photo
+  previous_school_leaving
+  guardian_cnic
+  other
+
+  @@map("student_document_type")
+}
+
+/// Tenant: a child admitted to the school. Academic and financial records hang off Enrolment, not
+/// here (rule 6). A B-Form appears on at most one student in the school, any status (R25; R26: a
+/// hit on a former student offers readmission). Partial index students_school_id_b_form_hash_key.
+model Student {
+  id          BigInt        @id(map: "students_pkey") @default(autoincrement())
+  schoolId    BigInt        @map("school_id")
+  /// Decimal digits from school_counters 'admission_no' (CHECK students_admission_no_check: no
+  /// leading zero, at most 12 digits, so never an identity-number run). Text, so sort numerically
+  /// with ORDER BY length(admission_no), admission_no. Unique per school
+  /// (students_school_id_admission_no_key).
+  admissionNo String        @map("admission_no") @db.VarChar(20)
+  fullName    String        @map("full_name") @db.VarChar(200)
+  gender      Gender
+  /// CHECK students_date_of_birth_check: before admitted_on.
+  dateOfBirth DateTime      @map("date_of_birth") @db.Date
+  bForm       String?       @map("b_form") @db.VarChar(255)
+  bFormHash   String?       @map("b_form_hash") @db.Char(64)
+  status      StudentStatus @default(active)
+  admittedOn  DateTime      @map("admitted_on") @db.Date
+  /// Never holds an identity number (CHECK students_notes_no_id_check).
+  notes       String?       @db.VarChar(2000)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School                @relation(fields: [schoolId], references: [id], map: "students_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  statusChanges StudentStatusChange[]
+  guardianLinks StudentGuardian[]
+  enrolments    Enrolment[]
+  documents     StudentDocument[]
+  user          User?
+
+  @@unique([schoolId, id], map: "students_school_id_id_key")
+  @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
+  /// The possible-duplicate check at admission (name + date of birth).
+  @@index([schoolId, dateOfBirth], map: "students_school_id_date_of_birth_idx")
+  @@map("students")
+}
+
+/// Tenant, append-only (triggers student_status_changes_append_only and _no_truncate): one row per
+/// status transition, including admission (from_status null -> active) and readmission. A wrong
+/// row is corrected by a further row, never an edit.
+model StudentStatusChange {
+  id          BigInt         @id(map: "student_status_changes_pkey") @default(autoincrement())
+  schoolId    BigInt         @map("school_id")
+  studentId   BigInt         @map("student_id")
+  /// Null only for the admission row (CHECK student_status_changes_transition_check).
+  fromStatus  StudentStatus? @map("from_status")
+  toStatus    StudentStatus  @map("to_status")
+  /// Never holds an identity number (CHECK student_status_changes_reason_no_id_check).
+  reason      String?        @db.VarChar(500)
+  changedBy   BigInt         @map("changed_by")
+  effectiveOn DateTime       @map("effective_on") @db.Date
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school        School  @relation(fields: [schoolId], references: [id], map: "student_status_changes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student       Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "student_status_changes_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  changedByUser User    @relation(fields: [schoolId, changedBy], references: [schoolId, id], map: "student_status_changes_changed_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "student_status_changes_school_id_id_key")
+  @@index([schoolId, studentId, createdAt], map: "student_status_changes_school_id_student_id_created_at_idx")
+  @@index([schoolId, changedBy], map: "student_status_changes_school_id_changed_by_idx")
+  @@map("student_status_changes")
+}
+
+/// Tenant: guardian links (rule 9). A live link has ended_at null; student_id and guardian_id are
+/// frozen (trigger student_guardians_columns_immutable). Partial indexes: one live link per pair
+/// (student_guardians_school_id_student_id_guardian_id_key) and at most one primary contact among
+/// live links (student_guardians_one_primary_contact_key, R28). "At least one" primary contact and
+/// fee payer (R28, R29) and "no phone, no primary contact" (R30) span rows or tables: the service
+/// enforces them.
+model StudentGuardian {
+  id               BigInt               @id(map: "student_guardians_pkey") @default(autoincrement())
+  schoolId         BigInt               @map("school_id")
+  studentId        BigInt               @map("student_id")
+  guardianId       BigInt               @map("guardian_id")
+  relationship     GuardianRelationship
+  isPrimaryContact Boolean              @default(false) @map("is_primary_contact")
+  isFeePayer       Boolean              @default(false) @map("is_fee_payer")
+  canLogin         Boolean              @default(false) @map("can_login")
+  endedAt          DateTime?            @map("ended_at") @db.Timestamptz(3)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school   School   @relation(fields: [schoolId], references: [id], map: "student_guardians_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student  Student  @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "student_guardians_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian Guardian @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "student_guardians_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "student_guardians_school_id_id_key")
+  @@index([schoolId, studentId], map: "student_guardians_school_id_student_id_idx")
+  @@index([schoolId, guardianId], map: "student_guardians_school_id_guardian_id_idx")
+  @@map("student_guardians")
+}
+
+/// Tenant, the hub (rule 6): a student in a section of a class in an academic year. Attendance,
+/// marks, invoices and results hang off this row. Moving class closes this row and opens another
+/// (R39): student_id, academic_year_id and class_id are frozen (trigger
+/// enrolments_columns_immutable). A section change within the class is an edit that clears roll_no
+/// (R37). Partial indexes: one active enrolment per student (enrolments_one_active_per_student_key)
+/// and roll_no per section among active rows (enrolments_school_id_section_id_roll_no_key).
+model Enrolment {
+  id             BigInt          @id(map: "enrolments_pkey") @default(autoincrement())
+  schoolId       BigInt          @map("school_id")
+  studentId      BigInt          @map("student_id")
+  academicYearId BigInt          @map("academic_year_id")
+  classId        BigInt          @map("class_id")
+  sectionId      BigInt          @map("section_id")
+  /// Positive (CHECK enrolments_roll_no_check). Widening to text later is a cast, not a data
+  /// migration.
+  rollNo         Int?            @map("roll_no")
+  status         EnrolmentStatus @default(active)
+  startedOn      DateTime        @map("started_on") @db.Date
+  /// Null exactly while active (CHECK enrolments_ended_check); never before started_on.
+  endedOn        DateTime?       @map("ended_on") @db.Date
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "enrolments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "enrolments_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The class is of the enrolment's year; ON UPDATE RESTRICT freezes the class's year.
+  class   Class   @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "enrolments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The section is one of the enrolment's class.
+  section Section @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "enrolments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "enrolments_school_id_id_key")
+  @@index([schoolId, studentId], map: "enrolments_school_id_student_id_idx")
+  @@index([schoolId, sectionId, status], map: "enrolments_school_id_section_id_status_idx")
+  @@index([schoolId, academicYearId, status], map: "enrolments_school_id_academic_year_id_status_idx")
+  @@index([schoolId, classId, academicYearId], map: "enrolments_school_id_class_id_academic_year_id_idx")
+  @@index([schoolId, sectionId, classId], map: "enrolments_school_id_section_id_class_id_idx")
+  @@map("enrolments")
+}
+
+/// Tenant: a committed document. Its object key is the staged upload's key, unchanged (nothing is
+/// moved, so no failure strands a committed document). A student's photo is their latest `photo`
+/// row. Rows are never edited; no verification columns until that workflow is specified.
+model StudentDocument {
+  id         BigInt              @id(map: "student_documents_pkey") @default(autoincrement())
+  schoolId   BigInt              @map("school_id")
+  studentId  BigInt              @map("student_id")
+  type       StudentDocumentType
+  /// `{school_id}/{ULID}.{jpg|png|pdf}`; CHECK student_documents_object_key_check binds the prefix
+  /// to this row's school_id. Unique per school (student_documents_school_id_object_key_key).
+  objectKey  String              @map("object_key") @db.VarChar(64)
+  /// image/jpeg, image/png or application/pdf; a photo is an image (CHECKs).
+  mime       String              @db.VarChar(32)
+  sizeBytes  Int                 @map("size_bytes")
+  uploadedBy BigInt              @map("uploaded_by")
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school         School  @relation(fields: [schoolId], references: [id], map: "student_documents_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student        Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "student_documents_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  uploadedByUser User    @relation(fields: [schoolId, uploadedBy], references: [schoolId, id], map: "student_documents_uploaded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "student_documents_school_id_id_key")
+  @@unique([schoolId, objectKey], map: "student_documents_school_id_object_key_key")
+  @@index([schoolId, studentId, type, createdAt], map: "student_documents_school_id_student_id_type_created_at_idx")
+  @@index([schoolId, uploadedBy], map: "student_documents_school_id_uploaded_by_idx")
+  @@map("student_documents")
+}
+
+/// Tenant: an uploaded object not yet committed to a document. Usable only by its uploader (not
+/// its session) until expires_at (24 h). Committing sets consumed_at. The daily sweep deletes rows
+/// (and objects) with consumed_at IS NULL AND expires_at < now(): transient, not a record.
+model StagedUpload {
+  id         BigInt    @id(map: "staged_uploads_pkey") @default(autoincrement())
+  schoolId   BigInt    @map("school_id")
+  uploadedBy BigInt    @map("uploaded_by")
+  /// Same format and CHECK as student_documents.object_key.
+  objectKey  String    @map("object_key") @db.VarChar(64)
+  mime       String    @db.VarChar(32)
+  /// 1 byte to 5 MB (CHECK staged_uploads_size_bytes_check).
+  sizeBytes  Int       @map("size_bytes")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School @relation(fields: [schoolId], references: [id], map: "staged_uploads_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  uploadedByUser User   @relation(fields: [schoolId, uploadedBy], references: [schoolId, id], map: "staged_uploads_uploaded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "staged_uploads_school_id_id_key")
+  @@unique([schoolId, objectKey], map: "staged_uploads_school_id_object_key_key")
+  @@index([schoolId, expiresAt], map: "staged_uploads_school_id_expires_at_idx")
+  @@index([schoolId, uploadedBy], map: "staged_uploads_school_id_uploaded_by_idx")
+  @@map("staged_uploads")
+}
+
+/// Tenant: a committed idempotent request (R33, R82-R89). Inserted as the first statement of the
+/// admission's transaction (response_status and subject_type known then), so a racing same-key
+/// submit waits on the unique index; subject_id is filled in before commit and must be set by
+/// then (deferred constraint trigger idempotency_keys_subject_required). No response body: a replay re-reads the subject. Never purged in
+/// Phase 1 (R86). subject_id is polymorphic (allowlisted in NON_FK_ID_COLUMNS).
+model IdempotencyKey {
+  id             BigInt   @id(map: "idempotency_keys_pkey") @default(autoincrement())
+  schoolId       BigInt   @map("school_id")
+  userId         BigInt   @map("user_id")
+  /// Lower-case route key, e.g. `admissions` (CHECK idempotency_keys_endpoint_check).
+  endpoint       String   @db.VarChar(64)
+  /// 16-64 of [A-Za-z0-9_-] with no 13-digit run (CHECKs idempotency_keys_key_check and
+  /// idempotency_keys_key_no_id_check).
+  key            String   @db.VarChar(64)
+  /// Lower-hex HMAC-SHA256 of the canonical request: the body holds identity digits.
+  requestHash    String   @map("request_hash") @db.Char(64)
+  /// 2xx only: only a committed request stores a key (R87).
+  responseStatus Int      @map("response_status") @db.SmallInt
+  subjectType    String   @map("subject_type") @db.VarChar(32)
+  /// Null only inside the inserting transaction (see the model comment).
+  subjectId      BigInt?  @map("subject_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school School @relation(fields: [schoolId], references: [id], map: "idempotency_keys_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  user   User   @relation(fields: [schoolId, userId], references: [schoolId, id], map: "idempotency_keys_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "idempotency_keys_school_id_id_key")
+  /// R84: per user, per endpoint. Also the index behind the user FK.
+  @@unique([schoolId, userId, endpoint, key], map: "idempotency_keys_school_id_user_id_endpoint_key_key")
+  @@map("idempotency_keys")
 }

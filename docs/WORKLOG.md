@@ -244,6 +244,20 @@ a type-aware lint rule must reject request-decorated parameters that are not cla
 decorated parameter or class field whose resolved type contains the SchoolId or Scope brand
 symbol."
 
+**Closed 2026-10-03, before wave B.** The type-aware lint rule `asms/no-brand-in-request`
+(`apps/api/eslint-rules/no-brand-in-request.mjs`, wired for `src/**`) rejects request-decorated
+parameters on `@Controller` methods whose declared type is not a class (only exceptions: `string`
+under `@Param('key')` / `@Query('key')`, and the sanctioned decorators `CurrentSchoolSession`,
+`CurrentPlatformSession`, `IdParam`, `Req`, `Res`, each matched by name and declaring file). It also
+rejects any decorated method parameter, and any field of a class with decorated fields, whose
+resolved type contains a brand at any depth — a brand being any property keyed by a unique symbol
+declared under `src/tenancy/**`, so `Parameters<typeof f>[0]`, aliases and generics no longer hide
+one. Proven by `test/guardrails/lint-boundaries.spec.ts` (fixtures `request-brand.ts`,
+`request-legitimate.ts`). Still open, and not request-bound: type predicates and overloads reaching
+a brand through an indirect type expression, and third-party generics inferred from their return
+type — they remain under the runtime query guard, per-table isolation tests and per-slice security
+review.
+
 **Deployment requirement found here:** the Next.js rewrite forwards a client-sent
 `X-Forwarded-For` unchanged, so production needs an edge proxy that overwrites it (recorded in
 `CLAUDE.md` and the `devops` agent). Slice 2's login lockout must not reach an internet-facing

@@ -1,8 +1,7 @@
 import { Injectable, Param, PipeTransform } from '@nestjs/common';
 import { ApiParam } from '@nestjs/swagger';
 import { ValidateBy } from 'class-validator';
-import { ErrorCode } from '@asms/shared';
-import { ApiException } from './errors/api-exception';
+import { notFound } from './errors/api-exception';
 
 /** A bigint id as it travels in JSON, paths and bodies: positive, no leading zero, ≤ 19 digits. */
 export const ID_PATTERN = /^[1-9][0-9]{0,18}$/;
@@ -18,7 +17,7 @@ export function isIdString(value: unknown): value is string {
 export class ParseIdPipe implements PipeTransform<unknown, bigint> {
   transform(value: unknown): bigint {
     if (isIdString(value)) return BigInt(value);
-    throw new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');
+    throw notFound();
   }
 }
 

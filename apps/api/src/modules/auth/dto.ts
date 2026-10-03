@@ -1,14 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, Length, Matches, ValidateBy, type ValidationArguments } from 'class-validator';
+import { IsString, Length, Matches } from 'class-validator';
 import {
   Capability,
-  IDENTITY_INPUT_PATTERN,
-  normaliseIdentityDigits,
   SCHOOL_STATUSES,
   SHORT_CODE_PATTERN,
   type SchoolStatus,
 } from '@asms/shared';
+import { CnicField, DiffersFrom, EmailField, trimLower } from '../../common/fields';
 import { SCHOOL_ROLES, type SchoolRole } from '../access/permissions.service';
 
 // contracts/slice-2.md §3 and §4.
@@ -16,31 +15,6 @@ import { SCHOOL_ROLES, type SchoolRole } from '../access/permissions.service';
 export const PASSWORD_MAX = 128;
 export const NEW_PASSWORD_MIN = 8;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-
-const trimLower = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
-
-/** Dashes and spaces stripped; anything that is not 13 digits passes through to fail the pattern. */
-const identityDigits = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' && IDENTITY_INPUT_PATTERN.test(value.trim())
-    ? (normaliseIdentityDigits(value) ?? value)
-    : value;
-
-/** The value must differ from the named sibling property. */
-export const DiffersFrom = (property: string): PropertyDecorator =>
-  ValidateBy({
-    name: 'differsFrom',
-    constraints: [property],
-    validator: {
-      validate: (value: unknown, args?: ValidationArguments) => {
-        const object: unknown = args?.object;
-        const other: unknown =
-          typeof object === 'object' && object !== null ? Reflect.get(object, property) : undefined;
-        return value !== other;
-      },
-      defaultMessage: () => `$property must differ from ${property}`,
-    },
-  });
 
 class SchoolCodeDto {
   @ApiProperty({ pattern: SHORT_CODE_PATTERN.source })
@@ -53,9 +27,7 @@ class SchoolCodeDto {
 export class SchoolLoginDto extends SchoolCodeDto {
   /** CNIC or B-Form digits, dashes allowed; normalised to 13 digits. No example (§3.9). */
   @ApiProperty({ description: '13 digits; dashes allowed (5-7-1).' })
-  @Transform(identityDigits)
-  @IsString()
-  @Matches(/^[0-9]{13}$/, { message: 'username must be 13 digits' })
+  @CnicField()
   username: string;
 
   @ApiProperty({ minLength: 1, maxLength: PASSWORD_MAX, format: 'password' })
@@ -66,9 +38,7 @@ export class SchoolLoginDto extends SchoolCodeDto {
 
 export class ForgotPasswordDto extends SchoolCodeDto {
   @ApiProperty({ description: '13 digits; dashes allowed (5-7-1).' })
-  @Transform(identityDigits)
-  @IsString()
-  @Matches(/^[0-9]{13}$/, { message: 'username must be 13 digits' })
+  @CnicField()
   username: string;
 }
 
@@ -93,10 +63,7 @@ export class ChangeEmailDto {
   currentPassword: string;
 
   @ApiProperty({ minLength: 3, maxLength: 254, format: 'email' })
-  @Transform(trimLower)
-  @IsString()
-  @Length(3, 254)
-  @IsEmail()
+  @EmailField()
   email: string;
 }
 

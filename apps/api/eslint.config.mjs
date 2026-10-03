@@ -13,6 +13,7 @@ import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import noBrandInRequest from './eslint-rules/no-brand-in-request.mjs';
 
 // ---------------------------------------------------------------------------- import boundaries
 // Regexes match the import specifier as written, so relative, baseUrl and package forms all hit.
@@ -382,6 +383,15 @@ export default tseslint.config(
       // Tests assert the shape of response bodies and caught errors.
       '@typescript-eslint/no-unsafe-type-assertion': 'off',
     },
+  },
+  {
+    // Type-aware: request-bound parameters are classes, and nothing the request fills (a decorated
+    // parameter, a DTO field) contains a tenant brand at any depth, however the type is spelled.
+    // Closes the slice-0 residual risk; see eslint-rules/no-brand-in-request.mjs.
+    files: ['src/**/*.ts'],
+    ignores: SPEC_FILES,
+    plugins: { asms: { rules: { 'no-brand-in-request': noBrandInRequest } } },
+    rules: { 'asms/no-brand-in-request': 'error' },
   },
   {
     // The relation-write ban covers apps/api/src; fixtures built in test/ may need the keys.

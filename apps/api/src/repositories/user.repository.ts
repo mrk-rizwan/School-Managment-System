@@ -3,7 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SystemRole } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import { Prisma } from './generated/prisma/client';
-import type { PrismaTxAdapter } from './prisma';
+import { escapeLike, type PrismaTxAdapter } from './prisma';
 
 export type UserStatusValue = 'active' | 'disabled';
 export type StaffStatusValue = 'active' | 'suspended' | 'left';
@@ -97,8 +97,6 @@ type RecordRow = Prisma.UserGetPayload<{ select: typeof RECORD_SELECT }>;
 
 const liveSystemRoles = (roles: readonly { systemRole: SystemRole | null }[]): SystemRole[] =>
   roles.flatMap((r) => (r.systemRole === null ? [] : [r.systemRole]));
-
-const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**
  * ORDER BY for a users page. `display_name` is the name the list shows, staff before guardian,

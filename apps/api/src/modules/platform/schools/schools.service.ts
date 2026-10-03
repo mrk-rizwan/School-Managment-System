@@ -7,7 +7,7 @@ import {
   ErrorCode,
   type SchoolStatus,
 } from '@asms/shared';
-import { ApiException } from '../../../common/errors/api-exception';
+import { ApiException, notFound } from '../../../common/errors/api-exception';
 import { toPage, type Page } from '../../../common/pagination';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository, type SchoolRecord } from '../../../repositories/platform/school.repository';
@@ -27,7 +27,6 @@ const SUBJECT = 'school';
 /** Reads before giving up when the row keeps changing between the read and the lock or write. */
 const ATTEMPTS = 3;
 
-const notFound = () => new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');
 const terminated = () =>
   new ApiException(409, ErrorCode.SCHOOL_TERMINATED, 'A terminated school cannot be changed.');
 

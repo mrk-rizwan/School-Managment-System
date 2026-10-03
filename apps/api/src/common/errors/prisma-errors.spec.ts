@@ -152,6 +152,28 @@ describe('database error mapper', () => {
     ).toBeUndefined();
   });
 
+  it('maps a deadlock (40P01) to 409 CONCURRENT_UPDATE, from a model call or a raw query', () => {
+    // Recorded by test/core/deadlock.e2e-spec.ts: P2034 from tx.school.update, P2010 from $executeRaw.
+    const cause = {
+      originalCode: '40P01',
+      originalMessage: 'deadlock detected',
+      kind: 'TransactionWriteConflict',
+    };
+    for (const deadlock of [adapterError('P2034', 'School', cause), adapterError('P2010', '', cause)]) {
+      expect(mapDatabaseError(deadlock)).toMatchObject({
+        status: 409,
+        code: ErrorCode.CONCURRENT_UPDATE,
+        details: null,
+      });
+    }
+    // Another raw-query failure is not a conflict.
+    expect(
+      mapDatabaseError(adapterError('P2010', '', { originalCode: '42P01', kind: 'postgres' })),
+    ).toBeUndefined();
+    // Not a Prisma error: a bare SQLSTATE is not trusted.
+    expect(mapDatabaseError({ code: '40P01' })).toBeUndefined();
+  });
+
   it('never carries the database detail or message into the mapped error', () => {
     expect(JSON.stringify(mapDatabaseError(FEE_DUE_DAY_CHECK))).not.toContain('Failing row');
   });

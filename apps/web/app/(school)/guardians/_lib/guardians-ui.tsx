@@ -1,6 +1,6 @@
 'use client';
 
-import { IDENTITY_INPUT_PATTERN, normalisePhone } from '@asms/shared';
+import { CONTACT_CAPABILITIES, IDENTITY_INPUT_PATTERN, normalisePhone } from '@asms/shared';
 import { useId } from 'react';
 import { useController, useWatch, type Control, type FieldValues, type Path } from 'react-hook-form';
 import { z } from 'zod';
@@ -23,7 +23,6 @@ export const CONTACT_CAPABILITY_LABELS: Record<ContactCapability, string> = {
   smartphone_data: 'Smartphone with data',
   keypad: 'Keypad phone',
 };
-export const CONTACT_CAPABILITIES = Object.keys(CONTACT_CAPABILITY_LABELS) as ContactCapability[];
 
 /** Formats CNIC digits as they are typed: 35201-1234567-1. Anything but digits is dropped. */
 export function formatIdentityInput(raw: string): string {

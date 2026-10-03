@@ -4,7 +4,7 @@ import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { FieldDecryptionError, FieldEncryption } from '../../common/crypto/field-encryption';
 import { PasswordHasher } from '../../common/crypto/password';
-import { ApiException } from '../../common/errors/api-exception';
+import { ApiException, notFound } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
@@ -22,8 +22,6 @@ import { PermissionsService } from '../access/permissions.service';
 import { LoginKeys, SchoolLoginLockout } from '../auth/login-limits';
 import { Mailer, type MailMessage } from '../auth/mailer';
 import type { ListUsersQueryDto, OfficeResetDto, ReasonDto, UserDto } from './users.dto';
-
-const notFound = () => new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');
 
 /** `alice@example.com` → `a***@example.com`. */
 export function maskEmail(email: string): string {

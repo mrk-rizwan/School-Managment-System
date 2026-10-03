@@ -1,5 +1,4 @@
-import { ErrorCode } from '@asms/shared';
-import { ApiException, notFound } from './errors/api-exception';
+import { ApiException, concurrentUpdate, notFound } from './errors/api-exception';
 
 /** Reads before giving up when the row keeps changing between the read and the lock. */
 const ATTEMPTS = 3;
@@ -20,9 +19,5 @@ export async function readLocked<T>(
     if (row === null) throw missing();
     if (await lock(row)) return row;
   }
-  throw new ApiException(
-    409,
-    ErrorCode.CONCURRENT_UPDATE,
-    'The record changed while this request ran. Reload and try again.',
-  );
+  throw concurrentUpdate();
 }

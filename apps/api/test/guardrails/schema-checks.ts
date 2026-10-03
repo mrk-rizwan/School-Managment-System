@@ -71,10 +71,12 @@ export const NON_SCHOOL_LEADING_INDEXES = new Set(['sessions.token_hash']);
  * - audit_log.actor_platform_user_id: points at the non-tenant platform_users. The FK cannot be
  *   declared in schema.prisma (prisma-relations.spec.ts allows a tenant model to relate only to
  *   School), and an FK absent from schema.prisma is dropped as drift by the next migration.
+ * - idempotency_keys.subject_id: polymorphic, names a row of the table in subject_type.
  */
 export const NON_FK_ID_COLUMNS = new Set([
   'audit_log.subject_id',
   'audit_log.actor_platform_user_id',
+  'idempotency_keys.subject_id',
 ]);
 
 export type ExpectedObject =
@@ -423,7 +425,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     kind: 'constraint',
     table: 'users',
     name: 'users_person_check',
-    definition: 'CHECK ((num_nonnulls(staff_id, guardian_id) >= 1))',
+    definition: 'CHECK ((num_nonnulls(staff_id, guardian_id, student_id) >= 1))',
   },
   {
     kind: 'constraint',
@@ -521,6 +523,312 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     name: 'audit_log_no_truncate',
     definition:
       'BEFORE TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
+  }, // Wave B: shared trigger functions.
+  {
+    kind: 'function',
+    name: 'asms_forbid_columns_change',
+    definition: "DETAIL = 'constraint: ' || TG_TABLE_NAME || '_' || col || '_immutable'",
+  },
+  {
+    kind: 'function',
+    name: 'asms_require_idempotency_subject',
+    definition: "DETAIL = 'constraint: idempotency_keys_subject_required'",
+  },
+  // Slice 4: staff, teacher assignments (the EXCLUDE is checked as a constraint; its gist index
+  // shares the name).
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_left_on_after_joined_check',
+    definition: 'CHECK (((left_on IS NULL) OR (joined_on IS NULL) OR (left_on >= joined_on)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'staff',
+    name: 'staff_left_on_check',
+    definition: "CHECK (((left_on IS NULL) OR (status = 'left'::staff_status)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_class_teacher_check',
+    definition:
+      "CHECK (((role <> 'class_teacher'::teacher_assignment_role) OR ((section_id IS NOT NULL) AND (subject_id IS NULL))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_class_teacher_excl',
+    definition:
+      "EXCLUDE USING gist (school_id WITH =, section_id WITH =, daterange(starts_on, ends_on, '[]'::text) WITH &&) WHERE (((role = 'class_teacher'::teacher_assignment_role) AND (voided_at IS NULL)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_dates_check',
+    definition: 'CHECK (((ends_on IS NULL) OR (ends_on >= starts_on)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_subject_teacher_check',
+    definition:
+      "CHECK (((role <> 'subject_teacher'::teacher_assignment_role) OR (subject_id IS NOT NULL)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_voided_check',
+    definition: 'CHECK (((voided_at IS NULL) = (voided_by IS NULL)))',
+  },
+  {
+    kind: 'trigger',
+    table: 'teacher_assignments',
+    name: 'teacher_assignments_columns_immutable',
+    definition:
+      "BEFORE UPDATE ON public.teacher_assignments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'academic_year_id', 'class_id', 'section_id', 'subject_id', 'role', 'starts_on')",
+  },
+  // Slice 6: students, guardian links, enrolments, documents, uploads, idempotency.
+  {
+    kind: 'constraint',
+    table: 'enrolments',
+    name: 'enrolments_ended_check',
+    definition:
+      "CHECK ((((status = 'active'::enrolment_status) = (ended_on IS NULL)) AND ((ended_on IS NULL) OR (ended_on >= started_on))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'enrolments',
+    name: 'enrolments_roll_no_check',
+    definition: 'CHECK (((roll_no IS NULL) OR ((roll_no >= 1) AND (roll_no <= 9999))))',
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_endpoint_check',
+    definition: "CHECK (((endpoint)::text ~ '^[a-z][a-z0-9_.-]{0,63}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_key_check',
+    definition: "CHECK (((key)::text ~ '^[A-Za-z0-9_-]{16,64}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_key_no_id_check',
+    definition: "CHECK (((key)::text !~ '[0-9]{13}'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_request_hash_check',
+    definition: "CHECK ((request_hash ~ '^[0-9a-f]{64}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_response_status_check',
+    definition: 'CHECK (((response_status >= 200) AND (response_status <= 299)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_subject_type_check',
+    definition: "CHECK (((subject_type)::text ~ '^[a-z][a-z_]{0,31}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staged_uploads',
+    name: 'staged_uploads_expires_at_check',
+    definition: 'CHECK ((expires_at > created_at))',
+  },
+  {
+    kind: 'constraint',
+    table: 'staged_uploads',
+    name: 'staged_uploads_mime_check',
+    definition:
+      "CHECK (((mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying, 'application/pdf'::character varying])::text[])))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staged_uploads',
+    name: 'staged_uploads_object_key_check',
+    definition:
+      "CHECK (((object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'staged_uploads',
+    name: 'staged_uploads_size_bytes_check',
+    definition: 'CHECK (((size_bytes >= 1) AND (size_bytes <= 5242880)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'student_documents',
+    name: 'student_documents_mime_check',
+    definition:
+      "CHECK (((mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying, 'application/pdf'::character varying])::text[])))",
+  },
+  {
+    kind: 'constraint',
+    table: 'student_documents',
+    name: 'student_documents_object_key_check',
+    definition:
+      "CHECK (((object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'student_documents',
+    name: 'student_documents_photo_mime_check',
+    definition:
+      "CHECK (((type <> 'photo'::student_document_type) OR ((mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying])::text[]))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'student_documents',
+    name: 'student_documents_size_bytes_check',
+    definition: 'CHECK (((size_bytes >= 1) AND (size_bytes <= 5242880)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'student_status_changes',
+    name: 'student_status_changes_reason_no_id_check',
+    definition:
+      "CHECK ((((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'student_status_changes',
+    name: 'student_status_changes_transition_check',
+    definition:
+      "CHECK (((from_status IS DISTINCT FROM to_status) AND ((from_status IS NOT NULL) OR (to_status = 'active'::student_status))))",
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_admission_no_check',
+    definition: "CHECK (((admission_no)::text ~ '^[1-9][0-9]{0,11}$'::text))",
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_b_form_check',
+    definition: "CHECK (((b_form IS NULL) OR ((b_form)::text ~~ 'v1:%'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_b_form_hash_check',
+    definition: "CHECK (((b_form_hash IS NULL) OR (b_form_hash ~ '^[0-9a-f]{64}$'::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_b_form_pair_check',
+    definition: 'CHECK (((b_form IS NULL) = (b_form_hash IS NULL)))',
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_date_of_birth_check',
+    definition: 'CHECK ((date_of_birth < admitted_on))',
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_full_name_check',
+    definition:
+      "CHECK ((((full_name)::text = btrim((full_name)::text)) AND ((full_name)::text <> ''::text)))",
+  },
+  {
+    kind: 'constraint',
+    table: 'students',
+    name: 'students_notes_no_id_check',
+    definition:
+      "CHECK ((((notes)::text !~ '[0-9]{13}'::text) AND ((notes)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))",
+  },
+  {
+    kind: 'index',
+    table: 'enrolments',
+    name: 'enrolments_section_roll_no_key',
+    definition:
+      "USING btree (school_id, section_id, roll_no) WHERE ((roll_no IS NOT NULL) AND (status = 'active'::enrolment_status))",
+  },
+  {
+    kind: 'index',
+    table: 'enrolments',
+    name: 'enrolments_student_active_key',
+    definition: "USING btree (school_id, student_id) WHERE (status = 'active'::enrolment_status)",
+  },
+  {
+    kind: 'index',
+    table: 'student_guardians',
+    name: 'student_guardians_live_pair_key',
+    definition: 'USING btree (school_id, student_id, guardian_id) WHERE (ended_at IS NULL)',
+  },
+  {
+    kind: 'index',
+    table: 'student_guardians',
+    name: 'student_guardians_primary_key',
+    definition:
+      'USING btree (school_id, student_id) WHERE (is_primary_contact AND (ended_at IS NULL))',
+  },
+  {
+    kind: 'index',
+    table: 'students',
+    name: 'students_school_id_b_form_hash_key',
+    definition: 'USING btree (school_id, b_form_hash) WHERE (b_form_hash IS NOT NULL)',
+  },
+  {
+    kind: 'trigger',
+    table: 'enrolments',
+    name: 'enrolments_columns_immutable',
+    definition:
+      "BEFORE UPDATE ON public.enrolments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'academic_year_id', 'class_id')",
+  },
+  {
+    kind: 'trigger',
+    table: 'idempotency_keys',
+    name: 'idempotency_keys_subject_required',
+    definition:
+      'AFTER INSERT OR UPDATE ON public.idempotency_keys DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION asms_require_idempotency_subject()',
+  },
+  {
+    kind: 'trigger',
+    table: 'student_documents',
+    name: 'student_documents_append_only',
+    definition:
+      'BEFORE DELETE OR UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  {
+    kind: 'trigger',
+    table: 'student_documents',
+    name: 'student_documents_no_truncate',
+    definition:
+      'BEFORE TRUNCATE ON public.student_documents FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  {
+    kind: 'trigger',
+    table: 'student_guardians',
+    name: 'student_guardians_columns_immutable',
+    definition:
+      "BEFORE UPDATE ON public.student_guardians FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'guardian_id')",
+  },
+  {
+    kind: 'trigger',
+    table: 'student_status_changes',
+    name: 'student_status_changes_append_only',
+    definition:
+      'BEFORE DELETE OR UPDATE ON public.student_status_changes FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()',
+  },
+  {
+    kind: 'trigger',
+    table: 'student_status_changes',
+    name: 'student_status_changes_no_truncate',
+    definition:
+      'BEFORE TRUNCATE ON public.student_status_changes FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
   },
 ];
 

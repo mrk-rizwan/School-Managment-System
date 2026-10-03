@@ -3,41 +3,19 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsOptional, IsString, Length, ValidateBy } from 'class-validator';
 import { containsIdentityNumber, SYSTEM_ROLES, type SystemRole } from '@asms/shared';
+import { QueryBoolean, TextField, trim } from '../../common/fields';
 import { PageQueryDto } from '../../common/pagination';
 
 // contracts/slice-2.md §5.
 
-const trim = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim() : value;
-
-/** Free text must not carry an identity number, plain or dashed (plan §3.6; audit CHECKs). */
-export const NoIdentityNumber = (): PropertyDecorator =>
-  ValidateBy({
-    name: 'noIdentityNumber',
-    validator: {
-      validate: (value: unknown) => typeof value === 'string' && !containsIdentityNumber(value),
-      defaultMessage: () => '$property must not contain an identity number',
-    },
-  });
-
 /** `reason`: trimmed, 3-500 characters, no identity number. */
-export const ReasonField = (): PropertyDecorator =>
-  applyDecorators(
-    ApiProperty({ minLength: 3, maxLength: 500 }),
-    Transform(trim),
-    IsString(),
-    Length(3, 500),
-    NoIdentityNumber(),
-  );
+const ReasonField = (): PropertyDecorator =>
+  applyDecorators(ApiProperty({ minLength: 3, maxLength: 500 }), TextField(3, 500));
 
 export const USER_STATUSES = ['active', 'disabled'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 const USER_KINDS = ['staff', 'guardian', 'student'] as const;
 const USER_SORTS = ['fullName', '-fullName', 'lastLoginAt', '-lastLoginAt', 'createdAt', '-createdAt'] as const;
-
-/** `true` / `false` query strings to booleans; anything else is left for @IsBoolean to refuse. */
-const queryBoolean = ({ value }: { value: unknown }): unknown =>
-  value === 'true' ? true : value === 'false' ? false : value;
 
 export class ListUsersQueryDto extends PageQueryDto {
   @ApiPropertyOptional({ enum: USER_STATUSES, enumName: 'UserStatus' })
@@ -45,16 +23,10 @@ export class ListUsersQueryDto extends PageQueryDto {
   @IsIn(USER_STATUSES)
   status?: UserStatus;
 
-  @ApiPropertyOptional({ type: Boolean })
-  @IsOptional()
-  @Transform(queryBoolean)
-  @IsBoolean()
+  @QueryBoolean()
   passwordIsDefault?: boolean;
 
-  @ApiPropertyOptional({ type: Boolean })
-  @IsOptional()
-  @Transform(queryBoolean)
-  @IsBoolean()
+  @QueryBoolean()
   hasEmail?: boolean;
 
   @ApiPropertyOptional({ enum: USER_KINDS, enumName: 'UserKind' })
@@ -64,7 +36,8 @@ export class ListUsersQueryDto extends PageQueryDto {
 
   /**
    * Full name, 2-100 characters. An identity number is refused, written plain, dashed or split by
-   * spaces or `+` (`35202 1234567 1`): identity lookups are POST (§3.6), never a URL.
+   * spaces or `+` (`35202 1234567 1`): identity lookups are POST (§3.6), never a URL. Stricter
+   * than SearchField's NoIdentityNumber, which does not see the split forms, so it stays local.
    */
   @ApiPropertyOptional({ minLength: 2, maxLength: 100 })
   @IsOptional()

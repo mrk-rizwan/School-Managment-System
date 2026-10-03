@@ -7,7 +7,7 @@
 // ciphertext, identity numbers). Nothing here returns or logs either; only the Prisma code and
 // the constraint name leave this file.
 import { ErrorCode } from '@asms/shared';
-import { ApiException } from './api-exception';
+import { ApiException, concurrentUpdate } from './api-exception';
 
 /** What may be logged about a database error. */
 export interface DatabaseErrorSummary {
@@ -29,6 +29,15 @@ const field = (value: unknown, key: string): unknown => (isRecord(value) ? value
 
 const str = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
 
+/** The Prisma code of a known-request error; undefined for anything else. */
+const prismaCodeOf = (error: unknown): string | undefined => {
+  const code = str(field(error, 'code'));
+  return code !== undefined && PRISMA_CODE.test(code) ? code : undefined;
+};
+
+const adapterCause = (error: unknown): unknown =>
+  field(field(field(error, 'meta'), 'driverAdapterError'), 'cause');
+
 /**
  * The constraint a Prisma error names, read from the shapes measured on Prisma 7.10 + adapter-pg:
  * - P2002 / P2003: `meta.driverAdapterError.cause.constraint.index`;
@@ -37,9 +46,9 @@ const str = (value: unknown): string | undefined => (typeof value === 'string' ?
  * Undefined when `error` is not a Prisma known-request error.
  */
 export function summariseDatabaseError(error: unknown): DatabaseErrorSummary | undefined {
-  const prismaCode = str(field(error, 'code'));
-  if (prismaCode === undefined || !PRISMA_CODE.test(prismaCode)) return undefined;
-  const cause = field(field(field(error, 'meta'), 'driverAdapterError'), 'cause');
+  const prismaCode = prismaCodeOf(error);
+  if (prismaCode === undefined) return undefined;
+  const cause = adapterCause(error);
   const constraint =
     str(field(field(cause, 'constraint'), 'index')) ??
     DETAIL_CONSTRAINT.exec(str(field(cause, 'detail')) ?? '')?.[1] ??
@@ -94,8 +103,23 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     taken(ErrorCode.SUBJECT_CODE_TAKEN, 'code', 'A subject with that code already exists.'),
 };
 
+/**
+ * A deadlock (SQLSTATE 40P01) or write conflict: the transaction was rolled back and a retry
+ * may succeed. Shapes measured on Prisma 7.10 + adapter-pg (test/core/deadlock.e2e-spec.ts): a
+ * model call fails P2034, a raw query P2010; both carry `cause.originalCode` 40P01. Our
+ * read-then-lock order should never deadlock; this is the safety net if it does.
+ */
+function isConcurrencyFailure(error: unknown): boolean {
+  const prismaCode = prismaCodeOf(error);
+  if (prismaCode === undefined) return false;
+  return prismaCode === 'P2034' || str(field(adapterCause(error), 'originalCode')) === '40P01';
+}
+
 /** The API error for a database constraint violation, or undefined when it maps to none. */
 export function mapDatabaseError(error: unknown): ApiException | undefined {
+  if (isConcurrencyFailure(error)) {
+    return concurrentUpdate();
+  }
   const constraint = summariseDatabaseError(error)?.constraint;
   if (!constraint || !Object.hasOwn(BY_CONSTRAINT, constraint)) return undefined;
   return BY_CONSTRAINT[constraint]?.();
