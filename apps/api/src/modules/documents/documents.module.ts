@@ -31,6 +31,8 @@ import { reencodeLimitProvider, UploadsService } from './uploads.service';
     StudentDocumentRepository,
     StudentRepository,
   ],
-  exports: [StagedUploadSweep],
+  // The re-encode limit is shared with the diary's on-demand thumbnails
+  // (contracts/slice-13.md §1.4: one limit of 4 per process).
+  exports: [StagedUploadSweep, reencodeLimitProvider.provide],
 })
 export class DocumentsModule {}

@@ -98,6 +98,7 @@ describe('LoginService: what runs on each path (F5, R81 / R2)', () => {
     status: 'active',
     staffId: 7n,
     guardianId: null,
+    studentId: null,
     capacities: { staff: true, guardian: false, student: false },
     systemRoles: ['teacher'],
     systemRoleRows: [],

@@ -1,0 +1,126 @@
+import { KEYS } from '../auth/session-store';
+import { resetDevice } from '../test/fake-api';
+import { secureStoreContents } from '../test/secure-store';
+import {
+  databaseFileExists,
+  dropConnections,
+  failNextCloses,
+  filesStartingWith,
+} from '../test/sqlite-adapter';
+import { writeCache } from './cache';
+import {
+  bindOwner,
+  DATABASE_NAME,
+  discardExpiredUnsent,
+  getDb,
+  getMeta,
+  META,
+  UNSENT_WINDOW_MS,
+  wipeDatabase,
+  wipeForSessionLoss,
+} from './database';
+import { enqueue, listUnfinished, NoOwnerError } from './outbox.repository';
+
+// Security review of slice 15: M1 (no SQLite residue after a wipe) and the §7.6 seven-day window.
+
+beforeEach(resetDevice);
+
+const device = { lane: 'device_register', method: 'POST', path: '/api/v1/me/devices' };
+
+describe('M1: the wipe leaves nothing on disk', () => {
+  test('rows are overwritten on delete (secure_delete is on)', async () => {
+    const db = await getDb();
+    expect(await db.getFirstAsync<{ secure_delete: number }>('PRAGMA secure_delete')).toEqual({
+      secure_delete: 1,
+    });
+  });
+
+  test('a wipe removes the file and its -wal and -shm siblings', async () => {
+    await getDb();
+    expect(filesStartingWith(DATABASE_NAME)).toEqual(
+      [DATABASE_NAME, `${DATABASE_NAME}-shm`, `${DATABASE_NAME}-wal`].sort(),
+    );
+    expect(await wipeDatabase()).toBe(true);
+    expect(filesStartingWith(DATABASE_NAME)).toEqual([]);
+  });
+
+  test('a close that fails is not a complete wipe: rows go now, the file at the next start', async () => {
+    await bindOwner('41', '7');
+    await writeCache('GET /api/v1/me', { fullName: 'x' }, null);
+    await enqueue({ ...device, body: { platform: 'android', pushToken: 'p' } });
+    const stuck = await getDb();
+    failNextCloses();
+
+    expect(await wipeDatabase()).toBe(false);
+    expect(secureStoreContents()[KEYS.wipePending]).toBe('1');
+    expect(databaseFileExists(DATABASE_NAME)).toBe(true);
+    // The connection would not close; its rows were deleted through it.
+    expect(await stuck.getFirstAsync('SELECT COUNT(*) AS n FROM cache')).toEqual({ n: 0 });
+    expect(await stuck.getFirstAsync('SELECT COUNT(*) AS n FROM outbox')).toEqual({ n: 0 });
+    expect(
+      await stuck.getFirstAsync('SELECT COUNT(*) AS n FROM meta WHERE key = ?', [META.userId]),
+    ).toEqual({ n: 0 });
+
+    await stuck.runAsync("INSERT INTO meta (key, value) VALUES ('probe', '1')");
+
+    // Next start: the stuck connection died with the process; the first open deletes the file.
+    dropConnections();
+    const fresh = await getDb();
+    expect(secureStoreContents()[KEYS.wipePending]).toBeUndefined();
+    expect(fresh).not.toBe(stuck);
+    expect(await getMeta('probe')).toBeNull(); // a new file, not the old one
+    expect(await listUnfinished()).toEqual([]);
+  });
+});
+
+describe('§7.6: unsent writes outlive their session by at most seven days', () => {
+  const lostAt = new Date('2026-10-01T08:00:00.000Z');
+
+  async function lostWithOneUnsent(): Promise<void> {
+    await bindOwner('41', '7');
+    await enqueue({ ...device, body: { platform: 'android', pushToken: 'p' } }, lostAt);
+    await wipeForSessionLoss(lostAt);
+  }
+
+  test('a 401 stamps session_lost_at once; a second loss does not extend the window', async () => {
+    await lostWithOneUnsent();
+    expect(await getMeta(META.sessionLostAt)).toBe(lostAt.toISOString());
+    await wipeForSessionLoss(new Date('2026-10-03T08:00:00.000Z'));
+    expect(await getMeta(META.sessionLostAt)).toBe(lostAt.toISOString());
+  });
+
+  test('within seven days nothing is discarded', async () => {
+    await lostWithOneUnsent();
+    const inside = new Date(lostAt.getTime() + UNSENT_WINDOW_MS - 1);
+    expect(await discardExpiredUnsent(inside)).toEqual([]);
+    expect(await listUnfinished()).toHaveLength(1);
+    expect(await getMeta(META.sessionLostAt)).not.toBeNull();
+  });
+
+  test('past seven days the unsent rows go and are returned with lane and date', async () => {
+    await lostWithOneUnsent();
+    const after = new Date(lostAt.getTime() + UNSENT_WINDOW_MS + 1);
+    expect(await discardExpiredUnsent(after)).toEqual([
+      { lane: 'device_register', createdAt: lostAt.toISOString() },
+    ]);
+    expect(await listUnfinished()).toEqual([]);
+    expect(await getMeta(META.sessionLostAt)).toBeNull();
+  });
+
+  test('resuming within the window clears the stamp, so a later check discards nothing', async () => {
+    await lostWithOneUnsent();
+    await discardExpiredUnsent(new Date(lostAt.getTime() + 1000), true);
+    expect(await getMeta(META.sessionLostAt)).toBeNull();
+    expect(await discardExpiredUnsent(new Date(lostAt.getTime() + 30 * UNSENT_WINDOW_MS))).toEqual(
+      [],
+    );
+    expect(await listUnfinished()).toHaveLength(1);
+  });
+
+  test('enqueue refuses when no user owns the rows', async () => {
+    await expect(
+      enqueue({ ...device, body: { platform: 'android', pushToken: 'p' } }),
+    ).rejects.toBeInstanceOf(NoOwnerError);
+    expect(await listUnfinished()).toEqual([]);
+  });
+});

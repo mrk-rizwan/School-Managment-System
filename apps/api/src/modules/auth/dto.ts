@@ -14,9 +14,14 @@ import {
   SCHOOL_STATUSES,
   SHORT_CODE_PATTERN,
   type SchoolStatus,
+  RELATIONSHIPS,
+  STUDENT_STATUSES,
+  type Relationship,
+  type StudentStatus,
 } from '@asms/shared';
 import { CnicField, DiffersFrom, EmailField, trimLower } from '../../common/fields';
 import { SCHOOL_ROLES, type SchoolRole } from '../access/permissions.service';
+import { StudentCurrentEnrolmentDto } from '../people/students/students.dto';
 
 // contracts/slice-2.md §3 and §4.
 
@@ -144,6 +149,39 @@ export class MeDto {
   /** Teacher assignments active today, cover included; [] without staff capacity (slice-9 §2.2). */
   @ApiProperty({ type: () => MeAssignmentDto, isArray: true })
   assignments: MeAssignmentDto[];
+
+  /** The caller's staff id, so a client can tell its own authorship (contracts/slice-13.md §1.2). */
+  @ApiProperty({ type: String, nullable: true })
+  staffId: string | null;
+
+  /**
+   * The guardian scope's children with their current enrolment, by name; [] without guardian
+   * capacity (contracts/slice-13.md §1.2, §2.2). The app composes the guardian tab from it (R156).
+   */
+  @ApiProperty({ type: () => MyChildDto, isArray: true })
+  children: MyChildDto[];
+}
+
+/**
+ * A child in the guardian's scope (contracts/slice-13.md §2.2). Nothing else: no admission number,
+ * no identity number, no photo, nothing about another guardian (R165).
+ */
+export class MyChildDto {
+  @ApiProperty({ type: String })
+  studentId: string;
+
+  @ApiProperty()
+  fullName: string;
+
+  @ApiProperty({ enum: STUDENT_STATUSES, enumName: 'StudentStatus' })
+  status: StudentStatus;
+
+  /** This guardian's own link. */
+  @ApiProperty({ enum: RELATIONSHIPS, enumName: 'Relationship' })
+  relationship: Relationship;
+
+  @ApiProperty({ type: StudentCurrentEnrolmentDto, nullable: true })
+  current: StudentCurrentEnrolmentDto | null;
 }
 
 // ----------------------------------------------------------- contracts/slice-9.md §2.2, §3

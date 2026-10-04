@@ -21,7 +21,7 @@ import type { testDb, TestSchool } from '../support/schools';
 
 type Db = ReturnType<typeof testDb>;
 
-export const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+export const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
 
 /** A guardian with a login and nothing else: a parent-only account. */
 export async function createGuardianUser(

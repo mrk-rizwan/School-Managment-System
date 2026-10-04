@@ -3,6 +3,7 @@ import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode, type AcademicYearStatus } from '@asms/shared';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { readLocked } from '../../common/locking';
+import { daysBetween } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { toPage, type Page } from '../../common/pagination';
 import {
@@ -24,7 +25,6 @@ const SUBJECT = 'academic_year';
 
 /** A typo guard on the year's span (contract §2.3). */
 const MAX_SPAN_DAYS = 731;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function toAcademicYearDto(year: AcademicYearRecord): AcademicYearDto {
   return {
@@ -40,7 +40,7 @@ export function toAcademicYearDto(year: AcademicYearRecord): AcademicYearDto {
 
 /** endsOn after startsOn, within MAX_SPAN_DAYS; reported on endsOn (contract §2.3). */
 function assertSpan(startsOn: Date, endsOn: Date): void {
-  const days = (endsOn.getTime() - startsOn.getTime()) / DAY_MS;
+  const days = daysBetween(startsOn, endsOn);
   if (days <= 0) {
     throw fieldRefused('endsOn', ErrorCode.INVALID_VALUE, 'endsOn must be after startsOn');
   }

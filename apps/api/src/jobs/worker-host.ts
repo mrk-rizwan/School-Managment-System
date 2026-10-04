@@ -30,10 +30,14 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   { job: JOB.stagedUploadSweep, pattern: '0 30 2 * * *' },
   // Daily at 03:00 school time: sessions ended more than 90 days ago, with their devices (§1.5).
   { job: JOB.sessionPurge, pattern: '0 0 3 * * *' },
+  // contracts/slice-11.md §8.4, §8.3: unrecorded registers after each school's deadline, and the
+  // nightly attendance recompute at 00:30 school time.
+  { job: JOB.registerDeadlineSweep, every: 5 * MINUTE },
+  { job: JOB.attendanceNightlyRecompute, pattern: '0 30 0 * * *' },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */
-const CONCURRENCY = { messaging: 10, scheduled: 1 } as const;
+const CONCURRENCY = { messaging: 10, scheduled: 1, attendance: 5 } as const;
 
 /**
  * Runs only in the worker process (ENV.WORKER, set by src/worker.ts): the BullMQ consumers of the
@@ -70,6 +74,10 @@ export class WorkerHost implements OnApplicationBootstrap, OnApplicationShutdown
       new Worker(QUEUE.scheduled, (job: Job) => this.runner.scheduled(job.name, plannedAt(job)), {
         connection,
         concurrency: CONCURRENCY.scheduled,
+      }),
+      new Worker(QUEUE.attendance, (job: Job) => this.runner.attendance(job.name, job.data), {
+        connection,
+        concurrency: CONCURRENCY.attendance,
       }),
     ];
     for (const worker of this.workers) {

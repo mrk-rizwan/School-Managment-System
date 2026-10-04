@@ -2,9 +2,9 @@
   "name": "@asms/web",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3460",
     "build": "next build",
-    "start": "next start --port 3000",
+    "start": "next start --port 3460",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "api:generate": "openapi-typescript ../api/openapi/school.json -o lib/api/school.d.ts --default-non-nullable false && openapi-typescript ../api/openapi/platform.json -o lib/api/platform.d.ts --default-non-nullable false",

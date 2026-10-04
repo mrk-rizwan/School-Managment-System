@@ -1040,6 +1040,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   },
   ...PHASE_2_GROUNDWORK_OBJECTS(),
   ...WAVE_E_GROUNDWORK_OBJECTS(),
+  ...SLICE_11_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -1536,6 +1537,12 @@ function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       name: 'asms_attendance_alert_status_final',
       definition: "DETAIL = 'constraint: attendance_alerts_status_final'",
     },
+    // Slice 11 review (migration 20261004140000): capped_at is the one column a final alert takes, once.
+    {
+      kind: 'function',
+      name: 'asms_attendance_alert_status_final',
+      definition: "DETAIL = 'constraint: attendance_alerts_capped_at_immutable'",
+    },
     {
       kind: 'function',
       name: 'asms_staff_attendance_not_self',
@@ -1711,7 +1718,7 @@ function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       table: 'attendance_marks',
       name: 'attendance_marks_history',
       definition:
-        "BEFORE UPDATE ON public.attendance_marks FOR EACH ROW EXECUTE FUNCTION asms_record_change('attendance_mark_changes', 'mark_id', 'reason_required', 'status', 'note')",
+        "BEFORE UPDATE ON public.attendance_marks FOR EACH ROW EXECUTE FUNCTION asms_record_change('attendance_mark_changes', 'mark_id', 'reason_required', 'status', 'note', 'arrived_at')",
     },
     ...noDeleteTriggers('attendance_marks'),
     {
@@ -1772,7 +1779,7 @@ function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       table: 'staff_attendance',
       name: 'staff_attendance_columns_immutable',
       definition:
-        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date')",
+        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date', 'marked_by', 'marked_at')",
     },
     {
       kind: 'trigger',
@@ -2108,4 +2115,16 @@ export async function checkExpectedObjects(
     }
   }
   return violations;
+}
+
+/** Slice 11 (migration 20261004131100_slice11_attendance, contracts/slice-11.md §12). */
+function SLICE_11_OBJECTS(): ExpectedObject[] {
+  return [
+    {
+      kind: 'index',
+      table: 'attendance_daily_summary',
+      name: 'attendance_daily_summary_stale_idx',
+      definition: 'USING btree (school_id, date) WHERE (computed_version <> version)',
+    },
+  ];
 }

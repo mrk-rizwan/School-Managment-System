@@ -19,10 +19,12 @@ import {
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
 import {
   createClassWithSection,
+  createGuardian,
   createStudent,
   enrol,
   type TestStudent,
 } from '../support/students';
+import { guardianLogin } from '../diary/support';
 import { EXIF_MARKER, gif, html, jpegWithExif, pdf, pixelBombPng, png, svg } from './fixtures';
 
 const ORIGIN = new URL(loadEnv().APP_URL).origin;
@@ -124,13 +126,16 @@ describe('uploads and documents (e2e)', () => {
   });
 
   describe('POST /uploads', () => {
-    it('401 without a session, 403 for a teacher (no document.upload)', async () => {
+    // R171 (contracts/slice-13.md §7) widened the route to diary.write and both announcement
+    // capabilities, so a teacher may stage a file now; a guardian holds none of the four.
+    it('401 without a session, 403 for a caller holding no upload capability (a guardian)', async () => {
       const anon = await http()
         .post('/api/v1/uploads')
         .set('Origin', ORIGIN)
         .attach('file', await png(), 'a.png');
       expect(anon.status).toBe(401);
-      const res = await upload(await png(), teacher);
+      const guardian = await guardianLogin(db, school, await createGuardian(db, school));
+      const res = await upload(await png(), guardian.cookie);
       expect(res.status).toBe(403);
     });
 

@@ -5,6 +5,10 @@ import {
   CustomRoleRepository,
   type UserCustomRole,
 } from '../../repositories/custom-role.repository';
+import {
+  StudentGuardianRepository,
+  type GuardianChildLink,
+} from '../../repositories/student-guardian.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { UserRepository, type UserStatusValue } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
@@ -15,7 +19,9 @@ import {
   datedScopeSections,
   scopeAll,
   scopeSections,
+  scopeStudents,
 } from '../../tenancy/scope.mint';
+import { notFound } from '../../common/errors/api-exception';
 import { SchoolClock } from '../../common/school-clock';
 import {
   capabilityOrder,
@@ -23,6 +29,7 @@ import {
   type EffectiveLine,
   type GrantInput,
 } from './effective-permissions';
+import { notAssignedOnDate } from './access.errors';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -47,6 +54,8 @@ export interface UserAccess {
   status: UserStatusValue;
   staffId: bigint | null;
   guardianId: bigint | null;
+  /** users.student_id; the student capacity also needs the student active (Capacities.student). */
+  studentId: bigint | null;
   capacities: Capacities;
   /** Live system-role rows, whatever the staff status (the users screen shows them). */
   systemRoles: readonly SystemRole[];
@@ -81,6 +90,7 @@ export class PermissionsService {
     private readonly customRoles: CustomRoleRepository,
     private readonly grants: CapabilityGrantRepository,
     private readonly assignments: TeacherAssignmentRepository,
+    private readonly studentGuardians: StudentGuardianRepository,
     private readonly clock: SchoolClock,
   ) {}
 
@@ -115,6 +125,7 @@ export class PermissionsService {
       status: row.status,
       staffId: row.staffId,
       guardianId: row.guardianId,
+      studentId: row.studentId,
       capacities: {
         staff,
         guardian: row.guardianId !== null,
@@ -224,6 +235,53 @@ export class PermissionsService {
         ? new Map()
         : await this.assignments.sectionsOn(schoolId, access.staffId, on);
     return datedScopeSections(on, sections);
+  }
+
+  /**
+   * The refusal of a dated, role-aware read or write whose dated scope does not reach the section
+   * (main-thread ruling 2026-10-04): 403 not_assigned_on_date when the caller has ever held an
+   * assignment reaching it (the section is theirs on other dates, so 404 would hide nothing), else
+   * 404, the same body as absent. Used by attendance registers (slice-11 §1.2) and diary writes
+   * (slice-13 §1.3) alike.
+   */
+  async refuseOutsideDate(session: SchoolSessionContext, sectionId: bigint): Promise<never> {
+    const { staffId } = session.access;
+    if (staffId !== null && (await this.assignments.everAssigned(session.schoolId, staffId, sectionId))) {
+      throw notAssignedOnDate();
+    }
+    throw notFound();
+  }
+
+  /**
+   * The row scope of a @RequireCapacity route (contracts/slice-13.md §1.2), bound by the access
+   * guard exactly as a capability scope is. The caller's capacity was checked by the guard.
+   */
+  async capacityScope(
+    schoolId: SchoolId,
+    access: UserAccess,
+    capacity: 'guardian' | 'student',
+  ): Promise<Scope> {
+    if (capacity === 'student') {
+      // Student capacity already requires the student active and student login enabled.
+      return scopeStudents(access.studentId === null ? [] : [access.studentId]);
+    }
+    return (await this.guardianChildren(schoolId, access)).scope;
+  }
+
+  /**
+   * The guardian's children (R163): live links with `can_login`, the guardian not merged, whatever
+   * the child's enrolment or status (R164). One read per request, never cached (R69). No guardian
+   * capacity, or no such link: an empty scope, which matches no row.
+   */
+  async guardianChildren(
+    schoolId: SchoolId,
+    access: UserAccess,
+  ): Promise<{ scope: Scope; children: GuardianChildLink[] }> {
+    const children =
+      access.capacities.guardian && access.guardianId !== null
+        ? await this.studentGuardians.liveLoginChildren(schoolId, access.guardianId)
+        : [];
+    return { scope: scopeStudents(children.map((c) => c.studentId)), children };
   }
 
   /**

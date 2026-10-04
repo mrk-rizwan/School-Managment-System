@@ -1,0 +1,38 @@
+# slice-15 §11, §13.3 — CI only. The API runs with MOBILE_MIN_APP_VERSION=99.0.0, so the first
+# request (the login) is 426: only the update screen renders, with the minimum version.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.schoolCode'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.schoolCode'
+- inputText: ${SCHOOL_CODE}
+- tapOn:
+    id: 'signIn.identity'
+- inputText: ${PRINCIPAL_CNIC}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PRINCIPAL_CNIC}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'update.screen'
+    timeout: 30000
+- assertVisible:
+    id: 'update.minimumVersion'
+- assertVisible:
+    text: 'Required version: 99.0.0'
+- assertVisible:
+    id: 'update.installedVersion'
+- assertVisible:
+    id: 'update.openStore'
+- assertNotVisible:
+    id: 'tabs.home'
+- assertNotVisible:
+    id: 'signIn.submit'

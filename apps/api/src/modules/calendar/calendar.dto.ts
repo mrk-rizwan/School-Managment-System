@@ -102,6 +102,9 @@ export class CalendarHolidayDto {
 
   @ApiProperty(KIND)
   kind: HolidayKind;
+
+  @ApiProperty({ description: 'False: a teaching holiday on which staff still work' })
+  appliesToStaff: boolean;
 }
 
 export class TeachingDaysDto {
@@ -134,6 +137,9 @@ export class MyCalendarHolidayDto {
 
   @ApiProperty(KIND)
   kind: HolidayKind;
+
+  @ApiProperty({ description: 'False: a teaching holiday on which staff still work' })
+  appliesToStaff: boolean;
 }
 
 export class MyCalendarDto {

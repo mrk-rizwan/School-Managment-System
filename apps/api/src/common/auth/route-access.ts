@@ -143,7 +143,16 @@ export class RouteAccessGuard implements CanActivate {
       throw permissionDenied();
     }
     const capacity = read<RouteCapacity>(CAPACITY);
-    if (capacity !== undefined && !session.access.capacities[capacity]) throw permissionDenied();
+    if (capacity !== undefined) {
+      if (!session.access.capacities[capacity]) throw permissionDenied();
+      // The capacity scope (contracts/slice-13.md §1.2): the guardian's linked children or the
+      // student's own id, bound like a capability scope so services read scopeOf(session) on
+      // every route. A guardian with no live login link is permitted and reads no rows.
+      bindRequestScope(
+        req,
+        await this.permissions.capacityScope(session.schoolId, session.access, capacity),
+      );
+    }
     const capabilities = read<readonly Capability[]>(CAPABILITY);
     if (capabilities !== undefined) {
       const scope = await this.permissions.canAny(session.schoolId, session.access, capabilities);

@@ -18,6 +18,9 @@ import { AdmissionsModule } from './modules/people/admissions/admissions.module'
 import { DocumentsModule } from './modules/documents/documents.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { MeModule } from './modules/me/me.module';
+import { StaffAttendanceModule } from './modules/staff-attendance/staff-attendance.module';
+import { DiaryModule } from './modules/diary/diary.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { MessagingRoutesModule } from './modules/messaging/messaging-routes.module';
@@ -53,6 +56,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
     JobsModule,
     CalendarModule,
     MeModule,
+    StaffAttendanceModule,
+    DiaryModule,
+    AttendanceModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

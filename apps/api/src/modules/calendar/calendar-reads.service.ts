@@ -1,29 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { ErrorCode, teachingDays } from '@asms/shared';
-import { fieldRefused } from '../../common/errors/api-exception';
+import { teachingDays } from '@asms/shared';
 import { SchoolContext } from '../../common/school-context';
-import { fromDateString, toDateString } from '../academics/academics.shared';
+import { parseRange as parseDateRange, toDateString } from '../academics/academics.shared';
 import type { CalendarRangeQueryDto, MyCalendarDto, TeachingDaysDto } from './calendar.dto';
 import { CalendarService } from './calendar.service';
 
 /** At most 366 days inclusive (§5.1). */
 const MAX_RANGE_DAYS = 365;
-const DAY_MS = 86_400_000;
 
 /** dateTo ≥ dateFrom and within 366 days inclusive; 422 on dateTo. */
-function parseRange(query: CalendarRangeQueryDto): { from: Date; to: Date } {
-  const from = fromDateString(query.dateFrom);
-  const to = fromDateString(query.dateTo);
-  const days = (to.getTime() - from.getTime()) / DAY_MS;
-  if (days < 0 || days > MAX_RANGE_DAYS) {
-    throw fieldRefused(
-      'dateTo',
-      ErrorCode.INVALID_VALUE,
-      `dateTo must be on or after dateFrom and at most ${MAX_RANGE_DAYS} days after it`,
-    );
-  }
-  return { from, to };
-}
+export const parseRange = (query: CalendarRangeQueryDto): { from: Date; to: Date } =>
+  parseDateRange(query.dateFrom, query.dateTo, MAX_RANGE_DAYS);
 
 /** GET /calendar/teaching-days and GET /me/calendar (contracts/slice-10.md §5). */
 @Injectable()
@@ -47,6 +34,7 @@ export class CalendarReadsService {
         endsOn: toDateString(h.endsOn),
         name: h.name,
         kind: h.kind,
+        appliesToStaff: h.appliesToStaff,
       })),
     };
   }
@@ -64,6 +52,7 @@ export class CalendarReadsService {
         endsOn: toDateString(h.endsOn),
         name: h.name,
         kind: h.kind,
+        appliesToStaff: h.appliesToStaff,
       })),
     };
   }

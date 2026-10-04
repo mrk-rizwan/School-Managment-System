@@ -189,6 +189,18 @@ const RAW_SQL_FILES = [
   // history triggers; reads and writes no table, so it has no isolation test of its own
   // (change-context.repository.spec.ts proves the settings die with the transaction).
   'src/repositories/change-context.repository.ts',
+  // Slice 11 (contracts/slice-11.md): the register and mark upserts on their natural keys, the
+  // FOR SHARE / FOR UPDATE locks of §1.6, time columns as HH:MM, the stale-summary scans and the
+  // reports over the materialised tables. Each statement filters school_id on every table it
+  // reads (test/attendance/repositories.e2e-spec.ts).
+  'src/repositories/attendance-register.repository.ts',
+  'src/repositories/attendance-mark.repository.ts',
+  'src/repositories/attendance-alert.repository.ts',
+  'src/repositories/attendance-summary.repository.ts',
+  'src/repositories/attendance-report.repository.ts',
+  // Slice 12: the two staff_attendance row locks (SELECT ... FOR UPDATE in staff_id order), each
+  // filtering school_id (test/staff-attendance/isolation.e2e-spec.ts).
+  'src/repositories/staff-attendance.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans

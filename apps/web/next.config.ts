@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 // The browser talks to the API on this origin only: /api/* is proxied to the Nest process on
 // loopback, so the session cookie is first-party and no CORS configuration exists anywhere.
-const apiPort = process.env.API_PORT || '3001';
+const apiPort = process.env.API_PORT || '3461';
 
 // Static security headers for every response. The Content-Security-Policy is not here: it
 // carries a per-request nonce, so it is set in proxy.ts (see the comment there).

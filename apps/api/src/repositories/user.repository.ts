@@ -469,4 +469,32 @@ export class UserRepository {
       select: { id: true },
     });
   }
+
+  /**
+   * contracts/slice-11.md §8.4's register watcher candidates: active staff users with a live principal or office_staff role, a
+   * live grant of `capability`, or a live custom role holding it. The caller confirms each through
+   * PermissionsService.load (revokes and scope honoured). Ascending user ids.
+   */
+  async watcherCandidates(
+    schoolId: SchoolId,
+    capability: string,
+  ): Promise<{ userId: bigint; staffId: bigint }[]> {
+    const rows = await this.txHost.tx.$queryRaw<{ id: bigint; staff_id: bigint }[]>`
+      SELECT u.id, u.staff_id FROM users u
+       WHERE u.school_id = ${schoolId} AND u.status = 'active' AND u.staff_id IS NOT NULL
+         AND (EXISTS (SELECT 1 FROM user_roles ur
+                       WHERE ur.school_id = u.school_id AND ur.user_id = u.id AND ur.ended_at IS NULL
+                         AND (ur.system_role IN ('principal', 'office_staff')
+                              OR EXISTS (SELECT 1 FROM custom_role_capabilities crc
+                                          WHERE crc.school_id = ur.school_id
+                                            AND crc.custom_role_id = ur.custom_role_id
+                                            AND crc.capability_key = ${capability}
+                                            AND crc.removed_at IS NULL)))
+              OR EXISTS (SELECT 1 FROM user_capability_grants g
+                          WHERE g.school_id = u.school_id AND g.user_id = u.id
+                            AND g.capability_key = ${capability} AND g.effect = 'grant'
+                            AND g.revoked_at IS NULL))
+       ORDER BY u.id`;
+    return rows.map((r) => ({ userId: r.id, staffId: r.staff_id }));
+  }
 }

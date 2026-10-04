@@ -1,7 +1,8 @@
 // Control 4 / R62 for the wave-E diary and remark tables (migration
-// 20261004120000_phase2_attendance_diary). No repository exists yet, so each probe drives the
-// guarded client exactly as a tenant repository will. Slice 13 replaces the probes with its
-// repositories' methods and keeps the titles.
+// 20261004120000_phase2_attendance_diary), at the table: each probe drives the guarded client and
+// proves the composite foreign keys refuse a cross-school parent. The slice-13 repositories are
+// held to the same standard through their own methods in repositories.e2e-spec.ts;
+// diary_entry_changes has no repository (only the history trigger writes it), so its probe stays.
 import type { SchoolId } from '../../src/tenancy/school-id';
 import { asSchool, withChangeContext } from '../attendance/support';
 import { expectIsolated } from '../support/isolation';

@@ -102,11 +102,42 @@ const toRecord = ({ user, ...row }: Row): StudentRecord => ({ ...row, userId: us
 /**
  * The row scope over students (plan §3.4, contract §1): in scope when the student has an `active`
  * enrolment in one of the scope's sections. `all` adds no condition; an empty list matches no row.
- * Every repository over student-linked rows applies it through this one definition.
+ * A `students` scope (guardian or student capacity, contracts/slice-13.md §1.2) is exactly its
+ * ids with **no enrolment condition**: a guardian keeps a child who is no longer active while the
+ * link is live (R164), history included. It is an `id` condition, so callers combine it with AND,
+ * never by spreading it next to an `id`. Every repository over student-linked rows applies it
+ * through this definition (or studentInScopeOn, its form for a read gated on the row's date; raw
+ * SQL uses studentInScopeSql in attendance-sql.ts, the same predicate).
  */
 export function studentInScope(scope: Scope): Prisma.StudentWhereInput {
-  if (scope.kind === 'all') return {};
-  return { enrolments: { some: { status: 'active', sectionId: { in: [...scope.ids] } } } };
+  switch (scope.kind) {
+    case 'all':
+      return {};
+    case 'students':
+      return { id: { in: [...scope.ids] } };
+    case 'sections':
+      return { enrolments: { some: { status: 'active', sectionId: { in: [...scope.ids] } } } };
+  }
+}
+
+/**
+ * studentInScope for a read the caller gated on the row's own date with a dated scope turned into
+ * a Scope (`rowScope`, contracts/slice-10.md §7.2): a section scope admits a student with an
+ * enrolment in one of its sections **in force on `on`**, whatever that enrolment's status now, so
+ * a child who has since moved or left keeps their day on the register they were marked in (R174).
+ * `all` and `students` are exactly studentInScope.
+ */
+export function studentInScopeOn(scope: Scope, on: Date): Prisma.StudentWhereInput {
+  if (scope.kind !== 'sections') return studentInScope(scope);
+  return {
+    enrolments: {
+      some: {
+        sectionId: { in: [...scope.ids] },
+        startedOn: { lte: on },
+        OR: [{ endedOn: null }, { endedOn: { gte: on } }],
+      },
+    },
+  };
 }
 
 /**
@@ -156,7 +187,8 @@ export class StudentRepository {
   /** Scoped: a student outside the scope reads as absent (404, contract §1). */
   async findById(schoolId: SchoolId, scope: Scope, id: bigint): Promise<StudentRecord | null> {
     const row = await this.txHost.tx.student.findFirst({
-      where: { schoolId, id, ...studentInScope(scope) },
+      // AND, not a spread: a `students` scope is itself an `id` condition.
+      where: { schoolId, id, AND: [studentInScope(scope)] },
       select: SELECT,
     });
     return row && toRecord(row);

@@ -8,7 +8,10 @@ import type {
   PlatformSettingsDto,
   SchoolDto as PlatformSchoolDto,
 } from '../lib/api/platform-messaging-contract';
+import type { RegisterViewDto, SectionDayDto } from '../lib/api/school-attendance-contract';
 import type { HolidayDto, TeachingDaysDto } from '../lib/api/school-calendar-contract';
+import type { DiaryEntryDto } from '../lib/api/school-diary-contract';
+import type { MyStaffAttendanceDto, StaffDayDto } from '../lib/api/school-staff-attendance-contract';
 import type { MeDto, UserDto } from '../lib/api/school-contract';
 import type {
   MessagingUsageDto,
@@ -51,6 +54,8 @@ const PRINCIPAL_ME: MeDto = {
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],
+  staffId: null,
+  children: [],
 };
 
 const YEARS: AcademicYearDto[] = [
@@ -351,6 +356,92 @@ const TEACHING_DAYS: TeachingDaysDto = {
   weeklyOffDays: [0],
   holidays: [],
 };
+// Wave E (contracts/slice-11.md, slice-12.md, slice-13.md): attendance, staff attendance, diary.
+const SECTION_DAYS: SectionDayDto[] = [
+  {
+    sectionId: 'sec-a',
+    sectionName: 'A',
+    classId: 'c5',
+    className: 'Class 5',
+    academicYearId: 'y1',
+    date: '2026-10-04',
+    mode: 'daily',
+    rosterCount: 38,
+    registersExpected: 1,
+    registersRecorded: 0,
+    recorded: false,
+    submittedBy: null,
+    submittedByName: null,
+    submittedAt: null,
+    classTeacherName: 'Ayesha Malik',
+    classTeacherStaffId: 'st-ayesha',
+    coverStaffName: 'Muhammad Bilal Ahmed Qureshi',
+    coverStaffIds: ['st-bilal'],
+    declaredHolidayAfter: false,
+  },
+];
+const REGISTER_VIEW: RegisterViewDto = {
+  section: { id: 'sec-a', name: 'A', classId: 'c5', className: 'Class 5', academicYearId: 'y1', attendanceMode: 'daily' },
+  date: '2026-10-04',
+  period: 1,
+  periodsPerDay: 8,
+  teachingDay: true,
+  register: null,
+  roster: ['Ali Khan', 'Fatima Zahra Siddiqui', 'Muhammad Abdullah bin Tariq Chaudhry'].map((name, i) => ({
+    enrolmentId: `e${i + 1}`,
+    studentId: `st-s${i + 1}`,
+    studentFullName: name,
+    rollNo: i + 1,
+    onRoster: true,
+    mark: null,
+    alert: null,
+  })),
+  canSubmit: true,
+  amendable: true,
+  callerRole: 'all',
+};
+const STAFF_DAY: StaffDayDto[] = STAFF.map((s) => ({
+  staffId: s.id,
+  fullName: s.fullName,
+  designation: s.designation,
+  staffStatus: s.status,
+  mark: null,
+}));
+const MY_ATTENDANCE: MyStaffAttendanceDto = {
+  staffId: 'st1',
+  dateFrom: '2026-10-01',
+  dateTo: '2026-10-31',
+  workingDays: 26,
+  present: 3,
+  absent: 0,
+  late: 0,
+  onLeave: 0,
+  unrecorded: 23,
+  days: [],
+};
+const DIARY: DiaryEntryDto[] = [
+  {
+    id: 'd1',
+    sectionId: 'sec-a',
+    classId: 'c5',
+    academicYearId: 'y1',
+    date: '2026-10-04',
+    subjectId: 'sub-m',
+    subjectName: 'Mathematics',
+    authorStaffId: 'st1',
+    authorName: 'Ayesha Malik',
+    topic: 'Fractions: adding and subtracting fractions with unlike denominators, worked examples',
+    assignment: 'Exercise 4.2, questions 1 to 10, in the homework copy',
+    learningOutcome: null,
+    dueOn: '2026-10-06',
+    hasAttachment: true,
+    attachmentMime: 'image/jpeg',
+    attachmentSizeBytes: 182000,
+    editWindowEndsOn: '2026-10-07',
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+];
 const PLATFORM_SETTINGS: PlatformSettingsDto = { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], updatedAt: STAMP };
 const healthRow = (schoolId: string, name: string, shortCode: string): PlatformDeliveryHealthDto => ({
   schoolId,
@@ -468,6 +559,11 @@ async function mockApi(page: Page, session: Session) {
       '/students/st-s1/status-changes': [],
       '/students/st-s1/documents': [],
       '/students/st-s3/guardian-links': [],
+      '/attendance-registers': SECTION_DAYS,
+      '/attendance-reports/daily-summary': [],
+      '/attendance-reports/absentees': [],
+      '/staff-attendance': STAFF_DAY,
+      '/sections/sec-a/diary-entries': DIARY,
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -482,6 +578,9 @@ async function mockApi(page: Page, session: Session) {
       '/students/st-s1': STUDENTS[0],
       '/students/st-s3': STUDENTS[2],
       '/custom-roles/cr1': CUSTOM_ROLES[0],
+      '/sections/sec-a': SECTIONS[0],
+      '/sections/sec-a/register': REGISTER_VIEW,
+      '/me/staff/attendance': MY_ATTENDANCE,
     };
     if (one[path]) return json(200, one[path]);
     unmocked.push(`${method} ${path}`);
@@ -526,6 +625,14 @@ const SCREENS: Screen[] = [
   { path: '/custom-roles', heading: 'Custom roles', session: 'school' },
   { path: '/custom-roles/new', heading: 'New custom role', session: 'school' },
   { path: '/custom-roles/cr1', heading: 'Accounts clerk', session: 'school' },
+  { path: '/attendance', heading: 'Attendance', session: 'school' },
+  { path: '/attendance/register?section=sec-a', heading: 'Attendance register', session: 'school' },
+  { path: '/attendance/summary', heading: 'Attendance', session: 'school' },
+  { path: '/attendance/reports', heading: 'Attendance', session: 'school' },
+  { path: '/staff-attendance', heading: 'Staff attendance', session: 'school' },
+  { path: '/my-attendance', heading: 'My attendance', session: 'school' },
+  { path: '/diary', heading: 'Diary', session: 'school' },
+  { path: '/sections/sec-a/diary', heading: 'Class 5 A diary', session: 'school' },
   // Platform console
   { path: '/platform/login', heading: 'Platform sign in', session: 'none' },
   { path: '/platform/enrol', heading: 'Set up your authenticator', session: 'platform-enrolment' },
@@ -564,7 +671,7 @@ for (const screen of SCREENS) {
     await expect(heading.first()).toBeVisible();
     await page.waitForLoadState('networkidle');
     // The URL did not move away (a redirect would mean the session mock was wrong for the screen).
-    expect(new URL(page.url()).pathname).toBe(screen.path.split('#')[0]);
+    expect(new URL(page.url()).pathname).toBe(screen.path.split(/[?#]/)[0]);
     expect(unmocked).toEqual([]);
     const widths = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,

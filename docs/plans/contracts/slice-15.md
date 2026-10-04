@@ -53,7 +53,7 @@ party is a decision not taken; see §10), the suspended-school banner (slice-9 �
 | Google Play developer account, Expo (EAS) account | Owner, pending | None for a local dev build; needed for the internal-testing track and for cloud builds (§2.6) |
 | Android `applicationId` | **Open — owner decision.** It is permanent once published. Recommended: a reverse domain the owner controls (for example `com.devjour.asms`); the dev build uses `com.devjour.asms.dev` so both can be installed side by side | The dev build can start with the recommendation; **the first Play upload cannot happen until the owner confirms it** |
 | Android SDK on the build machine | **Not found on this machine** (§15) | Local `expo run:android` and local Maestro are impossible until installed; everything in §13.4 "must pass locally" still runs |
-| 401 handling: "pause the queue" (R157) versus "any 401 wipes the SQLite store" (R155, §4.7) | **Inconsistent in the approved plan**; reconciled in §7.6, flagged for the wave-E `security-reviewer` | Does not block 15 (its only lane carries a push token, which is not sensitive data); it decides what slice 16's offline registers survive |
+| 401 handling: "pause the queue" (R157) versus "any 401 wipes the SQLite store" (R155, §4.7) | **Decided 2026-10-04** (wave-E security review, accepted by the main thread): unsent writes of the same user survive a `401` for at most 7 days (§7.6); R155 and §4.7 amended | Does not block 15 (its only lane carries a push token, which is not sensitive data); it decides what slice 16's offline registers survive |
 | Register item 30 (privileged capabilities on a default password) | Open; not needed by Phase 2 | None |
 
 No other decision is open. The plan's §1.2 answers (Android only, owner-made Firebase project,
@@ -192,7 +192,7 @@ If a third consumer appears later, the generated types and `createSchoolClient` 
 
 | Profile | Built how | `EXPO_PUBLIC_API_URL` | Notes |
 |---|---|---|---|
-| `development` | `expo run:android` (needs the Android SDK) or EAS `development` (dev client, APK) | emulator: `http://10.0.2.2:3001` (the host's loopback, which is where the API binds — README); device: `http://127.0.0.1:3001` with `adb reverse tcp:3001 tcp:3001` | Cleartext is allowed **only here**, by the `android:usesCleartextTraffic="true"` that Expo prebuild writes to the **debug** manifest; `applicationId` suffix `.dev` |
+| `development` | `expo run:android` (needs the Android SDK) or EAS `development` (dev client, APK) | emulator: `http://10.0.2.2:3461` (the host's loopback, which is where the API binds — README); device: `http://127.0.0.1:3461` with `adb reverse tcp:3461 tcp:3461` | Cleartext is allowed **only here**, by the `android:usesCleartextTraffic="true"` that Expo prebuild writes to the **debug** manifest; `applicationId` suffix `.dev` |
 | `preview` | EAS `preview` (internal APK) | `https://<staging-api>` | Play internal testing |
 | `production` | EAS `production` (AAB) | `https://<api>` | |
 
@@ -541,26 +541,43 @@ Offline is a **banner state**, not an error state: lists show cached data with "
 to the device and say so. The worker never trusts the flag alone — a request is attempted when the
 flag is online and the outcome decides.
 
-### 7.6 The 401 question — pause versus wipe (needs the wave-E security review's confirmation)
+### 7.6 The 401 question — pause versus wipe (decided 2026-10-04)
 
-The plan says both "`401` pauses the queue and asks for sign-in" (R157) and "sign-out and any
+The plan said both "`401` pauses the queue and asks for sign-in" (R157) and "sign-out and any
 `401` wipe the SQLite store" (R155, §4.7). Read literally, a teacher whose session idles out on a
 Friday (14-day idle for staff; a long leave) loses Friday's unsent register — the exact case the
-outbox exists for. This contract **proposes** the narrow reconciliation below and asks the
-`security-reviewer` to confirm or refuse it in the wave-E review; it is written so either answer is
-a one-function change in `database.ts`.
+outbox exists for. The wave-E `security-reviewer` was asked to choose; its answer was **keep, with
+a window**, and the main thread accepted it. R155 and plan §4.7 are amended to match.
 
-**Proposed rule.** On any `401`: the token and session ids are removed; **every `cache` row and
-every `done`/`failed` outbox row are deleted; TanStack Query is cleared; `pending` and `sending`
-outbox rows survive**, bound to `meta.user_id`/`school_id`. The queue is `paused`. At the next
-successful sign-in: same `user_id` and `school_id` → the queue resumes; a different user, or
-"forget me", or sign-out → full wipe. The sign-in screen says how many unsent items wait and
-offers "discard them". **Fallback if refused:** the strict reading — full wipe on `401`, and the
-sign-in screen says "`n` unsent items were discarded because your session ended" with the lane
-names and dates, so nothing is lost silently.
+**The rule.** On any `401` to the current token (a `401` to a token already replaced is not a loss,
+§6): the token and session ids leave the secure store; **every `cache` row and every
+`done`/`failed` outbox row are deleted; TanStack Query is cleared; `pending` and `sending` outbox
+rows survive**, bound to `meta.user_id`/`school_id`, and `meta.session_lost_at` is stamped (the
+first loss counts; a second `401` does not extend it). The queue is `paused`.
 
-Slice 15 is unaffected either way: its only lane carries a push token. Slice 16 inherits the
-confirmed answer.
+- **At most seven days.** At startup and before the queue resumes after a sign-in, if unsent rows
+  exist and `session_lost_at` is older than seven days, they are deleted and the screen says
+  "`n` unsent items were discarded because your session ended: <lane label> (<date>)". Nothing is
+  lost silently. Within the window, the same user's sign-in clears the stamp and the queue resumes.
+- **Same user only.** A different user, "forget me" or sign-out → full wipe (§4.6). The sign-in
+  screen says how many unsent items wait and offers "discard them".
+- **No owner, no write.** `enqueue` refuses when `meta` names no owner, so a row can never exist
+  that no sign-in will claim.
+- **Outbox bodies carry ids, never names** (binding on slice 16): a register row holds enrolment
+  ids and statuses, a diary entry its section id and text, a remark its enrolment id — never a
+  student's name, CNIC or phone. What survives a `401` for a week is then no more than what the
+  user typed, keyed by ids that mean nothing off the server.
+- **Escalation path.** If the app is ever shipped to shared devices without a screen lock (a staff
+  room tablet), the seven-day survival is not enough: the next step is an app PIN with the outbox
+  encrypted at rest under a key held in the secure store, not a shorter window.
+
+The at-rest residue of a wipe is handled in §4.6 and `database.ts`: `secure_delete` is on, a wipe
+checkpoints the WAL and leaves WAL mode before deleting the file (so no `-wal`/`-shm` sibling
+survives), and a wipe whose close fails is not reported complete — the rows are deleted through the
+open connection and the file is deleted at the next start. The release manifest says
+`android:allowBackup="false"` (CI greps it).
+
+Slice 15 is unaffected in substance: its only lane carries a push token. Slice 16 inherits the rule.
 
 ### 7.7 The sync status sheet (Account → Sync; also a header chip when anything is not `done`)
 
@@ -753,7 +770,7 @@ composite action later):
 | Seed | `pnpm --filter @asms/api seed:platform-admin`, then `pnpm --filter @asms/api seed:dev-school` — a **new idempotent script** `apps/api/scripts/seed-dev-school.ts` that creates one school (`demo`) with one principal from `DEV_SCHOOL_PRINCIPAL_CNIC` and prints `created` or `exists`, reusing the API's own services (not HTTP); it replaces the README's manual "First school and principal" steps for developers too |
 | Start the API | `pnpm --filter @asms/api build && node apps/api/dist/main.js &`, wait for `/health` |
 | Java and Android | `actions/setup-java@v4` (Temurin 17), `android-actions/setup-android@v3`, Gradle cache |
-| Prebuild and build | `expo prebuild --platform android --no-install`, release-manifest cleartext grep (§2.6), `./gradlew assembleDebug` with `EXPO_PUBLIC_API_URL=http://10.0.2.2:3001`, `EXPO_PUBLIC_PUSH_ENABLED=false` |
+| Prebuild and build | `expo prebuild --platform android --no-install`, release-manifest cleartext grep (§2.6), `./gradlew assembleDebug` with `EXPO_PUBLIC_API_URL=http://10.0.2.2:3461`, `EXPO_PUBLIC_PUSH_ENABLED=false` |
 | Emulator | `reactivecircus/android-emulator-runner@v2`: API 34, `google_apis`, `x86_64`, `-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim`, AVD snapshot cached by key |
 | Install and run | `adb install` the debug APK; `curl -Ls https://get.maestro.mobile.dev | bash` pinned by `MAESTRO_VERSION`; `maestro test maestro/flows/sign-in-shell-sign-out.yaml`; restart the API with `MOBILE_MIN_APP_VERSION=99.0.0`; `maestro test maestro/flows/update-required.yaml` |
 | Artefacts on failure | Maestro screenshots and the API log, 7 days |
@@ -854,8 +871,7 @@ per `CLAUDE.md`; a FAIL at any step returns the slice.
    build.
 4. **No Expo (EAS) account and no Play developer account yet** → no cloud build, no internal track;
    local `expo run:android` needs item 1.
-5. **§7.6 pause-versus-wipe** needs the security reviewer's confirmation in the wave-E review; it
-   does not block 15.
+5. **§7.6 pause-versus-wipe** — decided 2026-10-04: keep for the same user, at most 7 days.
 6. **pnpm isolated linker with Expo** is verified on day one with a stated fallback (§2.3).
 7. **Shared-file edits** this slice makes (`packages/shared` moves, web shims, CI job, API seed
    script) are main-thread edits under the wave process; the slice-15 agent must not edit them
@@ -880,7 +896,7 @@ per `CLAUDE.md`; a FAIL at any step returns the slice.
 - The scripted-day test: 16 adds the register, diary and inbox legs and keeps the 50 KB budget.
 - The Maestro job: 16 adds `register-offline.yaml` (airplane mode via `adb shell`) and the
   parent and principal flows to the same job.
-- The §7.6 answer, whichever it is.
+- The §7.6 rule: keep for the same user, at most 7 days; outbox bodies carry ids, never names.
 
 ---
 
@@ -901,8 +917,8 @@ per `CLAUDE.md`; a FAIL at any step returns the slice.
 8. Network failures never give up (backoff tops out at 30 minutes); `403/404/409/422` are terminal
    with the server's message and a per-lane remedy; `401` pauses; `426` blocks.
 9. On `401`, read caches are wiped and the token discarded at once; **pending writes survive for the
-   same user only** — proposed, pending the security reviewer (§7.6), with the strict wipe as the
-   stated fallback.
+   same user only, for at most seven days** (§7.6, decided 2026-10-04); past that they are
+   discarded and the user is told which.
 10. Foreground-only sync; no background tasks; no polling; no images before a tap.
 11. The native FCM token is registered (not an Expo push token); a build without
     `google-services.json` skips registration and logs it.

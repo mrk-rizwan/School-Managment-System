@@ -34,3 +34,34 @@ export const targetIsPrincipal = (): ApiException =>
     ErrorCode.TARGET_IS_PRINCIPAL,
     'A principal holds every permission; grants and revokes do not apply.',
   );
+
+/**
+ * A dated, role-aware write outside the caller's assignment on the row's date (contracts/
+ * slice-13.md §1.3, decision 13; R175): 403, not 404, because the section or student is visible
+ * to the caller. Slice 11 answers a register dated outside the assignment with the same refusal.
+ */
+export const notAssignedOnDate = (): ApiException =>
+  new ApiException(
+    403,
+    ErrorCode.PERMISSION_DENIED,
+    'You were not assigned to this class on that date.',
+    { reason: 'not_assigned_on_date' },
+  );
+
+/**
+ * A mark amendment whose `fromStatus` is not the stored status (contracts/slice-11.md §4.3,
+ * slice-12.md §4.3): the row changed since the client loaded it.
+ */
+export const staleStatus = (currentStatus: string): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.STALE_STATUS,
+    'The mark changed since you loaded it. Reload and try again.',
+    { currentStatus },
+  );
+
+/** Only the author, or a school-wide holder, may change another teacher's row (slice-13 §4.4, §5.3). */
+export const notAuthor = (): ApiException =>
+  new ApiException(403, ErrorCode.PERMISSION_DENIED, 'Only the author can change this.', {
+    reason: 'not_author',
+  });

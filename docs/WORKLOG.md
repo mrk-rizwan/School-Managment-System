@@ -11,12 +11,12 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1 complete and closed (CI green on `4dc5819`). **Phase 2 wave D done**
-  (2026-10-04): slices 9 (messaging core, worker, bearer sessions, devices) and 10 (calendar,
-  holidays, cover, section-change history). **Next: wave E** = slices 11 (student attendance),
-  12 (staff attendance), 13 (diary and remarks) and 15 (mobile foundation) in parallel, per
-  `docs/plans/phase-2-daily-operations.md`. Project progress ≈ 41.5 / 157 days ≈ 26 % (Phase 2
-  re-estimated at 42 days: both WhatsApp drivers).
+- **Phase:** Phase 1 complete and closed. **Phase 2 waves D and E done** (2026-10-04): slices 9,
+  10 (messaging, sessions, calendar) and 11, 12, 13, 15 (student and staff attendance, diary and
+  remarks, mobile foundation). **Next: wave F** = slices 14 (announcements) and 16 (mobile screens),
+  then wave G = slice 17 (phase close). Project progress ≈ 59.5 / 157 days ≈ 38 %.
+- **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
+  `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
   was **red** — the API test process ran out of heap on the runner after 17 of 72 suites (local
   Node allows 4.3 GB, the runner's 2 GB). Fixed by running Jest with two recycled workers
@@ -179,6 +179,66 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-04 — Phase 2 wave E: slices 11, 12, 13, 15 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
+
+**Groundwork** (`f7925ca`): attendance, staff attendance, diary and remarks schema; one generic
+history trigger reading `set_config('asms.actor_user_id'|'asms.change_reason', …, true)`
+(`ChangeContextRepository`), statement-level summary bump triggers, contracts for slices 11–13
+and 15.
+
+**Slice 11 (student attendance):** registers per section/date/period with a complete first
+submit, amendments with reasons and history, the amendment window, arrivals at the gate, the
+alert lifecycle (09:30 floor, sent only if every recorded period is still absent, corrections
+when the derived day changes, cap of three — `capped_at` marks a refused fourth), derived day
+status and percentages as one pure function in `packages/shared/src/attendance-calc.ts` (129
+table tests), per-enrolment day status and section summary with a version pair, nightly
+recompute, deadline sweep, the CalendarListener, `ATTENDANCE_RECORDED_AFTER` live.
+**Slice 12 (staff attendance):** day sheet, amend, not-self in service and trigger, working days
+via `isStaffWorkingDay`. **Slice 13 (diary and remarks):** the guardian/student `students`
+scope (bound on `@RequireCapacity` routes; `MeDto.children`, `MeDto.staffId`), diary entries
+with attachments and stored thumbnails, remarks with a supersede chain and visibility levels,
+`/me/children/*` and `/me/student/*` routes, `POST /uploads` widened (R171).
+**Slice 15 (mobile foundation):** `apps/mobile`, Expo SDK 57 / React Native 0.86 / React 19.2,
+Android, bearer sign-in, tabs composed from `/me`, SQLite cache and outbox with honest states,
+push wired but off until Firebase exists (`EXPO_PUBLIC_PUSH_ENABLED=false`), update screen,
+log scrubber. Exact versions are in the slice-15 build report: expo 57.0.26,
+react-native 0.86.3, react 19.2.3, expo-router 57.0.24, @tanstack/react-query 5.104.0,
+openapi-fetch 0.17.0, jest 29.7.0 + jest-expo 57.0.5, Maestro 2.11.0 (CI), JDK Temurin 17 (CI).
+**This machine has no Android SDK, JDK or Maestro**: the app has never run on a device; the CI
+`mobile` job (emulator + Maestro) is its first real run. Helpers `ApiError`/`describeApiError`
+and the date formatters moved into `packages/shared` with re-export shims in the web.
+
+**Decisions taken (owner to confirm where marked):**
+- Out-of-scope registers and diary: never assigned → 404; assigned on other dates → 403
+  `not_assigned_on_date` (one shared `refuseOutsideDate`).
+- Unsent mobile writes after a 401 survive **at most 7 days** for the same user, then are
+  discarded with a visible notice (security review confirmed; R155 amended). Outbox bodies
+  carry ids, never names (rule for slice 16).
+- **PROVISIONAL, owner to confirm before the first Play upload:** Android applicationId
+  `pk.asms.app` (`pk.asms.app.dev` for dev builds).
+- A subject teacher's whole-class row no longer reaches archived sections (slice-10 contract
+  amended).
+- The dev seed (`seed:dev-school`) refuses a non-local database unless `ALLOW_DEV_SEED=1`, and
+  requires `DEV_SCHOOL_PRINCIPAL_PHONE`.
+
+**Reviews:** API/web security PASS (four low, fixed: Scope on student-linked reads, stored
+thumbnails + throttle, 404/403 alignment, archived sections); mobile security PASS with
+conditions (two medium fixed: SQLite secure_delete + WAL removal on wipe, seed guard; four low
+fixed); correctness found no critical or high defect (cap-test assertion, `correctionsCapped`
+meaning, two web glitches, doc drift — fixed). Refactors: `withIdempotencyKey`, `diffMarks`,
+`daysBetween`/`assertRange`, `SchoolSettingsReader`, `name-reads`, one throttle guard, raw
+`FOR UPDATE` staff locks (+ `marked_by`/`marked_at` frozen), web `useMarkSheet` and one
+refusal-message table.
+
+**Results:** lint and typecheck clean in all packages; API 121 suites / 1,633 tests (2 skipped,
+real-provider); mobile 18 suites / 200 tests, `expo export` and `expo-doctor` clean; web build;
+Playwright 237/237 including the real-API specs; hook clean.
+
+**Left from this wave:** `/me` does not say where a capability comes from, so the web may show a
+teacher with a school-wide grant fewer diary/remark controls than the server allows (never more);
+slice 16 should add the source to `/me`. The thumbnail pipeline and webhook counters are
+in-process. The Android app has not run on a device.
 
 ## 2026-10-04 — Phase 2 wave D: slices 9 and 10 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
 

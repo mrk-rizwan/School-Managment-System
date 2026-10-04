@@ -1,0 +1,38 @@
+// Coalescing by natural key (slice-15 §7.4, R158): a second write to a register (section, date,
+// period) while a PENDING row for it exists merges into that row, so an offline correction
+// becomes one submit, not a terminal failure. A row already SENDING is never touched: the write
+// starts a new pending row, and later writes merge into that one. The partial unique index
+// outbox_pending_natural_key makes a second pending row for one key impossible.
+//
+// Slice 15 ships the rule for a generic `marks[]` body; slice 16 fills in the register's own
+// fields if it needs more than this.
+
+export type MarksBody = {
+  marks: ({ enrolmentId: string } & Record<string, unknown>)[];
+  reason?: string | null;
+} & Record<string, unknown>;
+
+/** `section:<id>|date:<YYYY-MM-DD>|period:<n>` */
+export function registerNaturalKey(sectionId: string, date: string, period: number): string {
+  return `section:${sectionId}|date:${date}|period:${period}`;
+}
+
+/** Marks merged by enrolmentId, latest wins; the reason kept unless the newer one is non-empty. */
+export function mergeMarksBody(existing: MarksBody, incoming: MarksBody): MarksBody {
+  const byEnrolment = new Map(existing.marks.map((mark) => [mark.enrolmentId, mark]));
+  for (const mark of incoming.marks) byEnrolment.set(mark.enrolmentId, mark);
+  const newerReason = typeof incoming.reason === 'string' && incoming.reason.trim() !== '';
+  return {
+    ...existing,
+    ...incoming,
+    marks: [...byEnrolment.values()],
+    reason: newerReason ? incoming.reason : (existing.reason ?? incoming.reason ?? null),
+  };
+}
+
+/** The merge used for a lane's bodies, serialised as stored. */
+export function mergeBodies(existing: string, incoming: string): string {
+  return JSON.stringify(
+    mergeMarksBody(JSON.parse(existing) as MarksBody, JSON.parse(incoming) as MarksBody),
+  );
+}

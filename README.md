@@ -100,9 +100,9 @@ pnpm dev
 
 | What | Where |
 |---|---|
-| Web admin | http://localhost:3000 |
-| Platform admin console | http://localhost:3000/platform/login |
-| API | http://127.0.0.1:3001 |
+| Web admin | http://localhost:3460 |
+| Platform admin console | http://localhost:3460/platform/login |
+| API | http://127.0.0.1:3461 |
 | Mailpit (captured outgoing mail) | http://127.0.0.1:8025 |
 | MinIO console (object storage) | http://127.0.0.1:9001 |
 
@@ -115,11 +115,21 @@ password and the current 6-digit code.
 
 ### First school and principal
 
-No school is seeded. From the platform console:
+No school is seeded by default. The quick way, for development and CI (idempotent; prints
+`created` or `exists`; refuses production, and refuses a database that is not on this machine
+unless `ALLOW_DEV_SEED=1` is set):
+
+```sh
+DEV_SCHOOL_PRINCIPAL_CNIC=<13 digits> DEV_SCHOOL_PRINCIPAL_PHONE=<e.g. +923000000000> \n  pnpm --filter @asms/api seed:dev-school   # school code "demo"
+```
+
+The principal's password is the same 13 digits, so never point this at a shared database.
+
+Or from the platform console:
 
 1. **Schools → New school.** The short code you choose is the school code used at sign-in.
 2. On the school's page, **Issue principal login** with full name, CNIC and phone.
-3. Sign in at http://localhost:3000/login with the school code, the CNIC digits without dashes
+3. Sign in at http://localhost:3460/login with the school code, the CNIC digits without dashes
    as the username, and the same digits as the password (settled rule 12). The first sign-in
    suggests a password change but does not force it.
 
@@ -139,14 +149,48 @@ the dev database, so the real-API specs would fail at their first sign-in.
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request: install, Prisma generate,
 lint, typecheck, migrations, API tests, a check that the committed OpenAPI document and web
-client are not stale, the web build and Playwright. A red build blocks the slice.
+client are not stale, the web build and Playwright. A second job, `mobile`, builds the Android
+app and runs the Maestro flows on an emulator. A red build blocks the slice.
 
 After changing an API contract, regenerate and commit both generated files:
 
 ```sh
 pnpm --filter @asms/api openapi
 pnpm --filter @asms/web api:generate
+pnpm --filter @asms/mobile api:generate
 ```
+
+## Mobile app
+
+`apps/mobile` is the Android app: Expo (SDK 57) with a development build, not Expo Go
+(contracts/slice-15.md). Every check below runs without an Android SDK:
+
+```sh
+pnpm --filter @asms/mobile lint
+pnpm --filter @asms/mobile typecheck
+pnpm --filter @asms/mobile test                                   # Jest + Testing Library
+pnpm --filter @asms/mobile exec expo export --platform android     # Metro bundles everything
+pnpm --filter @asms/mobile doctor                                 # expo-doctor
+```
+
+Running it on a phone or emulator needs the Android SDK and a JDK 17 (Android Studio has both).
+
+```sh
+pnpm --filter @asms/mobile android            # expo run:android: builds and installs the dev build
+pnpm --filter @asms/mobile start              # Metro for the installed dev build
+```
+
+The app talks to the API at `EXPO_PUBLIC_API_URL`: `http://10.0.2.2:3461` from the emulator (the
+default), or `http://127.0.0.1:3461` from a USB phone after `adb reverse tcp:3461 tcp:3461`. Only
+the development profile (package `pk.asms.app.dev`, provisional) may use http; preview and
+production builds must use https and refuse cleartext.
+
+Push notifications need the owner's Firebase `google-services.json`, which is never committed.
+Until it exists every build runs with `EXPO_PUBLIC_PUSH_ENABLED=false`: registration is skipped
+and logged (`push.skipped`), and nothing else changes. With the file, set `GOOGLE_SERVICES_JSON`
+to its path and `EXPO_PUBLIC_PUSH_ENABLED=true` at build time.
+
+The Maestro flows (`apps/mobile/maestro`) run only in CI's `mobile` job, on an emulator.
 
 ## Where things are
 
@@ -154,7 +198,8 @@ pnpm --filter @asms/web api:generate
 |---|---|
 | `apps/api` | NestJS API, Prisma schema and migrations |
 | `apps/web` | Next.js web admin |
-| `packages/shared` | Code shared by the API and web (build it before the apps) |
+| `apps/mobile` | Expo / React Native Android app |
+| `packages/shared` | Code shared by the API, web and mobile (build it before the apps) |
 | `docs/plans` | Build plans per phase; `phase-1-foundation.md` is the current one |
 | `docs/WORKLOG.md` | Session handover log — what is done, in progress and next |
 | `CLAUDE.md` | Settled architecture rules, open decisions, working rules |

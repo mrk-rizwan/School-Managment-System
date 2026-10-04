@@ -108,10 +108,6 @@ export function DataTable<TData extends object>({
     );
   }
 
-  const pageCount = Math.max(1, Math.ceil(total / limit));
-  const first = total === 0 ? 0 : (page - 1) * limit + 1;
-  const last = Math.min(page * limit, total);
-
   return (
     <Frame>
       <Table aria-busy={isLoading}>
@@ -148,35 +144,59 @@ export function DataTable<TData extends object>({
               ))}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-between gap-4 border-t px-4 py-3 text-sm text-muted-foreground">
-        <span aria-live="polite">
-          {isLoading ? 'Loading…' : `Showing ${first}–${last} of ${total}`}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline">
-            Page {page} of {pageCount}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label="Previous page"
-            disabled={isLoading || page <= 1}
-            onClick={() => onPageChange(page - 1)}
-          >
-            <ChevronLeftIcon />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            aria-label="Next page"
-            disabled={isLoading || page >= pageCount}
-            onClick={() => onPageChange(page + 1)}
-          >
-            <ChevronRightIcon />
-          </Button>
-        </div>
-      </div>
+      <TablePagination page={page} limit={limit} total={total} loading={isLoading} onPageChange={onPageChange} />
     </Frame>
+  );
+}
+
+/**
+ * The page footer of a server-paginated table: "Showing x–y of n" and the page buttons. The one
+ * DataTable draws; a table that renders its own rows (an editable sheet) puts it under them.
+ */
+export function TablePagination({
+  page,
+  limit,
+  total,
+  loading,
+  onPageChange,
+}: {
+  page: number;
+  limit: number;
+  total: number;
+  /** Loading (or showing a placeholder page): the buttons wait. */
+  loading: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / limit));
+  const first = total === 0 ? 0 : (page - 1) * limit + 1;
+  const last = Math.min(page * limit, total);
+  return (
+    <div className="flex items-center justify-between gap-4 border-t px-4 py-3 text-sm text-muted-foreground">
+      <span aria-live="polite">{loading ? 'Loading…' : `Showing ${first}–${last} of ${total}`}</span>
+      <div className="flex items-center gap-2">
+        <span className="hidden sm:inline">
+          Page {page} of {pageCount}
+        </span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label="Previous page"
+          disabled={loading || page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeftIcon />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label="Next page"
+          disabled={loading || page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRightIcon />
+        </Button>
+      </div>
+    </div>
   );
 }
 

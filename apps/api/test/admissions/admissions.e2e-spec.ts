@@ -846,7 +846,8 @@ describe('admissions (e2e)', () => {
         statuses: await db.studentStatusChange.count({ where: { schoolId: school.id } }),
         audits: await db.auditLog.count({ where: { schoolId: school.id } }),
       };
-      const keys = app.get(IdempotencyKeyRepository, { strict: false });
+      // On the prototype: other modules (the diary, slice 13) provide their own instance too.
+      const keys = IdempotencyKeyRepository.prototype;
       const spy = jest.spyOn(keys, 'setSubject').mockRejectedValueOnce(new Error('forced failure'));
       const res = await admit(payload);
       spy.mockRestore();

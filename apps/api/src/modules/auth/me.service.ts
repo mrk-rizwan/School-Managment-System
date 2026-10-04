@@ -6,6 +6,7 @@ import { sessionLifetime, type SessionChannelName } from '../../common/auth/scho
 import { ApiException } from '../../common/errors/api-exception';
 import { SchoolClock } from '../../common/school-clock';
 import { ClassRepository } from '../../repositories/class.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { OwnSchoolRepository } from '../../repositories/own-school.repository';
 import { SessionRepository } from '../../repositories/session.repository';
 import {
@@ -16,7 +17,7 @@ import { UserRepository } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { toDateString } from '../academics/academics.shared';
 import { PermissionsService, type UserAccess } from '../access/permissions.service';
-import type { LoginResultDto, MeAssignmentDto, MeDto } from './dto';
+import type { LoginResultDto, MeAssignmentDto, MeDto, MyChildDto } from './dto';
 
 /** Who is asking, for the session row. */
 export interface RequestMeta {
@@ -63,6 +64,7 @@ export class MeService {
     private readonly permissions: PermissionsService,
     private readonly assignments: TeacherAssignmentRepository,
     private readonly classes: ClassRepository,
+    private readonly enrolments: EnrolmentRepository,
     private readonly clock: SchoolClock,
   ) {}
 
@@ -92,7 +94,45 @@ export class MeService {
       sessionExpiresAt,
       capacities: CAPACITIES.filter((capacity: Capacity) => access.capacities[capacity]),
       assignments: await this.assignmentsOf(schoolId, access),
+      staffId: access.staffId?.toString() ?? null,
+      children: await this.childrenOf(schoolId, access),
     };
+  }
+
+  /**
+   * The guardian scope's children (contracts/slice-13.md §1.2, R163) with their active enrolment,
+   * by name; [] without guardian capacity. An ended link drops the child on the next call (R164).
+   */
+  private async childrenOf(schoolId: SchoolId, access: UserAccess): Promise<MyChildDto[]> {
+    const { scope, children } = await this.permissions.guardianChildren(schoolId, access);
+    if (children.length === 0) return [];
+    const active = await this.enrolments.activeForStudents(
+      schoolId,
+      scope,
+      children.map((c) => c.studentId),
+    );
+    const current = new Map(active.map((row) => [row.studentId, row]));
+    return children.map((child): MyChildDto => {
+      const row = current.get(child.studentId);
+      return {
+        studentId: child.studentId.toString(),
+        fullName: child.fullName,
+        status: child.status,
+        relationship: child.relationship,
+        current: row
+          ? {
+              enrolmentId: row.id.toString(),
+              academicYearId: row.academicYearId.toString(),
+              academicYearName: row.academicYearName,
+              classId: row.classId.toString(),
+              className: row.className,
+              sectionId: row.sectionId.toString(),
+              sectionName: row.sectionName,
+              rollNo: row.rollNo,
+            }
+          : null,
+      };
+    });
   }
 
   /**

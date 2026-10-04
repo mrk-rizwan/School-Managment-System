@@ -10,8 +10,8 @@ const key = () => randomBytes(32).toString('base64');
 const env = (enabled: string) =>
   parseEnv({
     NODE_ENV: 'test',
-    API_PORT: '3001',
-    APP_URL: 'http://localhost:3000',
+    API_PORT: '3461',
+    APP_URL: 'http://localhost:3460',
     DATABASE_URL: 'postgresql://127.0.0.1:5432/asms',
     REDIS_URL: 'redis://127.0.0.1:6379',
     IDENTITY_HASH_KEY: key(),

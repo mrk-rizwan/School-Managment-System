@@ -5,14 +5,37 @@ import { failureLog } from '../common/errors/failure-log';
 import { AfterCommit } from '../tenancy/after-commit';
 import type { SchoolId } from '../tenancy/school-id';
 import {
+  alertJobId,
   healthJobId,
   JOB,
   messageJobId,
   QUEUE,
   rollupJobId,
+  rollupSectionDayJobId,
+  type AlertJobPayload,
   type HealthJobPayload,
   type MessageJobPayload,
+  type RollupJobPayload,
 } from './queues';
+
+type QueueName = (typeof QUEUE)[keyof typeof QUEUE];
+type Payload = MessageJobPayload | HealthJobPayload | AlertJobPayload | RollupJobPayload;
+
+/** An attendance alert row to send at its due time (contracts/slice-11.md §6.4). */
+export interface AlertJob {
+  id: bigint;
+  dueAt: Date;
+  /** The outbox sweep's minute when it recovers a lost job. */
+  sweepMinute?: number;
+}
+
+/** A section-day to recompute at the version a write left it (contracts/slice-11.md §8.2). */
+export interface RollupJob {
+  sectionId: bigint;
+  /** `YYYY-MM-DD`. */
+  date: string;
+  version: bigint;
+}
 
 /**
  * Puts jobs on the `messaging` queue (Phase 2 plan rule 0.11, R105). Inside a transaction a job is
@@ -24,19 +47,23 @@ import {
 @Injectable()
 export class OutboxDispatcher implements OnModuleDestroy {
   private readonly logger = new Logger('OutboxDispatcher');
-  #queue: Queue | undefined;
+  readonly #queues = new Map<QueueName, Queue>();
 
   constructor(
     @Inject(ENV) private readonly env: Env,
     private readonly afterCommit: AfterCommit,
   ) {}
 
-  private queue(): Queue {
-    this.#queue ??= new Queue(QUEUE.messaging, {
-      connection: { url: this.env.REDIS_URL, maxRetriesPerRequest: 1 },
-      defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000, attempts: 1 },
-    });
-    return this.#queue;
+  private queue(name: QueueName): Queue {
+    let queue = this.#queues.get(name);
+    if (!queue) {
+      queue = new Queue(name, {
+        connection: { url: this.env.REDIS_URL, maxRetriesPerRequest: 1 },
+        defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000, attempts: 1 },
+      });
+      this.#queues.set(name, queue);
+    }
+    return queue;
   }
 
   /** Throws outside a transaction (a sender bug: send() must run in the sender's transaction). */
@@ -98,12 +125,58 @@ export class OutboxDispatcher implements OnModuleDestroy {
     ]);
   }
 
+  /** After the ambient transaction commits: each alert's job, delayed to its due time. */
+  alertsAfterCommit(schoolId: SchoolId, alerts: readonly AlertJob[]): void {
+    if (alerts.length === 0) return;
+    const jobs = [...alerts];
+    this.afterCommit.register(() => this.alerts(schoolId, jobs));
+  }
+
+  /** At once (the sweep): `attendance-alert` jobs delayed to `dueAt` (0 when already due). */
+  async alerts(schoolId: SchoolId, alerts: readonly AlertJob[], now: Date = new Date()): Promise<void> {
+    await this.add(
+      alerts.map((a) => ({
+        name: JOB.attendanceAlert,
+        data: { schoolId: schoolId.toString(), alertId: a.id.toString() } satisfies AlertJobPayload,
+        opts: {
+          jobId: alertJobId(a.id, a.sweepMinute),
+          delay: Math.max(0, a.dueAt.getTime() - now.getTime()),
+        },
+      })),
+      QUEUE.attendance,
+    );
+  }
+
+  /** After the ambient transaction commits: the section-days' rollup jobs. */
+  rollupsAfterCommit(schoolId: SchoolId, rollups: readonly RollupJob[]): void {
+    if (rollups.length === 0) return;
+    const jobs = [...rollups];
+    this.afterCommit.register(() => this.rollups(schoolId, jobs));
+  }
+
+  /** At once (the sweep, the nightly job): `attendance-rollup` jobs. */
+  async rollups(schoolId: SchoolId, rollups: readonly RollupJob[]): Promise<void> {
+    await this.add(
+      rollups.map((r) => ({
+        name: JOB.attendanceRollup,
+        data: {
+          schoolId: schoolId.toString(),
+          sectionId: r.sectionId.toString(),
+          date: r.date,
+        } satisfies RollupJobPayload,
+        opts: { jobId: rollupSectionDayJobId(r.sectionId, r.date, r.version) },
+      })),
+      QUEUE.attendance,
+    );
+  }
+
   private async add(
-    jobs: { name: string; data: MessageJobPayload | HealthJobPayload; opts: JobsOptions }[],
+    jobs: { name: string; data: Payload; opts: JobsOptions }[],
+    queue: QueueName = QUEUE.messaging,
   ): Promise<void> {
     if (jobs.length === 0) return;
     try {
-      await this.queue().addBulk(jobs);
+      await this.queue(queue).addBulk(jobs);
     } catch (error) {
       // The sweep re-enqueues anything lost (R105); the caller's work is already committed.
       this.logger.error({ ...failureLog(error), jobs: jobs.length }, 'enqueue failed');
@@ -111,6 +184,6 @@ export class OutboxDispatcher implements OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.#queue?.close();
+    for (const queue of this.#queues.values()) await queue.close();
   }
 }

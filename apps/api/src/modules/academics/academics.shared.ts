@@ -3,6 +3,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ErrorCode } from '@asms/shared';
 import { ApiException } from '../../common/errors/api-exception';
 import { IfPresent, TextField } from '../../common/fields';
+import { assertRange } from '../../common/school-clock';
 
 /** The body of every archive action (§3.5, §4.5, §5.5). */
 export class ArchiveDto {
@@ -31,6 +32,14 @@ export const toDateString = (date: Date): string => date.toISOString().slice(0, 
 
 /** A validated `YYYY-MM-DD` as the UTC midnight Prisma writes to a `date` column. */
 export const fromDateString = (value: string): Date => new Date(`${value}T00:00:00.000Z`);
+
+/** A required `dateFrom`/`dateTo` pair as DATE values, checked by assertRange (422 on dateTo). */
+export function parseRange(dateFrom: string, dateTo: string, maxDays: number): { from: Date; to: Date } {
+  const from = fromDateString(dateFrom);
+  const to = fromDateString(dateTo);
+  assertRange(from, to, maxDays);
+  return { from, to };
+}
 
 /** Change metadata for an audit row: only the fields whose value differs. */
 export type Changes = Record<string, { from: string | number | null; to: string | number | null }>;

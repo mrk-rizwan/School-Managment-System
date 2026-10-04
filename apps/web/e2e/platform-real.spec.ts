@@ -36,7 +36,7 @@ test('first sign-in through to activating a new school', async ({ page }) => {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(initialPassword);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  // Fails here, before anything is written, if the API on :3001 is not on the test database.
+  // Fails here, before anything is written, if the API on :3461 is not on the test database.
   await expect(page, 'the API must run on TEST_DATABASE_URL').toHaveURL(/\/platform\/enrol$/);
 
   // Enrol: the QR and the setup key are shown; the code is computed from the key.

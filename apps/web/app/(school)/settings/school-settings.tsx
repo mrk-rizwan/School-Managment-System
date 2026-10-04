@@ -220,8 +220,8 @@ function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {
             <FormField
               control={form.control}
               name="attendanceAmendWindowDays"
-              label="Days a register can be corrected"
-              hint="0 to 30. After this, only the office can amend it."
+              label="Amendment window (registers and diary)"
+              hint="Days, 0 to 30. After this a teacher can no longer change their register or diary entry; the principal can, with a reason."
               inputMode="numeric"
               maxLength={2}
             />

@@ -1820,16 +1820,19 @@ model AttendanceMark {
 /// Tenant, append-only: written only by the attendance_marks_history trigger (plan §4.6). reason
 /// is NOT NULL (R122) and never an identity number.
 model AttendanceMarkChange {
-  id        BigInt           @id(map: "attendance_mark_changes_pkey") @default(autoincrement())
-  schoolId  BigInt           @map("school_id")
-  markId    BigInt           @map("mark_id")
-  oldStatus AttendanceStatus @map("old_status")
-  newStatus AttendanceStatus @map("new_status")
-  oldNote   String?          @map("old_note") @db.VarChar(200)
-  newNote   String?          @map("new_note") @db.VarChar(200)
-  changedBy BigInt           @map("changed_by")
-  changedAt DateTime         @default(now()) @map("changed_at") @db.Timestamptz(3)
-  reason    String           @db.VarChar(500)
+  id           BigInt           @id(map: "attendance_mark_changes_pkey") @default(autoincrement())
+  schoolId     BigInt           @map("school_id")
+  markId       BigInt           @map("mark_id")
+  oldStatus    AttendanceStatus @map("old_status")
+  newStatus    AttendanceStatus @map("new_status")
+  oldNote      String?          @map("old_note") @db.VarChar(200)
+  newNote      String?          @map("new_note") @db.VarChar(200)
+  /// The arrival time before and after (slice 11 §12 item 2): a correction of record, tracked.
+  oldArrivedAt DateTime?        @map("old_arrived_at") @db.Time(0)
+  newArrivedAt DateTime?        @map("new_arrived_at") @db.Time(0)
+  changedBy    BigInt           @map("changed_by")
+  changedAt    DateTime         @default(now()) @map("changed_at") @db.Timestamptz(3)
+  reason       String           @db.VarChar(500)
 
   school        School         @relation(fields: [schoolId], references: [id], map: "attendance_mark_changes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   mark          AttendanceMark @relation(fields: [schoolId, markId], references: [schoolId, id], map: "attendance_mark_changes_mark_id_fkey", onDelete: Restrict, onUpdate: Restrict)
@@ -1877,6 +1880,9 @@ model AttendanceAlert {
   cancelReason AttendanceAlertCancelReason? @map("cancel_reason")
   createdAt    DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  /// When a fourth row of this kind for the child-day was due and refused (the cap of three);
+  /// stamped once on the kind's latest row, the one change a sent or cancelled row accepts.
+  cappedAt     DateTime?                    @map("capped_at") @db.Timestamptz(3)
 
   school    School    @relation(fields: [schoolId], references: [id], map: "attendance_alerts_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   /// The enrolment and the child together: an alert can never name another child.
@@ -1894,20 +1900,23 @@ model AttendanceAlert {
 /// never raw marks). The day's value (R128) is computed at read from these counts and the
 /// school's settings. Recomputed in place; which enrolment-day it describes is frozen.
 model AttendanceDayStatus {
-  id              BigInt    @id(map: "attendance_day_status_pkey") @default(autoincrement())
-  schoolId        BigInt    @map("school_id")
-  enrolmentId     BigInt    @map("enrolment_id")
-  studentId       BigInt    @map("student_id")
-  sectionId       BigInt    @map("section_id")
-  date            DateTime  @db.Date
-  status          DayStatus
+  id                 BigInt    @id(map: "attendance_day_status_pkey") @default(autoincrement())
+  schoolId           BigInt    @map("school_id")
+  enrolmentId        BigInt    @map("enrolment_id")
+  studentId          BigInt    @map("student_id")
+  sectionId          BigInt    @map("section_id")
+  date               DateTime  @db.Date
+  status             DayStatus
   /// The four counts sum to periods_recorded (CHECK attendance_day_status_periods_check).
-  periodsRecorded Int       @map("periods_recorded") @db.SmallInt
-  periodsPresent  Int       @map("periods_present") @db.SmallInt
-  periodsLate     Int       @map("periods_late") @db.SmallInt
-  periodsAbsent   Int       @map("periods_absent") @db.SmallInt
-  periodsLeave    Int       @map("periods_leave") @db.SmallInt
-  computedAt      DateTime  @default(now()) @map("computed_at") @db.Timestamptz(3)
+  periodsRecorded    Int       @map("periods_recorded") @db.SmallInt
+  periodsPresent     Int       @map("periods_present") @db.SmallInt
+  periodsLate        Int       @map("periods_late") @db.SmallInt
+  periodsAbsent      Int       @map("periods_absent") @db.SmallInt
+  periodsLeave       Int       @map("periods_leave") @db.SmallInt
+  /// The arrived_at of the lowest-period late mark (slice 11 §8.2), for late_counts_as =
+  /// absent_after_cutoff (§5.2). Recomputed in place like the counts.
+  firstLateArrivedAt DateTime? @map("first_late_arrived_at") @db.Time(0)
+  computedAt         DateTime  @default(now()) @map("computed_at") @db.Timestamptz(3)
 
   school    School    @relation(fields: [schoolId], references: [id], map: "attendance_day_status_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   enrolment Enrolment @relation(fields: [schoolId, enrolmentId, studentId], references: [schoolId, id, studentId], map: "attendance_day_status_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)

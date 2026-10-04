@@ -43,8 +43,13 @@ export async function downloadDocument(id: string): Promise<void> {
     parseAs: 'blob',
   });
   if (!response.ok || !data) throw toApiError(response, error);
+  saveBlob(data, response, `document-${id}`);
+}
+
+/** Saves a fetched file under the name its Content-Disposition gives, else `fallbackName`. */
+export function saveBlob(data: Blob, response: Response, fallbackName: string): void {
   const disposition = response.headers.get('Content-Disposition') ?? '';
-  const name = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `document-${id}`;
+  const name = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? fallbackName;
   const url = URL.createObjectURL(data);
   const link = document.createElement('a');
   link.href = url;

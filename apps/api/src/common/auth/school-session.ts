@@ -122,7 +122,8 @@ export function bindRequestScope(req: Request, scope: Scope): void {
 /**
  * The row scope the caller's capability gives on this @RequireCapability route (plan §3.4):
  * `{ kind: 'all' }` for school-wide roles, `{ kind: 'sections', ids }` for a teacher, where an
- * empty list means no rows. A service reading student-linked rows requires it and passes it to
+ * empty list means no rows. On a @RequireCapacity route it is `{ kind: 'students', ids }`: the
+ * guardian's linked children or the student's own id (contracts/slice-13.md §1.2). A service reading student-linked rows requires it and passes it to
  * the repository. Asking for it from any other route's session is a programming error (500).
  */
 export function scopeOf(session: SchoolSessionContext): Scope {

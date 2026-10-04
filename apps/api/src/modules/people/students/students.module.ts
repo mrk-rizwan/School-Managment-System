@@ -13,7 +13,9 @@ import { StudentGuardianRepository } from '../../../repositories/student-guardia
 import { StudentStatusChangeRepository } from '../../../repositories/student-status-change.repository';
 import { StudentRepository } from '../../../repositories/student.repository';
 import { UserRepository } from '../../../repositories/user.repository';
-import { AttendanceHistoryProbe, NoAttendanceHistory } from './attendance-history-probe';
+import { AttendanceModule } from '../../attendance/attendance.module';
+import { MarkHistoryProbe } from '../../attendance/mark-history-probe';
+import { AttendanceHistoryProbe } from './attendance-history-probe';
 import { EnrolmentsController } from './enrolments.controller';
 import { EnrolmentsService } from './enrolments.service';
 import { GuardianLinksController } from './guardian-links.controller';
@@ -31,14 +33,16 @@ import { StudentsService } from './students.service';
  * student-linked repositories.
  */
 @Module({
-  imports: [CryptoModule],
+  // AttendanceModule provides the real history probe (contracts/slice-11.md §9.1); it never
+  // imports this module, so there is no cycle.
+  imports: [CryptoModule, AttendanceModule],
   controllers: [StudentsController, GuardianLinksController, EnrolmentsController],
   providers: [
     SchoolContext,
     StudentsService,
     GuardianLinksService,
     EnrolmentsService,
-    { provide: AttendanceHistoryProbe, useClass: NoAttendanceHistory },
+    { provide: AttendanceHistoryProbe, useExisting: MarkHistoryProbe },
     StudentLoginService,
     IdentityProbeThrottleGuard,
     BFormPatchThrottleGuard,

@@ -109,3 +109,52 @@ describe('templates (contracts/slice-9.md §7.5)', () => {
     expect(titleOf('holiday_notice', 'holiday_cancellation', SCHOOL)).toBe('Holiday cancelled');
   });
 });
+
+// contracts/slice-13.md §4.6, §5.4 (R138, R140). Low-priority types: never SMS, so no segment
+// limit; the bodies still start with the school name and carry no identity or phone number.
+describe('diary and remark templates (contracts/slice-13.md)', () => {
+  const diary = (dueOn: Date | null) =>
+    renderMessage(
+      'diary_posted',
+      {
+        className: 'Class Five',
+        sectionName: 'Blue',
+        subjectName: 'Mathematics',
+        date: D('2026-10-05'),
+        topic: 'Fractions: halves and quarters',
+        dueOn,
+      },
+      { schoolName: SCHOOL, timezone: 'Asia/Karachi', subjectType: 'diary_entry' },
+    );
+  const remark = renderMessage(
+    'remark_posted',
+    { studentName: NAME40, category: 'behaviour', date: D('2026-10-05') },
+    { schoolName: SCHOOL, timezone: 'Asia/Karachi', subjectType: 'remark' },
+  );
+
+  it('R138: diary_posted names the class, section, subject, date and topic, never the author', () => {
+    expect(diary(D('2026-10-09'))).toEqual({
+      title: 'Diary posted',
+      body: 'Government Girls High School: Class Five Blue Mathematics diary for Mon 5 Oct: Fractions: halves and quarters. Due Fri 9 Oct',
+    });
+    expect(diary(null).body).toBe(
+      'Government Girls High School: Class Five Blue Mathematics diary for Mon 5 Oct: Fractions: halves and quarters',
+    );
+  });
+
+  it('R140: remark_posted names the student, category and date, and never carries the remark text', () => {
+    expect(remark).toEqual({
+      title: 'New remark',
+      body: `Government Girls High School: A new behaviour remark for ${NAME40} dated Mon 5 Oct. Open the app to read it.`,
+    });
+  });
+
+  it('R111: neither carries an identity or phone number; neither type is SMS-eligible', () => {
+    for (const r of [diary(D('2026-10-09')), remark]) {
+      expect(r.body).not.toMatch(ID_PATTERN);
+      expect(r.body).not.toMatch(PHONE_PATTERN);
+    }
+    expect(SMS_ELIGIBLE_TYPES).not.toContain('diary_posted');
+    expect(SMS_ELIGIBLE_TYPES).not.toContain('remark_posted');
+  });
+});

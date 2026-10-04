@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ErrorCode } from '@asms/shared';
 import { OwnSchoolRepository } from '../repositories/own-school.repository';
 import type { SchoolId } from '../tenancy/school-id';
+import { fieldRefused } from './errors/api-exception';
 
 const DAY_MS = 86_400_000;
 
@@ -12,6 +14,30 @@ export function todayIn(timezone: string, now: Date = new Date()): Date {
 
 /** A DATE value moved by whole days. */
 export const addDays = (date: Date, days: number): Date => new Date(date.getTime() + days * DAY_MS);
+
+/** Whole days from `from` to `to` (DATE values; negative when `to` is earlier). */
+export const daysBetween = (from: Date, to: Date): number =>
+  Math.round((to.getTime() - from.getTime()) / DAY_MS);
+
+/**
+ * `to` on or after `from` and at most `maxDays` after it, else 422 on `field` (the range's end).
+ * One rule for every bounded range the API takes: list filters, reports, holiday spans.
+ */
+export function assertRange(
+  from: Date,
+  to: Date,
+  maxDays: number,
+  names: { field: string; from: string } = { field: 'dateTo', from: 'dateFrom' },
+): void {
+  const days = daysBetween(from, to);
+  if (days < 0 || days > maxDays) {
+    throw fieldRefused(
+      names.field,
+      ErrorCode.INVALID_VALUE,
+      `${names.field} must be on or after ${names.from} and at most ${maxDays} days after it`,
+    );
+  }
+}
 
 /** The instant a calendar date (a DATE value) starts in `timezone`. */
 export function dayStart(timezone: string, day: Date): Date {

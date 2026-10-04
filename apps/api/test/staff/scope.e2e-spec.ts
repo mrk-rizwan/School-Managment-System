@@ -93,7 +93,7 @@ describe('teacher scope (e2e)', () => {
     expect(await sectionsOf(t)).toEqual([String(own.id), String(taught.id)]);
   });
 
-  it('R54: a subject teacher with no section scopes every section of the class, archived included', async () => {
+  it('R54: a subject teacher with no section scopes every live section of the class; an archived one drops out', async () => {
     const k = await createClass(db, school, await createAcademicYear(db, school));
     const a = await section(k);
     const b = await section(k);
@@ -101,7 +101,8 @@ describe('teacher scope (e2e)', () => {
     await section(); // another class: not included
     const t = await h.caller(school, 'teacher');
     await createTeacherAssignment(db, school, t, { role: 'subject_teacher', subjectId, klass: k, startsOn: schoolDay(-1) });
-    expect(await sectionsOf(t)).toEqual([a.id, b.id, archived.id].map(String));
+    expect(await sectionsOf(t)).toEqual([a.id, b.id].map(String));
+    expect(await sectionsOf(t)).not.toContain(String(archived.id));
   });
 
   it('R53: history follows the section; the day after a reassignment the scope has moved', async () => {

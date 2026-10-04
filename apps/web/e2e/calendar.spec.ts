@@ -22,6 +22,8 @@ const PRINCIPAL_ME: MeDto = {
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],
+  staffId: null,
+  children: [],
 };
 const TEACHER_ME: MeDto = {
   ...PRINCIPAL_ME,

@@ -4,7 +4,7 @@
 // Bodies never hold an identity number, a token, a password, a phone number or an amount with
 // paisa (R111); SMS text is normalised to GSM-7 and each templated body fits one segment with the
 // longest fixture values (R110, templates.spec.ts).
-import type { MessageSubjectType, MessageType, WhatsAppErrorCode } from '@asms/shared';
+import type { DayStatus, MessageSubjectType, MessageType, WhatsAppErrorCode } from '@asms/shared';
 import type { TemplateVarsMap } from './types';
 
 export interface Rendered {
@@ -121,6 +121,40 @@ function fitOneSegment(text: string, build: (fitted: string) => string): string 
   return build('...');
 }
 
+/** Template fixture limits (contracts/slice-11.md §6.5). */
+const STUDENT_NAME_MAX = 40;
+const CLASS_SECTION_MAX = 16;
+const UNRECORDED_NAMED = 5;
+
+/** `text` cut to `max` characters at a word boundary, marked with `...`. */
+export function cutWords(text: string, max: number): string {
+  const clean = text.trim().replace(/\s+/g, ' ');
+  if (clean.length <= max) return clean;
+  const room = clean.slice(0, max - 3);
+  const space = room.lastIndexOf(' ');
+  return `${(space > 0 ? room.slice(0, space) : room).trimEnd()}...`;
+}
+
+/** `{class} {section}`, cut to 16 characters. */
+const classSection = (vars: { className: string; sectionName: string }): string =>
+  cutWords(`${vars.className} ${vars.sectionName}`, CLASS_SECTION_MAX);
+
+/** A derived day status as a parent reads it: "partial" is a screen word (§6.5). */
+function dayWords(status: DayStatus, arrivedAt: string | null): string {
+  switch (status) {
+    case 'present':
+      return 'present';
+    case 'late':
+      return arrivedAt === null ? 'late' : `late (arrived ${arrivedAt})`;
+    case 'partial':
+      return 'partly absent';
+    case 'on_leave':
+      return 'on leave';
+    case 'absent':
+      return 'absent';
+  }
+}
+
 // ------------------------------------------------------------------------------ templates
 
 /** Each type's body; its title comes from titleOf, the one table of titles. */
@@ -133,14 +167,8 @@ const notWritten = (type: MessageType) => (): string => {
 };
 
 const RENDERERS: Renderers = {
-  absence_alert: notWritten('absence_alert'),
-  late_advice: notWritten('late_advice'),
-  attendance_corrected: notWritten('attendance_corrected'),
   announcement_urgent: notWritten('announcement_urgent'),
   announcement_normal: notWritten('announcement_normal'),
-  diary_posted: notWritten('diary_posted'),
-  remark_posted: notWritten('remark_posted'),
-  register_unrecorded: notWritten('register_unrecorded'),
   whatsapp_session_down: notWritten('whatsapp_session_down'),
 
   messaging_test: (vars, ctx) =>
@@ -164,6 +192,58 @@ const RENDERERS: Renderers = {
         ? ''
         : ` Reopens ${formatDay(vars.reopensOn)}.`;
     return fitOneSegment(vars.name, (name) => `${school}: School closed ${when} for ${name}.${reopens}`);
+  },
+
+  // contracts/slice-13.md §4.6 (R138): low priority, never SMS; names neither the author nor a
+  // student. `topic` already refuses identity and phone patterns.
+  diary_posted: (vars, ctx) => {
+    const due = vars.dueOn === null ? '' : `. Due ${formatDay(vars.dueOn)}`;
+    return `${schoolLabel(ctx.schoolName)}: ${vars.className} ${vars.sectionName} ${vars.subjectName} diary for ${formatDay(vars.date)}: ${vars.topic}${due}`;
+  },
+
+  // contracts/slice-13.md §5.4 (R140): the remark text never enters a message.
+  remark_posted: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: A new ${vars.category} remark for ${vars.studentName} dated ${formatDay(vars.date)}. Open the app to read it.`,
+
+  // contracts/slice-11.md §6.5 (R126): one segment with the longest fixture values (school 30,
+  // student 40, class and section 16); longer names are cut at a word boundary.
+  absence_alert: (vars, ctx) =>
+    fitOneSegment(
+      cutWords(vars.studentName, STUDENT_NAME_MAX),
+      (name) =>
+        `${schoolLabel(ctx.schoolName)}: ${name} (${classSection(vars)}) is absent today, ${formatDay(vars.date)}. Contact the school if unexpected.`,
+    ),
+
+  late_advice: (vars, ctx) =>
+    fitOneSegment(
+      cutWords(vars.studentName, STUDENT_NAME_MAX),
+      (name) =>
+        `${schoolLabel(ctx.schoolName)}: ${name} (${classSection(vars)}) arrived late today, ${formatDay(vars.date)}${vars.arrivedAt === null ? '' : ` at ${vars.arrivedAt}`}.`,
+    ),
+
+  attendance_corrected: (vars, ctx) =>
+    fitOneSegment(
+      cutWords(vars.studentName, STUDENT_NAME_MAX),
+      (name) =>
+        `${schoolLabel(ctx.schoolName)}: Correction for ${name} (${classSection(vars)}), ${formatDay(vars.date)}: now marked ${dayWords(vars.status, vars.arrivedAt)}.`,
+    ),
+
+  // contracts/slice-11.md §8.4 (R129): push and email only, so no segment limit; the first five
+  // sections are named.
+  register_unrecorded: (vars, ctx) => {
+    const n = vars.sections.length;
+    const named = vars.sections
+      .slice(0, UNRECORDED_NAMED)
+      .map(
+        (s) =>
+          `${s.className} ${s.sectionName}${s.coverStaffName === null ? '' : ` (cover: ${s.coverStaffName})`}`,
+      )
+      .join(', ');
+    const more = n > UNRECORDED_NAMED ? `, ... (+${n - UNRECORDED_NAMED} more)` : '';
+    return `${schoolLabel(ctx.schoolName)}: ${n} ${n === 1 ? 'register' : 'registers'} not recorded by ${vars.deadlineTime} on ${formatDay(vars.date)}: ${named}${more}`.slice(
+      0,
+      2000,
+    );
   },
 
   // contracts/slice-10.md §6 step 8 (R132).
@@ -218,6 +298,18 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return subjectType === 'holiday_cancellation' ? 'Holiday cancelled' : 'School holiday';
     case 'cover_assigned':
       return 'Cover assignment';
+    case 'absence_alert':
+      return 'Absent today';
+    case 'late_advice':
+      return 'Arrived late';
+    case 'attendance_corrected':
+      return 'Attendance corrected';
+    case 'register_unrecorded':
+      return 'Registers not recorded';
+    case 'diary_posted':
+      return 'Diary posted';
+    case 'remark_posted':
+      return 'New remark';
     default:
       return schoolLabel(schoolName);
   }

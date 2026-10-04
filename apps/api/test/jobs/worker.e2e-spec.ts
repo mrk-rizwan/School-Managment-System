@@ -44,6 +44,9 @@ describe('the worker (e2e)', () => {
       { job: 'delivery-health-rollup', every: 900_000 },
       { job: 'staged-upload-sweep', pattern: '0 30 2 * * *' },
       { job: 'session-purge', pattern: '0 0 3 * * *' },
+      // contracts/slice-11.md §8.3, §8.4.
+      { job: 'register-deadline-sweep', every: 300_000 },
+      { job: 'attendance-nightly-recompute', pattern: '0 30 0 * * *' },
     ]);
   });
 

@@ -399,6 +399,8 @@ function AddDeltaDialog({
         </NativeSelect>
         <p id={`${ids.capability}-hint`} className="text-xs text-muted-foreground">
           Only capabilities you hold yourself are listed.
+          {/* contracts/slice-13.md §11: there is no read-only diary key. */}
+          {capability === 'diary.write' && ' Also lets this user read every section’s diary.'}
         </p>
       </div>
       {widensScope && (

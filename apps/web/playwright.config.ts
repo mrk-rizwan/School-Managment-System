@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { testApiEnv } from './e2e/support/root-env';
 
-const port = 3000;
-const apiPort = 3001;
+const port = 3460;
+const apiPort = 3461;
 
 export default defineConfig({
   testDir: './e2e',

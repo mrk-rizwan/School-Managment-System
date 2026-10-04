@@ -96,6 +96,29 @@ export class EnrolmentRepository {
     });
   }
 
+  /**
+   * The enrolment in force on `on` (started_on ≤ on ≤ coalesce(ended_on, ∞); one per date since
+   * R174), scoped through the student: a remark hangs off it (contracts/slice-13.md §5.2).
+   */
+  inForceOn(
+    schoolId: SchoolId,
+    scope: Scope,
+    studentId: bigint,
+    on: Date,
+  ): Promise<EnrolmentRecord | null> {
+    return this.txHost.tx.enrolment.findFirst({
+      where: {
+        schoolId,
+        studentId,
+        startedOn: { lte: on },
+        OR: [{ endedOn: null }, { endedOn: { gte: on } }],
+        student: { is: studentInScope(scope) },
+      },
+      select: SELECT,
+      orderBy: [{ startedOn: 'desc' }, { id: 'desc' }],
+    });
+  }
+
   /** The active enrolment holding `rollNo` in the section (R37), if any. */
   findActiveByRollNo(
     schoolId: SchoolId,

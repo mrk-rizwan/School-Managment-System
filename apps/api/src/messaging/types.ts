@@ -3,7 +3,7 @@
 // for it does not compile until its slice adds the template (plan rule 0.12). Vars never carry a
 // phone number, an identity number or a token (R111); the school's name is supplied by the
 // service from `schools.name`, never by the sender.
-import type { MessageSubjectType, MessageType } from '@asms/shared';
+import type { DayStatus, MessageSubjectType, MessageType, RemarkCategory } from '@asms/shared';
 
 /** One person a message is addressed to. Exactly one key. */
 export type Recipient =
@@ -13,9 +13,30 @@ export type Recipient =
 
 /** Dates are calendar dates (`@db.Date` values, UTC midnight); times are instants. */
 export interface TemplateVarsMap {
-  absence_alert: never;
-  late_advice: never;
-  attendance_corrected: never;
+  /** contracts/slice-11.md §6.5 (R126): the child's day; subject `attendance_alert`. */
+  absence_alert: {
+    readonly studentName: string;
+    readonly className: string;
+    readonly sectionName: string;
+    readonly date: Date;
+  };
+  late_advice: {
+    readonly studentName: string;
+    readonly className: string;
+    readonly sectionName: string;
+    readonly date: Date;
+    /** `HH:MM`, or null when the arrival time is unknown. */
+    readonly arrivedAt: string | null;
+  };
+  /** States the day as it is when sent. */
+  attendance_corrected: {
+    readonly studentName: string;
+    readonly className: string;
+    readonly sectionName: string;
+    readonly date: Date;
+    readonly status: DayStatus;
+    readonly arrivedAt: string | null;
+  };
   announcement_urgent: never;
   announcement_normal: never;
   /** Notice (subject `holiday`) or cancellation (subject `holiday_cancellation`), slice 10 §4.7. */
@@ -26,9 +47,32 @@ export interface TemplateVarsMap {
     /** Notice only; omitted or null when there is no next teaching day. */
     readonly reopensOn?: Date | null;
   };
-  diary_posted: never;
-  remark_posted: never;
-  register_unrecorded: never;
+  /** contracts/slice-13.md §4.6 (R138). `topic` already refuses identity and phone patterns. */
+  diary_posted: {
+    readonly className: string;
+    readonly sectionName: string;
+    readonly subjectName: string;
+    readonly date: Date;
+    readonly topic: string;
+    readonly dueOn: Date | null;
+  };
+  /** contracts/slice-13.md §5.4 (R140). Never the remark text. */
+  remark_posted: {
+    readonly studentName: string;
+    readonly category: RemarkCategory;
+    readonly date: Date;
+  };
+  /** contracts/slice-11.md §8.4 (R129): push and email to the register watchers only. */
+  register_unrecorded: {
+    readonly date: Date;
+    /** `HH:MM`. */
+    readonly deadlineTime: string;
+    readonly sections: readonly {
+      readonly className: string;
+      readonly sectionName: string;
+      readonly coverStaffName: string | null;
+    }[];
+  };
   sms_cap_reached: { readonly cap: number; readonly nextMonthStart: Date };
   messaging_test: { readonly senderName: string; readonly time: Date };
   /** Not sent through send(): no `messages` row (§7.2). */

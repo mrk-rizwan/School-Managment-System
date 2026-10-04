@@ -84,23 +84,28 @@ describe('dated scope (R175)', () => {
     });
   });
 
-  it('R175 / R54: a whole-class subject row gives its subject in every section of the class, archived included', async () => {
+  it('R175 / R54: a whole-class subject row gives its subject in every live section of the class; an archived section drops out of it', async () => {
     const own = await createClass(db, school, { id: klass.academicYearId });
     const a = await createSection(db, school, own);
     const archived = await createSection(db, school, own, { deletedAt: new Date() });
+    const named = await createSection(db, school, own, { deletedAt: new Date() });
     const t = await teacher();
     const maths = (await createSubject(db, school)).id;
     const urdu = (await createSubject(db, school)).id;
     await createTeacherAssignment(db, school, t, { role: 'subject_teacher', subjectId: maths, klass: own });
     await createTeacherAssignment(db, school, t, { role: 'subject_teacher', subjectId: urdu, section: a });
+    // A row naming an archived section itself still counts: only the whole-class expansion skips it.
+    await createTeacherAssignment(db, school, t, { role: 'subject_teacher', subjectId: urdu, section: named });
     const sections = await repo.sectionsOn(school.id, t.staffId, on(0));
-    expect([...sections.keys()]).toEqual([a.id, archived.id]);
+    expect([...sections.keys()]).toEqual([a.id, named.id]);
+    expect(sections.has(archived.id)).toBe(false);
     expect(sections.get(a.id)).toEqual({
       classTeacher: false,
       cover: false,
       subjectIds: [maths, urdu].sort((x, y) => (x < y ? -1 : 1)),
     });
-    expect(sections.get(archived.id)).toEqual({ classTeacher: false, cover: false, subjectIds: [maths] });
+    expect(sections.get(named.id)).toEqual({ classTeacher: false, cover: false, subjectIds: [urdu] });
+    expect(await repo.activeSectionIds(school.id, t.staffId, on(0))).toEqual([a.id, named.id]);
   });
 
   it('today’s scope is the key set of sectionsOn(today): the two cannot disagree', async () => {

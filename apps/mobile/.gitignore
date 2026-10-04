@@ -1,0 +1,11 @@
+# Expo and native build output (prebuild regenerates android/ and ios/ from app.config.ts)
+.expo/
+android/
+ios/
+dist/
+expo-env.d.ts
+*.apk
+*.aab
+# Per-project Firebase client config: the owner supplies it, CI reads it from a secret (§8)
+google-services.json
+maestro/out/

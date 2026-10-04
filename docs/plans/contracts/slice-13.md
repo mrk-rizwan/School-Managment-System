@@ -99,11 +99,16 @@ Diary and remark writes call `PermissionsService.scopeOf(session, { capability, 
 
 - `null` is unreachable here (the route decorator already required the capability).
 - `kind: 'all'` → any section, any subject.
-- `kind: 'sections'`: the section must be a key of `sections`, else **`403 PERMISSION_DENIED`,
-  `details.reason = 'not_assigned_on_date'`** — the section exists and is visible to staff, so
-  `404` would hide nothing and would tell a cover teacher outside their dates "not found" instead
-  of why. (Slice 11 should answer R175's "a register dated before the assignment began" and "a
-  cover outside its dates" with the same code and reason.) Then, for the diary, the role decides
+- `kind: 'sections'`: the section must be a key of `sections`. Else, for a **diary write**, the
+  rule of `slice-11.md` §1.2 (main-thread ruling 2026-10-04, one implementation:
+  `PermissionsService.refuseOutsideDate`): when the caller holds a live (not voided) assignment
+  reaching the section on **another** date (a section row, or a whole-class subject row of its
+  class) → **`403 PERMISSION_DENIED`, `details.reason = 'not_assigned_on_date'`** — the section is
+  theirs on other dates, so `404` would hide nothing and would tell a cover teacher outside their
+  dates "not found" instead of why; a section never assigned to the caller → **`404 NOT_FOUND`**,
+  the same body as absent. For a **remark** the student is already in today's scope (step 2), so
+  an enrolment section outside the dated scope is always `403 not_assigned_on_date`. Then, for the
+  diary, the role decides
   the subject: `classTeacher || cover` → any subject (R137, R132: cover is full class-teacher
   scope); otherwise `subjectIds` must contain `subjectId` → else `409 SUBJECT_NOT_ASSIGNED`. For a
   remark any role suffices (decision 9).
@@ -112,11 +117,13 @@ Reads use today's scope (`scopeOf(session)`), as every list does (plan §4.4).
 
 ### 1.4 Throttles
 
-`/me/*` routes: `MeReadsThrottleGuard` (`me-reads`, 120/min, 2,000/hour per user, R166). No new
-bucket for staff writes: creates are idempotent and the per-IP throttles bound a browser or a
-phone. Thumbnails share the uploads `ConcurrencyLimit` (4 re-encodes per process, `503
-SERVICE_UNAVAILABLE` after a 10 s wait, `slice-6.md` §6.1); that limit, not a throttle, is the
-backstop for a client that fetches thumbnails in a loop.
+`/me/*` routes: `MeReadsThrottleGuard` (`me-reads`, 120/min, 2,000/hour per user, R166). The staff
+`GET /diary-entries/:id/attachment` and `…/thumbnail` take `DiaryFilesThrottleGuard` (`diary-files`,
+120/min, 2,000/hour per user; review fix 2026-10-04). No new bucket for staff writes: creates are
+idempotent and the per-IP throttles bound a browser or a phone. A thumbnail is made once and
+stored (§4.5); making one (at consume, or on the first read of an older entry) shares the uploads
+`ConcurrencyLimit` (4 re-encodes per process, `503 SERVICE_UNAVAILABLE` after a 10 s wait,
+`slice-6.md` §6.1).
 
 ### 1.5 Lock order
 
@@ -287,7 +294,8 @@ Order, one `@Transactional()` after the §3 pre-steps:
    → `409 SECTION_ARCHIVED`; class archived → `409 CLASS_ARCHIVED`; year closed → `409
    ACADEMIC_YEAR_CLOSED`. `date` checks above (`422`).
 3. **Dated scope** (§1.3): `scopeOf(session, { capability: DIARY_WRITE, on: date })` → `403
-   not_assigned_on_date` · `409 SUBJECT_NOT_ASSIGNED`.
+   not_assigned_on_date` (assigned on other dates) or `404` (never assigned) · `409
+   SUBJECT_NOT_ASSIGNED`.
 4. Subject read: absent → `422 REFERENCE_NOT_FOUND` on `subjectId`; archived → `409
    SUBJECT_ARCHIVED`.
 5. **Retry-safety:** an entry for `(section, date, subject)` exists → `409 DIARY_ENTRY_EXISTS`
@@ -350,16 +358,19 @@ exactly as `GET /documents/:id/content` (`slice-6.md` §6.2, R43): key asserted 
 `Content-Security-Policy: sandbox`; `Cache-Control: no-store` as every response. Never a
 presigned URL. Logged with the entry id only; not audited (no GET writes).
 
-**Thumbnail** (decision 6): the stored attachment is an image → the bytes are read and resized
-**on demand** with `sharp` (`resize({ width: 320, height: 320, fit: 'inside', withoutEnlargement:
-true })`, JPEG quality 70, `limitInputPixels` as uploads, first frame) under the uploads
-`ConcurrencyLimit` (wait > 10 s → `503`), and streamed with `Content-Type: image/jpeg`,
-`Content-Disposition: attachment; filename="diary-<id>-thumb.jpg"` and the same security headers.
-The source is the stored object, which is already the re-encode pipeline's output (EXIF stripped,
-pixel-bounded), so the thumbnail never derives from original bytes (R171). A PDF attachment → `404`
-(the DTO's `attachmentMime` tells the client not to ask). Nothing is stored: a replaced attachment
-needs no thumbnail housekeeping. If measurement at slice 17 shows the resize is a bottleneck, a
-stored thumbnail column is the additive fix.
+**Thumbnail** (decision 6, revised by the review fix of 2026-10-04): when a create or edit consumes
+an image upload, the thumbnail is made **once**, after the transaction commits, with `sharp`
+(`resize({ width: 320, height: 320, fit: 'inside', withoutEnlargement: true })`, JPEG quality 70,
+`limitInputPixels` as uploads, first frame) under the uploads `ConcurrencyLimit`, and stored beside
+the object at `<objectKey>-thumb.jpg` (same school prefix, no column: the key is derived). The read
+streams the stored thumbnail with `Content-Type: image/jpeg`, `Content-Disposition: attachment;
+filename="diary-<id>-thumb.jpg"` and the same security headers. An entry attached before thumbnails
+were stored (or whose after-commit store failed, which is logged and never fails the write) has
+none yet: its first read makes it from the image under the limit (wait > 10 s → `503`), stores it
+and serves it. The source is always the stored object, which is already the re-encode pipeline's
+output (EXIF stripped, pixel-bounded), so the thumbnail never derives from original bytes (R171). A
+PDF attachment → `404` (the DTO's `attachmentMime` tells the client not to ask). A replaced
+attachment leaves its old object and thumbnail in place (rule 4: nothing is deleted).
 
 ### 4.6 The `diary_posted` message (R138; `slice-9.md` §7)
 
@@ -522,7 +533,7 @@ and `diary_entries (school_id, section_id, date)`, both indexed.
 
 The entry must satisfy §6.1 for that child (or the caller's own student id) → else `404`; no
 attachment, or a PDF for `thumbnail` → `404`. Streamed exactly as §4.5 (same headers, same
-on-demand thumbnail, same concurrency limit). A non-recipient — another guardian, a guardian whose
+stored thumbnail, same first-read fallback and concurrency limit). A non-recipient — another guardian, a guardian whose
 link ended, a student of another section — gets `404` from the predicate, never the bytes (the
 plan's named test).
 
@@ -659,7 +670,7 @@ tap (R160); a `diary_posted` push deep-links by `subjectId`.
 
 R137 (one entry per section-date-subject; class teacher any subject; subject teacher own subject
 only → `SUBJECT_NOT_ASSIGNED` for another; cover inside dates any subject; cover the day after
-`endsOn` → `not_assigned_on_date`; author edit inside the window without reason writes a changes
+`endsOn` → `not_assigned_on_date`; a teacher never assigned to the section → `404`; author edit inside the window without reason writes a changes
 row; author after the window `DIARY_ENTRY_LOCKED`; all-scope after the window without reason
 `AMENDMENT_REASON_REQUIRED` naming the fields, with reason succeeds and the changes row carries
 it; another section teacher `not_author`; a no-op patch writes no changes row and no audit; a
@@ -719,10 +730,11 @@ classification for the four mutating routes.
    one; a separate diary setting is a later addition if a school asks. The settings screen
    relabels the field. Inside the window the author (and any all-scope holder) edits without a
    reason; after it the author is locked and an all-scope holder needs a reason.
-6. **Thumbnails are produced on demand** from the stored (already re-encoded) attachment under the
-   existing upload concurrency limit; nothing is stored, so a replaced attachment needs no
-   housekeeping. A PDF has no thumbnail (`404`). A stored thumbnail column is the additive fix if
-   slice 17's measurements call for it.
+6. **Thumbnails are made once and stored** beside the attachment (`<objectKey>-thumb.jpg`), after
+   the consuming write commits, from the stored (already re-encoded) attachment under the existing
+   upload concurrency limit; a read serves the stored one, and makes and stores it on first read
+   for an entry that has none. A PDF has no thumbnail (`404`). *Revised 2026-10-04 (security
+   review): on-demand resizing let any reader spend re-encode capacity on every request.*
 7. **`diary_posted` is sent only for an entry dated today**; a backdated entry and every edit send
    nothing (mirrors R126's today-only rule; the diary screen shows the entry regardless). Same-day
    sync is the mobile norm, so the offline teacher's entry still notifies.
@@ -741,9 +753,11 @@ classification for the four mutating routes.
 12. **Diary entries and remarks may be dated non-teaching days**; `NOT_A_TEACHING_DAY` is not used
     here. Diary `date` is ≤ today and within the class's year; `dueOn` ≥ `date` and ≤ the year's end.
 13. **Dated-scope refusals are `403 PERMISSION_DENIED` with `details.reason = 'not_assigned_on_date'`**,
-    not `404`: the section or student is visible to the caller, so `404` would hide nothing and
-    would mislead a cover teacher outside their dates. Slice 11 is asked to use the same code for
-    R175's register cases.
+    not `404`, when the section or student is visible to the caller: `404` would hide nothing and
+    would mislead a cover teacher outside their dates. *Refined by the main-thread ruling of
+    2026-10-04, shared with slice 11 §1.2:* a diary write to a section the caller was **never**
+    assigned to is `404`, the same body as absent; `403` needs a live assignment reaching the
+    section on another date.
 14. **Office staff cannot read the diary**; granting `diary.write` to a clerk also lets them write
     it (school-wide). Accepted for Phase 2 (the plan says so) and shown as a hint on the grant
     screen. Office staff do read remarks (`student.view`).

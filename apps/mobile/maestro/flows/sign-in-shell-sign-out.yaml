@@ -1,0 +1,55 @@
+# slice-15 §13.3 — CI only (the mobile job). Signs in as the seeded principal, sees the shell,
+# opens the calendar, signs out, and finds the school code remembered.
+# Env (from the CI job): SCHOOL_CODE, PRINCIPAL_CNIC (the default password is the same digits).
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.schoolCode'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.schoolCode'
+- inputText: ${SCHOOL_CODE}
+- tapOn:
+    id: 'signIn.identity'
+- inputText: ${PRINCIPAL_CNIC}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PRINCIPAL_CNIC}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'home.schoolName'
+    timeout: 30000
+- assertVisible:
+    id: 'home.fullName'
+- assertVisible:
+    id: 'tabs.home'
+- assertVisible:
+    id: 'home.defaultPassword'
+- tapOn:
+    id: 'tabs.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'state.asOf'
+    timeout: 20000
+- assertVisible:
+    id: 'calendar.month'
+- tapOn:
+    id: 'tabs.account'
+- tapOn:
+    id: 'account.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.schoolCode'
+    timeout: 20000
+- assertVisible:
+    text: ${SCHOOL_CODE}
+- assertVisible:
+    id: 'signIn.maskedIdentity'
+- assertNotVisible:
+    id: 'tabs.home'

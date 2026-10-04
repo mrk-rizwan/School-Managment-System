@@ -1,6 +1,83 @@
 {
   "components": {
     "schemas": {
+      "AbsenteeRowDto": {
+        "properties": {
+          "alert": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AlertSummaryDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "arrivedAt": {
+            "description": "The first late period's",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DayStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "rollNo",
+          "enrolmentId",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "status",
+          "arrivedAt",
+          "alert"
+        ],
+        "type": "object"
+      },
+      "AbsenteeStatus": {
+        "enum": [
+          "absent",
+          "partial",
+          "on_leave"
+        ],
+        "type": "string"
+      },
       "AcademicYearDto": {
         "properties": {
           "createdAt": {
@@ -238,6 +315,108 @@
         ],
         "type": "object"
       },
+      "AlertSummaryDto": {
+        "properties": {
+          "absence": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceAlertStatus"
+              }
+            ],
+            "description": "The latest absence row",
+            "nullable": true
+          },
+          "absenceCancelReason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceAlertCancelReason"
+              }
+            ],
+            "nullable": true
+          },
+          "absenceDueAt": {
+            "description": "While pending",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "absenceResolvedAt": {
+            "description": "Once sent or cancelled",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "corrections": {
+            "maximum": 3,
+            "minimum": 0,
+            "type": "number"
+          },
+          "correctionsCapped": {
+            "description": "A fourth absence or corrected notice was due for this child-day and refused (at most three are sent); false while fewer than four were due",
+            "type": "boolean"
+          },
+          "lateAdvice": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceAlertStatus"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "absence",
+          "absenceCancelReason",
+          "absenceDueAt",
+          "absenceResolvedAt",
+          "lateAdvice",
+          "corrections",
+          "correctionsCapped"
+        ],
+        "type": "object"
+      },
+      "AmendMarkDto": {
+        "properties": {
+          "arrivedAt": {
+            "description": "A value requires status late",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "fromStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ],
+            "description": "The status the client last saw"
+          },
+          "note": {
+            "maxLength": 200,
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fromStatus",
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
       "ApiErrorBodyDto": {
         "properties": {
           "code": {
@@ -312,6 +491,105 @@
         ],
         "type": "object"
       },
+      "AttachmentMime": {
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "application/pdf"
+        ],
+        "type": "string"
+      },
+      "AttendanceAlertCancelReason": {
+        "enum": [
+          "mark_changed",
+          "holiday",
+          "link_ended",
+          "backdated"
+        ],
+        "type": "string"
+      },
+      "AttendanceAlertStatus": {
+        "description": "The latest absence row",
+        "enum": [
+          "pending",
+          "sent",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "AttendanceDayListSort": {
+        "enum": [
+          "className",
+          "rollNo",
+          "fullName"
+        ],
+        "type": "string"
+      },
+      "AttendanceMarkDto": {
+        "properties": {
+          "amended": {
+            "description": "At least one change row exists",
+            "type": "boolean"
+          },
+          "arrivedAt": {
+            "description": "Only ever set on a late mark",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "note": {
+            "description": "Staff routes only",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "registerId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "registerId",
+          "enrolmentId",
+          "studentId",
+          "date",
+          "period",
+          "status",
+          "arrivedAt",
+          "note",
+          "amended"
+        ],
+        "type": "object"
+      },
       "AttendanceMode": {
         "enum": [
           "daily",
@@ -319,8 +597,21 @@
         ],
         "type": "string"
       },
+      "AttendanceStatus": {
+        "enum": [
+          "present",
+          "absent",
+          "late",
+          "on_leave"
+        ],
+        "type": "string"
+      },
       "CalendarHolidayDto": {
         "properties": {
+          "appliesToStaff": {
+            "description": "False: a teaching holiday on which staff still work",
+            "type": "boolean"
+          },
           "endsOn": {
             "format": "date",
             "type": "string"
@@ -349,7 +640,8 @@
           "startsOn",
           "endsOn",
           "name",
-          "kind"
+          "kind",
+          "appliesToStaff"
         ],
         "type": "object"
       },
@@ -783,6 +1075,33 @@
         ],
         "type": "object"
       },
+      "CorrectRemarkDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkVisibility"
+              }
+            ],
+            "description": "Default: the original’s"
+          }
+        },
+        "required": [
+          "text",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CreateAcademicYearDto": {
         "properties": {
           "endsOn": {
@@ -903,6 +1222,52 @@
           "key",
           "name",
           "capabilities"
+        ],
+        "type": "object"
+      },
+      "CreateDiaryEntryDto": {
+        "properties": {
+          "assignment": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "date": {
+            "description": "On or before today, within the class’s academic year",
+            "format": "date",
+            "type": "string"
+          },
+          "dueOn": {
+            "description": "On or after date, within the year",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "learningOutcome": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "stagedUploadId": {
+            "description": "One attachment, image or PDF (POST /uploads)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "subjectId",
+          "topic"
         ],
         "type": "object"
       },
@@ -1050,6 +1415,47 @@
           "startsOn",
           "name",
           "kind"
+        ],
+        "type": "object"
+      },
+      "CreateRemarkDto": {
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkCategory"
+              }
+            ]
+          },
+          "date": {
+            "description": "On or before today; the student’s enrolment on it",
+            "format": "date",
+            "type": "string"
+          },
+          "subjectId": {
+            "description": "A tag, not a right: no assignment check",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkVisibility"
+              }
+            ],
+            "description": "Default: the school’s remarkDefaultVisibility"
+          }
+        },
+        "required": [
+          "date",
+          "category",
+          "text"
         ],
         "type": "object"
       },
@@ -1248,6 +1654,115 @@
         ],
         "type": "string"
       },
+      "DailySummaryDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "computedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "late": {
+            "type": "number"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMode"
+              }
+            ]
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "partial": {
+            "type": "number"
+          },
+          "present": {
+            "type": "number"
+          },
+          "registersExpected": {
+            "description": "Frozen at first computation; 0 until then",
+            "type": "number"
+          },
+          "registersRecorded": {
+            "type": "number"
+          },
+          "rosterCount": {
+            "type": "number"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "stale": {
+            "description": "A write is not yet rolled up",
+            "type": "boolean"
+          },
+          "teachingDay": {
+            "description": "Now",
+            "type": "boolean"
+          },
+          "unrecorded": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "date",
+          "mode",
+          "registersExpected",
+          "registersRecorded",
+          "rosterCount",
+          "present",
+          "absent",
+          "late",
+          "onLeave",
+          "partial",
+          "unrecorded",
+          "teachingDay",
+          "computedAt",
+          "stale"
+        ],
+        "type": "object"
+      },
+      "DailySummarySort": {
+        "enum": [
+          "-date",
+          "date",
+          "className"
+        ],
+        "type": "string"
+      },
+      "DayStatus": {
+        "enum": [
+          "present",
+          "absent",
+          "late",
+          "on_leave",
+          "partial"
+        ],
+        "type": "string"
+      },
       "DeviceDto": {
         "properties": {
           "appVersion": {
@@ -1285,6 +1800,118 @@
         "enum": [
           "android",
           "ios"
+        ],
+        "type": "string"
+      },
+      "DiaryEntryDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "assignment": {
+            "nullable": true,
+            "type": "string"
+          },
+          "attachmentMime": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttachmentMime"
+              }
+            ],
+            "nullable": true
+          },
+          "attachmentSizeBytes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "authorStaffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "dueOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "editWindowEndsOn": {
+            "description": "The last day the author may edit without a reason",
+            "format": "date",
+            "type": "string"
+          },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "learningOutcome": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Later than createdAt means edited",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "classId",
+          "date",
+          "subjectId",
+          "subjectName",
+          "authorName",
+          "topic",
+          "assignment",
+          "learningOutcome",
+          "dueOn",
+          "hasAttachment",
+          "attachmentMime",
+          "attachmentSizeBytes",
+          "createdAt",
+          "updatedAt",
+          "academicYearId",
+          "authorStaffId",
+          "editWindowEndsOn"
+        ],
+        "type": "object"
+      },
+      "DiarySort": {
+        "enum": [
+          "-date",
+          "date"
         ],
         "type": "string"
       },
@@ -2339,6 +2966,12 @@
             },
             "type": "array"
           },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/MyChildDto"
+            },
+            "type": "array"
+          },
           "email": {
             "nullable": true,
             "type": "string"
@@ -2367,6 +3000,10 @@
           "sessionExpiresAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "staffId": {
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -2381,9 +3018,96 @@
           "sessionExpiresAt",
           "capacities",
           "assignments",
+          "staffId",
+          "children",
           "bearerToken"
         ],
         "type": "object"
+      },
+      "MarkChangeDto": {
+        "properties": {
+          "changedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "changedBy": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "changedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fromArrivedAt": {
+            "description": "HH:MM, school time",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "fromStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "markId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "noteChanged": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "toArrivedAt": {
+            "description": "HH:MM, school time",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "toStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "markId",
+          "fromStatus",
+          "toStatus",
+          "noteChanged",
+          "fromArrivedAt",
+          "toArrivedAt",
+          "changedBy",
+          "changedByName",
+          "changedAt",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "MarkChangeSort": {
+        "enum": [
+          "-changedAt",
+          "changedAt"
+        ],
+        "type": "string"
+      },
+      "MarkOutcome": {
+        "enum": [
+          "created",
+          "amended",
+          "unchanged"
+        ],
+        "type": "string"
       },
       "MeAssignmentDto": {
         "properties": {
@@ -2475,6 +3199,12 @@
             },
             "type": "array"
           },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/MyChildDto"
+            },
+            "type": "array"
+          },
           "email": {
             "nullable": true,
             "type": "string"
@@ -2503,6 +3233,10 @@
           "sessionExpiresAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "staffId": {
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -2516,7 +3250,9 @@
           "capabilities",
           "sessionExpiresAt",
           "capacities",
-          "assignments"
+          "assignments",
+          "staffId",
+          "children"
         ],
         "type": "object"
       },
@@ -2668,6 +3404,10 @@
       },
       "MyCalendarHolidayDto": {
         "properties": {
+          "appliesToStaff": {
+            "description": "False: a teaching holiday on which staff still work",
+            "type": "boolean"
+          },
           "endsOn": {
             "format": "date",
             "type": "string"
@@ -2691,7 +3431,312 @@
           "startsOn",
           "endsOn",
           "name",
-          "kind"
+          "kind",
+          "appliesToStaff"
+        ],
+        "type": "object"
+      },
+      "MyChildDto": {
+        "properties": {
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentCurrentEnrolmentDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "relationship": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Relationship"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "status",
+          "relationship",
+          "current"
+        ],
+        "type": "object"
+      },
+      "MyDiaryEntryDto": {
+        "properties": {
+          "assignment": {
+            "nullable": true,
+            "type": "string"
+          },
+          "attachmentMime": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttachmentMime"
+              }
+            ],
+            "nullable": true
+          },
+          "attachmentSizeBytes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "dueOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "learningOutcome": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Later than createdAt means edited",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "classId",
+          "date",
+          "subjectId",
+          "subjectName",
+          "authorName",
+          "topic",
+          "assignment",
+          "learningOutcome",
+          "dueOn",
+          "hasAttachment",
+          "attachmentMime",
+          "attachmentSizeBytes",
+          "createdAt",
+          "updatedAt",
+          "className",
+          "sectionName"
+        ],
+        "type": "object"
+      },
+      "MyRemarkDto": {
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkCategory"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "supersededAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "supersededById": {
+            "description": "The correction of this row, once one exists",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "supersedesId": {
+            "description": "The row this one corrects",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "date",
+          "category",
+          "text",
+          "subjectId",
+          "subjectName",
+          "authorName",
+          "supersedesId",
+          "supersededAt",
+          "supersededById",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "MyStaffAttendanceDayDto": {
+        "properties": {
+          "amended": {
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "employed": {
+            "description": "On or after joined_on and, when set, on or before left_on",
+            "type": "boolean"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ],
+            "nullable": true
+          },
+          "workingDay": {
+            "description": "A staff working day as the calendar says now (R136)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "workingDay",
+          "employed",
+          "status",
+          "amended"
+        ],
+        "type": "object"
+      },
+      "MyStaffAttendanceDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "days": {
+            "description": "One per date, ascending",
+            "items": {
+              "$ref": "#/components/schemas/MyStaffAttendanceDayDto"
+            },
+            "type": "array"
+          },
+          "late": {
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "present": {
+            "description": "Marks on working days",
+            "type": "number"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "unrecorded": {
+            "description": "workingDays − marked working days, never below 0",
+            "type": "number"
+          },
+          "workingDays": {
+            "description": "Staff working days in the range while employed",
+            "type": "number"
+          }
+        },
+        "required": [
+          "staffId",
+          "dateFrom",
+          "dateTo",
+          "workingDays",
+          "present",
+          "absent",
+          "late",
+          "onLeave",
+          "unrecorded",
+          "days"
         ],
         "type": "object"
       },
@@ -2711,6 +3756,71 @@
           "clearEmail"
         ],
         "type": "object"
+      },
+      "PercentageRowDto": {
+        "properties": {
+          "classId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "countedDays": {
+            "type": "number"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "percentage": {
+            "nullable": true,
+            "type": "number"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "sectionId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "teachingDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "rollNo",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "percentage",
+          "countedDays",
+          "teachingDays"
+        ],
+        "type": "object"
+      },
+      "PercentageSort": {
+        "enum": [
+          "percentage",
+          "-percentage",
+          "fullName",
+          "className"
+        ],
+        "type": "string"
       },
       "PermissionRoleDto": {
         "properties": {
@@ -2807,6 +3917,71 @@
         ],
         "type": "object"
       },
+      "RecordArrivalDto": {
+        "properties": {
+          "arrivedAt": {
+            "description": "HH:MM, school time",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "date": {
+            "description": "Not in the future; the gate sends today",
+            "format": "date",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "date",
+          "arrivedAt"
+        ],
+        "type": "object"
+      },
+      "RegisterCallerRole": {
+        "enum": [
+          "all",
+          "class_teacher",
+          "cover",
+          "subject_teacher",
+          "viewer"
+        ],
+        "type": "string"
+      },
+      "RegisterCountsDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          },
+          "marked": {
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "present": {
+            "type": "number"
+          },
+          "roster": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "roster",
+          "marked",
+          "present",
+          "absent",
+          "late",
+          "onLeave"
+        ],
+        "type": "object"
+      },
       "RegisterDeviceDto": {
         "properties": {
           "platform": {
@@ -2829,6 +4004,255 @@
         ],
         "type": "object"
       },
+      "RegisterDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "lastAmendedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "lastAmendedBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "lastAmendedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMode"
+              }
+            ],
+            "description": "Copied from the class at first submit, frozen"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegisterSource"
+              }
+            ]
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "submittedBy": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "submittedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "teachingDay": {
+            "description": "isTeachingDay(date) now: false on a register later covered by a holiday (R167)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "academicYearId",
+          "date",
+          "period",
+          "mode",
+          "teachingDay",
+          "submittedBy",
+          "submittedByName",
+          "submittedAt",
+          "lastAmendedBy",
+          "lastAmendedByName",
+          "lastAmendedAt",
+          "source"
+        ],
+        "type": "object"
+      },
+      "RegisterSectionDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "attendanceMode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMode"
+              }
+            ]
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "classId",
+          "className",
+          "academicYearId",
+          "attendanceMode"
+        ],
+        "type": "object"
+      },
+      "RegisterSource": {
+        "enum": [
+          "app",
+          "web"
+        ],
+        "type": "string"
+      },
+      "RegisterSubmitResultDto": {
+        "properties": {
+          "alerts": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmitAlertsDto"
+              }
+            ],
+            "description": "Zeros on a replay"
+          },
+          "created": {
+            "description": "This request created the register",
+            "type": "boolean"
+          },
+          "marks": {
+            "description": "In request order",
+            "items": {
+              "$ref": "#/components/schemas/SubmittedMarkDto"
+            },
+            "type": "array"
+          },
+          "register": {
+            "$ref": "#/components/schemas/RegisterDto"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RegisterCountsDto"
+          }
+        },
+        "required": [
+          "created",
+          "register",
+          "marks",
+          "summary",
+          "alerts"
+        ],
+        "type": "object"
+      },
+      "RegisterViewDto": {
+        "properties": {
+          "amendable": {
+            "description": "canSubmit, on a teaching day, and (all scope or the window open)",
+            "type": "boolean"
+          },
+          "callerRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegisterCallerRole"
+              }
+            ]
+          },
+          "canSubmit": {
+            "description": "The write rule for this caller, ignoring the window",
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "periodsPerDay": {
+            "description": "The setting now",
+            "type": "number"
+          },
+          "register": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "roster": {
+            "items": {
+              "$ref": "#/components/schemas/RosterRowDto"
+            },
+            "type": "array"
+          },
+          "section": {
+            "$ref": "#/components/schemas/RegisterSectionDto"
+          },
+          "teachingDay": {
+            "description": "Now",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "section",
+          "date",
+          "period",
+          "periodsPerDay",
+          "teachingDay",
+          "register",
+          "roster",
+          "canSubmit",
+          "amendable",
+          "callerRole"
+        ],
+        "type": "object"
+      },
       "Relationship": {
         "enum": [
           "father",
@@ -2837,6 +4261,115 @@
           "other"
         ],
         "type": "string"
+      },
+      "RemarkCategory": {
+        "enum": [
+          "academic",
+          "behaviour",
+          "homework",
+          "attendance",
+          "participation",
+          "general"
+        ],
+        "type": "string"
+      },
+      "RemarkDto": {
+        "properties": {
+          "authorName": {
+            "type": "string"
+          },
+          "authorStaffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkCategory"
+              }
+            ]
+          },
+          "correctionReason": {
+            "description": "Set exactly when supersedesId is",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "supersededAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "supersededById": {
+            "description": "The correction of this row, once one exists",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "supersedesId": {
+            "description": "The row this one corrects",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RemarkVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "date",
+          "category",
+          "text",
+          "subjectId",
+          "subjectName",
+          "authorName",
+          "supersedesId",
+          "supersededAt",
+          "supersededById",
+          "createdAt",
+          "enrolmentId",
+          "visibility",
+          "authorStaffId",
+          "correctionReason"
+        ],
+        "type": "object"
       },
       "RemarkVisibility": {
         "enum": [
@@ -2880,6 +4413,57 @@
           "schoolCode",
           "token",
           "newPassword"
+        ],
+        "type": "object"
+      },
+      "RosterRowDto": {
+        "properties": {
+          "alert": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AlertSummaryDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "mark": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMarkDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "onRoster": {
+            "description": "False for a row kept only because it is already marked",
+            "type": "boolean"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "studentFullName": {
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "studentId",
+          "studentFullName",
+          "rollNo",
+          "onRoster",
+          "mark",
+          "alert"
         ],
         "type": "object"
       },
@@ -3058,6 +4642,125 @@
         ],
         "type": "object"
       },
+      "SectionDayDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "classTeacherName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "classTeacherStaffId": {
+            "description": "The class teacher's staff id (the console's links)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "coverStaffIds": {
+            "description": "Every cover active on the date, by assignment",
+            "items": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "coverStaffName": {
+            "description": "The first cover (by assignment)",
+            "nullable": true,
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "declaredHolidayAfter": {
+            "description": "Recorded on a day later declared a holiday (R167)",
+            "type": "boolean"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceMode"
+              }
+            ],
+            "description": "The class's now"
+          },
+          "recorded": {
+            "type": "boolean"
+          },
+          "registersExpected": {
+            "description": "1 in daily mode, else periodsPerDay now",
+            "type": "number"
+          },
+          "registersRecorded": {
+            "description": "Live count",
+            "type": "number"
+          },
+          "rosterCount": {
+            "type": "number"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "submittedBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "submittedByName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "academicYearId",
+          "date",
+          "mode",
+          "rosterCount",
+          "registersExpected",
+          "registersRecorded",
+          "recorded",
+          "submittedBy",
+          "submittedByName",
+          "submittedAt",
+          "classTeacherStaffId",
+          "classTeacherName",
+          "coverStaffIds",
+          "coverStaffName",
+          "declaredHolidayAfter"
+        ],
+        "type": "object"
+      },
+      "SectionDaySort": {
+        "enum": [
+          "className",
+          "sectionName",
+          "-registersRecorded"
+        ],
+        "type": "string"
+      },
       "SectionDto": {
         "properties": {
           "archivedAt": {
@@ -3124,6 +4827,245 @@
         },
         "required": [
           "revoked"
+        ],
+        "type": "object"
+      },
+      "StaffAmendDto": {
+        "properties": {
+          "fromStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ],
+            "description": "The status the client last saw"
+          },
+          "note": {
+            "description": "Absent: unchanged; null clears",
+            "maxLength": 200,
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fromStatus",
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "StaffAttendanceDayDto": {
+        "properties": {
+          "amended": {
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "employed": {
+            "description": "On or after joined_on and, when set, on or before left_on",
+            "type": "boolean"
+          },
+          "markedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ],
+            "nullable": true
+          },
+          "workingDay": {
+            "description": "A staff working day as the calendar says now (R136)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "workingDay",
+          "employed",
+          "status",
+          "note",
+          "markedByName",
+          "amended"
+        ],
+        "type": "object"
+      },
+      "StaffAttendanceDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "days": {
+            "description": "One per date, ascending",
+            "items": {
+              "$ref": "#/components/schemas/StaffAttendanceDayDto"
+            },
+            "type": "array"
+          },
+          "late": {
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "present": {
+            "description": "Marks on working days",
+            "type": "number"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "unrecorded": {
+            "description": "workingDays − marked working days, never below 0",
+            "type": "number"
+          },
+          "workingDays": {
+            "description": "Staff working days in the range while employed",
+            "type": "number"
+          }
+        },
+        "required": [
+          "staffId",
+          "dateFrom",
+          "dateTo",
+          "workingDays",
+          "present",
+          "absent",
+          "late",
+          "onLeave",
+          "unrecorded",
+          "days"
+        ],
+        "type": "object"
+      },
+      "StaffAttendanceStatus": {
+        "enum": [
+          "present",
+          "absent",
+          "late",
+          "on_leave"
+        ],
+        "type": "string"
+      },
+      "StaffDayDto": {
+        "properties": {
+          "designation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "mark": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffMarkDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffStatus"
+              }
+            ],
+            "description": "`active`, or the current status of a member marked that day who is no longer active"
+          }
+        },
+        "required": [
+          "staffId",
+          "fullName",
+          "designation",
+          "staffStatus",
+          "mark"
+        ],
+        "type": "object"
+      },
+      "StaffDaySort": {
+        "enum": [
+          "fullName",
+          "-fullName",
+          "status"
+        ],
+        "type": "string"
+      },
+      "StaffDayStatusFilter": {
+        "enum": [
+          "present",
+          "absent",
+          "late",
+          "on_leave",
+          "unrecorded"
+        ],
+        "type": "string"
+      },
+      "StaffDaySummaryDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          },
+          "marked": {
+            "description": "Marks recorded for the date",
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "present": {
+            "type": "number"
+          },
+          "staff": {
+            "description": "Staff markable on the date: active now, joined on or before it",
+            "type": "number"
+          }
+        },
+        "required": [
+          "staff",
+          "marked",
+          "present",
+          "absent",
+          "late",
+          "onLeave"
         ],
         "type": "object"
       },
@@ -3210,6 +5152,75 @@
         ],
         "type": "object"
       },
+      "StaffMarkDto": {
+        "properties": {
+          "amended": {
+            "description": "A staff_attendance_changes row exists",
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "lastAmendedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "lastAmendedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "markedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "markedBy": {
+            "description": "The first writer (frozen)",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "markedByName": {
+            "description": "The first writer’s staff name",
+            "nullable": true,
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "date",
+          "status",
+          "note",
+          "markedBy",
+          "markedByName",
+          "markedAt",
+          "amended",
+          "lastAmendedAt",
+          "lastAmendedByName"
+        ],
+        "type": "object"
+      },
       "StaffSort": {
         "enum": [
           "fullName",
@@ -3228,6 +5239,166 @@
           "left"
         ],
         "type": "string"
+      },
+      "StaffSubmitDto": {
+        "properties": {
+          "date": {
+            "description": "A staff working day within the last 366 days",
+            "format": "date",
+            "type": "string"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/StaffSubmitMarkDto"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "type": "array"
+          },
+          "reason": {
+            "description": "Required when any mark is an amendment",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "marks"
+        ],
+        "type": "object"
+      },
+      "StaffSubmitMarkDto": {
+        "properties": {
+          "note": {
+            "description": "Absent: no note",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "staffId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "StaffSubmitMarkResultDto": {
+        "properties": {
+          "amended": {
+            "description": "A staff_attendance_changes row exists",
+            "type": "boolean"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "lastAmendedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "lastAmendedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "markedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "markedBy": {
+            "description": "The first writer (frozen)",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "markedByName": {
+            "description": "The first writer’s staff name",
+            "nullable": true,
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkOutcome"
+              }
+            ]
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "date",
+          "status",
+          "note",
+          "markedBy",
+          "markedByName",
+          "markedAt",
+          "amended",
+          "lastAmendedAt",
+          "lastAmendedByName",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "StaffSubmitResultDto": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "marks": {
+            "description": "In request order",
+            "items": {
+              "$ref": "#/components/schemas/StaffSubmitMarkResultDto"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/StaffDaySummaryDto"
+          },
+          "workingDay": {
+            "description": "Always true on success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "workingDay",
+          "marks",
+          "summary"
+        ],
+        "type": "object"
       },
       "StagedUploadDto": {
         "properties": {
@@ -3314,6 +5485,77 @@
         ],
         "type": "object"
       },
+      "StudentAttendanceDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "countedDays": {
+            "type": "number"
+          },
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/StudentDayDto"
+            },
+            "type": "array"
+          },
+          "excludedLeaveDays": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "partial": {
+            "type": "number"
+          },
+          "percentage": {
+            "description": "One decimal; null when no recorded days",
+            "nullable": true,
+            "type": "number"
+          },
+          "present": {
+            "type": "number"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "teachingDays": {
+            "type": "number"
+          },
+          "unrecorded": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "studentId",
+          "dateFrom",
+          "dateTo",
+          "percentage",
+          "countedDays",
+          "teachingDays",
+          "present",
+          "absent",
+          "late",
+          "onLeave",
+          "partial",
+          "excludedLeaveDays",
+          "unrecorded",
+          "days"
+        ],
+        "type": "object"
+      },
       "StudentCurrentEnrolmentDto": {
         "properties": {
           "academicYearId": {
@@ -3355,6 +5597,77 @@
           "sectionId",
           "sectionName",
           "rollNo"
+        ],
+        "type": "object"
+      },
+      "StudentDayDto": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "enrolled": {
+            "description": "An enrolment was in force",
+            "type": "boolean"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/StudentDayPeriodDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DayStatus"
+              }
+            ],
+            "nullable": true
+          },
+          "teachingDay": {
+            "type": "boolean"
+          },
+          "value": {
+            "description": "Null when excluded or unrecorded",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "teachingDay",
+          "enrolled",
+          "status",
+          "value",
+          "periods"
+        ],
+        "type": "object"
+      },
+      "StudentDayPeriodDto": {
+        "properties": {
+          "arrivedAt": {
+            "description": "HH:MM, school time",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "period",
+          "status",
+          "arrivedAt"
         ],
         "type": "object"
       },
@@ -3707,6 +6020,170 @@
         ],
         "type": "string"
       },
+      "SubmitAlertsDto": {
+        "properties": {
+          "absenceBackdated": {
+            "type": "number"
+          },
+          "absencePending": {
+            "type": "number"
+          },
+          "cancelled": {
+            "type": "number"
+          },
+          "corrections": {
+            "type": "number"
+          },
+          "lateAdvicePending": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "absencePending",
+          "absenceBackdated",
+          "lateAdvicePending",
+          "cancelled",
+          "corrections"
+        ],
+        "type": "object"
+      },
+      "SubmitMarkDto": {
+        "properties": {
+          "arrivedAt": {
+            "description": "Only with status late",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "note": {
+            "description": "Absent: the mark has no note",
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "SubmitRegisterDto": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/SubmitMarkDto"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reason": {
+            "description": "Required when any mark is an amendment",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "period",
+          "marks"
+        ],
+        "type": "object"
+      },
+      "SubmittedMarkDto": {
+        "properties": {
+          "amended": {
+            "description": "At least one change row exists",
+            "type": "boolean"
+          },
+          "arrivedAt": {
+            "description": "Only ever set on a late mark",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "note": {
+            "description": "Staff routes only",
+            "maxLength": 200,
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkOutcome"
+              }
+            ]
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "registerId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "registerId",
+          "enrolmentId",
+          "studentId",
+          "date",
+          "period",
+          "status",
+          "arrivedAt",
+          "note",
+          "amended",
+          "outcome"
+        ],
+        "type": "object"
+      },
       "SystemRole": {
         "enum": [
           "principal",
@@ -3941,6 +6418,43 @@
             "description": "Required when removing keys, and when adding keys to a role that has holders",
             "maxLength": 500,
             "minLength": 3,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateDiaryEntryDto": {
+        "properties": {
+          "assignment": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "dueOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "learningOutcome": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Required after the edit window for a school-wide diary.write holder",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "stagedUploadId": {
+            "description": "A new attachment; null removes it",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 500,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -5390,6 +7904,1280 @@
         },
         "tags": [
           "admissions"
+        ]
+      }
+    },
+    "/api/v1/attendance-arrivals": {
+      "post": {
+        "operationId": "AttendanceController_arrival",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordArrivalDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceMarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-marks/{id}/amend": {
+      "post": {
+        "operationId": "AttendanceController_amend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmendMarkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceMarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-marks/{id}/changes": {
+      "get": {
+        "operationId": "AttendanceController_changes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MarkChangeSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MarkChangeDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-registers": {
+      "get": {
+        "operationId": "AttendanceController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Not in the future",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "false: the unrecorded sections (the principal console)",
+            "in": "query",
+            "name": "recorded",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SectionDaySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SectionDayDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-reports/absentees": {
+      "get": {
+        "operationId": "AttendanceController_absentees",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Not in the future",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AttendanceDayListSort"
+            }
+          },
+          {
+            "description": "Absent: all three",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AbsenteeStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AbsenteeRowDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-reports/daily-summary": {
+      "get": {
+        "operationId": "AttendanceController_dailySummary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 91 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DailySummarySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DailySummaryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-reports/late": {
+      "get": {
+        "operationId": "AttendanceController_late",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Not in the future",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AttendanceDayListSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AbsenteeRowDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-reports/percentage": {
+      "get": {
+        "operationId": "AttendanceController_percentage",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The current active enrolment's",
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The current active enrolment's",
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "percentage < below",
+            "in": "query",
+            "name": "below",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PercentageSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PercentageRowDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
         ]
       }
     },
@@ -7369,6 +11157,382 @@
         },
         "tags": [
           "custom-roles"
+        ]
+      }
+    },
+    "/api/v1/diary-entries/{id}": {
+      "get": {
+        "operationId": "DiaryController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaryEntryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
+        ]
+      },
+      "patch": {
+        "operationId": "DiaryController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDiaryEntryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaryEntryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
+        ]
+      }
+    },
+    "/api/v1/diary-entries/{id}/attachment": {
+      "get": {
+        "operationId": "DiaryController_attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
+        ]
+      }
+    },
+    "/api/v1/diary-entries/{id}/thumbnail": {
+      "get": {
+        "operationId": "DiaryController_thumbnail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
         ]
       }
     },
@@ -10016,6 +14180,662 @@
         ]
       }
     },
+    "/api/v1/me/children/{id}/attendance": {
+      "get": {
+        "operationId": "MyAttendanceController_child",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAttendanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/diary-entries": {
+      "get": {
+        "operationId": "MyChildDiaryController_diary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyDiaryEntryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/diary-entries/{entryId}/attachment": {
+      "get": {
+        "operationId": "MyChildDiaryController_attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/diary-entries/{entryId}/thumbnail": {
+      "get": {
+        "operationId": "MyChildDiaryController_thumbnail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/remarks": {
+      "get": {
+        "operationId": "MyChildDiaryController_remarksOf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RemarkCategory"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyRemarkDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/devices": {
       "post": {
         "operationId": "MeSessionsController_registerDevice",
@@ -10203,6 +15023,678 @@
             "description": ""
           },
           "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/attendance": {
+      "get": {
+        "operationId": "MyStaffAttendanceController_mine",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStaffAttendanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/attendance": {
+      "get": {
+        "operationId": "MyAttendanceController_own",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAttendanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/diary-entries": {
+      "get": {
+        "operationId": "MyStudentDiaryController_diary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyDiaryEntryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/diary-entries/{entryId}/attachment": {
+      "get": {
+        "operationId": "MyStudentDiaryController_attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/diary-entries/{entryId}/thumbnail": {
+      "get": {
+        "operationId": "MyStudentDiaryController_thumbnail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entryId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/remarks": {
+      "get": {
+        "operationId": "MyStudentDiaryController_remarksOf",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RemarkCategory"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyRemarkDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
             "content": {
               "application/json": {
                 "schema": {
@@ -10714,6 +16206,117 @@
         ]
       }
     },
+    "/api/v1/remarks/{id}/correct": {
+      "post": {
+        "operationId": "RemarksController_correct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectRemarkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "remarks"
+        ]
+      }
+    },
     "/api/v1/school/settings": {
       "get": {
         "operationId": "SchoolSettingsController_get",
@@ -11145,6 +16748,561 @@
         ]
       }
     },
+    "/api/v1/sections/{id}/diary-entries": {
+      "get": {
+        "operationId": "DiaryController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DiaryEntryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
+        ]
+      },
+      "post": {
+        "operationId": "DiaryController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDiaryEntryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaryEntryDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiaryEntryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "diary"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/register": {
+      "get": {
+        "operationId": "AttendanceController_register",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterViewDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/submit-register": {
+      "post": {
+        "operationId": "AttendanceController_submit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRegisterDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterSubmitResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterSubmitResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
     "/api/v1/staff": {
       "get": {
         "operationId": "StaffController_list",
@@ -11407,6 +17565,366 @@
         ]
       }
     },
+    "/api/v1/staff-attendance": {
+      "get": {
+        "operationId": "StaffAttendanceController_day",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Not after today",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StaffDayStatusFilter"
+            }
+          },
+          {
+            "description": "Full name contains",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StaffDaySort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/StaffDayDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
+    "/api/v1/staff-attendance/submit": {
+      "post": {
+        "operationId": "StaffAttendanceController_submit",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffSubmitDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffSubmitResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
+    "/api/v1/staff-attendance/{id}/amend": {
+      "post": {
+        "operationId": "StaffAttendanceController_amend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffAmendDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
     "/api/v1/staff/{id}": {
       "get": {
         "operationId": "StaffController_get",
@@ -11604,6 +18122,116 @@
         },
         "tags": [
           "staff"
+        ]
+      }
+    },
+    "/api/v1/staff/{id}/attendance": {
+      "get": {
+        "operationId": "StaffMemberAttendanceController_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAttendanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
         ]
       }
     },
@@ -12603,6 +19231,126 @@
         },
         "tags": [
           "students"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/attendance": {
+      "get": {
+        "operationId": "AttendanceController_studentAttendance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom, at most 365 days after it",
+            "in": "query",
+            "name": "dateTo",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAttendanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "426": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
         ]
       }
     },
@@ -13691,6 +20439,327 @@
         },
         "tags": [
           "admissions"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/remarks": {
+      "get": {
+        "operationId": "RemarksController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after dateFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiarySort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RemarkCategory"
+            }
+          },
+          {
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RemarkVisibility"
+            }
+          },
+          {
+            "description": "Include rows a correction has superseded",
+            "in": "query",
+            "name": "includeSuperseded",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/RemarkDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "remarks"
+        ]
+      },
+      "post": {
+        "operationId": "RemarksController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRemarkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemarkDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "remarks"
         ]
       }
     },

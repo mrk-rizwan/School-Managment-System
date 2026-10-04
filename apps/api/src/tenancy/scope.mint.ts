@@ -3,7 +3,9 @@
 import type { DatedScope, Scope, SectionRoles } from './scope';
 
 type UnbrandedScope =
-  { readonly kind: 'all' } | { readonly kind: 'sections'; readonly ids: readonly bigint[] };
+  | { readonly kind: 'all' }
+  | { readonly kind: 'sections'; readonly ids: readonly bigint[] }
+  | { readonly kind: 'students'; readonly ids: readonly bigint[] };
 
 const brand = (scope: UnbrandedScope): Scope => scope as Scope;
 
@@ -14,6 +16,14 @@ export function scopeAll(): Scope {
 export function scopeSections(ids: readonly bigint[]): Scope {
   // Copied so a caller cannot widen the scope by mutating its array afterwards.
   return brand({ kind: 'sections', ids: [...ids] });
+}
+
+/**
+ * The capacity scope of a guardian or student route (contracts/slice-13.md §1.2): exactly these
+ * students. An empty list means no rows, never no filter (control 7).
+ */
+export function scopeStudents(ids: readonly bigint[]): Scope {
+  return brand({ kind: 'students', ids: [...ids] });
 }
 
 const brandDated = (

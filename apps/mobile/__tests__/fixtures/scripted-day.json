@@ -1,0 +1,194 @@
+{
+  "capturedAt": "2026-10-04T05:32:14.485Z",
+  "base": "dev API",
+  "exchanges": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "status": 200,
+      "body": {
+        "id": "2",
+        "fullName": "Demo Principal",
+        "email": null,
+        "hasVerifiedEmail": false,
+        "passwordIsDefault": true,
+        "school": {
+          "id": "2",
+          "name": "Demo School",
+          "shortCode": "demo",
+          "status": "trial"
+        },
+        "roles": [
+          "principal"
+        ],
+        "capabilities": [
+          "school.settings.manage",
+          "academic_year.manage",
+          "class.manage",
+          "section.manage",
+          "subject.manage",
+          "fee_head.manage",
+          "holiday.manage",
+          "user.account.manage",
+          "role.manage",
+          "student.view",
+          "student.create",
+          "student.update",
+          "student.status.change",
+          "enrolment.manage",
+          "guardian.manage",
+          "document.view",
+          "document.upload",
+          "document.verify",
+          "staff.view",
+          "staff.create",
+          "staff.update",
+          "staff.contract.manage",
+          "staff.status.change",
+          "staff.leave.approve",
+          "payroll.view",
+          "payroll.run",
+          "attendance.student.mark",
+          "attendance.student.view_all",
+          "attendance.staff.manage",
+          "assessment.define",
+          "marks.enter",
+          "marks.view_all",
+          "result.approve",
+          "result.publish",
+          "diary.write",
+          "remark.write",
+          "timetable.manage",
+          "certificate.issue",
+          "charge.create",
+          "charge.campaign.send",
+          "concession.grant",
+          "payment.record",
+          "payment.verify",
+          "payment.void",
+          "collection.handover.confirm",
+          "expense.record",
+          "expense.approve",
+          "finance.report.view",
+          "fee.statement.view",
+          "announcement.send.scope",
+          "announcement.send.school"
+        ],
+        "sessionExpiresAt": "2027-01-02T05:32:13.503Z",
+        "capacities": [
+          "staff"
+        ],
+        "assignments": [],
+        "staffId": "2",
+        "children": [],
+        "bearerToken": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "body": {
+        "id": "2",
+        "fullName": "Demo Principal",
+        "email": null,
+        "hasVerifiedEmail": false,
+        "passwordIsDefault": true,
+        "school": {
+          "id": "2",
+          "name": "Demo School",
+          "shortCode": "demo",
+          "status": "trial"
+        },
+        "roles": [
+          "principal"
+        ],
+        "capabilities": [
+          "school.settings.manage",
+          "academic_year.manage",
+          "class.manage",
+          "section.manage",
+          "subject.manage",
+          "fee_head.manage",
+          "holiday.manage",
+          "user.account.manage",
+          "role.manage",
+          "student.view",
+          "student.create",
+          "student.update",
+          "student.status.change",
+          "enrolment.manage",
+          "guardian.manage",
+          "document.view",
+          "document.upload",
+          "document.verify",
+          "staff.view",
+          "staff.create",
+          "staff.update",
+          "staff.contract.manage",
+          "staff.status.change",
+          "staff.leave.approve",
+          "payroll.view",
+          "payroll.run",
+          "attendance.student.mark",
+          "attendance.student.view_all",
+          "attendance.staff.manage",
+          "assessment.define",
+          "marks.enter",
+          "marks.view_all",
+          "result.approve",
+          "result.publish",
+          "diary.write",
+          "remark.write",
+          "timetable.manage",
+          "certificate.issue",
+          "charge.create",
+          "charge.campaign.send",
+          "concession.grant",
+          "payment.record",
+          "payment.verify",
+          "payment.void",
+          "collection.handover.confirm",
+          "expense.record",
+          "expense.approve",
+          "finance.report.view",
+          "fee.statement.view",
+          "announcement.send.scope",
+          "announcement.send.school"
+        ],
+        "sessionExpiresAt": "2027-01-02T05:32:13.503Z",
+        "capacities": [
+          "staff"
+        ],
+        "assignments": [],
+        "staffId": "2",
+        "children": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/calendar?dateFrom=2026-10-01&dateTo=2026-10-31",
+      "status": 200,
+      "body": {
+        "dateFrom": "2026-10-01",
+        "dateTo": "2026-10-31",
+        "weeklyOffDays": [
+          0
+        ],
+        "holidays": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/me/devices",
+      "status": 201,
+      "body": {
+        "id": "1",
+        "platform": "android",
+        "appVersion": "0.1.0",
+        "createdAt": "2026-10-04T05:32:14.228Z",
+        "lastSeenAt": "2026-10-04T05:32:14.228Z"
+      }
+    }
+  ]
+}

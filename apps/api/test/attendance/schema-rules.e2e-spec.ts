@@ -224,11 +224,16 @@ describe('attendance schema rules (raw SQL)', () => {
     );
   });
 
-  it('R125: a no-op update and an arrival-time-only update need no actor and write no history', async () => {
+  it('R125: a no-op update needs no actor and writes no history; an arrival-time change is a correction of record (slice 11 §12 item 2)', async () => {
     const reg = await register(section, '2026-09-09');
     const { id } = await mark(reg.id, enrolments[0]!, '2026-09-09', 1, 'absent');
     expect(await refusedBy(`UPDATE attendance_marks SET status = 'absent', note = NULL WHERE id = $1`, [id])).toBeNull();
+    expect(await refusedBy(`UPDATE attendance_marks SET arrived_at = '09:40' WHERE id = $1`, [id])).toBe(
+      'attendance_mark_changes_actor_required',
+    );
+    await context(teacher.userId, 'Gate time corrected');
     expect(await refusedBy(`UPDATE attendance_marks SET arrived_at = '09:40' WHERE id = $1`, [id])).toBeNull();
+    await context();
     // The register's one-statement upsert: an identical replay is untouched, a change is recorded.
     const upsert = (status: string) =>
       pg.query(
@@ -341,6 +346,12 @@ describe('attendance schema rules (raw SQL)', () => {
       'attendance_alerts_status_final',
     );
     expect(await refusedBy(`UPDATE attendance_alerts SET updated_at = now() WHERE id = $1`, [id])).toBeNull();
+    // The cap stamp is the one change a final row takes, and only once.
+    expect(await refusedBy(`UPDATE attendance_alerts SET capped_at = now() WHERE id = $1`, [id])).toBeNull();
+    await pg.query(`UPDATE attendance_alerts SET capped_at = now() WHERE id = $1`, [id]);
+    expect(await refusedBy(`UPDATE attendance_alerts SET capped_at = now() + interval '1 minute' WHERE id = $1`, [id])).toBe(
+      'attendance_alerts_capped_at_immutable',
+    );
   });
 
   it('R127: a day status’s period counts add up', async () => {
@@ -370,6 +381,13 @@ describe('attendance schema rules (raw SQL)', () => {
     );
     await context(office.userId, 'Came in at 08:40');
     expect(await refusedBy(`UPDATE staff_attendance SET status = 'late' WHERE id = $1`, [id])).toBeNull();
+    // Who first marked the row, and when, never change (the lock is a SELECT ... FOR UPDATE).
+    expect(await refusedBy(`UPDATE staff_attendance SET marked_at = now() - interval '1 day' WHERE id = $1`, [id])).toBe(
+      'staff_attendance_marked_at_immutable',
+    );
+    expect(await refusedBy(`UPDATE staff_attendance SET marked_by = $2 WHERE id = $1`, [id, principal.userId])).toBe(
+      'staff_attendance_marked_by_immutable',
+    );
   });
 
   it('R133: a staff status change needs an actor and a reason, is recorded, and the record is append-only', async () => {

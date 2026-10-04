@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import type { Readable } from 'node:stream';
 import { Capability } from '@asms/shared';
 import { RequireCapability } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
@@ -36,17 +37,26 @@ const COMMON = [401, 403, 429];
 
 /**
  * Streams stored content with the §6.2 headers: an attachment the browser must neither sniff nor
- * render with script. Never a presigned URL (R43).
+ * render with script. Never a presigned URL (R43). Also the diary's attachments and thumbnails
+ * (contracts/slice-13.md §4.5), whose body may be bytes made on demand.
  */
-function attachment(res: Response, content: DocumentContent): StreamableFile {
+export function sendAttachment(
+  res: Response,
+  body: Readable | Buffer,
+  file: { mime: string; sizeBytes: number; filename: string },
+): StreamableFile {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', 'sandbox');
-  return new StreamableFile(content.object.body, {
-    type: content.mime,
-    length: content.sizeBytes,
-    disposition: `attachment; filename="${content.filename}"`,
-  });
+  const options = {
+    type: file.mime,
+    length: file.sizeBytes,
+    disposition: `attachment; filename="${file.filename}"`,
+  };
+  return Buffer.isBuffer(body) ? new StreamableFile(body, options) : new StreamableFile(body, options);
 }
+
+const attachment = (res: Response, content: DocumentContent): StreamableFile =>
+  sendAttachment(res, content.object.body, content);
 
 /** A binary body of the given types; errors stay JSON (the default response). */
 const binaryOf = (...types: string[]) => ({
@@ -63,9 +73,19 @@ export class DocumentsController {
     private readonly uploads: UploadsService,
   ) {}
 
-  /** The one multipart route (plan §3.9). Guards (access, then throttle) run before the body is read. */
+  /**
+   * The one multipart route (plan §3.9). Guards (access, then throttle) run before the body is
+   * read. Open to anyone who may attach a file anywhere (R171: documents, diary, announcements);
+   * the staged upload is consumable only by its uploader, and each consuming route keeps its own
+   * capability, so staging a file grants nothing else.
+   */
   @Post('uploads')
-  @RequireCapability(Capability.DOCUMENT_UPLOAD)
+  @RequireCapability(
+    Capability.DOCUMENT_UPLOAD,
+    Capability.DIARY_WRITE,
+    Capability.ANNOUNCEMENT_SEND_SCOPE,
+    Capability.ANNOUNCEMENT_SEND_SCHOOL,
+  )
   @UseGuards(UploadThrottleGuard)
   @UseInterceptors(SingleFileInterceptor)
   @ApiConsumes('multipart/form-data')

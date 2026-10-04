@@ -406,7 +406,9 @@ rolesOn(schoolId: SchoolId, staffId: bigint, sectionId: bigint, on: Date): Promi
 A row counts on `on` iff `voided_at IS NULL AND starts_on <= on AND (ends_on IS NULL OR ends_on >=
 on)` — the same predicate as today's scope. `class_teacher` sets `classTeacher`, `cover` sets
 `cover`, `subject_teacher` adds its `subject_id`; a `subject_teacher` row with `section_id IS NULL`
-applies to every section of its class, archived included (R54). At most two sequential statements
+applies to every live section of its class; archived sections are excluded (amended 2026-10-04 by the
+wave-E security review: a subject teacher must not reach sections archived before their row existed).
+A row that names an archived section itself still counts (R54). At most two sequential statements
 (rows, then the sections of whole-class rows). `rolesOn` is `sectionsOn(...).get(sectionId)` with the
 empty value as default — one implementation, and `activeSectionIds(today)` becomes the key set of
 `sectionsOn(today)`, so today's scope and dated scope cannot disagree (a test asserts it).

@@ -25,17 +25,32 @@ const idString = z
   .string()
   .refine((value) => ID_STRING.test(value) && BigInt(value) <= MAX_BIGINT);
 
-function hasEvery<K extends string>(
-  ids: Partial<Record<K, bigint>>,
+function hasEvery<K extends string, V>(
+  ids: Partial<Record<K, V>>,
   keys: readonly K[],
-): ids is Record<K, bigint> {
+): ids is Record<K, V> {
   return keys.every((key) => ids[key] !== undefined);
 }
 
+/**
+ * A calendar date, the only non-id value a payload may carry (contracts/slice-11.md §8.5): the
+ * pattern, and a real date (no 2026-02-30).
+ */
+const dateString = z
+  .string()
+  .refine(
+    (value) =>
+      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`)) &&
+      new Date(`${value}T00:00:00.000Z`).toISOString().startsWith(value),
+  );
+
 /** A payload that resolved: the job's school, branded, and its other ids as bigints. */
-export interface ResolvedJob<K extends string> {
+export interface ResolvedJob<K extends string, D extends string = never> {
   readonly schoolId: SchoolId;
   readonly ids: Readonly<Record<K, bigint>>;
+  /** The payload's dates as DATE values (UTC midnight); present only when date keys were asked for. */
+  readonly dates?: Readonly<Record<D, Date>>;
 }
 
 @Injectable()
@@ -53,15 +68,17 @@ export class QueueTenancy {
    * Validates `payload` strictly (`schoolId` plus exactly `idKeys`) and resolves its school.
    * Null means drop the job: log it without ids, do not retry.
    */
-  async fromQueuePayload<K extends string>(
+  async fromQueuePayload<K extends string, D extends string = never>(
     payload: unknown,
     idKeys: readonly K[],
-  ): Promise<ResolvedJob<K> | null> {
-    if (idKeys.some((key) => key === 'schoolId')) {
+    dateKeys: readonly D[] = [],
+  ): Promise<ResolvedJob<K, D> | null> {
+    if ([...idKeys, ...dateKeys].some((key) => key === 'schoolId')) {
       throw new Error('fromQueuePayload: schoolId is not an id key');
     }
     const shape: Record<string, typeof idString> = { schoolId: idString };
     for (const key of idKeys) shape[key] = idString;
+    for (const key of dateKeys) shape[key] = dateString;
     const parsed = z.strictObject(shape).safeParse(payload);
     if (!parsed.success) return null;
     // A strict object with every key required: each value is a validated id string.
@@ -76,7 +93,14 @@ export class QueueTenancy {
       if (value !== undefined) ids[key] = BigInt(value);
     }
     if (!hasEvery(ids, idKeys)) return null;
-    return { schoolId: schoolIdFromQueuePayload(school), ids };
+    const dates: Partial<Record<D, Date>> = {};
+    for (const key of dateKeys) {
+      const value = values[key];
+      if (value !== undefined) dates[key] = new Date(`${value}T00:00:00.000Z`);
+    }
+    if (!hasEvery(dates, dateKeys)) return null;
+    const resolved = { schoolId: schoolIdFromQueuePayload(school), ids };
+    return dateKeys.length === 0 ? resolved : { ...resolved, dates };
   }
 
   /**

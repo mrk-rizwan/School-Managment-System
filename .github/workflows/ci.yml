@@ -73,8 +73,8 @@ jobs:
           POSTGRES_DB=${PG_DB}
           REDIS_PASSWORD=unused-in-ci
           NODE_ENV=development
-          API_PORT=3001
-          APP_URL=http://localhost:3000
+          API_PORT=3461
+          APP_URL=http://localhost:3460
           DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/${PG_DB}
           TEST_DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/asms_test
           REDIS_URL=redis://127.0.0.1:6379
@@ -139,7 +139,12 @@ jobs:
       - name: API tests
         run: pnpm --filter @asms/api test
 
-      # Regenerates the OpenAPI document and the web client; fails if the
+      # The mobile package's Jest suites (no emulator): lint and typecheck already ran above through
+      # pnpm -r, so the fast mobile checks never wait on the emulator job (contracts/slice-15.md §13.3).
+      - name: Mobile unit tests
+        run: pnpm --filter @asms/mobile test
+
+      # Regenerates the OpenAPI document and the web and mobile clients; fails if the
       # committed copies differ or new files appear.
       - name: OpenAPI staleness check
         run: |
@@ -147,8 +152,9 @@ jobs:
           pnpm --filter @asms/api build
           pnpm --filter @asms/api openapi
           pnpm --filter @asms/web api:generate
-          git diff --exit-code -- apps/api/openapi apps/web/lib/api
-          untracked=$(git status --porcelain --untracked-files=all -- apps/api/openapi apps/web/lib/api)
+          pnpm --filter @asms/mobile api:generate
+          git diff --exit-code -- apps/api/openapi apps/web/lib/api apps/mobile/src/api
+          untracked=$(git status --porcelain --untracked-files=all -- apps/api/openapi apps/web/lib/api apps/mobile/src/api)
           if [ -n "$untracked" ]; then
             echo "Generated files are not committed:"; echo "$untracked"; exit 1
           fi
@@ -170,5 +176,228 @@ jobs:
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The mobile app's emulator proof (contracts/slice-15.md §13.3). The services and the .env step
+  # are duplicated from `ci` on purpose (YAML, not code); they may become a composite action later.
+  # The fast mobile checks also run in `ci` through pnpm -r, so they never wait on the emulator.
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      MAESTRO_VERSION: 2.11.0
+      SCHOOL_CODE: demo
+      # A made-up identity number for the throwaway CI school; its default password is the same
+      # digits. It protects nothing: the database lives for one job.
+      PRINCIPAL_CNIC: '3520299999991'
+      DEV_SCHOOL_PRINCIPAL_CNIC: '3520299999991'
+      # Required by the seed (no default); a made-up number. The seed accepts the CI identity
+      # number only because DATABASE_URL's host is 127.0.0.1 (loopback).
+      DEV_SCHOOL_PRINCIPAL_PHONE: '+923000000000'
+      API_PID_FILE: ${{ github.workspace }}/api.pid
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ${{ env.PG_USER }}
+          POSTGRES_PASSWORD: ${{ env.PG_PASS }}
+          POSTGRES_DB: ${{ env.PG_DB }}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U asms_ci -d asms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @asms/shared build
+
+      - name: Mobile lint, typecheck, unit tests
+        run: |
+          pnpm --filter @asms/mobile lint
+          pnpm --filter @asms/mobile typecheck
+          pnpm --filter @asms/mobile test
+
+      - name: Bundle check and expo-doctor
+        working-directory: apps/mobile
+        run: |
+          pnpm exec expo export --platform android --output-dir dist
+          pnpm exec expo-doctor
+
+      # A release build can never be pointed at http: the config refuses it.
+      - name: https guard
+        working-directory: apps/mobile
+        run: |
+          if APP_PROFILE=production EXPO_PUBLIC_API_URL=http://insecure.invalid pnpm exec expo config --type public >/dev/null 2>&1; then
+            echo "app.config.ts accepted an http URL for the production profile"; exit 1
+          fi
+
+      # Same keys as the ci job's .env (every key from .env.example), secrets generated per run.
+      - name: Write CI .env
+        run: |
+          db_auth="${PG_USER}:${PG_PASS}"
+          cat > .env <<ENVFILE
+          POSTGRES_USER=${PG_USER}
+          POSTGRES_PASSWORD=${PG_PASS}
+          POSTGRES_DB=${PG_DB}
+          REDIS_PASSWORD=unused-in-ci
+          NODE_ENV=development
+          API_PORT=3461
+          APP_URL=http://localhost:3460
+          DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/${PG_DB}
+          TEST_DATABASE_URL=postgresql://${db_auth}@127.0.0.1:5432/asms_test
+          REDIS_URL=redis://127.0.0.1:6379
+          IDENTITY_HASH_KEY=$(openssl rand -base64 32)
+          FIELD_ENCRYPTION_KEYS=k1:$(openssl rand -base64 32)
+          PASSWORD_PEPPER=$(openssl rand -base64 32)
+          S3_ENDPOINT=http://127.0.0.1:9000
+          S3_REGION=us-east-1
+          S3_BUCKET=asms-documents
+          S3_ACCESS_KEY_ID=ci-access
+          S3_SECRET_ACCESS_KEY=ci-$(openssl rand -hex 16)
+          SMTP_HOST=127.0.0.1
+          SMTP_PORT=1025
+          SMTP_FROM="ASMS <no-reply@localhost>"
+          PLATFORM_ADMIN_EMAIL=admin@ci.invalid
+          PLATFORM_ADMIN_PASSWORD=Ci-$(openssl rand -hex 12)
+          ENVFILE
+
+      - name: Generate Prisma client
+        run: |
+          set -a; . ./.env; set +a
+          pnpm --filter @asms/api exec prisma generate
+
+      - name: Migrate database
+        run: pnpm --filter @asms/api db:deploy
+
+      - name: Seed a school and its principal
+        run: |
+          pnpm --filter @asms/api seed:platform-admin
+          pnpm --filter @asms/api seed:dev-school
+
+      - name: Start the API
+        run: |
+          pnpm --filter @asms/api build
+          set -a; . ./.env; set +a
+          MOBILE_MIN_APP_VERSION=0.0.0 nohup node apps/api/dist/main.js > api.log 2>&1 &
+          echo $! > "$API_PID_FILE"
+          for _ in $(seq 1 60); do
+            if curl -fs -o /dev/null http://127.0.0.1:3461/api/v1/health; then echo "API is up"; exit 0; fi
+            sleep 2
+          done
+          echo "API did not start"; tail -n 50 api.log; exit 1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # R155 "cleartext traffic is off" and no Android backup of the app's data (the SQLite file and
+      # its cached rows, security review M1): a production-profile prebuild's manifest says both.
+      - name: Release manifest refuses cleartext and backup
+        working-directory: apps/mobile
+        run: |
+          APP_PROFILE=production EXPO_PUBLIC_API_URL=https://api.example.invalid EXPO_PUBLIC_PUSH_ENABLED=false \
+            pnpm exec expo prebuild --platform android --no-install --clean
+          manifest=android/app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="false"' "$manifest" || { echo "cleartext not refused"; exit 1; }
+          grep -q 'android:allowBackup="false"' "$manifest" || { echo "backup not refused"; exit 1; }
+          if grep -rq 'usesCleartextTraffic="true"' "$manifest" android/app/src/release 2>/dev/null; then
+            echo "the release manifest allows cleartext"; exit 1
+          fi
+
+      # The e2e APK: the development profile (its own .dev package, http to the host's API) in the
+      # release variant, so the JS is embedded and the dev-client launcher is not in the way.
+      - name: Prebuild and build the e2e APK
+        working-directory: apps/mobile
+        env:
+          APP_PROFILE: development
+          EXPO_PUBLIC_API_URL: http://10.0.2.2:3461
+          EXPO_PUBLIC_PUSH_ENABLED: 'false'
+        run: |
+          pnpm exec expo prebuild --platform android --no-install --clean
+          cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-google_apis-x86_64
+
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "AVD snapshot created"
+
+      - name: Maestro flows on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK: ${{ github.workspace }}/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash apps/mobile/maestro/ci-run.sh
+
+      - name: Upload Maestro output and the API log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-e2e
+          path: |
+            apps/mobile/maestro/out/
+            api.log
           retention-days: 7
           if-no-files-found: ignore

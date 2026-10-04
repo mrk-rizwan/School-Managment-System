@@ -17,7 +17,8 @@
     "db:test:deploy": "node scripts/migrate-test-db.js",
     "openapi": "tsx scripts/generate-openapi.ts",
     "db:migration:new": "prisma migrate dev --create-only",
-    "seed:platform-admin": "dotenv run -f ../../.env -- ts-node scripts/seed-platform-admin.ts"
+    "seed:platform-admin": "dotenv run -f ../../.env -- ts-node scripts/seed-platform-admin.ts",
+    "seed:dev-school": "dotenv run -f ../../.env -- ts-node scripts/seed-dev-school.ts"
   },
   "dependencies": {
     "@asms/shared": "workspace:*",

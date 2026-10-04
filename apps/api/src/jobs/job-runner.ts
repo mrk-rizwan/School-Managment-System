@@ -5,6 +5,12 @@ import { MessageProcessor } from '../messaging/message-processor';
 import { MessageRollup } from '../messaging/message-rollup';
 import { JOB } from '../messaging/queues';
 import { WhatsAppHealth } from '../messaging/whatsapp-health';
+import { AttendanceAlertProcessor } from '../modules/attendance/attendance-alerts';
+import {
+  AttendanceRollup,
+  AttendanceSweeps,
+  RegisterDeadlineSweep,
+} from '../modules/attendance/attendance-jobs';
 import { StagedUploadSweep } from '../modules/documents/staged-upload.sweep';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
@@ -36,6 +42,10 @@ export class JobRunner {
     private readonly deliveryHealth: DeliveryHealthRollup,
     private readonly stagedUploads: StagedUploadSweep,
     private readonly sessionPurge: SessionPurge,
+    private readonly attendanceAlerts: AttendanceAlertProcessor,
+    private readonly attendanceRollup: AttendanceRollup,
+    private readonly attendanceSweeps: AttendanceSweeps,
+    private readonly registerDeadline: RegisterDeadlineSweep,
   ) {}
 
   /** The `messaging` queue: message, message-rollup, whatsapp-health. */
@@ -66,11 +76,46 @@ export class JobRunner {
     }
   }
 
+  /** The `attendance` queue (contracts/slice-11.md §8.5): attendance-alert, attendance-rollup. */
+  async attendance(name: string, payload: unknown, now: Date = new Date()): Promise<JobOutcome> {
+    switch (name) {
+      case JOB.attendanceAlert: {
+        const job = await this.tenancy.fromQueuePayload(payload, ['alertId']);
+        if (!job) return this.dropped(name);
+        await this.tenancy.runAsSchool(job.schoolId, () =>
+          this.attendanceAlerts.run(job.schoolId, job.ids.alertId, now),
+        );
+        return 'done';
+      }
+      case JOB.attendanceRollup: {
+        const job = await this.tenancy.fromQueuePayload(payload, ['sectionId'], ['date']);
+        const date = job?.dates?.date;
+        if (!job || !date) return this.dropped(name);
+        await this.tenancy.runAsSchool(job.schoolId, () =>
+          this.attendanceRollup.recompute(job.schoolId, job.ids.sectionId, date, now),
+        );
+        return 'done';
+      }
+      default:
+        return this.dropped(name);
+    }
+  }
+
   /** The `scheduled` queue: repeatable housekeeping (no payload). */
   async scheduled(name: string, plannedAt: Date): Promise<JobOutcome> {
     switch (name) {
       case JOB.outboxSweep:
-        await this.eachSchool(name, (schoolId) => this.sweeps.outboxSweep(schoolId, plannedAt));
+        // Messaging's sources, then attendance's two (contracts/slice-11.md §8.3).
+        await this.eachSchool(name, async (schoolId) => {
+          await this.sweeps.outboxSweep(schoolId, plannedAt);
+          await this.attendanceSweeps.outboxSweep(schoolId, plannedAt);
+        });
+        return 'done';
+      case JOB.registerDeadlineSweep:
+        await this.eachSchool(name, (schoolId) => this.registerDeadline.run(schoolId, plannedAt));
+        return 'done';
+      case JOB.attendanceNightlyRecompute:
+        await this.eachSchool(name, (schoolId) => this.attendanceSweeps.nightly(schoolId, plannedAt));
         return 'done';
       case JOB.whatsappHealthSweep:
         await this.eachSchool(name, (schoolId) => this.health.check(schoolId, undefined, plannedAt));

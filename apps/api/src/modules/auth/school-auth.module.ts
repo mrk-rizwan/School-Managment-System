@@ -4,6 +4,7 @@ import { SchoolContext } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassRepository } from '../../repositories/class.repository';
 import { DeviceRepository } from '../../repositories/device.repository';
+import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SchoolLookupRepository } from '../../repositories/school-lookup.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { UserTokenRepository } from '../../repositories/user-token.repository';
@@ -51,6 +52,8 @@ import { MeService } from './me.service';
     // throttled per user.
     DeviceRepository,
     ClassRepository,
+    // Slice 13: MeDto.children carries each child's active enrolment.
+    EnrolmentRepository,
     SchoolContext,
   ],
 })

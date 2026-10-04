@@ -337,7 +337,7 @@ describe('school login, logout and /me', () => {
       expect(me.capabilities[0]).toBe('user.account.manage');
       expect(me.capabilities).not.toContain('role.manage');
       expect(Object.keys(me).sort()).toEqual(
-        ['assignments', 'capabilities', 'capacities', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt'],
+        ['assignments', 'capabilities', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],
       );
       expect(JSON.stringify(me)).not.toMatch(/[0-9]{13}/);
     });

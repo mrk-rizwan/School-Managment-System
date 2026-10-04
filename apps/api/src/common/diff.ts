@@ -1,3 +1,5 @@
+import type { MarkOutcome } from '@asms/shared';
+
 /** One changed field as the audit log records it. A type alias, so it fits audit metadata. */
 export type FieldChange<V> = { from: V; to: V };
 
@@ -50,4 +52,29 @@ export function diffFields(
     changes[key] = { from: before, to: after };
   }
   return { data, changes };
+}
+
+/** One submitted mark against the stored row of the same key (slice-11 §4.2, slice-12 §4.2). */
+export interface MarkDiff<I, R> {
+  item: I;
+  outcome: MarkOutcome;
+  existing: R | undefined;
+}
+
+/**
+ * A register or staff-sheet submit against the rows it read under their locks: `created` when no
+ * row has the item's key, `unchanged` when `same` holds, else `amended`. Item order is kept.
+ */
+export function diffMarks<I, R, K>(
+  items: readonly I[],
+  current: ReadonlyMap<K, R>,
+  keyOf: (item: I) => K,
+  same: (item: I, row: R) => boolean,
+): MarkDiff<I, R>[] {
+  return items.map((item) => {
+    const existing = current.get(keyOf(item));
+    const outcome: MarkOutcome =
+      existing === undefined ? 'created' : same(item, existing) ? 'unchanged' : 'amended';
+    return { item, outcome, existing };
+  });
 }

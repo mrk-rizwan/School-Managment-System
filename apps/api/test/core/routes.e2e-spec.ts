@@ -186,8 +186,24 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/calendar', 'authenticated-only'],
   ['POST', '/api/v1/me/change-email', 'authenticated-only'],
   ['POST', '/api/v1/me/change-password', 'authenticated-only'],
+  // contracts/slice-11.md §1.1, §1.4 (R130): a guardian's child's attendance, capacity scope.
+  ['GET', '/api/v1/me/children/:id/attendance', 'capacity'],
+  // contracts/slice-13.md §1.1, §1.2 (R163): a guardian's child, by the capacity scope.
+  ['GET', '/api/v1/me/children/:id/diary-entries', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/attachment', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/thumbnail', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/remarks', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
+  // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
+  ['GET', '/api/v1/me/staff/attendance', 'staff'],
+  // contracts/slice-11.md §1.1: the student's own attendance.
+  ['GET', '/api/v1/me/student/attendance', 'capacity'],
+  // contracts/slice-13.md §1.1, §1.2: the student's own diary and remarks.
+  ['GET', '/api/v1/me/student/diary-entries', 'capacity'],
+  ['GET', '/api/v1/me/student/diary-entries/:entryId/attachment', 'capacity'],
+  ['GET', '/api/v1/me/student/diary-entries/:entryId/thumbnail', 'capacity'],
+  ['GET', '/api/v1/me/student/remarks', 'capacity'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
   ['GET', '/api/v1/sections/:id', 'staff'],
   ['GET', '/api/v1/subjects', 'staff'],
@@ -215,6 +231,10 @@ const PLATFORM_PREFIX = '/api/v1/platform/';
 type AuditClass = string[] | `none: ${string}`;
 const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/academic-years': ['academic_year.created'],
+  // contracts/slice-11.md §11. An identical replay is a 200 with no row.
+  'POST /api/v1/attendance-arrivals': ['attendance_mark.arrival_recorded'],
+  'POST /api/v1/attendance-marks/:id/amend': ['attendance_mark.amended'],
+  'POST /api/v1/sections/:id/submit-register': ['attendance_register.submitted', 'attendance_register.amended'],
   'PATCH /api/v1/academic-years/:id': ['academic_year.updated'],
   'POST /api/v1/academic-years/:id/activate': ['academic_year.activated'],
   'POST /api/v1/academic-years/:id/close': ['academic_year.closed'],
@@ -278,18 +298,26 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/staff/:id/change-status': ['staff.status_changed'],
   'POST /api/v1/staff/:id/issue-login': ['user.login_issued', 'user.reset_on_staff_link'],
   'POST /api/v1/staff/:id/teacher-assignments': ['teacher_assignment.created', 'teacher_assignment.ended'],
+  // contracts/slice-12.md §6. An identical replay is a 200 with no row.
+  'POST /api/v1/staff-attendance/submit': ['staff_attendance.recorded', 'staff_attendance.amended'],
+  'POST /api/v1/staff-attendance/:id/amend': ['staff_attendance_mark.amended'],
   'POST /api/v1/students/:id/change-status': ['student.status_changed'],
   'POST /api/v1/students/:id/documents': ['document.added'],
   'POST /api/v1/students/:id/guardian-links': ['guardian_link.created'],
   'POST /api/v1/students/:id/issue-login': ['user.login_issued'],
   'POST /api/v1/students/:id/readmit': ['student.readmitted'],
+  // contracts/slice-13.md §9. A replayed create and a no-op patch write no row.
+  'POST /api/v1/sections/:id/diary-entries': ['diary_entry.created'],
+  'PATCH /api/v1/diary-entries/:id': ['diary_entry.updated'],
+  'POST /api/v1/students/:id/remarks': ['remark.created'],
+  'POST /api/v1/remarks/:id/correct': ['remark.corrected'],
   'PATCH /api/v1/students/:id': ['student.updated'],
   'POST /api/v1/students/lookup': 'none: a read carried in a body so the B-Form stays out of the URL',
   'POST /api/v1/subjects': ['subject.created'],
   'PATCH /api/v1/subjects/:id': ['subject.updated'],
   'POST /api/v1/subjects/:id/archive': ['subject.archived'],
   'POST /api/v1/teacher-assignments/:id/end': ['teacher_assignment.ended'],
-  'POST /api/v1/uploads': 'none: a staged upload is not a record; committing it is audited as document.added',
+  'POST /api/v1/uploads': 'none: a staged upload is not a record; committing it is audited as document.added or diary_entry.created',
   'POST /api/v1/user-roles/:id/remove': ['user_role.removed'],
   'POST /api/v1/users/:id/disable': ['user.disabled'],
   'POST /api/v1/users/:id/enable': ['user.enabled'],

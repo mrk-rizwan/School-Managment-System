@@ -167,6 +167,29 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
   // contracts/slice-10.md §10. HolidaysService answers it with details.holidayId first.
   holidays_live_excl: () =>
     new ApiException(409, ErrorCode.HOLIDAY_DATES_TAKEN, 'Those dates overlap another holiday.'),
+  // contracts/slice-12.md §5. StaffAttendanceService answers the natural-key race itself; the
+  // not-self trigger is unreachable after its own check, mapped so it can never become a 500.
+  staff_attendance_natural_key: concurrentUpdate,
+  // contracts/slice-11.md §4.2: the submit inserts on both natural keys with ON CONFLICT under the
+  // register's lock, so neither race should reach here; mapped so it is a retryable 409, never 500.
+  attendance_registers_natural_key: concurrentUpdate,
+  attendance_marks_natural_key: concurrentUpdate,
+  staff_attendance_not_self: () =>
+    new ApiException(
+      409,
+      ErrorCode.SELF_ACTION_FORBIDDEN,
+      'Nobody marks or amends their own attendance.',
+    ),
+  // contracts/slice-13.md §8. The services answer both races with the contract's details (the
+  // existing entry's id, the successor's id) read in a fresh statement; these are the fallback.
+  diary_entries_natural_key: () =>
+    new ApiException(
+      409,
+      ErrorCode.DIARY_ENTRY_EXISTS,
+      'The diary for this date and subject is already written.',
+    ),
+  remarks_supersedes_id_key: () =>
+    new ApiException(409, ErrorCode.REMARK_SUPERSEDED, 'This remark has already been corrected.'),
 };
 
 /**

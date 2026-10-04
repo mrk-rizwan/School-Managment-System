@@ -13,7 +13,7 @@ import { NoQueryDto } from '../../src/common/validation';
 import { PlatformAdminSeeder } from '../../src/modules/platform/auth/platform-admin.seeder';
 import { testDb } from '../support/schools';
 
-export const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+export const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
 
 /** A test-only route at level 'full', so the gates are tested without depending on the schools routes. */
 @Controller('platform/test-only')

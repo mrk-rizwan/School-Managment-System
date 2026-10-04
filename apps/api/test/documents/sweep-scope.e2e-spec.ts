@@ -126,6 +126,9 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         'delivery-health-rollup',
         'staged-upload-sweep',
         'session-purge',
+        // Slice 11: neither touches idempotency_keys (reviewed 2026-10-04).
+        'register-deadline-sweep',
+        'attendance-nightly-recompute',
       ]);
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });

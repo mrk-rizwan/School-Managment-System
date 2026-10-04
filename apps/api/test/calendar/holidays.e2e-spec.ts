@@ -617,7 +617,8 @@ describe('holidays and calendar (e2e)', () => {
         dateFrom: '2027-04-01',
         dateTo: '2027-04-30',
         weeklyOffDays: [0],
-        holidays: [{ startsOn: '2027-04-05', endsOn: '2027-04-06', name: 'Winter break', kind: 'school' }],
+        // appliesToStaff: main-thread ruling 2026-10-04 (the staff sheet blocks staff holidays up front).
+        holidays: [{ startsOn: '2027-04-05', endsOn: '2027-04-06', name: 'Winter break', kind: 'school', appliesToStaff: true }],
       });
     }
     expect((await h.get(api('/me/calendar?dateFrom=2027-04-01'), principal.cookie)).status).toBe(422);

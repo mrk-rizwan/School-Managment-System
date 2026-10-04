@@ -51,12 +51,14 @@ import {
   studentsKeys,
   StudentStatusBadge,
 } from '../_lib/students-ui';
+import { StudentAttendanceTab } from './attendance-tab';
 import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
+import { RemarksTab } from './remarks-tab';
 import { NotesField } from '../_lib/notes-field';
 
-type Tab = 'details' | 'guardians' | 'enrolments' | 'documents' | 'history';
+type Tab = 'details' | 'guardians' | 'enrolments' | 'attendance' | 'remarks' | 'documents' | 'history';
 
 /** contracts/slice-6.md §3, §10. Write controls follow GET /me; the API checks every request. */
 export function StudentDetail({ id }: { id: string }) {
@@ -83,6 +85,9 @@ export function StudentDetail({ id }: { id: string }) {
             { value: 'details', label: 'Details' },
             { value: 'guardians', label: 'Guardians' },
             { value: 'enrolments', label: 'Enrolment history' },
+            // Both read with student.view, which this page already needs (slice-11 §10.4, slice-13 §5.1).
+            { value: 'attendance', label: 'Attendance' },
+            { value: 'remarks', label: 'Remarks' },
             ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
             { value: 'history', label: 'Status history' },
           ];
@@ -134,6 +139,8 @@ export function StudentDetail({ id }: { id: string }) {
                 )}
                 {tab === 'guardians' && <GuardianLinksTab student={data} />}
                 {tab === 'enrolments' && <EnrolmentsTab student={data} />}
+                {tab === 'attendance' && <StudentAttendanceTab student={data} />}
+                {tab === 'remarks' && <RemarksTab student={data} />}
                 {tab === 'documents' && <DocumentsTab student={data} />}
                 {tab === 'history' && <StatusHistory studentId={data.id} />}
               </div>

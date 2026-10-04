@@ -658,7 +658,7 @@ describe('with Redis unreachable', () => {
   it('login is 503 when the throttle counters cannot be reached, never evaluated without them', async () => {
     const res = await request(down.getHttpServer())
       .post('/api/v1/platform/auth/login')
-      .set('Origin', new URL(process.env.APP_URL ?? 'http://localhost:3000').origin)
+      .set('Origin', new URL(process.env.APP_URL ?? 'http://localhost:3460').origin)
       .send({ email: 'anyone@test.invalid', password: 'whatever-password' }); // pragma: allowlist secret
     expect(res.status).toBe(503);
     expect(errorOf(res).code).toBe('SERVICE_UNAVAILABLE');

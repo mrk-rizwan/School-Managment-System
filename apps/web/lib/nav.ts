@@ -2,6 +2,10 @@ import type { Capability } from '@asms/shared';
 import {
   ActivityIcon,
   BookOpenIcon,
+  BookOpenCheckIcon,
+  CalendarCheckIcon,
+  ClipboardCheckIcon,
+  UserCheckIcon,
   CalendarDaysIcon,
   CircleUserRoundIcon,
   SchoolIcon,
@@ -17,8 +21,8 @@ import {
 } from 'lucide-react';
 
 /**
- * Sidebar entries. `capability` is the key that shows the entry (plan §7); null means every
- * signed-in user of that console sees it. Hiding an entry is a convenience only: the API
+ * Sidebar entries. `capability` is the key that shows the entry (plan §7), or a list of keys any
+ * one of which shows it; null means every signed-in user of that console sees it. Hiding an entry is a convenience only: the API
  * enforces every capability itself.
  * The school console feeds `visibleNav` from GET /me's effective capabilities.
  */
@@ -26,13 +30,30 @@ export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  capability: Capability | null;
+  capability: Capability | readonly Capability[] | null;
 };
 
 export const schoolNav: NavItem[] = [
   { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
   { href: '/staff', label: 'Staff', icon: IdCardIcon, capability: 'staff.view' },
   { href: '/guardians', label: 'Guardians', icon: UsersRoundIcon, capability: 'guardian.manage' },
+  // Registers are read with either key and written with mark (contracts/slice-11.md §1.1).
+  {
+    href: '/attendance',
+    label: 'Attendance',
+    icon: ClipboardCheckIcon,
+    capability: ['attendance.student.mark', 'attendance.student.view_all'],
+  },
+  // Office staff do not hold diary.write by default, so they do not see the diary (slice-13 §1.1).
+  { href: '/diary', label: 'Diary', icon: BookOpenCheckIcon, capability: 'diary.write' },
+  {
+    href: '/staff-attendance',
+    label: 'Staff attendance',
+    icon: UserCheckIcon,
+    capability: 'attendance.staff.manage',
+  },
+  // Every staff member reads their own record (@RequireStaff, contracts/slice-12.md §4.4).
+  { href: '/my-attendance', label: 'My attendance', icon: CalendarCheckIcon, capability: null },
   // Every staff member may read the academic structure (@RequireStaff); writes are per capability.
   { href: '/academics', label: 'Academic structure', icon: BookOpenIcon, capability: null },
   // Every staff member may read the published calendar (@RequireStaff); drafts and writes need
@@ -77,5 +98,9 @@ export const platformNav: NavItem[] = [
 ];
 
 export function visibleNav(items: NavItem[], capabilities: ReadonlySet<string>): NavItem[] {
-  return items.filter((item) => item.capability === null || capabilities.has(item.capability));
+  return items.filter((item) => {
+    if (item.capability === null) return true;
+    const any: readonly string[] = typeof item.capability === 'string' ? [item.capability] : item.capability;
+    return any.some((capability) => capabilities.has(capability));
+  });
 }

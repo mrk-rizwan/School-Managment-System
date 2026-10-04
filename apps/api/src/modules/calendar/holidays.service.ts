@@ -7,7 +7,7 @@ import { diffFields } from '../../common/diff';
 import { recoverConstraint } from '../../common/errors/prisma-errors';
 import { readLocked } from '../../common/locking';
 import { toPage, type Page } from '../../common/pagination';
-import { addDays, SchoolClock } from '../../common/school-clock';
+import { addDays, assertRange, SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { ContactResolver } from '../../messaging/contacts';
 import { NotificationService } from '../../messaging/notification.service';
@@ -37,7 +37,6 @@ import type {
 
 const SUBJECT = 'holiday';
 const LIVE_EXCL = 'holidays_live_excl';
-const DAY_MS = 86_400_000;
 /** The create typo guard (§4.3): today − 366 days … today + 731 days. */
 const EARLIEST_DAYS = -366;
 const LATEST_DAYS = 731;
@@ -73,8 +72,6 @@ export function toHolidayDto(row: HolidayView): HolidayDto {
   };
 }
 
-const daysBetween = (from: Date, to: Date) => Math.round((to.getTime() - from.getTime()) / DAY_MS);
-
 const datesTaken = (holidayId: bigint): ApiException =>
   new ApiException(409, ErrorCode.HOLIDAY_DATES_TAKEN, 'Those dates overlap another holiday.', {
     holidayId: holidayId.toString(),
@@ -95,16 +92,8 @@ const range = (row: HolidayRecord): HolidayRange => ({
 });
 
 /** endsOn ≥ startsOn and the span within 366 days, reported on endsOn (§4.3). */
-function assertSpan(startsOn: Date, endsOn: Date): void {
-  const days = daysBetween(startsOn, endsOn);
-  if (days < 0 || days > MAX_SPAN_DAYS) {
-    throw fieldRefused(
-      'endsOn',
-      ErrorCode.INVALID_VALUE,
-      `endsOn must be on or after startsOn and at most ${MAX_SPAN_DAYS} days after it`,
-    );
-  }
-}
+const assertSpan = (startsOn: Date, endsOn: Date): void =>
+  assertRange(startsOn, endsOn, MAX_SPAN_DAYS, { field: 'endsOn', from: 'startsOn' });
 
 /** The typo guard on startsOn (§4.3). Past dates are allowed: a closure recorded next morning. */
 function assertWindow(startsOn: Date, today: Date): void {

@@ -17,7 +17,7 @@ import { createStudent, linkGuardian } from '../support/students';
 import { tag } from './support';
 
 const API = '/api/v1';
-const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
 
 describe('no overlapping statements in a transaction (academics, guardians)', () => {
   let app: NestExpressApplication;

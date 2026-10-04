@@ -5,6 +5,7 @@ import { Capability, ErrorCode, READMISSIBLE_STATUSES } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../../common/auth/school-session';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
 import { ApiException, fieldRefused } from '../../../common/errors/api-exception';
+import { canonicalJson, parseIdempotencyKey } from '../../../common/idempotency';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
 import { bFormAad, guardianCnicAad, identityHash } from '../../../common/identity';
 import { SchoolContext, type Actor } from '../../../common/school-context';
@@ -62,8 +63,6 @@ import { fromDateString, toDateString } from '../../academics/academics.shared';
 // (plan §3.3): the unique violation has aborted it, so the winner is read in a fresh statement.
 
 const ENDPOINT = 'admissions';
-/** Contract §6.3: generated once by the wizard; never 13 consecutive digits (R82). */
-const KEY_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 const GUARDIAN_CNIC_UNIQUE = 'guardians_school_id_cnic_hash_key';
 
 export interface AdmissionOutcome {
@@ -80,11 +79,6 @@ interface ResolvedGuardian {
   existing: GuardianRecord | null;
   newCnic: { digits: string; hash: string } | null;
 }
-
-const keyRefused = (message: string) =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path: 'Idempotency-Key', code: ErrorCode.INVALID_VALUE, message }],
-  });
 
 /** A 422 raised for a nested object, its field paths moved under `prefix`. */
 export function underPath(prefix: string, error: unknown): unknown {
@@ -104,17 +98,8 @@ export function underPath(prefix: string, error: unknown): unknown {
   });
 }
 
-/** JSON with object keys sorted at every depth and undefined members dropped. */
-export function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (typeof value === 'object' && value !== null) {
-    const entries = Object.entries(value)
-      .filter(([, member]) => member !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${entries.map(([k, member]) => `${JSON.stringify(k)}:${canonicalJson(member)}`).join(',')}}`;
-  }
-  return JSON.stringify(value) ?? 'null';
-}
+/** Moved to src/common/idempotency.ts (one definition for every idempotent endpoint). */
+export { canonicalJson };
 
 @Injectable()
 export class AdmissionsService {
@@ -248,14 +233,7 @@ export class AdmissionsService {
   }
 
   private parseKey(raw: string | undefined): string {
-    if (raw === undefined || raw === '') throw keyRefused('The Idempotency-Key header is required');
-    if (!KEY_PATTERN.test(raw)) {
-      throw keyRefused('Idempotency-Key must be 16-64 characters of A-Z, a-z, 0-9, _ and -');
-    }
-    if (/[0-9]{13}/.test(raw)) {
-      throw keyRefused('Idempotency-Key must not contain 13 consecutive digits');
-    }
-    return raw;
+    return parseIdempotencyKey(raw);
   }
 
   /** Step 2's rules across fields (the DTO checks each field). Nothing is read or written. */

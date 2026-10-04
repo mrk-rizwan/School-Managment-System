@@ -36,17 +36,19 @@ import {
   type StaffFieldValues,
 } from '../_lib/staff-ui';
 import { accessKeys } from '../../custom-roles/_lib/custom-roles-ui';
+import { StaffAttendanceMonth } from '../../staff-attendance/_lib/staff-attendance-month';
 import { AssignmentsTab } from './assignments-tab';
 import { PermissionsTab } from './permissions-tab';
 import { LoginAndRolesTab } from './roles-tab';
 
-type Tab = 'details' | 'roles' | 'assignments' | 'permissions';
+const TABS = ['details', 'roles', 'assignments', 'attendance', 'permissions'] as const;
+type Tab = (typeof TABS)[number];
 
-/** contracts/slice-4.md §3.2, §3.4, §3.5 and §8. */
-export function StaffDetail({ id }: { id: string }) {
+/** contracts/slice-4.md §3.2, §3.4, §3.5 and §8. `initialTab` is `?tab=`; an unknown value is ignored. */
+export function StaffDetail({ id, initialTab }: { id: string; initialTab?: string }) {
   const { can } = useCapabilities();
   const me = useSchoolMe();
-  const [tab, setTab] = useState<Tab>('details');
+  const [tab, setTab] = useState<Tab>(TABS.find((t) => t === initialTab) ?? 'details');
   const [statusOpen, setStatusOpen] = useState(false);
   const staff = useQuery({
     queryKey: staffKeys.detail(id),
@@ -72,11 +74,15 @@ export function StaffDetail({ id }: { id: string }) {
             { id: 'roles', label: 'Login and roles' },
             // GET …/teacher-assignments needs class.manage (§1).
             ...(can(Capability.CLASS_MANAGE) ? [{ id: 'assignments' as const, label: 'Teaching assignments' }] : []),
+            // GET …/attendance needs staff.view, which this page already needs (slice-12 §4.4).
+            { id: 'attendance' as const, label: 'Attendance' },
             // GET …/permissions needs role.manage, never on one's own login (slice-7 §9, R47, R55).
             ...(can(Capability.ROLE_MANAGE) && data.userId && !isSelf
               ? [{ id: 'permissions' as const, label: 'Permissions' }]
               : []),
           ];
+          // A `?tab=` this caller cannot see falls back to Details.
+          const active: Tab = tabs.some((t) => t.id === tab) ? tab : 'details';
 
           return (
             <>
@@ -101,19 +107,19 @@ export function StaffDetail({ id }: { id: string }) {
                   </AlertDescription>
                 </Alert>
               )}
-              <div role="tablist" aria-label="Staff member" className="mb-6 flex gap-1 border-b">
+              <div role="tablist" aria-label="Staff member" className="mb-6 flex flex-wrap gap-1 border-b">
                 {tabs.map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     role="tab"
                     id={`staff-tab-${t.id}`}
-                    aria-selected={tab === t.id}
+                    aria-selected={active === t.id}
                     aria-controls={`staff-panel-${t.id}`}
                     onClick={() => setTab(t.id)}
                     className={cn(
                       '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
-                      tab === t.id
+                      active === t.id
                         ? 'border-primary font-medium text-foreground'
                         : 'border-transparent text-muted-foreground hover:text-foreground',
                     )}
@@ -122,12 +128,15 @@ export function StaffDetail({ id }: { id: string }) {
                   </button>
                 ))}
               </div>
-              <div role="tabpanel" id={`staff-panel-${tab}`} aria-labelledby={`staff-tab-${tab}`}>
+              <div role="tabpanel" id={`staff-panel-${active}`} aria-labelledby={`staff-tab-${active}`}>
                 {/* Keyed by the last update so the form restarts from the saved values. */}
-                {tab === 'details' && <EditStaffForm key={data.updatedAt} staff={data} />}
-                {tab === 'roles' && <LoginAndRolesTab staff={data} isSelf={isSelf} />}
-                {tab === 'assignments' && <AssignmentsTab staff={data} />}
-                {tab === 'permissions' && data.userId && <PermissionsTab staff={data} userId={data.userId} />}
+                {active === 'details' && <EditStaffForm key={data.updatedAt} staff={data} />}
+                {active === 'roles' && <LoginAndRolesTab staff={data} isSelf={isSelf} />}
+                {active === 'assignments' && <AssignmentsTab staff={data} />}
+                {active === 'attendance' && (
+                  <StaffAttendanceMonth source={{ kind: 'staff', staffId: data.id, name: data.fullName }} />
+                )}
+                {active === 'permissions' && data.userId && <PermissionsTab staff={data} userId={data.userId} />}
               </div>
               <ChangeStatusDialog staff={data} open={statusOpen} onOpenChange={setStatusOpen} />
             </>

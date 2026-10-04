@@ -1,13 +1,16 @@
 # Slice 11 contracts — student attendance: registers, marks, arrivals, alerts, reports
 
-**Author:** api-designer, 2026-10-04. **Binds:** `apps/api/src/modules/attendance/**` (new),
-`src/repositories/{attendance-register,attendance-mark,attendance-arrival,attendance-alert,
-attendance-day-status,attendance-daily-summary}.repository.ts` (new), `src/jobs/**` (the `attendance`
-queue, two scheduled jobs, two outbox-sweep sources), `src/messaging/templates.ts` and `types.ts`
-(the four attendance types go live), `modules/people/students/attendance-history-probe.ts` (the real
-probe), `modules/access/permissions.service.ts` and `tenancy/scope*.ts` (the `students` scope kind),
-`modules/me/**` (`/me/children/:id/attendance`, `/me/student/attendance`),
-`packages/shared/src/attendance.ts` (the pure functions), `apps/web/app/(school)/attendance/**`, the
+**Author:** api-designer, 2026-10-04. **Binds:** `apps/api/src/modules/attendance/**` (new; the
+two `/me` routes are its `my-attendance.controller.ts`),
+`src/repositories/{attendance-register,attendance-mark,attendance-alert,attendance-summary,
+attendance-report}.repository.ts` and `attendance-sql.ts` (new: arrivals live in the mark
+repository, `attendance_day_status` and `attendance_daily_summary` in the summary and report
+repositories), `src/jobs/**` (the `attendance` queue, two scheduled jobs, two outbox-sweep sources),
+`src/messaging/templates.ts` and `types.ts` (the four attendance types go live),
+`modules/people/students/attendance-history-probe.ts` (the real probe),
+`modules/access/permissions.service.ts` and `tenancy/scope*.ts` (the `students` scope kind),
+`common/school-settings-reader.ts` (the settings reader, shared with the diary),
+`packages/shared/src/attendance-calc.ts` (the pure functions; the enums stay in `attendance.ts`), `apps/web/app/(school)/attendance/**`, the
 student detail's attendance tab, the principal console tile. **Sources:** `CLAUDE.md` (rules 2, 3,
 4, 6, 13, 14, 16, 17), `phase-2-daily-operations.md` §1.1 (items 23, authorised absence, window,
 alert time), §4.3, §4.4, §4.5, §4.6, §4.7, §5 "Attendance", §6 slice 11, R118–R131, R163–R165
@@ -49,7 +52,9 @@ class-teacher scope** for the section and dates (R132).
 its section or hold a school-wide attendance key; may write it when, on its date, they are its class
 teacher or cover (any period), its subject teacher (period mode only), or hold `attendance.student.mark`
 school-wide; a guardian reads only the children linked to them with `can_login`; a student reads
-only themself; `attendance.student.view_all` reads everything and writes nothing (R130).
+only themself; `attendance.student.view_all` reads everything and writes nothing (R130). A
+register of a section the caller is assigned to only on other dates is `403 not_assigned_on_date`
+(§1.2); a section never in the caller's assignments is `404`.
 
 Common errors on every route: `401 AUTH_REQUIRED` · `403 PERMISSION_DENIED` · `403 ORIGIN_REJECTED`
 (cookie non-GET) · `426 UPGRADE_REQUIRED` (bearer) · `429 RATE_LIMITED`. Every `:id` resolves in the
@@ -66,13 +71,28 @@ then `MARK`), and applies:
 |---|---|---|
 | `null` (not held) | try the next admitted key; none left → `404` (the row is outside what the caller may see) | cannot occur after the decorator |
 | `kind: 'all'` | allowed; `callerRole = 'all'` | allowed, unbounded by the window (R123), audited `afterWindow` when past it |
-| `kind: 'sections'`, `S` absent from the map | `404 NOT_FOUND` | `404 NOT_FOUND` |
+| `kind: 'sections'`, `S` absent from the map, and the caller holds **no** live assignment reaching `S` on any date | `404 NOT_FOUND` | `404 NOT_FOUND` |
+| `kind: 'sections'`, `S` absent from the map, but the caller holds a live (not voided) assignment reaching `S` on **another** date (a section row, or a whole-class subject row of its class) | `403 PERMISSION_DENIED` `details.reason = 'not_assigned_on_date'` | the same `403` |
 | `S` present, `classTeacher` or `cover` | allowed | allowed, any period, any mode; bounded by the window |
 | `S` present, `subjectIds` non-empty only | allowed | period mode: allowed, any period (no timetable, plan §7); **daily mode: `403 PERMISSION_DENIED` `details.reason = 'subject_teacher_daily_mode'`** — the row is visible, the role is insufficient, so this is the one `403` that follows a successful scope check |
 
 Cover inside its dates is a class teacher (owner's answer); the day after `endsOn` the map has no
-entry and the answer is `404`. A teacher with a row starting after `d` is `404` on `d` (R175's
-"dated before their assignment began").
+entry and, because the cover row reaches the section, the answer is `403 not_assigned_on_date`. A
+teacher with a row starting after `d` is `403 not_assigned_on_date` on `d` (R175's "dated before
+their assignment began"). A section the caller has never been assigned to stays `404`.
+*Ruling of the main thread, 2026-10-04: aligned with `slice-13.md` decision 13 so both slices
+answer a dated-out assignment alike (the section is visible to the caller; `404` would hide
+nothing and would not say why). One implementation decides it for both slices:
+`PermissionsService.refuseOutsideDate` over `TeacherAssignmentRepository.everAssigned`.*
+
+**Student-linked reads take the scope (control 7).** Every repository read keyed by a student —
+the student's enrolments in force or overlapping, their materialised days, their periods, the alert
+rows of the roster and the reports — takes a `Scope` and joins through the student
+(`studentInScope`, or its raw-SQL form `studentInScopeSql`). A read gated on the row's own date (the
+register view's alert state, the arrival's enrolments) passes `rowScope` of the dated scope that
+admitted the caller and uses `studentInScopeOn(scope, date)`: an enrolment of the student in one of
+its sections in force on that date, whatever its status now, so a child who has since moved or left
+keeps their alert state on the register they were marked in (R174).
 
 ### 1.3 The amendment window (R123, R125)
 
@@ -101,7 +121,7 @@ which `:id`s to ask for; there is no list route under `/me/children`.
 
 | Bucket | Limit | Key |
 |---|---|---|
-| `POST /sections/:id/submit-register`, `POST /attendance-marks/:id/amend`, `POST /attendance-arrivals` (`perUserThrottle('attendance-writes', 60, 1000)`) | 60/min, 1,000/hour | school + user |
+| `POST /sections/:id/submit-register`, `POST /attendance-marks/:id/amend`, `POST /attendance-arrivals` (`AttendanceWritesThrottleGuard` in `modules/attendance/attendance-throttles.ts`, `perUserThrottle('attendance-writes', 60, 1000)`, the one definition slice 12's writes import too) | 60/min, 1,000/hour | school + user |
 | `GET /me/children/:id/attendance`, `GET /me/student/attendance` | `me-reads` (120/min, 2,000/hour) | school + user |
 | everything else | the global per-IP throttler | IP |
 
@@ -192,7 +212,7 @@ the mark), `mark` (`AttendanceMarkDto` \| null), `alert` (`AlertSummaryDto` \| n
 | `absenceResolvedAt` | datetime \| null — the row's `updated_at` once `sent` or `cancelled` (the only update a final row ever receives) |
 | `lateAdvice` | `AttendanceAlertStatus` \| null — the `late` row |
 | `corrections` | integer 0–3 — `corrected` rows |
-| `correctionsCapped` | boolean — a further change would have sent a fourth; nothing was sent |
+| `correctionsCapped` | boolean — a fourth `absence` or `corrected` row of this child-day was due and refused, so nothing was sent for it (a row carries `capped_at`, §6.2). False while three or fewer were due: three sent is not yet capped |
 
 `RegisterViewDto` (`GET /sections/:id/register`):
 
@@ -234,7 +254,9 @@ register's marks after the write).
 | `registersRecorded` | integer — **live** count of `attendance_registers` rows |
 | `recorded` | boolean — `registersRecorded > 0` |
 | `submittedBy`, `submittedByName`, `submittedAt` | string \| null ×3 — the day's earliest register |
+| `classTeacherStaffId` | string \| null — that assignment's staff id (the console links to the staff page) |
 | `classTeacherName` | string \| null — the class-teacher assignment active on the date |
+| `coverStaffIds` | string[] — every cover active on the date, by assignment id |
 | `coverStaffName` | string \| null — a cover active on the date (first by id) |
 | `declaredHolidayAfter` | boolean — `recorded` and not a teaching day now (R167) |
 
@@ -473,7 +495,7 @@ Mark `:id` resolved (`404`), read scope on its date (§1.2). `PageQueryDto`; sor
 
 ## 5. Derived status and percentage — normative, pure, shared
 
-All three functions live in `packages/shared/src/attendance.ts` over plain values, so the API, the web
+All three functions live in `packages/shared/src/attendance-calc.ts` over plain values, so the API, the web
 heat map and the app compute the same answer; the API's recompute job (§8) and read services call
 them, never a reimplementation. Each row of each table below is a named test.
 
@@ -586,13 +608,13 @@ mark (not `unchanged`), in `student_id` order:
 
 | Day now | `A` | Effect |
 |---|---|---|
-| all-absent (`day.status = absent`) | none, or `cancelled:mark_changed` | insert `absence` (`seq` = next; cap 3) — `pending` with the §6.1 `due_at` for today, else `cancelled:backdated` |
+| all-absent (`day.status = absent`) | none, or `cancelled:mark_changed` | insert `absence` (`seq` = next; cap 3: a fourth is refused, `A.capped_at` stamped once and `correctionCapped` set) — `pending` with the §6.1 `due_at` for today, else `cancelled:backdated` |
 | all-absent | `pending` or `sent` | nothing (the pending one will send; the sent one is still true) |
 | all-absent | `cancelled:holiday` / `cancelled:backdated` / `cancelled:link_ended` | nothing (the day is settled) |
 | **not** all-absent | `pending` | `cancelled:mark_changed` |
 | not all-absent | `sent` and the latest `C` is not `pending` and `|C*| < 3` | insert `corrected` `seq = |C*| + 1`, `pending`, `due_at = now` |
 | not all-absent | `sent`, a `C` `pending` | nothing — the pending correction will state the day as it is when sent (natural debounce) |
-| not all-absent | `sent`, `|C*| = 3` | nothing sent; `correctionCapped: true` in the audit metadata; the reports show `correctionsCapped` |
+| not all-absent | `sent`, `|C*| = 3` | nothing sent; the latest `C` gets `capped_at` (written once; the one change a final row accepts, migration `20261004140000_slice11_alert_capped_at`); `correctionCapped: true` in the audit metadata; the reports show `correctionsCapped` |
 | **back to** all-absent after a `sent` `A` | `sent` | the first row's rule does not apply (`A` is `sent`): a `corrected` row is inserted as above, stating `absent` — R126's "a reversal sends a further corrected notice" |
 | any `late` period and not all-absent, `date = today`, `lateAdviceEnabled`, no `L`, no `A` `sent` | — | insert `late` `pending` with the §6.1 `due_at` |
 | any `late` period, `date < today`, `lateAdviceEnabled`, no `L` | — | insert `late` as `cancelled:backdated` |
@@ -966,8 +988,8 @@ Write controls render only when `GET /me` lists the capability and the view says
 R118 (write on weekly-off and on a published holiday → `409`; read → `teachingDay: false`) · R119
 (first submit missing one → `ROSTER_INCOMPLETE`; subset later; `201` then `200`; `submitted_by` vs
 `last_amended_by`) · R120/R175 (named: subject teacher daily → `403 subject_teacher_daily_mode`;
-subject teacher period → ok; cover inside dates → ok, day after → `404`; row starting after the date →
-`404`; principal and office → ok; `VIEW_ALL` only → read ok, submit `403` at the decorator) · R121
+subject teacher period → ok; cover inside dates → ok, day after → `403 not_assigned_on_date`; row starting after the date →
+`403 not_assigned_on_date`; a section never assigned → `404`; principal and office → ok; `VIEW_ALL` only → read ok, submit `403` at the decorator) · R121
 (daily period 2 → `422`; period > `periodsPerDay` → `422`; read of period 10 after the setting dropped
 to 8 → `200`) · R122 (change without reason → `409` with the list; a direct `UPDATE` without
 `set_config` refused by the database; note-only change is an amendment) · R123 (teacher after window
@@ -979,7 +1001,9 @@ R125 (identical replay `200` no history after the window; `STALE_STATUS`; same-s
 two teachers concurrently: one `201`, the other `409 AMENDMENT_REASON_REQUIRED` naming the diffs, no
 duplicate marks) · R126 (every row of §6.2 and §6.4; the timing table; alert sent exactly once under a
 replayed job; arrival at 08:40 cancels and `late_advice` at 09:30 only when enabled; arrival at 10:00
-→ `corrected`; reversal → `corrected seq 2`; cap at 3 with `correctionsCapped`; backdated →
+→ `corrected`; reversal → `corrected seq 2`; three sent is not capped, a refused fourth sets
+`correctionsCapped` and the guardian has exactly four messages; a fourth `absence` row is refused the
+same way; backdated →
 `cancelled:backdated`, nothing sent; primary contacts, else login-or-phone; keypad parent gets SMS;
 `smartphone_data` without a device gets SMS; no live link → `cancelled:link_ended`) · R127 (the §5.1 table,
 every combination over 1–3 periods) · R128 (the §5.2 and §5.3 tables over every status × mode ×
@@ -1013,8 +1037,10 @@ API) shows the corrected day.
 3. **Suspension is read from `student_status_changes` by date** (`statusOn`), not from the current
    status, so past rosters are stable.
 4. **A subject teacher in daily mode is `403 PERMISSION_DENIED` with `details.reason =
-   'subject_teacher_daily_mode'`** — the one `403` after a successful scope check; everything out of
-   scope stays `404`.
+   'subject_teacher_daily_mode'`**; a caller assigned to the section on another date but not on the
+   register's is `403 PERMISSION_DENIED` with `details.reason = 'not_assigned_on_date'` (main-thread
+   ruling 2026-10-04, as `slice-13.md` decision 13); a section never in the caller's assignments
+   stays `404`.
 5. **Students are locked `FOR SHARE` during a submit** so the section/class-change probe
    (`ATTENDANCE_RECORDED_AFTER`) is exact; lock order students → registers → marks → alerts →
    messages.
@@ -1026,7 +1052,8 @@ API) shows the corrected day.
    `late` and `corrected`; the writer only creates and cancels rows, the processor is the only
    sender; `corrected` rows are due at once, `absence` and `late` at `max(now + 30 min,
    absenceAlertTime)`; a `pending` correction debounces further changes; caps of 3 on `absence` and
-   `corrected` rows, with `correctionCapped` in the audit and `correctionsCapped` in the reports.
+   `corrected` rows, with `correctionCapped` in the audit and `correctionsCapped` in the reports
+   once a fourth was refused (review fix 2026-10-04: stored as `attendance_alerts.capped_at`).
 9. **A `late` row is created only when `lateAdviceEnabled` at that moment** and sent regardless at
    due time (no `disabled` cancel reason; the window is under two hours).
 10. **`link_ended` is kept as migrated and means "no eligible guardian at send time"**: recipients

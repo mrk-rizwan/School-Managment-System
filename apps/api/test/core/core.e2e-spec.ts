@@ -24,7 +24,7 @@ describe('API core (slice 0.2)', () => {
 
   const http = () => request(app.getHttpServer());
   // Every non-GET without a bearer token must carry the app's Origin (R65, contract slice-2 §1.2).
-  const origin = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+  const origin = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
   const post = (path: string) => http().post(path).set('Origin', origin);
   type Envelope = {
     error: { code: string; message: string; details: { fields: { path: string; code: string }[] }; requestId: string };

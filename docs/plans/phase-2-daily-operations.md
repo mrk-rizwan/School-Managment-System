@@ -365,13 +365,17 @@ connectivity change, and on app open) sends items one at a time per endpoint, in
 endpoints (R158). Registers are idempotent by their natural key — **the outbox coalesces writes to
 the same (section, date, period) before sending**, so an offline correction becomes one submit
 with a reason, not a terminal failure. Diary entries, remarks and announcements use the slice-6
-`Idempotency-Key` header with a client-generated UUIDv7 (no `client_reference` column anywhere).
+`Idempotency-Key` header with a client-generated UUID v4 (`newIdempotencyKey()`,
+`crypto.randomUUID()`; no `client_reference` column anywhere).
 State per item: `pending → sending → done | failed(reason)`. `409` and `403` from the server are
 terminal failures shown with the server's message (a suspended school's teacher must not retry
 forever); `401` pauses the queue and asks for sign-in; `426` shows the update screen; network
 errors retry with backoff. Read caches are keyed by endpoint and stamped with the server time of
-the last refresh, shown as "as of". **Sign-out and any `401` wipe the SQLite store and the secure
-store**; the remembered school code and username live only in the secure store.
+the last refresh, shown as "as of". **Sign-out wipes the SQLite store and the secure store. Any
+`401` wipes the read caches and the secure store's session keys; unsent writes of the same user
+survive it for at most 7 days** (the wave-E security review's decision, contracts/slice-15.md
+§7.6): past that they are discarded and the user is told which. The remembered school code and
+username live only in the secure store.
 
 ### 4.8 App version floor, Origin and bearer rules
 
@@ -1169,8 +1173,9 @@ unrecorded section and records it. Jest for the register tap cycle and the deriv
   (disable, office reset, password change, staff left/suspended, student status, issue-login reset)
   plus device revoke and sign-out-everywhere ends them; an ended guardian link shrinks scope
   without revoking the session.
-- R155 The token lives in the secure store only; sign-out and any `401` wipe the SQLite and
-  secure stores; no identity pattern, phone number, token or password reaches the app's logs,
+- R155 The token lives in the secure store only; sign-out wipes the SQLite and secure stores; any
+  `401` wipes the read caches and the secure store; unsent writes of the same user survive at most
+  7 days (contracts/slice-15.md §7.6); no identity pattern, phone number, token or password reaches the app's logs,
   crash reports or `AsyncStorage`; cleartext traffic is off.
 - R156 Tabs and actions are composed from `/me` (`capacities`, capabilities, `assignments`); a
   screen the API would refuse is never rendered; a user with no capacity sees the "no access"

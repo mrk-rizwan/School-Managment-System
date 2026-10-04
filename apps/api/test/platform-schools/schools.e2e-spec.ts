@@ -78,7 +78,7 @@ async function withRowLocked<T>(id: bigint, run: () => Promise<T>): Promise<T> {
 describe('platform schools', () => {
   let app: NestExpressApplication;
   let admin: TestPlatformSession & { id: bigint };
-  const origin = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+  const origin = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
 
   beforeAll(async () => {
     app = await createTestApp();

@@ -13,7 +13,7 @@ import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/s
 import { tag } from './support';
 
 const API = '/api/v1';
-const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3000').origin;
+const ORIGIN = new URL(process.env.APP_URL ?? 'http://localhost:3460').origin;
 const ID = /^[1-9][0-9]{0,18}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 

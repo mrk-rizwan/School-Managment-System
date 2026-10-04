@@ -10,6 +10,7 @@ import {
   enrol,
   isoDay,
 } from '../support/students';
+import { createMark, createRegister } from '../attendance/support';
 import { auditFor, createHarness, errorOf, signIn, type Harness } from './support';
 
 interface Enrolment {
@@ -203,7 +204,27 @@ describe('change-section (R174)', () => {
     ).rejects.toThrow(/section_id/);
   });
 
-  it.todo(
-    'ATTENDANCE_RECORDED_AFTER: a section or class change dated on or before a recorded mark is 409 with details.lastRecordedOn (live when slice 11 binds AttendanceHistoryProbe)',
-  );
+  it('R174, ATTENDANCE_RECORDED_AFTER (contracts/slice-11.md §9.1): a section change dated on or before a recorded mark is 409 with details.lastRecordedOn; dated after it, it goes through', async () => {
+    const { school, office, section, enrolment, path, body } = await moving();
+    const register = await createRegister(db, school.id, section, office.userId, { date: isoDay(-5) });
+    await createMark(db, school.id, register, enrolment.id, 'absent');
+
+    for (const effectiveOn of [isoDay(-5), isoDay(-6)]) {
+      const res = await h.send('post', path, body({ effectiveOn }), office.cookie);
+      expect(res.status).toBe(409);
+      expect(errorOf(res)).toMatchObject({
+        code: 'ATTENDANCE_RECORDED_AFTER',
+        details: { lastRecordedOn: isoDay(-5) },
+      });
+    }
+    // Nothing moved; the mark still hangs off the enrolment it was recorded on.
+    expect(
+      await db.enrolment.findFirst({ where: { schoolId: school.id, id: enrolment.id } }),
+    ).toMatchObject({ status: 'active', endedOn: null });
+    expect(await auditFor(school, 'enrolment', enrolment.id)).toEqual([]);
+
+    const res = await h.send('post', path, body({ effectiveOn: isoDay(-4) }), office.cookie);
+    expect(res.status).toBe(200);
+    expect((res.body as Moved).closed.endedOn).toBe(isoDay(-5));
+  });
 });

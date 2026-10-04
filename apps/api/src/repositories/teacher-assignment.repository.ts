@@ -219,8 +219,9 @@ export class TeacherAssignmentRepository {
    * Teacher scope on `on` (R53, R54, R175; contracts/slice-10.md §7.1): every section the staff
    * member holds any role in on that date, with the roles. A row counts iff not voided, begun and
    * not ended. `class_teacher` sets classTeacher, `cover` sets cover, `subject_teacher` adds its
-   * subject; a subject row without a section applies to every section of its class, archived
-   * included. Two sequential statements.
+   * subject; a subject row without a section applies to every live (not archived) section of its
+   * class, so archiving a section takes it out of a whole-class teacher's scope (a row naming the
+   * archived section itself still counts). Two sequential statements.
    */
   async sectionsOn(
     schoolId: SchoolId,
@@ -239,7 +240,7 @@ export class TeacherAssignmentRepository {
       wholeClasses.length === 0
         ? []
         : await this.txHost.tx.section.findMany({
-            where: { schoolId, classId: { in: wholeClasses } },
+            where: { schoolId, classId: { in: wholeClasses }, deletedAt: null },
             select: { id: true, classId: true },
           });
     const roles = new Map<bigint, { classTeacher: boolean; cover: boolean; subjectIds: Set<bigint> }>();
@@ -274,6 +275,29 @@ export class TeacherAssignmentRepository {
         },
       ]),
     );
+  }
+
+  /**
+   * Whether the staff member holds, on any date, a live (not voided) assignment that reaches the
+   * section: a section row, or a whole-class subject row of its class. Decides 403
+   * not_assigned_on_date against 404 for a dated write or read outside the assignment
+   * (contracts/slice-11.md §1.2, slice-13.md §1.3).
+   */
+  async everAssigned(schoolId: SchoolId, staffId: bigint, sectionId: bigint): Promise<boolean> {
+    const section = await this.txHost.tx.section.findFirst({
+      where: { schoolId, id: sectionId },
+      select: { classId: true },
+    });
+    if (!section) return false;
+    const count = await this.txHost.tx.teacherAssignment.count({
+      where: {
+        schoolId,
+        staffId,
+        voidedAt: null,
+        OR: [{ sectionId }, { sectionId: null, classId: section.classId }],
+      },
+    });
+    return count > 0;
   }
 
   /** The roles in one section on `on`; all false and no subjects when none (§7.1). */

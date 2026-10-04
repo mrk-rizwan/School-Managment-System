@@ -1,8 +1,9 @@
 # Slice 12 contracts — staff attendance
 
-**Author:** api-designer, 2026-10-04. **Binds:** `apps/api/src/modules/attendance/staff/**` (new,
-inside `AttendanceModule`), `src/repositories/staff-attendance.repository.ts` (new),
-`modules/me/**` (`GET /me/staff/attendance`), `apps/web/app/(school)/staff-attendance/**`, the staff
+**Author:** api-designer, 2026-10-04. **Binds:** `apps/api/src/modules/staff-attendance/**` (new,
+its own `StaffAttendanceModule`; `GET /me/staff/attendance` is its controller's too, and its write
+throttle is imported from `modules/attendance/attendance-throttles.ts`),
+`src/repositories/staff-attendance.repository.ts` (new; in `RAW_SQL_FILES` for its row locks), `apps/web/app/(school)/staff-attendance/**`, the staff
 detail's attendance tab. **Sources:** `CLAUDE.md` (rules 2, 4, 7, 13, 16), `phase-2-daily-operations.md`
 §4.5, §4.6, §5 "Attendance" (`staff_attendance`), §6 slice 12, R133–R136; `slice-4.md` §2
 (`StaffDto`, `StaffStatus`); `slice-10.md` §3 (`CalendarService.isStaffWorkingDay`); `slice-11.md`
@@ -14,7 +15,10 @@ parts). Everything not restated follows Phase 1 §3.9, `slice-1.md`, `slice-2.md
 The tables exist: `staff_attendance` and `staff_attendance_changes` were migrated with the groundwork
 (`20261004120000_phase2_attendance_diary`), with the history trigger `staff_attendance_history`
 (tracked columns `status`, `note`; `reason_required`), the `staff_attendance_not_self` trigger (R134)
-and the immutable, no-delete and `school_id` triggers. **This slice adds no migration.**
+and the immutable, no-delete and `school_id` triggers. **This slice adds no migration** of its own;
+the review fix of 2026-10-04 added one (`20261004140100_slice12_staff_marker_immutable`):
+`marked_by` and `marked_at` joined `staff_attendance_columns_immutable`, since the row lock no
+longer writes `marked_at` (step 5 of §4.2).
 
 ---
 
@@ -174,7 +178,8 @@ Decision 4.
    row cannot hold the key (R59), so the comparison always has a value.
 4. Every `staffId` resolves to a markable member (§3) → else `422 REFERENCE_NOT_FOUND` on
    `marks[i].staffId`, all-or-nothing.
-5. Existing rows for `(date, staffIds)` read `FOR UPDATE` in `staff_id` order (the only lock).
+5. Existing rows for `(date, staffIds)` read `FOR UPDATE` in `staff_id` order (the only lock):
+   one raw `SELECT … FOR UPDATE`, never a no-op `UPDATE`.
 6. **Diff:** each item is `created` (no row), `unchanged` (same `status` and `note`) or `amended`.
    Any `amended` and `reason` absent → `409 AMENDMENT_REASON_REQUIRED` `details: { amendments: [{
    staffId, markId, from, to, noteChanged }] }` (R133) — also how two office users racing on one day

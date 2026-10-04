@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { CapabilityGrantRepository } from '../../repositories/capability-grant.repository';
 import { CustomRoleRepository } from '../../repositories/custom-role.repository';
 import { OwnSchoolRepository } from '../../repositories/own-school.repository';
+import { StudentGuardianRepository } from '../../repositories/student-guardian.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { PermissionsService } from './permissions.service';
@@ -22,6 +23,8 @@ import { SchoolClock } from '../../common/school-clock';
     CapabilityGrantRepository,
     OwnSchoolRepository,
     TeacherAssignmentRepository,
+    // The guardian capacity scope (contracts/slice-13.md §1.2).
+    StudentGuardianRepository,
   ],
   exports: [
     PermissionsService,

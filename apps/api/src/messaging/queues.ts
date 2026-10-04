@@ -4,6 +4,8 @@
 export const QUEUE = {
   messaging: 'messaging',
   scheduled: 'scheduled',
+  /** Attendance alerts and the section-day rollup (contracts/slice-11.md §8.5). */
+  attendance: 'attendance',
 } as const;
 
 export const JOB = {
@@ -16,6 +18,11 @@ export const JOB = {
   deliveryHealthRollup: 'delivery-health-rollup',
   stagedUploadSweep: 'staged-upload-sweep',
   sessionPurge: 'session-purge',
+  // contracts/slice-11.md §8.5.
+  attendanceAlert: 'attendance-alert',
+  attendanceRollup: 'attendance-rollup',
+  registerDeadlineSweep: 'register-deadline-sweep',
+  attendanceNightlyRecompute: 'attendance-nightly-recompute',
 } as const;
 
 /**
@@ -46,4 +53,30 @@ export interface MessageJobPayload {
 export interface HealthJobPayload {
   schoolId: string;
   whatsappNumberId: string;
+}
+
+/**
+ * `alert:<alertId>`; the outbox sweep's recovery of a lost one carries its minute
+ * (`alert:<alertId>:s<minute>`), so a failed original kept by BullMQ cannot swallow it.
+ */
+export const alertJobId = (alertId: bigint, sweepMinute?: number): string =>
+  `alert:${alertId}${sweepMinute === undefined ? '' : `:s${sweepMinute}`}`;
+
+/**
+ * `att-rollup:<sectionId>:<YYYYMMDD>:<version>`: two writes of one version collapse to one job,
+ * and a write that bumps the version gets a job of its own.
+ */
+export const rollupSectionDayJobId = (sectionId: bigint, date: string, version: bigint): string =>
+  `att-rollup:${sectionId}:${date.replaceAll('-', '')}:${version}`;
+
+export interface AlertJobPayload {
+  schoolId: string;
+  alertId: string;
+}
+
+/** `date` (`YYYY-MM-DD`) is the only non-id field a payload may carry (§8.5). */
+export interface RollupJobPayload {
+  schoolId: string;
+  sectionId: string;
+  date: string;
 }

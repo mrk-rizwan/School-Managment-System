@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
 import type { Scope } from '../tenancy/scope';
-import type { ContactCapability, GuardianRelationship, Prisma } from './generated/prisma/client';
+import type {
+  ContactCapability,
+  GuardianRelationship,
+  Prisma,
+  StudentStatus,
+} from './generated/prisma/client';
 import type { PrismaTxAdapter } from './prisma';
 import { studentInScope } from './student.repository';
 
@@ -49,6 +54,15 @@ export interface GuardianLinkView extends GuardianLinkRecord {
 export interface GuardianStudentLink extends GuardianLinkRecord {
   studentFullName: string;
   admissionNo: string;
+}
+
+/** A child in a guardian's capacity scope (contracts/slice-13.md §1.2, MeDto.children). */
+export interface GuardianChildLink {
+  studentId: bigint;
+  /** This guardian's own link. */
+  relationship: GuardianRelationship;
+  fullName: string;
+  status: StudentStatus;
 }
 
 export interface GuardianLinkCreate {
@@ -210,6 +224,31 @@ export class StudentGuardianRepository {
       select: { id: true },
     });
     return row !== null;
+  }
+
+  /**
+   * The guardian capacity scope's rows (contracts/slice-13.md §1.2, R163): the guardian's live
+   * links with `can_login`, the guardian not merged, with each child's name and status, by name.
+   * No enrolment or status condition: a child who has left stays while the link is live (R164).
+   * Read on every guardian request, never cached (R69).
+   */
+  async liveLoginChildren(schoolId: SchoolId, guardianId: bigint): Promise<GuardianChildLink[]> {
+    const rows = await this.txHost.tx.studentGuardian.findMany({
+      where: {
+        schoolId,
+        guardianId,
+        endedAt: null,
+        canLogin: true,
+        guardian: { is: { mergedIntoId: null } },
+      },
+      select: {
+        studentId: true,
+        relationship: true,
+        student: { select: { fullName: true, status: true } },
+      },
+      orderBy: [{ student: { fullName: 'asc' } }, { id: 'asc' }],
+    });
+    return rows.map(({ student, ...row }) => ({ ...row, ...student }));
   }
 
   /** The guardian is the primary contact on some live link (R30: the phone must stay). */

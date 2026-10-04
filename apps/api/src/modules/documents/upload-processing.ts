@@ -112,6 +112,21 @@ export async function processUpload(
 }
 
 /**
+ * A JPEG thumbnail of a stored image, made on demand (contracts/slice-13.md §4.5, decision 6):
+ * at most 320 × 320 inside, never enlarged, first frame, quality 70, under the same pixel bound
+ * and the same re-encode limit as uploads (503 after the wait). The source is the stored object,
+ * already the re-encode pipeline's output, never an original upload (R171). Nothing is stored.
+ */
+export async function thumbnail(stored: Buffer, reencodes: ConcurrencyLimit): Promise<Buffer> {
+  return reencodes.run(() =>
+    sharp(stored, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error', pages: 1 })
+      .resize({ width: 320, height: 320, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 70 })
+      .toBuffer(),
+  );
+}
+
+/**
  * At most `max` holders at once per process; a caller that waits longer than `waitMs` for a slot
  * is refused with 503 (contract: 4 re-encodes, 10 s). FIFO.
  */
