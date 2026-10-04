@@ -21,7 +21,8 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The 3,000-recipient tests and Playwright took it past 30 minutes (2026-10-05).
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -232,6 +233,13 @@ jobs:
           --health-retries 10
 
     steps:
+      # The APK build plus the emulator's system image filled the runner's disk (2026-10-05).
+      # These preinstalled toolchains are never used by this job.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/share/swift /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
