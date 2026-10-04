@@ -312,7 +312,9 @@ describe('staff attendance (e2e)', () => {
 
   it('R133: amend checks fromStatus (STALE_STATUS), a same-value amend is a 200 with no write, a note can be cleared', async () => {
     const f = await fresh();
-    const date = workday(2);
+    // The newest workday is at most two days back, inside the default three-day window; an older
+    // one crosses it whenever a Sunday is among the last three days (failed on CI on a Monday).
+    const date = workday(0);
     const res = await submit(f.office.cookie, { date, marks: [{ staffId: String(f.teacher.staffId), status: 'absent', note: 'No call' }] });
     const id = (res.body as SubmitResult).marks[0]!.id;
 

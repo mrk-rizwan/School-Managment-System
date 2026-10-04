@@ -383,7 +383,9 @@ jobs:
           EXPO_PUBLIC_PUSH_ENABLED: 'false'
         run: |
           pnpm exec expo prebuild --platform android --no-install --clean
-          cd android && ./gradlew assembleRelease --no-daemon
+          # Only the emulator's ABI: compiling native code for all four took 20-54 min and hit the
+          # job limit. Store builds are made elsewhere and keep every ABI.
+          cd android && ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
 
       - name: Install Maestro
         run: |
