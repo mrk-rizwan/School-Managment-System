@@ -19,3 +19,23 @@ export type LeaveCountsAs = (typeof LEAVE_COUNTS_AS)[number];
 /** Its own set, so payroll can add a value without touching student attendance (slice 12). */
 export const STAFF_ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'on_leave'] as const;
 export type StaffAttendanceStatus = (typeof STAFF_ATTENDANCE_STATUSES)[number];
+
+/** `attendance_registers.source`, derived from the session channel: bearer = app, cookie = web. */
+export const REGISTER_SOURCES = ['app', 'web'] as const;
+export type RegisterSource = (typeof REGISTER_SOURCES)[number];
+
+/** R126: an absence alert, a late advice, or a corrected notice (`seq` counts reversals). */
+export const ATTENDANCE_ALERT_KINDS = ['absence', 'late', 'corrected'] as const;
+export type AttendanceAlertKind = (typeof ATTENDANCE_ALERT_KINDS)[number];
+
+/** pending -> sent | cancelled; both final. */
+export const ATTENDANCE_ALERT_STATUSES = ['pending', 'sent', 'cancelled'] as const;
+export type AttendanceAlertStatus = (typeof ATTENDANCE_ALERT_STATUSES)[number];
+
+export const ATTENDANCE_ALERT_CANCEL_REASONS = [
+  'mark_changed',
+  'holiday',
+  'link_ended',
+  'backdated',
+] as const;
+export type AttendanceAlertCancelReason = (typeof ATTENDANCE_ALERT_CANCEL_REASONS)[number];

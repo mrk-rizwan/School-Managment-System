@@ -1039,6 +1039,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     definition: 'CHECK (((revoked_by IS NULL) OR (revoked_by <> user_id)))',
   },
   ...PHASE_2_GROUNDWORK_OBJECTS(),
+  ...WAVE_E_GROUNDWORK_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -1481,6 +1482,377 @@ function PHASE_2_GROUNDWORK_OBJECTS(): ExpectedObject[] {
         "EXECUTE FUNCTION asms_forbid_change_once_set('cancelled_at', 'cancelled_by', 'cancel_reason', 'status', 'starts_on', 'ends_on', 'name', 'description', 'kind', 'applies_to_staff', 'announcement_id')",
     },
     ...noDeleteTriggers('holidays'),
+  ];
+}
+
+/** An append-only table's UPDATE/DELETE and TRUNCATE refusals (asms_forbid_append_only_change). */
+function appendOnlyTriggers(table: string): ExpectedObject[] {
+  return [
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_append_only`,
+      definition: `BEFORE DELETE OR UPDATE ON public.${table} FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()`,
+    },
+    {
+      kind: 'trigger',
+      table,
+      name: `${table}_no_truncate`,
+      definition: `BEFORE TRUNCATE ON public.${table} FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()`,
+    },
+  ];
+}
+
+/**
+ * Phase 2 wave E groundwork (migration 20261004120000_phase2_attendance_diary): attendance, staff
+ * attendance, diary and remarks. The §4.6 history function, the summary version bump, the alert,
+ * not-self and supersede rules.
+ */
+function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- trigger functions
+    {
+      kind: 'function',
+      name: 'asms_record_change',
+      definition: "v_refusal := changes_table || '_actor_required'",
+    },
+    {
+      kind: 'function',
+      name: 'asms_record_change',
+      definition: "v_refusal := changes_table || '_reason_required'",
+    },
+    {
+      kind: 'function',
+      name: 'asms_record_change',
+      definition: "NULLIF(current_setting('asms.actor_user_id', true), '')",
+    },
+    {
+      kind: 'function',
+      name: 'asms_attendance_summary_bump',
+      definition: 'DO UPDATE SET version = attendance_daily_summary.version + 1',
+    },
+    {
+      kind: 'function',
+      name: 'asms_attendance_alert_status_final',
+      definition: "DETAIL = 'constraint: attendance_alerts_status_final'",
+    },
+    {
+      kind: 'function',
+      name: 'asms_staff_attendance_not_self',
+      definition: "DETAIL = 'constraint: staff_attendance_not_self'",
+    },
+    {
+      kind: 'function',
+      name: 'asms_remark_superseded_by_successor',
+      definition: "DETAIL = 'constraint: remarks_superseded_by_successor'",
+    },
+    {
+      kind: 'function',
+      name: 'asms_remark_mark_superseded',
+      definition: 'UPDATE remarks SET superseded_at = NEW.created_at',
+    },
+    // ---- attendance_registers
+    {
+      kind: 'constraint',
+      table: 'attendance_registers',
+      name: 'attendance_registers_amended_check',
+      definition: 'CHECK (((last_amended_by IS NULL) = (last_amended_at IS NULL)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'attendance_registers',
+      name: 'attendance_registers_daily_period_check',
+      definition:
+        "CHECK (((mode <> 'daily'::attendance_mode) OR (period = 1)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'attendance_registers',
+      name: 'attendance_registers_period_check',
+      definition: 'CHECK (((period >= 1) AND (period <= 12)))',
+    },
+    // ---- attendance_marks
+    {
+      kind: 'constraint',
+      table: 'attendance_marks',
+      name: 'attendance_marks_natural_key',
+      definition: 'UNIQUE (school_id, enrolment_id, date, period)',
+    },
+    { kind: 'constraint', table: 'attendance_marks', name: 'attendance_marks_note_no_id_check', definition: noIdCheck('note') },
+    // ---- attendance_mark_changes
+    {
+      kind: 'constraint',
+      table: 'attendance_mark_changes',
+      name: 'attendance_mark_changes_reason_check',
+      definition:
+        "CHECK (((reason)::text <> ''::text))",
+    },
+    { kind: 'constraint', table: 'attendance_mark_changes', name: 'attendance_mark_changes_reason_no_id_check', definition: noIdCheck('reason') },
+    // ---- attendance_alerts
+    {
+      kind: 'constraint',
+      table: 'attendance_alerts',
+      name: 'attendance_alerts_cancelled_check',
+      definition:
+        "CHECK (((status = 'cancelled'::attendance_alert_status) = (cancel_reason IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'attendance_alerts',
+      name: 'attendance_alerts_seq_check',
+      definition: 'CHECK ((seq >= 1))',
+    },
+    // ---- attendance_day_status
+    {
+      kind: 'constraint',
+      table: 'attendance_day_status',
+      name: 'attendance_day_status_periods_check',
+      definition:
+        'CHECK ((((periods_recorded >= 1) AND (periods_recorded <= 12)) AND (periods_present >= 0) AND (periods_late >= 0) AND (periods_absent >= 0) AND (periods_leave >= 0) AND ((((periods_present + periods_late) + periods_absent) + periods_leave) = periods_recorded)))',
+    },
+    // ---- attendance_daily_summary
+    {
+      kind: 'constraint',
+      table: 'attendance_daily_summary',
+      name: 'attendance_daily_summary_counts_check',
+      definition:
+        'CHECK (((registers_expected >= 0) AND (registers_recorded >= 0) AND (roster_count >= 0) AND (present >= 0) AND (absent >= 0) AND (late >= 0) AND (on_leave >= 0) AND (partial >= 0)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'attendance_daily_summary',
+      name: 'attendance_daily_summary_version_check',
+      definition:
+        'CHECK (((version >= 1) AND (computed_version >= 0) AND (computed_version <= version)))',
+    },
+    // ---- staff_attendance
+    { kind: 'constraint', table: 'staff_attendance', name: 'staff_attendance_note_no_id_check', definition: noIdCheck('note') },
+    // ---- staff_attendance_changes
+    {
+      kind: 'constraint',
+      table: 'staff_attendance_changes',
+      name: 'staff_attendance_changes_reason_check',
+      definition:
+        "CHECK (((reason)::text <> ''::text))",
+    },
+    { kind: 'constraint', table: 'staff_attendance_changes', name: 'staff_attendance_changes_reason_no_id_check', definition: noIdCheck('reason') },
+    // ---- diary_entries
+    { kind: 'constraint', table: 'diary_entries', name: 'diary_entries_assignment_no_id_check', definition: noIdCheck('assignment') },
+    {
+      kind: 'constraint',
+      table: 'diary_entries',
+      name: 'diary_entries_attachment_check',
+      definition:
+        "CHECK ((((attachment_object_key IS NULL) = (attachment_mime IS NULL)) AND ((attachment_object_key IS NULL) = (attachment_size_bytes IS NULL)) AND ((attachment_object_key IS NULL) OR (((attachment_object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)) AND ((attachment_mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying, 'application/pdf'::character varying])::text[])) AND ((attachment_size_bytes >= 1) AND (attachment_size_bytes <= 5242880))))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'diary_entries',
+      name: 'diary_entries_due_on_check',
+      definition: 'CHECK (((due_on IS NULL) OR (due_on >= date)))',
+    },
+    { kind: 'constraint', table: 'diary_entries', name: 'diary_entries_learning_outcome_no_id_check', definition: noIdCheck('learning_outcome') },
+    {
+      kind: 'constraint',
+      table: 'diary_entries',
+      name: 'diary_entries_topic_check',
+      definition:
+        "CHECK ((((topic)::text = btrim((topic)::text)) AND ((topic)::text <> ''::text)))",
+    },
+    { kind: 'constraint', table: 'diary_entries', name: 'diary_entries_topic_no_id_check', definition: noIdCheck('topic') },
+    // ---- diary_entry_changes
+    { kind: 'constraint', table: 'diary_entry_changes', name: 'diary_entry_changes_reason_no_id_check', definition: noIdCheck('reason') },
+    // ---- remarks
+    {
+      kind: 'constraint',
+      table: 'remarks',
+      name: 'remarks_supersedes_self_check',
+      definition: 'CHECK (((supersedes_id IS NULL) OR (supersedes_id <> id)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'remarks',
+      name: 'remarks_correction_check',
+      definition: 'CHECK (((supersedes_id IS NULL) = (correction_reason IS NULL)))',
+    },
+    {
+      kind: 'constraint',
+      table: 'remarks',
+      name: 'remarks_correction_reason_no_id_check',
+      definition: noIdCheck('correction_reason'),
+    },
+    {
+      kind: 'constraint',
+      table: 'remarks',
+      name: 'remarks_text_check',
+      definition:
+        "CHECK ((((text)::text = btrim((text)::text)) AND ((text)::text <> ''::text)))",
+    },
+    { kind: 'constraint', table: 'remarks', name: 'remarks_text_no_id_check', definition: noIdCheck('text') },
+    // ---- attendance_registers
+    {
+      kind: 'trigger',
+      table: 'attendance_registers',
+      name: 'attendance_registers_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.attendance_registers FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'academic_year_id', 'date', 'period', 'mode', 'submitted_by', 'submitted_at', 'source')",
+    },
+    ...noDeleteTriggers('attendance_registers'),
+    // ---- attendance_marks
+    {
+      kind: 'trigger',
+      table: 'attendance_marks',
+      name: 'attendance_marks_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.attendance_marks FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('register_id', 'enrolment_id', 'date', 'period', 'created_at')",
+    },
+    {
+      kind: 'trigger',
+      table: 'attendance_marks',
+      name: 'attendance_marks_history',
+      definition:
+        "BEFORE UPDATE ON public.attendance_marks FOR EACH ROW EXECUTE FUNCTION asms_record_change('attendance_mark_changes', 'mark_id', 'reason_required', 'status', 'note')",
+    },
+    ...noDeleteTriggers('attendance_marks'),
+    {
+      kind: 'trigger',
+      table: 'attendance_marks',
+      name: 'attendance_marks_summary_bump_insert',
+      definition:
+        'AFTER INSERT ON public.attendance_marks REFERENCING NEW TABLE AS changed_marks FOR EACH STATEMENT EXECUTE FUNCTION asms_attendance_summary_bump()',
+    },
+    {
+      kind: 'trigger',
+      table: 'attendance_marks',
+      name: 'attendance_marks_summary_bump_update',
+      definition:
+        'AFTER UPDATE ON public.attendance_marks REFERENCING NEW TABLE AS changed_marks FOR EACH STATEMENT EXECUTE FUNCTION asms_attendance_summary_bump()',
+    },
+    // ---- attendance_mark_changes
+    ...appendOnlyTriggers('attendance_mark_changes'),
+    // ---- attendance_arrivals
+    ...appendOnlyTriggers('attendance_arrivals'),
+    // ---- attendance_alerts
+    {
+      kind: 'trigger',
+      table: 'attendance_alerts',
+      name: 'attendance_alerts_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.attendance_alerts FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'date', 'kind', 'seq', 'created_at')",
+    },
+    ...noDeleteTriggers('attendance_alerts'),
+    {
+      kind: 'trigger',
+      table: 'attendance_alerts',
+      name: 'attendance_alerts_status_final',
+      definition:
+        'BEFORE UPDATE ON public.attendance_alerts FOR EACH ROW EXECUTE FUNCTION asms_attendance_alert_status_final()',
+    },
+    // ---- attendance_day_status
+    {
+      kind: 'trigger',
+      table: 'attendance_day_status',
+      name: 'attendance_day_status_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.attendance_day_status FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'section_id', 'date')",
+    },
+    ...noDeleteTriggers('attendance_day_status'),
+    // ---- attendance_daily_summary
+    {
+      kind: 'trigger',
+      table: 'attendance_daily_summary',
+      name: 'attendance_daily_summary_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.attendance_daily_summary FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'academic_year_id', 'date')",
+    },
+    ...noDeleteTriggers('attendance_daily_summary'),
+    // ---- staff_attendance
+    {
+      kind: 'trigger',
+      table: 'staff_attendance',
+      name: 'staff_attendance_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date')",
+    },
+    {
+      kind: 'trigger',
+      table: 'staff_attendance',
+      name: 'staff_attendance_history',
+      definition:
+        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_record_change('staff_attendance_changes', 'staff_attendance_id', 'reason_required', 'status', 'note')",
+    },
+    ...noDeleteTriggers('staff_attendance'),
+    {
+      kind: 'trigger',
+      table: 'staff_attendance',
+      name: 'staff_attendance_not_self',
+      definition:
+        'BEFORE INSERT OR UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_staff_attendance_not_self()',
+    },
+    // ---- staff_attendance_changes
+    ...appendOnlyTriggers('staff_attendance_changes'),
+    // ---- diary_entries
+    {
+      kind: 'trigger',
+      table: 'diary_entries',
+      name: 'diary_entries_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.diary_entries FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'academic_year_id', 'date', 'subject_id', 'author_staff_id', 'created_at')",
+    },
+    {
+      kind: 'trigger',
+      table: 'diary_entries',
+      name: 'diary_entries_history',
+      definition:
+        "BEFORE UPDATE ON public.diary_entries FOR EACH ROW EXECUTE FUNCTION asms_record_change('diary_entry_changes', 'diary_entry_id', 'reason_optional', 'topic', 'assignment', 'learning_outcome', 'due_on', 'attachment_object_key')",
+    },
+    ...noDeleteTriggers('diary_entries'),
+    // ---- diary_entry_changes
+    ...appendOnlyTriggers('diary_entry_changes'),
+    // ---- remarks
+    {
+      kind: 'trigger',
+      table: 'remarks',
+      name: 'remarks_columns_immutable',
+      definition:
+        "BEFORE UPDATE ON public.remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'author_staff_id', 'subject_id', 'date', 'category', 'text', 'visibility', 'supersedes_id', 'correction_reason', 'created_at')",
+    },
+    {
+      kind: 'trigger',
+      table: 'remarks',
+      name: 'remarks_mark_superseded',
+      definition:
+        'AFTER INSERT ON public.remarks FOR EACH ROW WHEN ((new.supersedes_id IS NOT NULL)) EXECUTE FUNCTION asms_remark_mark_superseded()',
+    },
+    ...noDeleteTriggers('remarks'),
+    {
+      kind: 'trigger',
+      table: 'remarks',
+      name: 'remarks_superseded_at_frozen',
+      definition:
+        "BEFORE UPDATE ON public.remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('superseded_at')",
+    },
+    {
+      kind: 'trigger',
+      table: 'remarks',
+      name: 'remarks_superseded_by_successor',
+      definition:
+        'BEFORE INSERT OR UPDATE ON public.remarks FOR EACH ROW EXECUTE FUNCTION asms_remark_superseded_by_successor()',
+    },
+    {
+      kind: 'index',
+      table: 'diary_entries',
+      name: 'diary_entries_attachment_object_key_key',
+      definition:
+        'ON public.diary_entries USING btree (school_id, attachment_object_key) WHERE (attachment_object_key IS NOT NULL)',
+    },
+    {
+      kind: 'index',
+      table: 'remarks',
+      name: 'remarks_supersedes_id_key',
+      definition:
+        'ON public.remarks USING btree (school_id, supersedes_id) WHERE (supersedes_id IS NOT NULL)',
+    },
   ];
 }
 

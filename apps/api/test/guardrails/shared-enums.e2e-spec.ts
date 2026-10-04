@@ -2,6 +2,12 @@
 // packages/shared (the API's DTOs and the clients). This reads the migrated catalog and fails on
 // any difference, so a value added on one side only cannot ship.
 import {
+  ATTENDANCE_ALERT_CANCEL_REASONS,
+  ATTENDANCE_ALERT_KINDS,
+  ATTENDANCE_ALERT_STATUSES,
+  ATTENDANCE_MODES,
+  ATTENDANCE_STATUSES,
+  DAY_STATUSES,
   DEFAULT_SMS_ALLOWED_TYPES,
   DELIVERY_ERROR_CODES,
   DELIVERY_STATUSES,
@@ -15,11 +21,14 @@ import {
   MESSAGE_PRIORITIES,
   MESSAGE_STATUSES,
   MESSAGE_TYPES,
+  REGISTER_SOURCES,
+  REMARK_CATEGORIES,
   REMARK_VISIBILITIES,
   SESSION_CHANNELS,
   SMS_ELIGIBLE_TYPES,
   SMS_PROVIDER_CHOICES,
   SMS_PROVIDERS,
+  STAFF_ATTENDANCE_STATUSES,
   SUPPRESSION_REASONS,
   TEACHER_ROLES,
   WHATSAPP_ERROR_CODES,
@@ -52,6 +61,16 @@ const PAIRS: [string, readonly string[]][] = [
   ['leave_counts_as', LEAVE_COUNTS_AS],
   ['remark_visibility', REMARK_VISIBILITIES],
   ['teacher_assignment_role', TEACHER_ROLES],
+  // Wave E groundwork (slices 11-13).
+  ['attendance_mode', ATTENDANCE_MODES],
+  ['attendance_status', ATTENDANCE_STATUSES],
+  ['day_status', DAY_STATUSES],
+  ['staff_attendance_status', STAFF_ATTENDANCE_STATUSES],
+  ['register_source', REGISTER_SOURCES],
+  ['attendance_alert_kind', ATTENDANCE_ALERT_KINDS],
+  ['attendance_alert_status', ATTENDANCE_ALERT_STATUSES],
+  ['attendance_alert_cancel_reason', ATTENDANCE_ALERT_CANCEL_REASONS],
+  ['remark_category', REMARK_CATEGORIES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

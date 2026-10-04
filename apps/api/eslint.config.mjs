@@ -185,6 +185,10 @@ const RAW_SQL_FILES = [
   // Named exception 5: DeliveryWebhookRepository's two statement shapes (contracts/slice-9.md
   // §8.5), each returning the school it touched (test/webhooks/webhooks.e2e-spec.ts).
   'src/repositories/platform/delivery-webhook.repository.ts',
+  // ChangeContextRepository.setChangeContext: two transaction-local set_config calls for the §4.6
+  // history triggers; reads and writes no table, so it has no isolation test of its own
+  // (change-context.repository.spec.ts proves the settings die with the transaction).
+  'src/repositories/change-context.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
