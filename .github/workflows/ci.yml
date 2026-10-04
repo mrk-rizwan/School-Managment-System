@@ -428,6 +428,9 @@ jobs:
           script: echo "AVD snapshot created"
 
       - name: Maestro flows on the emulator
+        # Its own limit: on the first run the emulator hung on shutdown and the job limit cancelled
+        # everything, including the evidence upload (2026-10-05).
+        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         env:
           APK: ${{ github.workspace }}/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
@@ -441,7 +444,7 @@ jobs:
           script: bash apps/mobile/maestro/ci-run.sh
 
       - name: Upload Maestro output and the API log
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: mobile-e2e

@@ -43,10 +43,20 @@ start_api() {
 flow() { # name, file, extra -e args...
   local name="$1" file="$2"
   shift 2
-  maestro test --format junit --output "$out/$name.xml" --debug-output "$out/$name" \
+  if ! maestro test --format junit --output "$out/$name.xml" --debug-output "$out/$name" \
     -e SCHOOL_CODE="$SCHOOL_CODE" -e PRINCIPAL_CNIC="$PRINCIPAL_CNIC" \
     -e TEACHER_CNIC="$TEACHER_CNIC" -e GUARDIAN_CNIC="$GUARDIAN_CNIC" \
-    "$@" "$flows/$file"
+    "$@" "$flows/$file"; then
+    # Evidence in the job log itself, in case the artifact upload never runs. The app's log is
+    # scrubbed of identity numbers and tokens (src/platform/scrub.ts); the API logs no values.
+    echo "::group::flow $name failed: API log, worker log, app log"
+    tail -n 80 "$root/api.log" || true
+    tail -n 30 "$root/worker.log" || true
+    adb logcat -d -t 2000 >"$out/$name-logcat.txt" 2>&1 || true
+    grep -E "ReactNativeJS|AndroidRuntime|ReactNative" "$out/$name-logcat.txt" | tail -n 80 || true
+    echo "::endgroup::"
+    return 1
+  fi
 }
 
 json() { # a JavaScript expression over `b` (the parsed stdin)
