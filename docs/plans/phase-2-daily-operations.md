@@ -349,7 +349,7 @@ Mechanics, verified against Prisma 7's interactive transactions:
   and note) writes no history and passes — a replay is free (R125).
 - Outside `@Transactional()` the setting lands on a pooled connection and the update on another:
   the trigger refuses. That is fail-closed and tested ("amend outside a transaction is refused").
-- Prisma's interactive-transaction timeout is 5 s: a register is one statement (`INSERT … ON
+- Prisma's interactive-transaction timeout is 15 s (`TRANSACTION_TIMEOUT_MS`, raised from the 5 s default on 2026-10-04 after a 3,000-recipient notice took 5.6 s on CI): a register is one statement (`INSERT … ON
   CONFLICT ON CONSTRAINT attendance_marks_natural_key DO UPDATE … WHERE … IS DISTINCT FROM …`,
   built with `Prisma.join`), so sixty rows fire the trigger only where something changed; the
   nightly recompute runs in batches per section-day, never one long transaction.

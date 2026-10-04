@@ -2,6 +2,7 @@
 // draft visibility, create / patch / publish / cancel with their refusals and audit, the notice and
 // the cancellation (one per person, withdrawn when unsent), the R167 listener seam, and the
 // teaching-day reads for staff and for any signed-in person.
+import { TRANSACTION_TIMEOUT_MS } from '../../src/tenancy/tenancy.module';
 import { ErrorCode } from '@asms/shared';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
 import { CalendarListenerRegistry, type HolidayRange } from '../../src/modules/calendar/calendar-listener';
@@ -372,8 +373,11 @@ describe('holidays and calendar (e2e)', () => {
     const h1 = await made(principal.cookie);
     const started = Date.now();
     const res = await publish(principal.cookie, h1.id);
+    // 200 proves the transaction committed inside the configured limit (a timeout is a 500). The
+    // wall-clock bound is the same limit, so a slower runner does not fail a passing publish, but
+    // a regression that approaches the limit still does.
     expect(res.status).toBe(200);
-    expect(Date.now() - started).toBeLessThan(5000);
+    expect(Date.now() - started).toBeLessThan(TRANSACTION_TIMEOUT_MS);
     expect(await db.message.count({ where: { schoolId: school.id, subjectType: 'holiday', subjectId: BigInt(h1.id) } })).toBe(3001);
   }, 60_000);
 

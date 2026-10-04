@@ -317,6 +317,10 @@ jobs:
           java-version: 17
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default list still names the removed `tools` package, which fails
+          # sdkmanager; the emulator runner installs the system image and emulator itself.
+          packages: platform-tools
 
       - uses: gradle/actions/setup-gradle@v4
 
