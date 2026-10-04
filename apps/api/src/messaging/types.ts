@@ -37,8 +37,9 @@ export interface TemplateVarsMap {
     readonly status: DayStatus;
     readonly arrivedAt: string | null;
   };
-  announcement_urgent: never;
-  announcement_normal: never;
+  /** contracts/slice-14.md §4.4: the sender passes `{}` and the composed `body`. */
+  announcement_urgent: Record<string, never>;
+  announcement_normal: Record<string, never>;
   /** Notice (subject `holiday`) or cancellation (subject `holiday_cancellation`), slice 10 §4.7. */
   holiday_notice: {
     readonly name: string;
@@ -97,9 +98,23 @@ export interface SendInput<T extends MessageType> {
   readonly body?: string;
   /** Announcement types only (slice 14). */
   readonly media?: { readonly objectKey: string; readonly mime: string };
+  /**
+   * Subject `announcement` only (contracts/slice-14.md §4.4): stored on messages.title, the push
+   * title and email subject.
+   */
+  readonly title?: string;
+  /**
+   * Subject `announcement` only (§4.3 step 3, §4.4): among recipients sharing one phone, one keeps
+   * the phone legs and the others lose those legs (notification.service.ts dedupePhones).
+   */
+  readonly dedupePhones?: boolean;
 }
 
 export interface SendResult {
   readonly created: number;
   readonly existing: number;
+  /** Recipients whose phone legs `dedupePhones` removed (0 without it). */
+  readonly dedupedByPhone: number;
+  /** The rows this call inserted, with their person (a retried sender gets none of its old rows). */
+  readonly messages: readonly { readonly id: bigint; readonly person: Recipient }[];
 }

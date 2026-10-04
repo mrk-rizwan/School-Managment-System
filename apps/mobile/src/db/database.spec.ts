@@ -1,3 +1,4 @@
+import { openDatabaseAsync } from 'expo-sqlite';
 import { KEYS } from '../auth/session-store';
 import { resetDevice } from '../test/fake-api';
 import { secureStoreContents } from '../test/secure-store';
@@ -20,6 +21,7 @@ import {
   wipeForSessionLoss,
 } from './database';
 import { enqueue, listUnfinished, NoOwnerError } from './outbox.repository';
+import { META_DDL, MIGRATIONS, SCHEMA_VERSION } from './schema';
 
 // Security review of slice 15: M1 (no SQLite residue after a wipe) and the §7.6 seven-day window.
 
@@ -122,5 +124,27 @@ describe('§7.6: unsent writes outlive their session by at most seven days', () 
       enqueue({ ...device, body: { platform: 'android', pushToken: 'p' } }),
     ).rejects.toBeInstanceOf(NoOwnerError);
     expect(await listUnfinished()).toEqual([]);
+  });
+});
+
+describe('migration 3 (slice 16b): an outbox row written at v2 survives the upgrade', () => {
+  test('open at v2, write a row, reopen at v3: the row is unfinished with responseDetails null', async () => {
+    await wipeDatabase();
+    const v2 = await openDatabaseAsync(DATABASE_NAME);
+    await v2.execAsync(META_DDL);
+    for (const ddl of MIGRATIONS.slice(0, 2)) await v2.execAsync(ddl);
+    await v2.runAsync('INSERT INTO meta (key, value) VALUES (?, ?)', [META.schemaVersion, '2']);
+    await v2.runAsync(
+      `INSERT INTO outbox (id, lane, method, path, body, state, attempts, created_at, updated_at)
+       VALUES ('row-v2', 'device_register', 'POST', '/api/v1/me/devices', '{}', 'pending', 0, ?, ?)`,
+      ['2026-10-04T04:00:00.000Z', '2026-10-04T04:00:00.000Z'],
+    );
+    await v2.closeAsync();
+
+    expect(await getMeta(META.schemaVersion)).toBe(String(SCHEMA_VERSION));
+    expect(SCHEMA_VERSION).toBe(3);
+    const rows = await listUnfinished();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: 'row-v2', state: 'pending', responseDetails: null });
   });
 });

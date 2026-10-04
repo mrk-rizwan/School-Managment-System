@@ -1,8 +1,11 @@
 import { setBearerToken } from '../api/client';
 import { queryClient } from '../api/query-client';
 import { wipeDatabase, wipeForSessionLoss } from '../db/database';
+import { sweepPhotoFiles } from '../db/local.repository';
+import { deleteOutboxDirectory } from '../media/files';
 import { outboxWorker } from '../outbox/runtime';
 import { log } from '../platform/log';
+import { clearImageCache } from '../ui/Attachment';
 import { clearSession } from './session-store';
 
 /**
@@ -16,6 +19,9 @@ export async function wipeAll(): Promise<boolean> {
   await clearSession();
   queryClient.clear();
   const complete = await wipeDatabase();
+  // Residue at rest (slice-16 §13.3): waiting photos and every image the app has shown.
+  deleteOutboxDirectory();
+  await clearImageCache();
   // An incomplete wipe (the file would not close) has deleted the rows and is finished at the
   // next open; it is not reported as done.
   if (complete) log('info', 'session.wiped');
@@ -35,6 +41,9 @@ export async function loseSession(): Promise<number> {
   await clearSession();
   queryClient.clear();
   const kept = await wipeForSessionLoss();
+  // Only the photos of kept (unsent) diary entries survive; the image cache never does.
+  await sweepPhotoFiles();
+  await clearImageCache();
   log('info', 'session.lost', { unsentKept: kept });
   return kept;
 }

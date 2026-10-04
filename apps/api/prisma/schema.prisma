@@ -138,6 +138,10 @@ model School {
   diaryEntries           DiaryEntry[]             @ignore
   diaryEntryChanges      DiaryEntryChange[]       @ignore
   remarks                Remark[]                 @ignore
+  announcements          Announcement[]           @ignore
+  announcementAudiences  AnnouncementAudience[]   @ignore
+  announcementRecipients AnnouncementRecipient[]  @ignore
+  announcementRecipientStudents AnnouncementRecipientStudent[] @ignore
 
   @@unique([shortCode], map: "schools_short_code_key")
   @@index([schoolGroupId], map: "schools_school_group_id_idx")
@@ -353,6 +357,7 @@ model Class {
   attendanceRegisters AttendanceRegister[]
   attendanceSummaries AttendanceDailySummary[]
   diaryEntries        DiaryEntry[]
+  announcementAudiences AnnouncementAudience[]
 
   @@unique([schoolId, id], map: "classes_school_id_id_key")
   /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
@@ -382,6 +387,7 @@ model Section {
   attendanceDayStatuses AttendanceDayStatus[]
   attendanceSummaries   AttendanceDailySummary[]
   diaryEntries          DiaryEntry[]
+  announcementAudiences AnnouncementAudience[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -460,6 +466,8 @@ model Guardian {
   user         User?
   studentLinks StudentGuardian[]
   messages     Message[]
+  announcementAudiences  AnnouncementAudience[]
+  announcementRecipients AnnouncementRecipient[]
 
   @@unique([schoolId, id], map: "guardians_school_id_id_key")
   @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
@@ -538,6 +546,8 @@ model Staff {
   attendance         StaffAttendance[]
   diaryEntries       DiaryEntry[]
   remarks            Remark[]
+  announcementAudiences  AnnouncementAudience[]
+  announcementRecipients AnnouncementRecipient[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@map("staff")
@@ -677,6 +687,8 @@ model User {
   staffAttendanceMarked    StaffAttendance[]
   staffAttendanceChanges   StaffAttendanceChange[]
   diaryEntryChanges        DiaryEntryChange[]
+  announcementsCreated     Announcement[]          @relation("AnnouncementCreatedBy")
+  announcementsCancelled   Announcement[]          @relation("AnnouncementCancelledBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -895,6 +907,9 @@ model Student {
   documents     StudentDocument[]
   user          User?
   messages      Message[]
+  announcementAudiences  AnnouncementAudience[]
+  announcementRecipients AnnouncementRecipient[]
+  announcementRecipientStudents AnnouncementRecipientStudent[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -1256,6 +1271,8 @@ enum SuppressionReason {
   no_channel
   backdated
   subject_cancelled
+  /// contracts/slice-14.md §4.4: a later recipient on an earlier one's phone, nothing else left.
+  duplicate_phone
 
   @@map("suppression_reason")
 }
@@ -1483,6 +1500,9 @@ model Message {
   body             String             @db.VarChar(2000)
   /// `{school_id}/{ULID}.{jpg|png|pdf}` (CHECK messages_media_object_key_check).
   mediaObjectKey   String?            @map("media_object_key") @db.VarChar(64)
+  /// Announcement-carried types only: the push title and email subject (contracts/slice-14.md
+  /// §4.4); never an identity number (CHECK messages_title_no_id_check). Null: titleOf().
+  title            String?            @db.VarChar(120)
   channelPlan      MessageChannel[]   @map("channel_plan")
   status           MessageStatus      @default(queued)
   /// Set exactly when status = suppressed (CHECK messages_suppressed_check).
@@ -1501,6 +1521,7 @@ model Message {
   staff      Staff?            @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "messages_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   student    Student?          @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "messages_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   deliveries MessageDelivery[]
+  announcementRecipients AnnouncementRecipient[]
 
   @@unique([schoolId, id], map: "messages_school_id_id_key")
   /// The per-school outbox sweep (R105).
@@ -1653,12 +1674,17 @@ model Holiday {
   school          School @relation(fields: [schoolId], references: [id], map: "holidays_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   publishedByUser User?  @relation("HolidayPublishedBy", fields: [schoolId, publishedBy], references: [schoolId, id], map: "holidays_published_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   cancelledByUser User?  @relation("HolidayCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "holidays_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The announcement that is this holiday's notice (R151, contracts/slice-14.md §6); a later
+  /// cancellation notice is a second announcement naming the holiday, not this column.
+  announcement    Announcement? @relation("HolidayAnnouncement", fields: [schoolId, announcementId], references: [schoolId, id], map: "holidays_announcement_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  announcements   Announcement[] @relation("AnnouncementHoliday")
 
   @@unique([schoolId, id], map: "holidays_school_id_id_key")
   /// Status is an index column, not a partial predicate (Prisma casts enum conditions).
   @@index([schoolId, status, startsOn], map: "holidays_school_id_status_starts_on_idx")
   @@index([schoolId, publishedBy], map: "holidays_school_id_published_by_idx")
   @@index([schoolId, cancelledBy], map: "holidays_school_id_cancelled_by_idx")
+  @@index([schoolId, announcementId], map: "holidays_school_id_announcement_id_idx")
   @@map("holidays")
 }
 
@@ -2130,4 +2156,203 @@ model Remark {
   @@index([schoolId, enrolmentId, studentId], map: "remarks_school_id_enrolment_id_student_id_idx")
   @@index([schoolId, supersedesId, studentId], map: "remarks_school_id_supersedes_id_student_id_idx")
   @@map("remarks")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 2 slice 14: announcements (contracts/slice-14.md §11, phase-2-daily-operations.md §5
+// "Announcements"). Value sets mirror packages/shared/src/announcements.ts
+// (test/guardrails/shared-enums.e2e-spec.ts). Hand-written CHECKs, partial uniques, the freeze and
+// append-only triggers live in the migration slice14_announcements.
+// ---------------------------------------------------------------------------------------------
+
+enum AnnouncementCategory {
+  holiday
+  exam
+  fee
+  event
+  general
+
+  @@map("announcement_category")
+}
+
+enum AnnouncementPriority {
+  normal
+  urgent
+
+  @@map("announcement_priority")
+}
+
+/// `sending` is the in-transaction state of a send (decision 9); no client observes it.
+enum AnnouncementStatus {
+  draft
+  scheduled
+  sending
+  sent
+  cancelled
+
+  @@map("announcement_status")
+}
+
+enum AudienceKind {
+  everyone
+  parents
+  students
+  staff
+  class
+  section
+  student
+  guardian
+  staff_member
+
+  @@map("audience_kind")
+}
+
+enum AudienceRole {
+  parents
+  students
+
+  @@map("audience_role")
+}
+
+/// Tenant: one announcement (R144-R152). Content is editable while draft or scheduled and frozen
+/// once sending, sent or cancelled (trigger announcements_final_frozen). A holiday's notice and
+/// its cancellation are announcements naming the holiday (R151). scheduled_at is kept as history
+/// on a sent row (decision 11). Never deleted.
+model Announcement {
+  id                  BigInt               @id(map: "announcements_pkey") @default(autoincrement())
+  schoolId            BigInt               @map("school_id")
+  /// 1-120, never an identity number (CHECK announcements_title_no_id_check).
+  title               String               @db.VarChar(120)
+  /// 1-1800 (the composed message body is "{school}: {title}\n{body}" in 2,000; decision 6).
+  body                String               @db.VarChar(1800)
+  category            AnnouncementCategory
+  priority            AnnouncementPriority
+  status              AnnouncementStatus   @default(draft)
+  /// Required when scheduled, absent on a draft, history afterwards (CHECK announcements_scheduled_check).
+  scheduledAt         DateTime?            @map("scheduled_at") @db.Timestamptz(3)
+  /// The last day it shows in an inbox (R147); null = never expires.
+  expiresOn           DateTime?            @map("expires_on") @db.Date
+  /// `{school_id}/{ULID}.{jpg|png|pdf}`; key, mime and size together (CHECK announcements_attachment_check).
+  attachmentObjectKey String?              @map("attachment_object_key") @db.VarChar(64)
+  attachmentMime      String?              @map("attachment_mime") @db.VarChar(32)
+  attachmentSizeBytes Int?                 @map("attachment_size_bytes")
+  holidayId           BigInt?              @map("holiday_id")
+  createdBy           BigInt               @map("created_by")
+  /// Set exactly when sent (CHECK announcements_sent_check).
+  sentAt              DateTime?            @map("sent_at") @db.Timestamptz(3)
+  /// Set together, exactly when cancelled (CHECK announcements_cancelled_check).
+  cancelledAt         DateTime?            @map("cancelled_at") @db.Timestamptz(3)
+  cancelledBy         BigInt?              @map("cancelled_by")
+  cancelReason        String?              @map("cancel_reason") @db.VarChar(500)
+  /// Persons resolved at send (R145); 0 until then.
+  recipientCount      Int                  @default(0) @map("recipient_count")
+  /// Failed attempts of the send job since the last send (§5.6); the fifth gives up.
+  sendFailures        Int                  @default(0) @map("send_failures") @db.SmallInt
+  /// Set when the send job gave up; only on a draft (CHECK announcements_send_failed_check).
+  sendFailedAt        DateTime?            @map("send_failed_at") @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School                  @relation(fields: [schoolId], references: [id], map: "announcements_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  holiday         Holiday?                @relation("AnnouncementHoliday", fields: [schoolId, holidayId], references: [schoolId, id], map: "announcements_holiday_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser   User                    @relation("AnnouncementCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "announcements_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  cancelledByUser User?                   @relation("AnnouncementCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "announcements_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  noticeOf        Holiday[]               @relation("HolidayAnnouncement")
+  audiences       AnnouncementAudience[]
+  recipients      AnnouncementRecipient[]
+
+  @@unique([schoolId, id], map: "announcements_school_id_id_key")
+  /// The scheduled-send sweep source (§5.6).
+  @@index([schoolId, status, scheduledAt], map: "announcements_school_id_status_scheduled_at_idx")
+  /// A `.scope` holder's own list.
+  @@index([schoolId, createdBy, createdAt], map: "announcements_school_id_created_by_created_at_idx")
+  @@index([schoolId, holidayId], map: "announcements_school_id_holiday_id_idx")
+  @@index([schoolId, cancelledBy], map: "announcements_school_id_cancelled_by_idx")
+  @@map("announcements")
+}
+
+/// Tenant: one audience item of an announcement. Exactly the foreign key its kind names is set
+/// (CHECK announcement_audiences_target_check); one row per target (unique index
+/// announcement_audiences_target_key). A draft's audience is a form field: rows are replaced on
+/// PATCH (decision 12), so this table has no no-delete trigger.
+model AnnouncementAudience {
+  id             BigInt         @id(map: "announcement_audiences_pkey") @default(autoincrement())
+  schoolId       BigInt         @map("school_id")
+  announcementId BigInt         @map("announcement_id")
+  kind           AudienceKind
+  classId        BigInt?        @map("class_id")
+  sectionId      BigInt?        @map("section_id")
+  studentId      BigInt?        @map("student_id")
+  guardianId     BigInt?        @map("guardian_id")
+  staffId        BigInt?        @map("staff_id")
+  /// class, section and student only; 1-2 distinct (CHECK announcement_audiences_roles_check).
+  roles          AudienceRole[] @default([parents, students])
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school       School       @relation(fields: [schoolId], references: [id], map: "announcement_audiences_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  announcement Announcement @relation(fields: [schoolId, announcementId], references: [schoolId, id], map: "announcement_audiences_announcement_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class        Class?       @relation(fields: [schoolId, classId], references: [schoolId, id], map: "announcement_audiences_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section      Section?     @relation(fields: [schoolId, sectionId], references: [schoolId, id], map: "announcement_audiences_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student      Student?     @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "announcement_audiences_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian     Guardian?    @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "announcement_audiences_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff        Staff?       @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "announcement_audiences_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "announcement_audiences_school_id_id_key")
+  @@index([schoolId, announcementId], map: "announcement_audiences_school_id_announcement_id_idx")
+  @@index([schoolId, classId], map: "announcement_audiences_school_id_class_id_idx")
+  @@index([schoolId, sectionId], map: "announcement_audiences_school_id_section_id_idx")
+  @@index([schoolId, studentId], map: "announcement_audiences_school_id_student_id_idx")
+  @@index([schoolId, guardianId], map: "announcement_audiences_school_id_guardian_id_idx")
+  @@index([schoolId, staffId], map: "announcement_audiences_school_id_staff_id_idx")
+  @@map("announcement_audiences")
+}
+
+/// Tenant, append-only: one person an announcement resolved to at send (R145), once each
+/// (partial uniques per person). Serves viaStudents and attachment access, never the inbox
+/// (plan §4.2). message_id is back-filled once, from NULL, in the send transaction.
+model AnnouncementRecipient {
+  id             BigInt   @id(map: "announcement_recipients_pkey") @default(autoincrement())
+  schoolId       BigInt   @map("school_id")
+  announcementId BigInt   @map("announcement_id")
+  /// Exactly one of the three (CHECK announcement_recipients_person_check).
+  guardianId     BigInt?  @map("guardian_id")
+  staffId        BigInt?  @map("staff_id")
+  studentId      BigInt?  @map("student_id")
+  messageId      BigInt?  @map("message_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school       School                         @relation(fields: [schoolId], references: [id], map: "announcement_recipients_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  announcement Announcement                   @relation(fields: [schoolId, announcementId], references: [schoolId, id], map: "announcement_recipients_announcement_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian     Guardian?                      @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "announcement_recipients_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff        Staff?                         @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "announcement_recipients_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student      Student?                       @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "announcement_recipients_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  message      Message?                       @relation(fields: [schoolId, messageId], references: [schoolId, id], map: "announcement_recipients_message_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  students     AnnouncementRecipientStudent[]
+
+  @@unique([schoolId, id], map: "announcement_recipients_school_id_id_key")
+  @@index([schoolId, announcementId], map: "announcement_recipients_school_id_announcement_id_idx")
+  @@index([schoolId, guardianId], map: "announcement_recipients_school_id_guardian_id_idx")
+  @@index([schoolId, staffId], map: "announcement_recipients_school_id_staff_id_idx")
+  @@index([schoolId, studentId], map: "announcement_recipients_school_id_student_id_idx")
+  @@index([schoolId, messageId], map: "announcement_recipients_school_id_message_id_idx")
+  @@map("announcement_recipients")
+}
+
+/// Tenant, append-only: why a guardian recipient is in the audience, every student that put them
+/// there (R145). Staff and student recipients have none.
+model AnnouncementRecipientStudent {
+  id                      BigInt   @id(map: "announcement_recipient_students_pkey") @default(autoincrement())
+  schoolId                BigInt   @map("school_id")
+  announcementRecipientId BigInt   @map("announcement_recipient_id")
+  studentId               BigInt   @map("student_id")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school    School                @relation(fields: [schoolId], references: [id], map: "announcement_recipient_students_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  recipient AnnouncementRecipient @relation(fields: [schoolId, announcementRecipientId], references: [schoolId, id], map: "announcement_recipient_students_announcement_recipient_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student   Student               @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "announcement_recipient_students_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "announcement_recipient_students_school_id_id_key")
+  @@unique([schoolId, announcementRecipientId, studentId], map: "announcement_recipient_students_key")
+  @@index([schoolId, studentId], map: "announcement_recipient_students_school_id_student_id_idx")
+  @@map("announcement_recipient_students")
 }

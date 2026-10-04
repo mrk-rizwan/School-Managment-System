@@ -395,7 +395,8 @@ function PublishHolidayDialog({ holiday, onClose }: { holiday: HolidayDto | null
     onSuccess: (saved) => {
       queryClient.setQueryData(calendarKeys.holiday(saved.id), saved);
       void queryClient.invalidateQueries({ queryKey: calendarKeys.all });
-      toast.success(`${saved.name} published.`);
+      // The notice is written by a background job after the publish commits (contracts/slice-14.md §6.1).
+      toast.success(saved.announcementId ? `${saved.name} published. The notice is going out now.` : `${saved.name} published.`);
       close();
     },
     onError: (error) => {

@@ -1,0 +1,57 @@
+# slice-16 §15.2 (16b) — CI only. The principal writes a short notice to section 5 A, sees the
+# people and SMS units it will reach before sending, sends it, and finds it on the list; then the
+# guardian of 5 A roll 1 signs in and finds it in the inbox.
+# Env: SCHOOL_CODE, PRINCIPAL_CNIC, GUARDIAN_CNIC, CLASS_ID, SECTION_A.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${PRINCIPAL_CNIC}
+- tapOn:
+    id: 'tabs.announce'
+- tapOn:
+    id: 'announce.new'
+- tapOn:
+    id: 'announce.title'
+- inputText: 'Maestro notice'
+- tapOn:
+    id: 'announce.body'
+- inputText: 'Parents of 5 A: the class trip is on Friday.'
+- hideKeyboard
+- tapOn:
+    id: 'announce.audience.section'
+- tapOn:
+    id: 'announce.class.${CLASS_ID}'
+- tapOn:
+    id: 'announce.section.${SECTION_A}'
+- extendedWaitUntil:
+    visible:
+      id: 'announce.preview'
+      text: 'Reaches .* · SMS.*'
+    timeout: 30000
+- tapOn:
+    id: 'announce.send'
+- tapOn:
+    id: 'announce.confirm.send'
+- extendedWaitUntil:
+    visible:
+      text: 'Maestro notice'
+    timeout: 30000
+- assertVisible:
+    text: '(Sending…|Sent)'
+# The guardian's inbox has it.
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${GUARDIAN_CNIC}
+- tapOn:
+    id: 'tabs.inbox'
+- extendedWaitUntil:
+    visible:
+      text: 'Maestro notice'
+    timeout: 60000

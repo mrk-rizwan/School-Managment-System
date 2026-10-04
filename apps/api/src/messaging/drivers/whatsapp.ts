@@ -8,6 +8,7 @@ import type {
   CloudApiVerifier,
   CloudVerification,
   HealthOutcome,
+  MediaFile,
   SendOutcome,
   WahaSessions,
   WhatsAppDriver,
@@ -54,7 +55,24 @@ export class WahaDriver implements WhatsAppDriver, WahaSessions {
     return typeof count === 'number' && count > WAHA_PER_MINUTE ? new Date((minute + 1) * 60_000) : null;
   }
 
-  async sendText(sender: WhatsAppSender, toE164: string, text: string): Promise<SendOutcome> {
+  sendText(sender: WhatsAppSender, toE164: string, text: string): Promise<SendOutcome> {
+    return this.send(sender, toE164, '/api/sendText', { text });
+  }
+
+  /** The bytes as base64 with the caption: an image as a picture, a PDF as a file. */
+  sendMedia(sender: WhatsAppSender, toE164: string, caption: string, media: MediaFile): Promise<SendOutcome> {
+    return this.send(sender, toE164, media.mime.startsWith('image/') ? '/api/sendImage' : '/api/sendFile', {
+      caption,
+      file: { mimetype: media.mime, filename: media.filename, data: media.bytes.toString('base64') },
+    });
+  }
+
+  private async send(
+    sender: WhatsAppSender,
+    toE164: string,
+    path: string,
+    payload: Record<string, unknown>,
+  ): Promise<SendOutcome> {
     const session = sender.wahaSession;
     if (session === null) return { kind: 'failed', error: 'session_down' };
     try {
@@ -65,9 +83,9 @@ export class WahaDriver implements WhatsAppDriver, WahaSessions {
     }
     let response: Response;
     try {
-      response = await this.call('/api/sendText', {
+      response = await this.call(path, {
         method: 'POST',
-        body: JSON.stringify({ session, chatId: `${digitsOf(toE164)}@c.us`, text }),
+        body: JSON.stringify({ session, chatId: `${digitsOf(toE164)}@c.us`, ...payload }),
       });
     } catch (error) {
       return { kind: 'failed', error: transportError(error) };
@@ -162,11 +180,64 @@ export class CloudApiDriver implements WhatsAppDriver, CloudApiVerifier {
     return `https://graph.facebook.com/${this.graphVersion}/${path}`;
   }
 
-  async sendText(
+  sendText(
     sender: WhatsAppSender,
     toE164: string,
     text: string,
     templateName: string,
+  ): Promise<SendOutcome> {
+    return this.sendTemplate(sender, toE164, templateName, [
+      { type: 'body', parameters: [{ type: 'text', text }] },
+    ]);
+  }
+
+  /**
+   * The bytes are uploaded to the number's media store, then sent as the approved template's
+   * header (image or document) with the caption as its body variable.
+   */
+  async sendMedia(
+    sender: WhatsAppSender,
+    toE164: string,
+    caption: string,
+    media: MediaFile,
+    templateName: string,
+  ): Promise<SendOutcome> {
+    if (sender.cloudPhoneNumberId === null || sender.cloudAccessToken === null) {
+      return { kind: 'failed', error: 'session_down' };
+    }
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', media.mime);
+    form.append('file', new Blob([new Uint8Array(media.bytes)], { type: media.mime }), media.filename);
+    let uploaded: Response;
+    try {
+      uploaded = await providerFetch(this.url(`${sender.cloudPhoneNumberId}/media`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${sender.cloudAccessToken}` },
+        body: form,
+      });
+    } catch (error) {
+      return { kind: 'failed', error: transportError(error) };
+    }
+    const upload = await jsonOf(uploaded);
+    const mediaId = stringAt(upload, 'id');
+    if (!uploaded.ok || mediaId === null) {
+      if (uploaded.status === 401) return { kind: 'failed', error: 'auth_failed' };
+      return { kind: 'failed', error: metaError(numberAt(objectAt(upload, 'error'), 'code')) };
+    }
+    const kind = media.mime.startsWith('image/') ? 'image' : 'document';
+    const asset = kind === 'image' ? { id: mediaId } : { id: mediaId, filename: media.filename };
+    return this.sendTemplate(sender, toE164, templateName, [
+      { type: 'header', parameters: [{ type: kind, [kind]: asset }] },
+      { type: 'body', parameters: [{ type: 'text', text: caption }] },
+    ]);
+  }
+
+  private async sendTemplate(
+    sender: WhatsAppSender,
+    toE164: string,
+    templateName: string,
+    components: readonly object[],
   ): Promise<SendOutcome> {
     if (sender.cloudPhoneNumberId === null || sender.cloudAccessToken === null) {
       return { kind: 'failed', error: 'session_down' };
@@ -184,11 +255,7 @@ export class CloudApiDriver implements WhatsAppDriver, CloudApiVerifier {
           messaging_product: 'whatsapp',
           to: digitsOf(toE164),
           type: 'template',
-          template: {
-            name: templateName,
-            language: { code: 'en' },
-            components: [{ type: 'body', parameters: [{ type: 'text', text }] }],
-          },
+          template: { name: templateName, language: { code: 'en' }, components },
         }),
       });
     } catch (error) {
@@ -246,6 +313,10 @@ export class DisabledWhatsAppDriver implements WhatsAppDriver, WahaSessions, Clo
     return Promise.resolve({ kind: 'failed', error: 'session_down' });
   }
 
+  sendMedia(): Promise<SendOutcome> {
+    return this.sendText();
+  }
+
   health(): Promise<HealthOutcome> {
     return Promise.resolve({ ok: false, code: 'unreachable' });
   }
@@ -277,6 +348,10 @@ export class LogWhatsAppDriver implements WhatsAppDriver, WahaSessions, CloudApi
   sendText(): Promise<SendOutcome> {
     this.logger.debug('whatsapp (log driver)');
     return Promise.resolve({ kind: 'accepted', ref: `log-${randomBytes(8).toString('hex')}` });
+  }
+
+  sendMedia(): Promise<SendOutcome> {
+    return this.sendText();
   }
 
   health(): Promise<HealthOutcome> {

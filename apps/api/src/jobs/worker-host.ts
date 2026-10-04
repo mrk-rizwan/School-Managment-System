@@ -67,7 +67,7 @@ export class WorkerHost implements OnApplicationBootstrap, OnApplicationShutdown
     if (!this.env.WORKER) return;
     const connection = this.connection();
     this.workers = [
-      new Worker(QUEUE.messaging, (job: Job) => this.runner.messaging(job.name, job.data), {
+      new Worker(QUEUE.messaging, (job: Job) => this.runner.messaging(job.name, job.data, new Date(), plannedAt(job)), {
         connection,
         concurrency: CONCURRENCY.messaging,
       }),
@@ -128,7 +128,10 @@ export class WorkerHost implements OnApplicationBootstrap, OnApplicationShutdown
   }
 }
 
-/** When the repeatable job was due: its creation plus its delay. */
+/**
+ * When the job was due: its creation plus its delay, both stamped by the producer's clock (a
+ * repeatable job's planned time; a delayed announcement send's scheduled_at).
+ */
 function plannedAt(job: Job): Date {
   return new Date(job.timestamp + (job.delay ?? 0));
 }

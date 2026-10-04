@@ -19,6 +19,7 @@ const PRINCIPAL_ME: MeDto = {
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
+  capabilityScopes: [],
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],
@@ -121,7 +122,7 @@ async function mockApi(page: Page, state: MockState) {
       if (!found) return json(404, errorBody('NOT_FOUND', 'Not found.'));
       if (method === 'GET') return json(200, found);
       if (method === 'PATCH') Object.assign(found, request.postDataJSON());
-      if (one[2] === 'publish') Object.assign(found, { status: 'published', publishedAt: STAMP });
+      if (one[2] === 'publish') Object.assign(found, { status: 'published', publishedAt: STAMP, announcementId: 'a-notice' });
       if (one[2] === 'cancel') {
         Object.assign(found, { status: 'cancelled', cancelReason: (request.postDataJSON() as { reason: string }).reason });
       }
@@ -203,6 +204,8 @@ test('create a draft, then publish it with the notice wording', async ({ page })
   );
   await publish.getByRole('button', { name: 'Publish' }).click();
   await expect(publish).toBeHidden();
+  // The notice is written by a background job after the publish (contracts/slice-14.md §6.1).
+  await expect(page.getByText('Iqbal Day published. The notice is going out now.')).toBeVisible();
   expect(calls(requests, 'POST', '/holidays/h-new/publish')).toHaveLength(1);
 });
 

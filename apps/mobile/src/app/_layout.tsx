@@ -1,11 +1,12 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '../api/query-client';
 import { hasScreen } from '../auth/screen-registry';
 import { SessionProvider, useSession } from '../auth/session';
+import { composeTabs, type TabId } from '../auth/tabs';
 import { configureForegroundDisplay, listenForTaps } from '../push/registration';
 import { LoadingState } from '../ui/states';
 import { colors } from '../ui/theme';
@@ -27,9 +28,13 @@ export default function RootLayout() {
 }
 
 function Gate() {
-  const { status } = useSession();
+  const { status, me } = useSession();
   const router = useRouter();
   const signedIn = status === 'signed-in';
+  const tabs = useRef<TabId[]>([]);
+  useEffect(() => {
+    tabs.current = me ? composeTabs(me.body) : [];
+  }, [me]);
 
   useEffect(() => {
     configureForegroundDisplay();
@@ -37,7 +42,11 @@ function Gate() {
 
   useEffect(() => {
     if (!signedIn) return undefined;
-    return listenForTaps(hasScreen, (route) => router.push(route));
+    return listenForTaps(
+      hasScreen,
+      () => tabs.current,
+      (route) => router.push(route),
+    );
   }, [router, signedIn]);
 
   if (status === 'starting') return <LoadingState label="Starting" />;

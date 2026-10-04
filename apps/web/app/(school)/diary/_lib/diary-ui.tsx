@@ -1,12 +1,13 @@
 'use client';
 
-import { ErrorCode } from '@asms/shared';
+import { Capability, ErrorCode } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { unwrap } from '@/lib/api/client';
 import { NOT_ASSIGNED_ON_DATE, refusalMessage, toApiError, type RefusalMessages } from '@/lib/api/errors';
 import { academics } from '@/lib/api/school-academics-contract';
 import { diaryApi, type DiaryEntryDto } from '@/lib/api/school-diary-contract';
 import { formatDay, todayInSchool } from '@/lib/format';
+import { capabilityScope } from '@/lib/school-session';
 import { academicsKeys } from '../../academics/_lib/academics-ui';
 import { mySections } from '../../attendance/_lib/attendance-ui';
 import { saveBlob } from '../../students/_lib/documents';
@@ -29,9 +30,8 @@ export const diaryThumbnailUrl = (entryId: string) => `/api/v1/diary-entries/${e
 export const isEdited = (entry: DiaryEntryDto) => entry.updatedAt > entry.createdAt;
 
 /**
- * How the caller stands in this section today (GET /me assignments): assigned (section-scoped,
- * edits only their own entries inside the window) and, if so, which subjects they may write.
- * Not assigned yet able to read it means a school-wide diary.write (the principal).
+ * How the caller stands in this section today (GET /me assignments): assigned and, if so, which
+ * subjects they may write. Who may edit which entry is `entryEditability`.
  */
 export function sectionStanding(me: MeDto | undefined, sectionId: string, today: string) {
   const mine = mySections(me, today).find((s) => s.sectionId === sectionId);
@@ -40,14 +40,11 @@ export function sectionStanding(me: MeDto | undefined, sectionId: string, today:
 }
 
 /**
- * Whether the caller holds diary.write school-wide (scope `all`), as far as GET /me shows it: a
- * principal always; anyone else when they can read a section they are not assigned to (a custom
- * role or a grant). A teacher assigned here who also holds it through a custom role or a grant is
- * shown the section rules; the server would allow them more, never less.
+ * Whether the caller holds diary.write school-wide: GET /me `capabilityScopes` says `all` (a
+ * principal, a custom role or a grant), the server's own rule (contracts/slice-14.md §8). A
+ * teacher holding it only through the teacher default (`assigned_sections`) gets the section rules.
  */
-function writesSchoolWide(me: MeDto | undefined, sectionId: string, today: string): boolean {
-  return (me?.roles.includes('principal') ?? false) || !sectionStanding(me, sectionId, today).assigned;
-}
+const writesSchoolWide = (me: MeDto | undefined): boolean => capabilityScope(me, Capability.DIARY_WRITE) === 'all';
 
 export type EntryEditability = {
   /** The card's Edit button, the "window closed" line, or nothing (§11). */
@@ -66,7 +63,7 @@ export type EntryEditability = {
 export function entryEditability(entry: DiaryEntryDto, me: MeDto | undefined, today = todayInSchool()): EntryEditability {
   const byAuthor = me?.staffId != null && entry.authorStaffId === me.staffId;
   const afterWindow = today > entry.editWindowEndsOn;
-  if (writesSchoolWide(me, entry.sectionId, today)) {
+  if (writesSchoolWide(me)) {
     return { state: 'editable', afterWindow, reason: afterWindow ? 'required' : byAuthor ? 'none' : 'optional' };
   }
   if (!byAuthor) return { state: 'hidden', afterWindow, reason: 'none' };

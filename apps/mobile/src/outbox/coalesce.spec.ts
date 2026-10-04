@@ -47,7 +47,7 @@ describe('mergeMarksBody', () => {
     ]);
   });
 
-  test('the reason is kept unless the newer one is non-empty', () => {
+  test('the reason is kept unless the newer one is non-empty, and left out when none is', () => {
     expect(mergeMarksBody({ marks: [], reason: 'first' }, { marks: [] }).reason).toBe('first');
     expect(mergeMarksBody({ marks: [], reason: 'first' }, { marks: [], reason: '  ' }).reason).toBe(
       'first',
@@ -55,7 +55,11 @@ describe('mergeMarksBody', () => {
     expect(
       mergeMarksBody({ marks: [], reason: 'first' }, { marks: [], reason: 'second' }).reason,
     ).toBe('second');
-    expect(mergeMarksBody({ marks: [] }, { marks: [] }).reason).toBeNull();
+    // Never null: the server refuses `reason: null` with a terminal 422 (wave-F review).
+    expect(mergeMarksBody({ marks: [] }, { marks: [] })).not.toHaveProperty('reason');
+    expect(mergeMarksBody({ marks: [], reason: null }, { marks: [], reason: '' })).not.toHaveProperty(
+      'reason',
+    );
   });
 });
 

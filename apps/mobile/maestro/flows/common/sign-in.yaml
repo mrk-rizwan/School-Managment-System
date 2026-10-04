@@ -1,0 +1,24 @@
+# Subflow: sign in from a cleared app as IDENTITY (the default password is the same digits).
+# Env: SCHOOL_CODE, IDENTITY.
+appId: pk.asms.app.dev
+---
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.schoolCode'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.schoolCode'
+- inputText: ${SCHOOL_CODE}
+- tapOn:
+    id: 'signIn.identity'
+- inputText: ${IDENTITY}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${IDENTITY}
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'home.schoolName'
+    timeout: 30000

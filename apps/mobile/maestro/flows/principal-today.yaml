@@ -1,0 +1,41 @@
+# slice-16 §15.2 (16b) — CI only. The principal opens Today, sees the unrecorded 5 B register
+# with its class teacher, records it from "Record now" (pre-filled present), and after "Saved on
+# server" the row is gone from Today. ci-run.sh then checks over curl that the server has it.
+# Env: SCHOOL_CODE, PRINCIPAL_CNIC, SECTION_B.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${PRINCIPAL_CNIC}
+- tapOn:
+    id: 'tabs.today'
+- extendedWaitUntil:
+    visible:
+      id: 'today.unrecorded.${SECTION_B}'
+    timeout: 30000
+- tapOn:
+    id: 'today.recordNow.${SECTION_B}'
+- extendedWaitUntil:
+    visible:
+      id: 'register.roster'
+    timeout: 30000
+- assertVisible:
+    id: 'register.counts'
+    text: 'P 5 · A 0 · L 0 · O 0'
+- tapOn:
+    id: 'register.save'
+- runFlow: common/saved-on-server.yaml
+# The register lives in Today's stack (review M2): back returns to Today, whose list is read
+# again once the save reached the server.
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'today.screen'
+    timeout: 20000
+- extendedWaitUntil:
+    notVisible:
+      id: 'today.unrecorded.${SECTION_B}'
+    timeout: 30000

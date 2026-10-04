@@ -40,7 +40,11 @@ import type {
   DiaryRangeQueryDto,
   UpdateDiaryEntryDto,
 } from './diary.dto';
-import { DiaryAttachmentsService, type DiaryFile } from './diary-attachments.service';
+import {
+  AttachmentFiles,
+  storedAttachment,
+  type AttachedFile,
+} from '../documents/attachment-files.service';
 import {
   editWindowEndsOn,
   rangeOf,
@@ -95,7 +99,7 @@ export class DiaryEntriesService {
     private readonly audit: AuditLogRepository,
     private readonly notifications: NotificationService,
     private readonly permissions: PermissionsService,
-    private readonly attachments: DiaryAttachmentsService,
+    private readonly attachments: AttachmentFiles,
     private readonly afterCommit: AfterCommit,
     private readonly clock: SchoolClock,
   ) {}
@@ -134,12 +138,9 @@ export class DiaryEntriesService {
   }
 
   /** §4.5. */
-  async attachment(session: SchoolSessionContext, id: bigint, thumb: boolean): Promise<DiaryFile> {
+  async attachment(session: SchoolSessionContext, id: bigint, thumb: boolean): Promise<AttachedFile> {
     const schoolId = this.context.schoolId;
-    const entry = await this.require(schoolId, session, id);
-    return thumb
-      ? this.attachments.thumbnail(schoolId, entry)
-      : this.attachments.attachment(schoolId, entry);
+    return this.file(schoolId, await this.require(schoolId, session, id), thumb);
   }
 
   // ---------------------------------------------------------------- guardian and student reads
@@ -173,15 +174,23 @@ export class DiaryEntriesService {
     studentId: bigint,
     entryId: bigint,
     thumb: boolean,
-  ): Promise<DiaryFile> {
+  ): Promise<AttachedFile> {
     const schoolId = this.context.schoolId;
     const scope = scopeOf(session);
     if (!studentInCapacityScope(scope, studentId)) throw notFound();
     const entry = await this.entries.findVisibleToStudent(schoolId, scope, studentId, entryId);
     if (!entry) throw notFound();
+    return this.file(schoolId, entry, thumb);
+  }
+
+  /** The entry's attachment or its thumbnail, named `diary-<id>` (§4.5). */
+  private file(schoolId: SchoolId, entry: DiaryEntryRecord, thumb: boolean): Promise<AttachedFile> {
+    const file = storedAttachment(entry);
+    const name = `diary-${entry.id}`;
+    const log = { diaryEntryId: entry.id.toString() };
     return thumb
-      ? this.attachments.thumbnail(schoolId, entry)
-      : this.attachments.attachment(schoolId, entry);
+      ? this.attachments.thumbnail(schoolId, file, name, log)
+      : this.attachments.open(schoolId, file, name, log);
   }
 
   // ---------------------------------------------------------------------------------- create

@@ -1,0 +1,17 @@
+# Subflow (offline): the first two rows present → absent, Save, "Saved on device" and the sync
+# chip. Env: ENROLMENT_1, ENROLMENT_2.
+appId: pk.asms.app.dev
+---
+- tapOn:
+    id: 'register.chip.${ENROLMENT_1}'
+- tapOn:
+    id: 'register.chip.${ENROLMENT_2}'
+- tapOn:
+    id: 'register.save'
+- extendedWaitUntil:
+    visible:
+      id: 'register.stateLine'
+      text: 'Saved on device.*'
+    timeout: 15000
+- assertVisible:
+    id: 'sync.chip'

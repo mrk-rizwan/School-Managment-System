@@ -16,6 +16,7 @@ import {
 import { UserRepository } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { toDateString } from '../academics/academics.shared';
+import { capabilityOrder } from '../access/effective-permissions';
 import { PermissionsService, type UserAccess } from '../access/permissions.service';
 import type { LoginResultDto, MeAssignmentDto, MeDto, MyChildDto } from './dto';
 
@@ -91,6 +92,10 @@ export class MeService {
       },
       roles: this.permissions.roles(access),
       capabilities: this.permissions.sortedCapabilities(access),
+      // §8: from the lines already computed for this request (no new query), in the same order.
+      capabilityScopes: [...access.lines]
+        .sort((a, b) => capabilityOrder(a.capability, b.capability))
+        .map((line) => ({ capability: line.capability, scope: line.scope })),
       sessionExpiresAt,
       capacities: CAPACITIES.filter((capacity: Capacity) => access.capacities[capacity]),
       assignments: await this.assignmentsOf(schoolId, access),

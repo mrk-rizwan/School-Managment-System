@@ -138,3 +138,34 @@ const styles = StyleSheet.create({
   noticeText: { fontSize: fontSize.small, color: colors.foreground },
   asOf: { fontSize: fontSize.caption, color: colors.mutedForeground },
 });
+
+/**
+ * The no-data states of a cached read (slice-16 §3.2): loading, the error with retry, or no
+ * permission for a 403 (logged: the shell should never have offered the screen, R156). A screen
+ * that has data renders it — with the offline notice — and never this.
+ */
+export function NoDataState({
+  isError,
+  error,
+  onRetry,
+  offlineMessage,
+}: {
+  isError: boolean;
+  error: unknown;
+  onRetry: () => void;
+  /** What to say when there is nothing cached and no connection. */
+  offlineMessage?: string;
+}) {
+  if (!isError) return <LoadingState />;
+  if (error instanceof ApiError && error.status === 403) return <NoPermissionState />;
+  if (offlineMessage !== undefined && !(error instanceof ApiError)) {
+    return (
+      <View style={styles.frame} testID="state.error">
+        <Text style={styles.title}>Not available offline</Text>
+        <Text style={styles.text}>{offlineMessage}</Text>
+        <Button label="Try again" variant="secondary" onPress={onRetry} testID="state.retry" />
+      </View>
+    );
+  }
+  return <ErrorState error={error} onRetry={onRetry} />;
+}

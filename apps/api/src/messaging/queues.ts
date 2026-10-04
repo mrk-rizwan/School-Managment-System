@@ -23,26 +23,35 @@ export const JOB = {
   attendanceRollup: 'attendance-rollup',
   registerDeadlineSweep: 'register-deadline-sweep',
   attendanceNightlyRecompute: 'attendance-nightly-recompute',
+  // contracts/slice-14.md §5.6: a scheduled announcement's send, on the messaging queue.
+  announcementSend: 'announcement-send',
 } as const;
 
+/*
+ * Job ids use '-' as the separator, never ':'. BullMQ refuses a custom id containing ':' unless it
+ * splits into exactly three parts ("Custom Id cannot contain :"), so `alert:<id>` and the four-part
+ * ids were refused at enqueue and those jobs never ran (absence alerts, attendance rollups; found
+ * 2026-10-04). test/jobs/job-ids.e2e-spec.ts adds every shape to a real queue.
+ */
+
 /**
- * `message:<messageId>:<round>`, round = the message's delivery rows when enqueued, so a delayed
+ * `message-<messageId>-<round>`, round = the message's delivery rows when enqueued, so a delayed
  * retry and a sweep re-enqueue of the same round collapse to one job. A follow-up of a round that
  * wrote no row (a paced WhatsApp send, nothing due yet) would reuse the running job's id and be
  * dropped, so it carries the due minute: `<round>w<minute>`.
  */
 export const messageJobId = (messageId: bigint, round: number, waitMinute?: number): string =>
-  `message:${messageId}:${round}${waitMinute === undefined ? '' : `w${waitMinute}`}`;
+  `message-${messageId}-${round}${waitMinute === undefined ? '' : `w${waitMinute}`}`;
 
 /**
- * `rollup:<deliveryId>:<status>`; the outbox sweep's recovery of a lost one carries its minute
- * (`...:s<minute>`), so a failed original kept by BullMQ cannot swallow it.
+ * `rollup-<deliveryId>-<status>`; the outbox sweep's recovery of a lost one carries its minute
+ * (`...-s<minute>`), so a failed original kept by BullMQ cannot swallow it.
  */
 export const rollupJobId = (deliveryId: bigint, status: string, sweepMinute?: number): string =>
-  `rollup:${deliveryId}:${status}${sweepMinute === undefined ? '' : `:s${sweepMinute}`}`;
+  `rollup-${deliveryId}-${status}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
 
 export const healthJobId = (whatsappNumberId: bigint, at: Date): string =>
-  `wa-health:${whatsappNumberId}:${Math.floor(at.getTime() / 60_000)}`;
+  `wa-health-${whatsappNumberId}-${Math.floor(at.getTime() / 60_000)}`;
 
 /** Payloads carry ids only, as decimal strings (R113); never a body, phone or name. */
 export interface MessageJobPayload {
@@ -56,18 +65,31 @@ export interface HealthJobPayload {
 }
 
 /**
- * `alert:<alertId>`; the outbox sweep's recovery of a lost one carries its minute
- * (`alert:<alertId>:s<minute>`), so a failed original kept by BullMQ cannot swallow it.
+ * `alert-<alertId>`; the outbox sweep's recovery of a lost one carries its minute
+ * (`alert-<alertId>-s<minute>`), so a failed original kept by BullMQ cannot swallow it.
  */
 export const alertJobId = (alertId: bigint, sweepMinute?: number): string =>
-  `alert:${alertId}${sweepMinute === undefined ? '' : `:s${sweepMinute}`}`;
+  `alert-${alertId}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
 
 /**
- * `att-rollup:<sectionId>:<YYYYMMDD>:<version>`: two writes of one version collapse to one job,
+ * `att-rollup-<sectionId>-<YYYYMMDD>-<version>`: two writes of one version collapse to one job,
  * and a write that bumps the version gets a job of its own.
  */
 export const rollupSectionDayJobId = (sectionId: bigint, date: string, version: bigint): string =>
-  `att-rollup:${sectionId}:${date.replaceAll('-', '')}:${version}`;
+  `att-rollup-${sectionId}-${date.replaceAll('-', '')}-${version}`;
+
+/**
+ * `ann-send-<announcementId>-<scheduledAtEpochSeconds>` (contracts/slice-14.md §5.6): a changed
+ * time is a new job and the stale one finds its claim false. The outbox sweep's recovery of a
+ * lost one carries its minute (`...-s<minute>`).
+ */
+export const announcementSendJobId = (announcementId: bigint, scheduledAt: Date, sweepMinute?: number): string =>
+  `ann-send-${announcementId}-${Math.floor(scheduledAt.getTime() / 1000)}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
+
+export interface AnnouncementSendPayload {
+  schoolId: string;
+  announcementId: string;
+}
 
 export interface AlertJobPayload {
   schoolId: string;

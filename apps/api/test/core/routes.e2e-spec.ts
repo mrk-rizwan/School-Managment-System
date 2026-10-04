@@ -194,6 +194,11 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/thumbnail', 'capacity'],
   ['GET', '/api/v1/me/children/:id/remarks', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
+  // contracts/slice-14.md §7 (R166): any live session's own inbox, by person at read time.
+  ['GET', '/api/v1/me/inbox', 'authenticated-only'],
+  ['GET', '/api/v1/me/inbox/:id', 'authenticated-only'],
+  ['GET', '/api/v1/me/inbox/:id/attachment', 'authenticated-only'],
+  ['GET', '/api/v1/me/inbox/:id/thumbnail', 'authenticated-only'],
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
@@ -311,13 +316,20 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'PATCH /api/v1/diary-entries/:id': ['diary_entry.updated'],
   'POST /api/v1/students/:id/remarks': ['remark.created'],
   'POST /api/v1/remarks/:id/correct': ['remark.corrected'],
+  // contracts/slice-14.md §10 (R152). A replayed create, a no-op patch and a retried send or
+  // cancel write no row; the scheduled job is not audited (no actor).
+  'POST /api/v1/announcements': ['announcement.created'],
+  'PATCH /api/v1/announcements/:id': ['announcement.updated'],
+  'POST /api/v1/announcements/:id/send': ['announcement.scheduled', 'announcement.sent'],
+  'POST /api/v1/announcements/:id/cancel': ['announcement.cancelled'],
+  'POST /api/v1/announcements/preview-audience': 'none: a read carried in a body; it writes nothing',
   'PATCH /api/v1/students/:id': ['student.updated'],
   'POST /api/v1/students/lookup': 'none: a read carried in a body so the B-Form stays out of the URL',
   'POST /api/v1/subjects': ['subject.created'],
   'PATCH /api/v1/subjects/:id': ['subject.updated'],
   'POST /api/v1/subjects/:id/archive': ['subject.archived'],
   'POST /api/v1/teacher-assignments/:id/end': ['teacher_assignment.ended'],
-  'POST /api/v1/uploads': 'none: a staged upload is not a record; committing it is audited as document.added or diary_entry.created',
+  'POST /api/v1/uploads': 'none: a staged upload is not a record; committing it is audited as document.added, diary_entry.created or announcement.created',
   'POST /api/v1/user-roles/:id/remove': ['user_role.removed'],
   'POST /api/v1/users/:id/disable': ['user.disabled'],
   'POST /api/v1/users/:id/enable': ['user.enabled'],

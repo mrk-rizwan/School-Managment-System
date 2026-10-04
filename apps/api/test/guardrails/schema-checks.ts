@@ -86,10 +86,9 @@ export const NON_SCHOOL_LEADING_INDEXES = new Set([
  * - idempotency_keys.subject_id: polymorphic, names a row of the table in subject_type.
  * - messages.subject_id: polymorphic, names a row of the table in subject_type (plan §5).
  * - whatsapp_numbers.cloud_phone_number_id: Meta's identifier for the number, not a row id.
- * - holidays.announcement_id: FK added in slice 14 with the announcements table. The one
- *   recorded exception to "a column waiting for its target table is not a reason" (the Phase 2
- *   groundwork ships the holidays shape before slice 14; contracts/slice-10.md §4.7). Slice 14
- *   adds the FK and removes this entry.
+ *
+ * holidays.announcement_id was listed until slice 14 added its foreign key
+ * (contracts/slice-14.md §11 item 7).
  */
 export const NON_FK_ID_COLUMNS = new Set([
   'audit_log.subject_id',
@@ -97,7 +96,6 @@ export const NON_FK_ID_COLUMNS = new Set([
   'idempotency_keys.subject_id',
   'messages.subject_id',
   'whatsapp_numbers.cloud_phone_number_id',
-  'holidays.announcement_id',
 ]);
 
 export type ExpectedObject =
@@ -1041,6 +1039,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...PHASE_2_GROUNDWORK_OBJECTS(),
   ...WAVE_E_GROUNDWORK_OBJECTS(),
   ...SLICE_11_OBJECTS(),
+  ...SLICE_14_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -2126,5 +2125,174 @@ function SLICE_11_OBJECTS(): ExpectedObject[] {
       name: 'attendance_daily_summary_stale_idx',
       definition: 'USING btree (school_id, date) WHERE (computed_version <> version)',
     },
+  ];
+}
+
+/** Slice 14 (migration 20261004150100_slice14_announcements, contracts/slice-14.md §11). */
+function SLICE_14_OBJECTS(): ExpectedObject[] {
+  const trigger = (table: string, name: string, definition: string): ExpectedObject => ({
+    kind: 'trigger',
+    table,
+    name,
+    definition,
+  });
+  const immutable = (table: string, columns: string): ExpectedObject =>
+    trigger(
+      table,
+      `${table}_columns_immutable`,
+      `BEFORE UPDATE ON public.${table} FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change(${columns})`,
+    );
+  return [
+    {
+      kind: 'function',
+      name: 'asms_announcement_final_frozen',
+      definition: "DETAIL = 'constraint: announcements_final_frozen'",
+    },
+    {
+      // 20261004160000_slice14_send_failures: the job's give-up is the one way out of `sending`
+      // other than `sent`.
+      kind: 'function',
+      name: 'asms_announcement_final_frozen',
+      definition: "(NEW.status = 'draft' AND NEW.send_failed_at IS NOT NULL)",
+    },
+    // ---- messages
+    { kind: 'constraint', table: 'messages', name: 'messages_title_no_id_check', definition: noIdCheck('title') },
+    {
+      kind: 'constraint',
+      table: 'messages',
+      name: 'messages_title_check',
+      definition: "CHECK (((title IS NULL) OR ((subject_type)::text = 'announcement'::text)))",
+    },
+    // ---- announcements
+    { kind: 'constraint', table: 'announcements', name: 'announcements_title_no_id_check', definition: noIdCheck('title') },
+    { kind: 'constraint', table: 'announcements', name: 'announcements_body_no_id_check', definition: noIdCheck('body') },
+    { kind: 'constraint', table: 'announcements', name: 'announcements_cancel_reason_no_id_check', definition: noIdCheck('cancel_reason') },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_title_check',
+      definition: "CHECK ((((title)::text = btrim((title)::text)) AND ((title)::text <> ''::text)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_body_check',
+      definition: "CHECK ((((body)::text = btrim((body)::text)) AND ((body)::text <> ''::text)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_attachment_check',
+      definition:
+        "CHECK ((((attachment_object_key IS NULL) = (attachment_mime IS NULL)) AND ((attachment_object_key IS NULL) = (attachment_size_bytes IS NULL)) AND ((attachment_object_key IS NULL) OR (((attachment_object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)) AND ((attachment_mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying, 'application/pdf'::character varying])::text[])) AND ((attachment_size_bytes >= 1) AND (attachment_size_bytes <= 5242880))))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_scheduled_check',
+      definition:
+        "CHECK (((status <> 'scheduled'::announcement_status) OR (scheduled_at IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_sent_check',
+      definition: "CHECK (((status = 'sent'::announcement_status) = (sent_at IS NOT NULL)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_cancelled_check',
+      definition:
+        "CHECK ((((status = 'cancelled'::announcement_status) = (cancelled_at IS NOT NULL)) AND ((cancelled_at IS NULL) = (cancelled_by IS NULL)) AND ((cancelled_at IS NULL) = (cancel_reason IS NULL))))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_send_failures_check',
+      definition: 'CHECK ((send_failures >= 0))',
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_send_failed_check',
+      definition: "CHECK (((send_failed_at IS NULL) OR (status = 'draft'::announcement_status)))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcements',
+      name: 'announcements_recipient_count_check',
+      definition:
+        "CHECK (((recipient_count >= 0) AND ((status = ANY (ARRAY['sending'::announcement_status, 'sent'::announcement_status])) OR (recipient_count = 0))))",
+    },
+    {
+      kind: 'index',
+      table: 'announcements',
+      name: 'announcements_attachment_object_key_key',
+      definition:
+        'ON public.announcements USING btree (school_id, attachment_object_key) WHERE (attachment_object_key IS NOT NULL)',
+    },
+    immutable('announcements', "'created_by', 'holiday_id', 'created_at'"),
+    trigger(
+      'announcements',
+      'announcements_final_frozen',
+      'BEFORE UPDATE ON public.announcements FOR EACH ROW EXECUTE FUNCTION asms_announcement_final_frozen()',
+    ),
+    ...noDeleteTriggers('announcements'),
+    // ---- announcement_audiences (no no-delete trigger: decision 12)
+    {
+      kind: 'constraint',
+      table: 'announcement_audiences',
+      name: 'announcement_audiences_target_check',
+      definition: "((staff_id IS NOT NULL) = (kind = 'staff_member'::audience_kind))",
+    },
+    {
+      kind: 'constraint',
+      table: 'announcement_audiences',
+      name: 'announcement_audiences_roles_check',
+      definition:
+        'CHECK (((roles IS NOT NULL) AND (array_position(roles, NULL::audience_role) IS NULL) AND ((cardinality(roles) = 1) OR ((cardinality(roles) = 2) AND (roles[1] <> roles[2])))))',
+    },
+    {
+      kind: 'index',
+      table: 'announcement_audiences',
+      name: 'announcement_audiences_target_key',
+      definition:
+        'USING btree (school_id, announcement_id, kind, COALESCE(class_id, (0)::bigint), COALESCE(section_id, (0)::bigint), COALESCE(student_id, (0)::bigint), COALESCE(guardian_id, (0)::bigint), COALESCE(staff_id, (0)::bigint))',
+    },
+    immutable(
+      'announcement_audiences',
+      "'announcement_id', 'kind', 'class_id', 'section_id', 'student_id', 'guardian_id', 'staff_id', 'roles', 'created_at'",
+    ),
+    trigger(
+      'announcement_audiences',
+      'announcement_audiences_no_truncate',
+      'BEFORE TRUNCATE ON public.announcement_audiences FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()',
+    ),
+    // ---- announcement_recipients
+    {
+      kind: 'constraint',
+      table: 'announcement_recipients',
+      name: 'announcement_recipients_person_check',
+      definition: 'CHECK ((num_nonnulls(guardian_id, staff_id, student_id) = 1))',
+    },
+    ...(['guardian', 'staff', 'student'] as const).map(
+      (person): ExpectedObject => ({
+        kind: 'index',
+        table: 'announcement_recipients',
+        name: `announcement_recipients_${person}_key`,
+        definition: `USING btree (school_id, announcement_id, ${person}_id) WHERE (${person}_id IS NOT NULL)`,
+      }),
+    ),
+    immutable('announcement_recipients', "'announcement_id', 'guardian_id', 'staff_id', 'student_id', 'created_at'"),
+    trigger(
+      'announcement_recipients',
+      'announcement_recipients_message_id_frozen',
+      "BEFORE UPDATE ON public.announcement_recipients FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('message_id')",
+    ),
+    ...noDeleteTriggers('announcement_recipients'),
+    // ---- announcement_recipient_students
+    immutable('announcement_recipient_students', "'announcement_recipient_id', 'student_id', 'created_at'"),
+    ...noDeleteTriggers('announcement_recipient_students'),
   ];
 }

@@ -2,7 +2,7 @@ import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from 'exp
 import { clearWipePending, isWipePending, markWipePending } from '../auth/session-store';
 import { log } from '../platform/log';
 import { errorFields } from '../platform/scrub';
-import { META_DDL, MIGRATIONS, SCHEMA_VERSION } from './schema';
+import { META_DDL, MIGRATIONS, PURGE_ORPHAN_LOCAL_ROWS, SCHEMA_VERSION } from './schema';
 
 // The ONLY importer of expo-sqlite (lint). One file, asms.db: opened, configured, migrated,
 // wiped (slice-15 §7.1, §4.6, §7.6). Callers get the database through getDb() and the Db type.
@@ -147,9 +147,16 @@ async function deleteFile(): Promise<boolean> {
 /** The fallback when the file cannot go: every row of every table, best effort. */
 async function clearRows(db: Db): Promise<void> {
   try {
-    await db.execAsync(
-      `DELETE FROM cache; DELETE FROM outbox; DELETE FROM meta WHERE key != '${META.schemaVersion}';`,
+    const tables = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT IN ('meta', 'sqlite_sequence')",
     );
+    // Children before parents, so a foreign key never refuses the delete.
+    const order = (name: string) =>
+      name === 'local_marks' || name === 'local_attachments' ? 0 : 1;
+    for (const { name } of [...tables].sort((a, b) => order(a.name) - order(b.name))) {
+      await db.execAsync(`DELETE FROM "${name.replace(/"/g, '')}";`);
+    }
+    await db.execAsync(`DELETE FROM meta WHERE key != '${META.schemaVersion}';`);
   } catch (error) {
     log('warn', 'db.clear_rows_failed', errorFields(error));
   }
@@ -168,6 +175,8 @@ export async function wipeForSessionLoss(now: Date = new Date()): Promise<number
   await db.withExclusiveTransactionAsync(async (txn) => {
     await txn.runAsync('DELETE FROM cache');
     await txn.runAsync("DELETE FROM outbox WHERE state IN ('done', 'failed')");
+    // Local rows of the kept writes stay with them (slice-16 §8); the rest go.
+    await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
     await txn.runAsync('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING', [
       META.sessionLostAt,
       now.toISOString(),
@@ -208,6 +217,7 @@ export async function discardExpiredUnsent(
          ORDER BY created_at, id`,
       );
       await txn.runAsync("DELETE FROM outbox WHERE state IN ('pending', 'sending')");
+      await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
     }
     if (expired || resuming) {
       await txn.runAsync('DELETE FROM meta WHERE key = ?', [META.sessionLostAt]);

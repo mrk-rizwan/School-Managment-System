@@ -11,6 +11,12 @@ import type {
 import type { RegisterViewDto, SectionDayDto } from '../lib/api/school-attendance-contract';
 import type { HolidayDto, TeachingDaysDto } from '../lib/api/school-calendar-contract';
 import type { DiaryEntryDto } from '../lib/api/school-diary-contract';
+import type {
+  AnnouncementDto,
+  AudiencePreviewDto,
+  DeliverySummaryDto,
+  InboxItemDto,
+} from '../lib/api/school-announcements-contract';
 import type { MyStaffAttendanceDto, StaffDayDto } from '../lib/api/school-staff-attendance-contract';
 import type { MeDto, UserDto } from '../lib/api/school-contract';
 import type {
@@ -51,6 +57,9 @@ const PRINCIPAL_ME: MeDto = {
   school: { id: 's1', name: 'Green Valley Higher Secondary School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
+  capabilityScopes: Object.values(Capability)
+    .sort()
+    .map((capability) => ({ capability, scope: 'all' as const })),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],
@@ -442,6 +451,90 @@ const DIARY: DiaryEntryDto[] = [
     updatedAt: STAMP,
   },
 ];
+const announcementRow = (id: string, extra: Partial<AnnouncementDto>): AnnouncementDto => ({
+  id,
+  title: 'Quarterly examinations begin on Monday 12 October for every class from Nursery to Class 10',
+  body: 'The date sheet is attached. Please make sure your child arrives by 7:45 and brings two pencils, an eraser and a geometry box.',
+  category: 'exam',
+  priority: 'urgent',
+  messageType: 'announcement_urgent',
+  status: 'sent',
+  audiences: [
+    { kind: 'class', targetId: 'c9', targetName: 'Class 9 (Science)', roles: ['parents'] },
+    { kind: 'section', targetId: 'sec-c', targetName: 'Class 5 Rose', roles: [] },
+    { kind: 'guardian', targetId: 'g1', targetName: 'Muhammad Abdullah bin Tariq Chaudhry', roles: [] },
+  ],
+  scheduledAt: null,
+  expiresOn: '2026-10-12',
+  hasAttachment: true,
+  attachmentMime: 'application/pdf',
+  attachmentSizeBytes: 240000,
+  holidayId: null,
+  createdBy: 'u-principal',
+  createdByName: 'Amina Principal',
+  createdAt: STAMP,
+  updatedAt: STAMP,
+  sentAt: STAMP,
+  cancelledAt: null,
+  cancelledBy: null,
+  cancelReason: null,
+  recipientCount: 1240,
+  sendFailedAt: null,
+  smsSegments: 2,
+  ...extra,
+});
+const ANNOUNCEMENTS = [
+  announcementRow('a1', {}),
+  announcementRow('a2', { status: 'draft', sentAt: null, recipientCount: 0, title: 'Sports day kit', priority: 'normal', smsSegments: null }),
+];
+const DELIVERY: DeliverySummaryDto = {
+  announcementId: 'a1',
+  status: 'sent',
+  recipients: { total: 1240, guardians: 1100, staff: 90, students: 50 },
+  messages: { queued: 0, sending: 0, sent: 300, delivered: 900, failed: 20, suppressed: 20 },
+  byChannel: [
+    { channel: 'push', accepted: 140, delivered: 120, failed: 0, suppressed: 0 },
+    { channel: 'whatsapp', accepted: 1100, delivered: 1050, failed: 12, suppressed: 8 },
+    { channel: 'sms', accepted: 400, delivered: 380, failed: 8, suppressed: 12 },
+    { channel: 'email', accepted: 0, delivered: 0, failed: 0, suppressed: 0 },
+  ],
+  suppressions: [
+    { reason: 'duplicate_phone', count: 12 },
+    { reason: 'no_channel', count: 8 },
+  ],
+  smsSegmentsPerMessage: 2,
+  smsUnitsReserved: 800,
+  computedAt: STAMP,
+};
+const PREVIEW: AudiencePreviewDto = {
+  recipients: { total: 1240, guardians: 1100, staff: 90, students: 50 },
+  byAudience: ANNOUNCEMENTS[1].audiences.map((a) => ({ ...a, persons: 400 })),
+  sms: { allowed: true, legs: 400, segments: 2, units: 800, remaining: 4200, cap: 5000 },
+  warnings: ['whatsapp_not_connected'],
+  computedAt: STAMP,
+};
+const INBOX: InboxItemDto[] = [
+  {
+    id: 'm1',
+    kind: 'announcement',
+    messageType: 'announcement_urgent',
+    subjectType: 'announcement',
+    subjectId: 'a1',
+    title: ANNOUNCEMENTS[0].title,
+    body: ANNOUNCEMENTS[0].body,
+    category: 'exam',
+    priority: 'urgent',
+    sentAt: STAMP,
+    expiresOn: '2026-10-12',
+    hasAttachment: true,
+    attachmentMime: 'application/pdf',
+    announcementId: 'a1',
+    viaStudents: [
+      { studentId: 'st-s1', fullName: 'Ali Khan' },
+      { studentId: 'st-s2', fullName: 'Fatima Zahra Siddiqui' },
+    ],
+  },
+];
 const PLATFORM_SETTINGS: PlatformSettingsDto = { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], updatedAt: STAMP };
 const healthRow = (schoolId: string, name: string, shortCode: string): PlatformDeliveryHealthDto => ({
   schoolId,
@@ -534,6 +627,8 @@ async function mockApi(page: Page, session: Session) {
     }
 
     if (!session.school) return json(401, errorBody('AUTH_REQUIRED', 'Sign in to continue.'));
+    // The composer previews its audience as it opens: a POST that writes nothing (slice-14 §4.6).
+    if (method === 'POST' && path === '/announcements/preview-audience') return json(200, PREVIEW);
     if (method !== 'GET') {
       unmocked.push(`${method} ${path}`);
       return json(500, errorBody('INTERNAL_ERROR', `Unmocked ${method} ${path}`));
@@ -564,6 +659,8 @@ async function mockApi(page: Page, session: Session) {
       '/attendance-reports/absentees': [],
       '/staff-attendance': STAFF_DAY,
       '/sections/sec-a/diary-entries': DIARY,
+      '/announcements': ANNOUNCEMENTS,
+      '/me/inbox': INBOX,
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -581,6 +678,10 @@ async function mockApi(page: Page, session: Session) {
       '/sections/sec-a': SECTIONS[0],
       '/sections/sec-a/register': REGISTER_VIEW,
       '/me/staff/attendance': MY_ATTENDANCE,
+      '/announcements/a1': ANNOUNCEMENTS[0],
+      '/announcements/a1/delivery': DELIVERY,
+      '/announcements/a2': ANNOUNCEMENTS[1],
+      '/me/inbox/m1': INBOX[0],
     };
     if (one[path]) return json(200, one[path]);
     unmocked.push(`${method} ${path}`);
@@ -633,6 +734,12 @@ const SCREENS: Screen[] = [
   { path: '/my-attendance', heading: 'My attendance', session: 'school' },
   { path: '/diary', heading: 'Diary', session: 'school' },
   { path: '/sections/sec-a/diary', heading: 'Class 5 A diary', session: 'school' },
+  { path: '/announcements', heading: 'Announcements', session: 'school' },
+  { path: '/announcements/new', heading: 'New announcement', session: 'school' },
+  { path: '/announcements/a1', heading: ANNOUNCEMENTS[0].title, session: 'school' },
+  { path: '/announcements/a2/edit', heading: 'Edit announcement', session: 'school' },
+  { path: '/inbox', heading: 'Inbox', session: 'school' },
+  { path: '/inbox/m1', heading: INBOX[0].title, session: 'school' },
   // Platform console
   { path: '/platform/login', heading: 'Platform sign in', session: 'none' },
   { path: '/platform/enrol', heading: 'Set up your authenticator', session: 'platform-enrolment' },

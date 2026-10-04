@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SchoolContext } from '../../common/school-context';
 import { MessagingModule } from '../../messaging/messaging.module';
+import { AnnouncementsModule } from '../announcements/announcements.module';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { HolidayRepository } from '../../repositories/holiday.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
@@ -20,7 +21,7 @@ import { HolidaysService } from './holidays.service';
  * functions are in @asms/shared (calendar.ts).
  */
 @Module({
-  imports: [MessagingModule],
+  imports: [MessagingModule, AnnouncementsModule],
   controllers: [HolidaysController, CalendarController, MyCalendarController],
   providers: [
     SchoolContext,

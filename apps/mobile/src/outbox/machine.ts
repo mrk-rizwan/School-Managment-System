@@ -20,6 +20,8 @@ export type OutboxItem = {
   responseStatus: number | null;
   responseCode: string | null;
   responseMessage: string | null;
+  /** JSON: the part of a refusal's details a remedy shows (retainedDetails), else null. */
+  responseDetails: string | null;
   domainTable: string | null;
   domainId: string | null;
   createdAt: string;
@@ -34,6 +36,8 @@ export type Outcome =
       code: string | null;
       message: string | null;
       retryAfterSeconds: number | null;
+      /** JSON kept with a refusal (outcome.ts retainedDetails); absent means none. */
+      details?: string | null;
     }
   | { kind: 'network' }
   /** A 401 to a token the app no longer holds (replaced mid-flight): not this session's loss. */
@@ -125,6 +129,7 @@ export function transition(
     responseStatus: status,
     responseCode: outcome.code,
     responseMessage: outcome.message,
+    responseDetails: outcome.details ?? null,
   };
 
   if (status >= 200 && status < 300) {
@@ -205,6 +210,7 @@ export function remedyItem(
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
+    responseDetails: null,
     createdAt: stamp,
     updatedAt: stamp,
   };

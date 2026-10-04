@@ -150,6 +150,45 @@ export async function sendRaw(
   return response;
 }
 
+/**
+ * A multipart upload (slice-16 §11): POST with FormData — React Native's file part is
+ * `{ uri, name, type }` — through the same headers, write timeout and 401/426 routing. No
+ * Content-Type is set: the runtime writes the multipart boundary. Used by the photo lane only.
+ */
+export async function sendMultipart(
+  path: string,
+  field: string,
+  file: { uri: string; name: string; mime: string },
+  extraHeaders: Record<string, string> = {},
+): Promise<Response> {
+  const form = new FormData();
+  // React Native reads a file part from this shape; the DOM typing does not know it.
+  form.append(field, { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
+  const headers = new Headers(extraHeaders);
+  applyHeaders(headers);
+  headers.delete('Content-Type');
+  const request = new Request(`${apiUrl()}${path}`, {
+    method: 'POST',
+    body: form,
+    headers,
+    credentials: 'omit',
+  });
+  const response = await timedFetch(request);
+  await inspect(request, response);
+  return response;
+}
+
+/**
+ * The headers for a request the client does not make itself — an expo-image source, a PDF
+ * download (slice-16 §11): the bearer travels in a header, never in a URL. No token when signed
+ * out.
+ */
+export function authHeaders(accept = 'image/*'): Record<string, string> {
+  const headers: Record<string, string> = { 'X-App-Version': readAppVersion(), Accept: accept };
+  if (bearerToken !== null) headers.Authorization = `Bearer ${bearerToken}`;
+  return headers;
+}
+
 type Call<T> = Promise<{ data?: T; error?: unknown; response: Response }>;
 
 /** The data of an openapi-fetch call, or an ApiError thrown. A network failure rethrows as is. */

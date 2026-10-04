@@ -20,7 +20,6 @@ import { SubjectRepository } from '../../repositories/subject.repository';
 import { IdempotencyKeyGuard, IdempotentRequests } from '../../common/idempotency';
 import { DocumentsModule } from '../documents/documents.module';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
-import { DiaryAttachmentsService } from './diary-attachments.service';
 import { DiaryController, DiaryFilesThrottleGuard, RemarksController } from './diary.controller';
 import { DiaryEntriesService } from './diary-entries.service';
 import { MyChildDiaryController, MyStudentDiaryController } from './my-diary.controller';
@@ -48,7 +47,6 @@ import { RemarksService } from './remarks.service';
     DiaryFilesThrottleGuard,
     DiaryEntriesService,
     RemarksService,
-    DiaryAttachmentsService,
     DiaryEntryRepository,
     RemarkRepository,
     SectionRepository,

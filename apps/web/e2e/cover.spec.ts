@@ -20,6 +20,7 @@ const PRINCIPAL_ME: MeDto = {
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
+  capabilityScopes: [],
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],

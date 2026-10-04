@@ -92,6 +92,13 @@ const IMPORTS = {
     regex: `(^|/)repositories/platform/school-by-id\\.repository${EXT}$`,
     message: 'SchoolByIdRepository is imported only by src/tenancy/queue.mint.ts.',
   },
+  // contracts/slice-14.md §1.1 (R114): the platform never reads announcements or messages, so
+  // this slice's repositories are importable only from the modules that own them.
+  announcementRepositories: {
+    regex: `(^|/)repositories/(announcement|announcement-audience|announcement-recipient|inbox)\\.repository${EXT}$`,
+    message:
+      'Announcement and inbox repositories are imported only from src/modules/announcements/**, src/modules/me/**, src/modules/calendar/** and src/jobs/**.',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -104,8 +111,16 @@ const REPOSITORY_IMPORTS = [
   'prisma',
   'repositoryInternals',
   'platformRepositories',
+  'announcementRepositories',
   'transactionHost',
   'transactionalAdapter',
+];
+
+// The modules that own the announcement and inbox repositories (contracts/slice-14.md §1.1).
+const ANNOUNCEMENT_SITES = [
+  'src/modules/announcements/**/*.ts',
+  'src/modules/me/**/*.ts',
+  'src/modules/calendar/**/*.ts',
 ];
 
 // Exempt in the tenancy module, which defines the brands and the request context and registers
@@ -154,13 +169,13 @@ const NAMED_EXCEPTION_SITES = {
   // fan out over the live schools, then work per school in runAsSchool with scoped repositories.
   'src/jobs/job-runner.ts': {
     repository: 'school-fan-out.repository',
-    exempt: ['bullmq', 'queueMint'],
+    exempt: ['bullmq', 'queueMint', 'announcementRepositories'],
   },
   // Named exception 6 (contracts/slice-9.md §7.11): the only writer of platform_delivery_health
   // outside the platform module, run per school by the rollup job.
   'src/jobs/delivery-health-rollup.ts': {
     repository: 'delivery-health.repository',
-    exempt: ['bullmq', 'queueMint'],
+    exempt: ['bullmq', 'queueMint', 'announcementRepositories'],
   },
   // Named exception 5 (contracts/slice-9.md §8.5): provider webhooks correlate a report with its
   // row by a global key before any tenant is known. The only importer of that repository.
@@ -193,6 +208,11 @@ const RAW_SQL_FILES = [
   // FOR SHARE / FOR UPDATE locks of §1.6, time columns as HH:MM, the stale-summary scans and the
   // reports over the materialised tables. Each statement filters school_id on every table it
   // reads (test/attendance/repositories.e2e-spec.ts).
+  // Slice 14 (contracts/slice-14.md): the delivery summary's latest attempt per message and
+  // channel (DISTINCT ON) and the inbox's join of messages to announcements. Each filters
+  // school_id on every table it reads (test/announcements/isolation.e2e-spec.ts).
+  'src/repositories/announcement.repository.ts',
+  'src/repositories/inbox.repository.ts',
   'src/repositories/attendance-register.repository.ts',
   'src/repositories/attendance-mark.repository.ts',
   'src/repositories/attendance-alert.repository.ts',
@@ -541,7 +561,16 @@ export default tseslint.config(
     // Phase 2 plan §4.1: the worker's processors and scheduled jobs. The only users of the queue
     // library and of queue.mint (fromQueuePayload, runAsSchool).
     files: ['src/jobs/**/*.ts'],
-    rules: restrictImports({ exempt: ['bullmq', 'queueMint'] }),
+    rules: restrictImports({ exempt: ['bullmq', 'queueMint', 'announcementRepositories'] }),
+  },
+  {
+    files: ANNOUNCEMENT_SITES,
+    rules: restrictImports({ exempt: ['announcementRepositories'] }),
+  },
+  {
+    // The slice-14 suites seed and probe the announcement tables through their repositories.
+    files: ['test/announcements/**/*.ts'],
+    rules: restrictImports({ exempt: ['announcementRepositories', 'messagingDrivers', 'queueMint'] }),
   },
   {
     // Plan rule 0.11: the drivers are internal to messaging.
@@ -578,6 +607,15 @@ export default tseslint.config(
     files: ['test/jobs/**/*.ts', 'test/messaging/**/*.ts', 'test/webhooks/**/*.ts'],
     rules: restrictImports({
       exempt: ['queueMint', 'messagingDrivers', 'repositoryInternals', 'platformRepositories'],
+    }),
+  },
+  {
+    // The two tests that read jobs back from the real BullMQ library: every job-id shape (ids
+    // with ':' were refused at enqueue and those jobs never ran, 2026-10-04), and every
+    // OutboxDispatcher method's id and delay. Same exemptions as their folder, plus bullmq.
+    files: ['test/jobs/job-ids.e2e-spec.ts', 'test/jobs/outbox-dispatcher.e2e-spec.ts'],
+    rules: restrictImports({
+      exempt: ['queueMint', 'messagingDrivers', 'repositoryInternals', 'platformRepositories', 'bullmq'],
     }),
   },
   {

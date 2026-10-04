@@ -1,7 +1,8 @@
 import { log } from '../platform/log';
 import { errorFields } from '../platform/scrub';
 import { MAX_CONCURRENT_LANES } from './lanes';
-import { isDue, transition, type Effect, type OutboxItem, type Outcome } from './machine';
+import { isDue, transition, type Effect, type OutboxItem } from './machine';
+import type { SentOutcome } from './outcome';
 
 // The outbox runner (slice-15 §7.4, §7.5, R157, R158). It picks the oldest due item of every idle
 // lane, at most three lanes at once, sends it, and applies the pure machine's transition. Lanes
@@ -22,11 +23,11 @@ export type WorkerStore = {
 
 export type WorkerDeps = {
   store: WorkerStore;
-  send(item: OutboxItem): Promise<Outcome>;
+  send(item: OutboxItem): Promise<SentOutcome>;
   isOnline(): boolean;
   now?: () => Date;
-  /** After the server's 2xx: the lane's follow-up (device_register stores the push token). */
-  onSaved?: (item: OutboxItem) => Promise<void> | void;
+  /** After the server's 2xx: the lane's follow-up, with what the server answered (slice-16 §10.3). */
+  onSaved?: (item: OutboxItem, outcome: SentOutcome) => Promise<void> | void;
   /** Queue-level effects: 'pause' on 401, 'block' on 426. */
   onEffect?: (effect: Effect, item: OutboxItem) => void;
 };
@@ -107,7 +108,7 @@ export class OutboxWorker {
   }
 
   trigger(reason: TickReason): Promise<void> {
-    log('debug', 'outbox.tick', { reason });
+    log('debug', 'outbox.tick', { trigger: reason });
     return this.tick();
   }
 
@@ -165,7 +166,7 @@ export class OutboxWorker {
       const sending = transition(item, { type: 'send', now: this.now() }).item;
       await this.deps.store.saveItem(sending);
       this.notify();
-      let outcome: Outcome;
+      let outcome: SentOutcome;
       try {
         outcome = await this.deps.send(sending);
       } catch {
@@ -186,7 +187,7 @@ export class OutboxWorker {
       for (const effect of effects) {
         if (effect === 'pause') this.pause();
         if (effect === 'block') this.block();
-        if (effect === 'saved_on_server') await this.deps.onSaved?.(next);
+        if (effect === 'saved_on_server') await this.deps.onSaved?.(next, outcome);
         this.deps.onEffect?.(effect, next);
       }
     } catch (error) {

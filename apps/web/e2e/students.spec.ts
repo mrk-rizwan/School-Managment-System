@@ -30,6 +30,7 @@ const OFFICE_ME: MeDto = {
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
+  capabilityScopes: [],
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],

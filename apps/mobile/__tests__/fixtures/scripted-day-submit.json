@@ -1,0 +1,862 @@
+{
+  "capturedAt": "2026-10-04T17:54:06.081Z",
+  "base": "dev API",
+  "exchanges": [
+    {
+      "method": "GET",
+      "path": "/api/v1/sections/1/register?date=2026-10-04&period=1",
+      "status": 200,
+      "body": {
+        "section": {
+          "id": "1",
+          "name": "A",
+          "classId": "1",
+          "className": "Class 5",
+          "academicYearId": "1",
+          "attendanceMode": "daily"
+        },
+        "date": "2026-10-04",
+        "period": 1,
+        "periodsPerDay": 8,
+        "teachingDay": true,
+        "register": {
+          "id": "1",
+          "sectionId": "1",
+          "sectionName": "A",
+          "classId": "1",
+          "className": "Class 5",
+          "academicYearId": "1",
+          "date": "2026-10-04",
+          "period": 1,
+          "mode": "daily",
+          "teachingDay": true,
+          "submittedBy": "4",
+          "submittedByName": "Demo Teacher",
+          "submittedAt": "2026-10-04T09:54:48.465Z",
+          "lastAmendedBy": null,
+          "lastAmendedByName": null,
+          "lastAmendedAt": null,
+          "source": "app"
+        },
+        "roster": [
+          {
+            "enrolmentId": "1",
+            "studentId": "1",
+            "studentFullName": "Ali Raza",
+            "rollNo": 1,
+            "onRoster": true,
+            "mark": {
+              "id": "1",
+              "registerId": "1",
+              "enrolmentId": "1",
+              "studentId": "1",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "absent",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": {
+              "absence": "pending",
+              "absenceCancelReason": null,
+              "absenceDueAt": "2026-10-04T10:24:48.465Z",
+              "absenceResolvedAt": null,
+              "lateAdvice": null,
+              "corrections": 0,
+              "correctionsCapped": false
+            }
+          },
+          {
+            "enrolmentId": "2",
+            "studentId": "2",
+            "studentFullName": "Sara Khan",
+            "rollNo": 2,
+            "onRoster": true,
+            "mark": {
+              "id": "2",
+              "registerId": "1",
+              "enrolmentId": "2",
+              "studentId": "2",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "absent",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": {
+              "absence": "pending",
+              "absenceCancelReason": null,
+              "absenceDueAt": "2026-10-04T10:24:48.465Z",
+              "absenceResolvedAt": null,
+              "lateAdvice": null,
+              "corrections": 0,
+              "correctionsCapped": false
+            }
+          },
+          {
+            "enrolmentId": "3",
+            "studentId": "3",
+            "studentFullName": "Bilal Ahmed",
+            "rollNo": 3,
+            "onRoster": true,
+            "mark": {
+              "id": "3",
+              "registerId": "1",
+              "enrolmentId": "3",
+              "studentId": "3",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "4",
+            "studentId": "4",
+            "studentFullName": "Hina Iqbal",
+            "rollNo": 4,
+            "onRoster": true,
+            "mark": {
+              "id": "4",
+              "registerId": "1",
+              "enrolmentId": "4",
+              "studentId": "4",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "5",
+            "studentId": "5",
+            "studentFullName": "Usman Tariq",
+            "rollNo": 5,
+            "onRoster": true,
+            "mark": {
+              "id": "5",
+              "registerId": "1",
+              "enrolmentId": "5",
+              "studentId": "5",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "6",
+            "studentId": "6",
+            "studentFullName": "Ayesha Malik",
+            "rollNo": 6,
+            "onRoster": true,
+            "mark": {
+              "id": "6",
+              "registerId": "1",
+              "enrolmentId": "6",
+              "studentId": "6",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "7",
+            "studentId": "7",
+            "studentFullName": "Hamza Shah",
+            "rollNo": 7,
+            "onRoster": true,
+            "mark": {
+              "id": "7",
+              "registerId": "1",
+              "enrolmentId": "7",
+              "studentId": "7",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "8",
+            "studentId": "8",
+            "studentFullName": "Zainab Butt",
+            "rollNo": 8,
+            "onRoster": true,
+            "mark": {
+              "id": "8",
+              "registerId": "1",
+              "enrolmentId": "8",
+              "studentId": "8",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "9",
+            "studentId": "9",
+            "studentFullName": "Omar Qureshi",
+            "rollNo": 9,
+            "onRoster": true,
+            "mark": {
+              "id": "9",
+              "registerId": "1",
+              "enrolmentId": "9",
+              "studentId": "9",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "10",
+            "studentId": "10",
+            "studentFullName": "Fatima Siddiqui",
+            "rollNo": 10,
+            "onRoster": true,
+            "mark": {
+              "id": "10",
+              "registerId": "1",
+              "enrolmentId": "10",
+              "studentId": "10",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "11",
+            "studentId": "11",
+            "studentFullName": "Ahmed Raza",
+            "rollNo": 11,
+            "onRoster": true,
+            "mark": {
+              "id": "11",
+              "registerId": "1",
+              "enrolmentId": "11",
+              "studentId": "11",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "12",
+            "studentId": "12",
+            "studentFullName": "Maryam Khan",
+            "rollNo": 12,
+            "onRoster": true,
+            "mark": {
+              "id": "12",
+              "registerId": "1",
+              "enrolmentId": "12",
+              "studentId": "12",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "13",
+            "studentId": "13",
+            "studentFullName": "Hassan Ahmed",
+            "rollNo": 13,
+            "onRoster": true,
+            "mark": {
+              "id": "13",
+              "registerId": "1",
+              "enrolmentId": "13",
+              "studentId": "13",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "14",
+            "studentId": "14",
+            "studentFullName": "Amna Iqbal",
+            "rollNo": 14,
+            "onRoster": true,
+            "mark": {
+              "id": "14",
+              "registerId": "1",
+              "enrolmentId": "14",
+              "studentId": "14",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "15",
+            "studentId": "15",
+            "studentFullName": "Saad Tariq",
+            "rollNo": 15,
+            "onRoster": true,
+            "mark": {
+              "id": "15",
+              "registerId": "1",
+              "enrolmentId": "15",
+              "studentId": "15",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "16",
+            "studentId": "16",
+            "studentFullName": "Iqra Malik",
+            "rollNo": 16,
+            "onRoster": true,
+            "mark": {
+              "id": "16",
+              "registerId": "1",
+              "enrolmentId": "16",
+              "studentId": "16",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "17",
+            "studentId": "17",
+            "studentFullName": "Faisal Shah",
+            "rollNo": 17,
+            "onRoster": true,
+            "mark": {
+              "id": "17",
+              "registerId": "1",
+              "enrolmentId": "17",
+              "studentId": "17",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "18",
+            "studentId": "18",
+            "studentFullName": "Noor Butt",
+            "rollNo": 18,
+            "onRoster": true,
+            "mark": {
+              "id": "18",
+              "registerId": "1",
+              "enrolmentId": "18",
+              "studentId": "18",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "19",
+            "studentId": "19",
+            "studentFullName": "Danish Qureshi",
+            "rollNo": 19,
+            "onRoster": true,
+            "mark": {
+              "id": "19",
+              "registerId": "1",
+              "enrolmentId": "19",
+              "studentId": "19",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "20",
+            "studentId": "20",
+            "studentFullName": "Sana Siddiqui",
+            "rollNo": 20,
+            "onRoster": true,
+            "mark": {
+              "id": "20",
+              "registerId": "1",
+              "enrolmentId": "20",
+              "studentId": "20",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "21",
+            "studentId": "21",
+            "studentFullName": "Imran Raza",
+            "rollNo": 21,
+            "onRoster": true,
+            "mark": {
+              "id": "21",
+              "registerId": "1",
+              "enrolmentId": "21",
+              "studentId": "21",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "22",
+            "studentId": "22",
+            "studentFullName": "Rabia Khan",
+            "rollNo": 22,
+            "onRoster": true,
+            "mark": {
+              "id": "22",
+              "registerId": "1",
+              "enrolmentId": "22",
+              "studentId": "22",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "23",
+            "studentId": "23",
+            "studentFullName": "Kashif Ahmed",
+            "rollNo": 23,
+            "onRoster": true,
+            "mark": {
+              "id": "23",
+              "registerId": "1",
+              "enrolmentId": "23",
+              "studentId": "23",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "24",
+            "studentId": "24",
+            "studentFullName": "Mahnoor Iqbal",
+            "rollNo": 24,
+            "onRoster": true,
+            "mark": {
+              "id": "24",
+              "registerId": "1",
+              "enrolmentId": "24",
+              "studentId": "24",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "25",
+            "studentId": "25",
+            "studentFullName": "Junaid Tariq",
+            "rollNo": 25,
+            "onRoster": true,
+            "mark": {
+              "id": "25",
+              "registerId": "1",
+              "enrolmentId": "25",
+              "studentId": "25",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "26",
+            "studentId": "26",
+            "studentFullName": "Laiba Malik",
+            "rollNo": 26,
+            "onRoster": true,
+            "mark": {
+              "id": "26",
+              "registerId": "1",
+              "enrolmentId": "26",
+              "studentId": "26",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "27",
+            "studentId": "27",
+            "studentFullName": "Tariq Shah",
+            "rollNo": 27,
+            "onRoster": true,
+            "mark": {
+              "id": "27",
+              "registerId": "1",
+              "enrolmentId": "27",
+              "studentId": "27",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "28",
+            "studentId": "28",
+            "studentFullName": "Mehwish Butt",
+            "rollNo": 28,
+            "onRoster": true,
+            "mark": {
+              "id": "28",
+              "registerId": "1",
+              "enrolmentId": "28",
+              "studentId": "28",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "29",
+            "studentId": "29",
+            "studentFullName": "Waqas Qureshi",
+            "rollNo": 29,
+            "onRoster": true,
+            "mark": {
+              "id": "29",
+              "registerId": "1",
+              "enrolmentId": "29",
+              "studentId": "29",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          },
+          {
+            "enrolmentId": "30",
+            "studentId": "30",
+            "studentFullName": "Areeba Siddiqui",
+            "rollNo": 30,
+            "onRoster": true,
+            "mark": {
+              "id": "30",
+              "registerId": "1",
+              "enrolmentId": "30",
+              "studentId": "30",
+              "date": "2026-10-04",
+              "period": 1,
+              "status": "present",
+              "arrivedAt": null,
+              "note": null,
+              "amended": false
+            },
+            "alert": null
+          }
+        ],
+        "canSubmit": true,
+        "amendable": true,
+        "callerRole": "class_teacher"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sections/1/submit-register",
+      "status": 200,
+      "body": {
+        "created": false,
+        "register": {
+          "id": "1",
+          "sectionId": "1",
+          "sectionName": "A",
+          "classId": "1",
+          "className": "Class 5",
+          "academicYearId": "1",
+          "date": "2026-10-04",
+          "period": 1,
+          "mode": "daily",
+          "teachingDay": true,
+          "submittedBy": "4",
+          "submittedByName": "Demo Teacher",
+          "submittedAt": "2026-10-04T09:54:48.465Z",
+          "lastAmendedBy": null,
+          "lastAmendedByName": null,
+          "lastAmendedAt": null,
+          "source": "app"
+        },
+        "marks": [
+          {
+            "id": "1",
+            "enrolmentId": "1",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "2",
+            "enrolmentId": "2",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "3",
+            "enrolmentId": "3",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "4",
+            "enrolmentId": "4",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "5",
+            "enrolmentId": "5",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "6",
+            "enrolmentId": "6",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "7",
+            "enrolmentId": "7",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "8",
+            "enrolmentId": "8",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "9",
+            "enrolmentId": "9",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "10",
+            "enrolmentId": "10",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "11",
+            "enrolmentId": "11",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "12",
+            "enrolmentId": "12",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "13",
+            "enrolmentId": "13",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "14",
+            "enrolmentId": "14",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "15",
+            "enrolmentId": "15",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "16",
+            "enrolmentId": "16",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "17",
+            "enrolmentId": "17",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "18",
+            "enrolmentId": "18",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "19",
+            "enrolmentId": "19",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "20",
+            "enrolmentId": "20",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "21",
+            "enrolmentId": "21",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "22",
+            "enrolmentId": "22",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "23",
+            "enrolmentId": "23",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "24",
+            "enrolmentId": "24",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "25",
+            "enrolmentId": "25",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "26",
+            "enrolmentId": "26",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "27",
+            "enrolmentId": "27",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "28",
+            "enrolmentId": "28",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "29",
+            "enrolmentId": "29",
+            "outcome": "unchanged"
+          },
+          {
+            "id": "30",
+            "enrolmentId": "30",
+            "outcome": "unchanged"
+          }
+        ],
+        "summary": {
+          "roster": 30,
+          "marked": 30,
+          "present": 28,
+          "absent": 2,
+          "late": 0,
+          "onLeave": 0
+        },
+        "alerts": {
+          "absencePending": 0,
+          "absenceBackdated": 0,
+          "lateAdvicePending": 0,
+          "cancelled": 0,
+          "corrections": 0
+        }
+      },
+      "headers": {
+        "Preference-Applied": "return=minimal"
+      }
+    }
+  ]
+}

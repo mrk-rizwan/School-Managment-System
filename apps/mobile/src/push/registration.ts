@@ -66,12 +66,12 @@ export async function registerForPush(
   now: Date = new Date(),
 ): Promise<PushResult> {
   if (!pushEnabled()) {
-    log('info', 'push.skipped', { reason: 'no_firebase' });
+    log('info', 'push.skipped', { cause: 'no_firebase' });
     return 'skipped_no_firebase';
   }
   try {
     if (!(await permissionGranted(askContext, now))) {
-      log('info', 'push.skipped', { reason: 'permission_denied' });
+      log('info', 'push.skipped', { cause: 'permission_denied' });
       return 'skipped_permission';
     }
     const token: unknown = (await Notifications.getDevicePushTokenAsync()).data;
@@ -117,10 +117,12 @@ export function configureForegroundDisplay(): void {
 /** Taps, including the one that cold-started the app (read once). */
 export function listenForTaps(
   hasScreen: (tab: TabId) => boolean,
+  /** The signed-in user's tabs now (composeTabs): a tap never opens a tab they do not have. */
+  tabs: () => readonly TabId[],
   open: (route: string) => void,
 ): () => void {
   const route = (response: Notifications.NotificationResponse) =>
-    open(routeForNotification(response.notification.request.content.data, hasScreen));
+    open(routeForNotification(response.notification.request.content.data, hasScreen, tabs()));
   void Notifications.getLastNotificationResponseAsync().then((response) => {
     if (response !== null) route(response);
   });

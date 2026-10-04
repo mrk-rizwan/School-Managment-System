@@ -6,7 +6,6 @@ import { createTestApp } from '../core/app';
 import { expectIsolated } from '../support/isolation';
 import { createSchoolUser } from '../support/school-session';
 import { closeTestDb, createTwoSchools, testDb } from '../support/schools';
-import { createGuardian, createStudent, linkGuardian } from '../support/students';
 
 const db = () => testDb();
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -74,13 +73,8 @@ describe('Phase 2 calendar tenant isolation', () => {
     expect((await repo.publishedOverlapping(a.id, range.from, range.to)).map((x) => x.id)).toEqual([own.id]);
     expect(await repo.publishedOverlapping(b.id, range.from, range.to)).toEqual([]);
 
-    // Notice recipients are the school's own people.
-    const guardianA = await createGuardian(db(), a);
-    await linkGuardian(db(), a, await createStudent(db(), a), guardianA);
-    const recipientsB = await repo.noticeRecipients(b.id, true);
-    expect(recipientsB.guardianIds).not.toContain(guardianA.id);
-    expect(recipientsB.staffIds).not.toContain(principalA.staffId);
-    expect((await repo.noticeRecipients(a.id, true)).guardianIds).toContain(guardianA.id);
+    // The notice link (slice 14) is set only on the own school's row.
+    await expect(repo.setAnnouncement(b.id, own.id, 1n)).rejects.toThrow();
 
     // The same dates in another school are that school's own holiday (the exclusion is per school).
     await expect(

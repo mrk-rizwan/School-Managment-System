@@ -12,7 +12,10 @@ export function useCachedQuery<T>(
   path: string,
   params: CacheParams,
   fetcher: () => Promise<{ data: T; date: string | null }>,
+  /** enabled: false reads nothing (a picker the caller does not need); staleTime 0: always refetch. */
+  options: { enabled?: boolean; staleTime?: number } = {},
 ) {
+  const enabled = options.enabled ?? true;
   const client = useQueryClient();
   const key = cacheKey(path, params);
   const row = useQuery({
@@ -29,10 +32,12 @@ export function useCachedQuery<T>(
     networkMode: 'always',
     staleTime: Number.POSITIVE_INFINITY,
     retry: 0,
+    enabled,
   });
   return useQuery<Cached<T>>({
     queryKey,
-    enabled: row.isFetched,
+    enabled: enabled && row.isFetched,
+    ...(options.staleTime === undefined ? {} : { staleTime: options.staleTime }),
     queryFn: async () => {
       const { data, date } = await fetcher();
       return writeCache(key, data, date);

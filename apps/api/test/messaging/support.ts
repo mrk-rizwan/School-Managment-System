@@ -32,6 +32,8 @@ export interface DriverCall {
   tokens?: readonly string[];
   push?: PushMessage;
   template?: string;
+  /** sendMedia only: what travelled as bytes (slice 14, R148). */
+  media?: { mime: string; filename: string; size: number };
 }
 
 /** Records every call; outcomes are queued per channel (default: accepted). */
@@ -59,6 +61,22 @@ export class FakeDrivers implements MessagingDrivers {
   private whatsappDriver = {
     sendText: (_sender: unknown, to: string, text: string, template: string): Promise<SendOutcome> => {
       this.calls.push({ channel: 'whatsapp', to, text, template });
+      return Promise.resolve(this.whatsappOutcomes.shift() ?? { kind: 'accepted', ref: `wa-${this.ref()}` });
+    },
+    sendMedia: (
+      _sender: unknown,
+      to: string,
+      text: string,
+      media: { bytes: Buffer; mime: string; filename: string },
+      template: string,
+    ): Promise<SendOutcome> => {
+      this.calls.push({
+        channel: 'whatsapp',
+        to,
+        text,
+        template,
+        media: { mime: media.mime, filename: media.filename, size: media.bytes.length },
+      });
       return Promise.resolve(this.whatsappOutcomes.shift() ?? { kind: 'accepted', ref: `wa-${this.ref()}` });
     },
     health: (): Promise<HealthOutcome> => Promise.resolve(this.healthOutcome),
@@ -138,6 +156,15 @@ export async function messagingApp(
     enqueued.push({ kind: 'health', schoolId, id });
     return Promise.resolve();
   });
+  // OutboxDispatcher swallows a failed enqueue (the sweep recovers it), which is how job ids
+  // BullMQ refused went unnoticed. The methods not mocked above reach the real Redis; closing the
+  // app fails the suite if any of their enqueues failed.
+  const close = app.close.bind(app);
+  app.close = async () => {
+    const failures = outbox.enqueueFailures;
+    await close();
+    if (failures !== 0) throw new Error(`${failures} enqueue(s) failed during this suite (OutboxDispatcher.enqueueFailures)`);
+  };
   return { app, drivers, enqueued };
 }
 

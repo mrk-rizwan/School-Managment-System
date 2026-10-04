@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { allowScreenCaptureAsync, preventScreenCaptureAsync } from 'expo-screen-capture';
+import { useEffect, useId, type ReactElement, type ReactNode } from 'react';
+import { ScrollView, StyleSheet, Text, View, type RefreshControlProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fontSize, space } from './theme';
 
@@ -11,11 +12,43 @@ type Props = {
   banner?: ReactNode;
   children: ReactNode;
   scroll?: boolean;
+  /** Pull-to-refresh for a scrolling screen (disabled offline by the caller). */
+  refreshControl?: ReactElement<RefreshControlProps>;
+  /**
+   * A screen that shows a child's name (slice-16 §13.2): Android FLAG_SECURE while it is
+   * mounted — no screenshot, no recent-apps thumbnail, no screen recording of the window.
+   */
+  secure?: boolean;
+  /** Below the content, outside the scroll: the primary action, in thumb reach. */
+  footer?: ReactNode;
   testID?: string;
 };
 
-export function Screen({ title, accessory, banner, children, scroll = true, testID }: Props) {
-  const body = <View style={styles.content}>{children}</View>;
+/** The only importer of expo-screen-capture (lint): FLAG_SECURE while `secure` is mounted. */
+function useSecureWindow(secure: boolean): void {
+  const key = useId();
+  useEffect(() => {
+    if (!secure) return undefined;
+    void preventScreenCaptureAsync(key);
+    return () => {
+      void allowScreenCaptureAsync(key);
+    };
+  }, [secure, key]);
+}
+
+export function Screen({
+  title,
+  accessory,
+  banner,
+  children,
+  scroll = true,
+  refreshControl,
+  secure = false,
+  footer,
+  testID,
+}: Props) {
+  useSecureWindow(secure);
+  const body = <View style={[styles.content, !scroll && styles.fill]}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']} testID={testID}>
       {title !== undefined || accessory !== undefined ? (
@@ -31,7 +64,14 @@ export function Screen({ title, accessory, banner, children, scroll = true, test
         </View>
       ) : null}
       {banner}
-      {scroll ? <ScrollView contentContainerStyle={styles.scroll}>{body}</ScrollView> : body}
+      {scroll ? (
+        <ScrollView contentContainerStyle={styles.scroll} refreshControl={refreshControl}>
+          {body}
+        </ScrollView>
+      ) : (
+        body
+      )}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
@@ -50,4 +90,13 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.heading, fontWeight: '700', color: colors.foreground, flexShrink: 1 },
   scroll: { flexGrow: 1 },
   content: { flexGrow: 1, padding: space.lg, gap: space.lg },
+  fill: { flex: 1 },
+  footer: {
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    gap: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
 });

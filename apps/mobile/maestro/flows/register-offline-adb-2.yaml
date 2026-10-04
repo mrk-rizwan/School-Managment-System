@@ -1,0 +1,7 @@
+# The adb fallback, step 2 (airplane mode on): the app reopens, the register comes from the
+# phone, two rows marked absent and saved on the device. ci-run.sh then turns airplane mode off.
+appId: pk.asms.app.dev
+---
+- launchApp
+- runFlow: common/open-register.yaml
+- runFlow: common/mark-and-save.yaml

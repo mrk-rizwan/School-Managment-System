@@ -23,6 +23,11 @@ import {
   MESSAGE_TYPES,
   REGISTER_SOURCES,
   REMARK_CATEGORIES,
+  ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_PRIORITIES,
+  ANNOUNCEMENT_STATUSES,
+  AUDIENCE_KINDS,
+  AUDIENCE_ROLES,
   REMARK_VISIBILITIES,
   SESSION_CHANNELS,
   SMS_ELIGIBLE_TYPES,
@@ -71,6 +76,12 @@ const PAIRS: [string, readonly string[]][] = [
   ['attendance_alert_status', ATTENDANCE_ALERT_STATUSES],
   ['attendance_alert_cancel_reason', ATTENDANCE_ALERT_CANCEL_REASONS],
   ['remark_category', REMARK_CATEGORIES],
+  // Slice 14 (contracts/slice-14.md §2.1).
+  ['announcement_category', ANNOUNCEMENT_CATEGORIES],
+  ['announcement_priority', ANNOUNCEMENT_PRIORITIES],
+  ['announcement_status', ANNOUNCEMENT_STATUSES],
+  ['audience_kind', AUDIENCE_KINDS],
+  ['audience_role', AUDIENCE_ROLES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

@@ -12,6 +12,7 @@ import {
   RegisterDeadlineSweep,
 } from '../modules/attendance/attendance-jobs';
 import { StagedUploadSweep } from '../modules/documents/staged-upload.sweep';
+import { AnnouncementSendJob } from '../modules/announcements/announcement-send.job';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
@@ -46,10 +47,14 @@ export class JobRunner {
     private readonly attendanceRollup: AttendanceRollup,
     private readonly attendanceSweeps: AttendanceSweeps,
     private readonly registerDeadline: RegisterDeadlineSweep,
+    private readonly announcementSend: AnnouncementSendJob,
   ) {}
 
-  /** The `messaging` queue: message, message-rollup, whatsapp-health. */
-  async messaging(name: string, payload: unknown): Promise<JobOutcome> {
+  /**
+   * The `messaging` queue: message, message-rollup, whatsapp-health, announcement-send. `dueAt` is
+   * when the producer asked the job to run (its creation plus its delay, WorkerHost.plannedAt).
+   */
+  async messaging(name: string, payload: unknown, now: Date = new Date(), dueAt: Date = now): Promise<JobOutcome> {
     switch (name) {
       case JOB.message: {
         const job = await this.tenancy.fromQueuePayload(payload, ['messageId']);
@@ -68,6 +73,15 @@ export class JobRunner {
         if (!job) return this.dropped(name);
         await this.tenancy.runAsSchool(job.schoolId, () =>
           this.health.check(job.schoolId, job.ids.whatsappNumberId),
+        );
+        return 'done';
+      }
+      // contracts/slice-14.md §5.6: an announcement's send, now or at its time.
+      case JOB.announcementSend: {
+        const job = await this.tenancy.fromQueuePayload(payload, ['announcementId']);
+        if (!job) return this.dropped(name);
+        await this.tenancy.runAsSchool(job.schoolId, () =>
+          this.announcementSend.fire(job.schoolId, job.ids.announcementId, now, dueAt),
         );
         return 'done';
       }
@@ -105,10 +119,12 @@ export class JobRunner {
   async scheduled(name: string, plannedAt: Date): Promise<JobOutcome> {
     switch (name) {
       case JOB.outboxSweep:
-        // Messaging's sources, then attendance's two (contracts/slice-11.md §8.3).
+        // Messaging's sources, then attendance's two (contracts/slice-11.md §8.3), then the
+        // scheduled announcements (contracts/slice-14.md §5.6, slice-9 §7.9's reserved source).
         await this.eachSchool(name, async (schoolId) => {
           await this.sweeps.outboxSweep(schoolId, plannedAt);
           await this.attendanceSweeps.outboxSweep(schoolId, plannedAt);
+          await this.announcementSend.sweep(schoolId, plannedAt);
         });
         return 'done';
       case JOB.registerDeadlineSweep:

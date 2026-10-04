@@ -1,0 +1,11 @@
+# The adb fallback of register-offline.yaml, step 1 (online): sign in, open the register once
+# (its roster is now on the phone). ci-run.sh then turns airplane mode on with adb.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${TEACHER_CNIC}
+- runFlow: common/open-register.yaml

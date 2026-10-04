@@ -152,8 +152,11 @@ describe('slice 9 messaging core (e2e)', () => {
       const school = await messagingSchool();
       const g = await guardian(db, school);
       const subject = nextSubject();
-      expect(await notice(school, [{ guardianId: g.id }, { guardianId: g.id }], subject)).toEqual({ created: 1, existing: 0 });
-      expect(await notice(school, [{ guardianId: g.id }], subject)).toEqual({ created: 0, existing: 1 });
+      const first = await notice(school, [{ guardianId: g.id }, { guardianId: g.id }], subject);
+      expect(first).toMatchObject({ created: 1, existing: 0, dedupedByPhone: 0 });
+      expect(first.messages.map((m) => m.person)).toEqual([{ guardianId: g.id }]);
+      // A retried sender gets back none of its old rows.
+      expect(await notice(school, [{ guardianId: g.id }], subject)).toEqual({ created: 0, existing: 1, dedupedByPhone: 0, messages: [] });
       expect(await messagesOf(school, g.id)).toHaveLength(1);
     });
 
@@ -218,7 +221,9 @@ describe('slice 9 messaging core (e2e)', () => {
       const created = await db.guardian.createManyAndReturn({ data: rows, select: { id: true } });
       for (const row of created) ids.push({ guardianId: row.id });
       const started = Date.now();
-      expect(await notice(school, ids)).toEqual({ created: 3000, existing: 0 });
+      const sent = await notice(school, ids);
+      expect(sent).toMatchObject({ created: 3000, existing: 0, dedupedByPhone: 0 });
+      expect(sent.messages).toHaveLength(3000);
       expect(Date.now() - started).toBeLessThan(5000);
     }, 60_000);
   });

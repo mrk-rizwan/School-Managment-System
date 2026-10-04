@@ -19,9 +19,9 @@ import {
   type HolidayRecord,
   type HolidayView,
 } from '../../repositories/holiday.repository';
-import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
+import { AnnouncementsService } from '../announcements/announcements.service';
 import { CalendarListenerRegistry, type HolidayRange } from './calendar-listener';
 import { CalendarService } from './calendar.service';
 import type {
@@ -116,7 +116,7 @@ export class HolidaysService {
     private readonly notifications: NotificationService,
     private readonly contacts: ContactResolver,
     private readonly messages: MessageRepository,
-    private readonly settings: SchoolSettingsRepository,
+    private readonly announcements: AnnouncementsService,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
   ) {}
@@ -196,33 +196,28 @@ export class HolidaysService {
         { from: 'cancelled', to: 'published' },
       );
     }
-    const published = await this.holidays.publish(schoolId, id, userId, new Date());
+    let published = await this.holidays.publish(schoolId, id, userId, new Date());
     await this.listeners.published(schoolId, range(published));
 
+    // R151 (contracts/slice-14.md §6.1): the notice is an `everyone` announcement naming the
+    // holiday, the last write before the audit. A holiday wholly past has none.
     const counts = { noticeGuardians: 0, noticeStaff: 0, noticeStudents: 0 };
+    let announcementId: bigint | null = null;
     if (published.endsOn >= (await this.clock.today(schoolId))) {
-      const recipients = await this.holidays.noticeRecipients(
-        schoolId,
-        await this.settings.studentLoginEnabled(schoolId),
-      );
-      await this.notifications.send(schoolId, {
-        type: 'holiday_notice',
-        subject: { type: 'holiday', id },
-        recipients: [
-          ...recipients.guardianIds.map((guardianId) => ({ guardianId })),
-          ...recipients.staffIds.map((staffId) => ({ staffId })),
-          ...recipients.studentIds.map((studentId) => ({ studentId })),
-        ],
-        vars: {
-          name: published.name,
-          startsOn: published.startsOn,
-          endsOn: published.endsOn,
-          reopensOn: await this.calendar.nextTeachingDay(schoolId, published.endsOn),
-        },
+      const notice = await this.announcements.sendHolidayNotice(schoolId, {
+        kind: 'notice',
+        holidayId: id,
+        name: published.name,
+        startsOn: published.startsOn,
+        endsOn: published.endsOn,
+        reopensOn: await this.calendar.nextTeachingDay(schoolId, published.endsOn),
+        createdBy: userId,
       });
-      counts.noticeGuardians = recipients.guardianIds.length;
-      counts.noticeStaff = recipients.staffIds.length;
-      counts.noticeStudents = recipients.studentIds.length;
+      announcementId = notice.announcementId;
+      published = await this.holidays.setAnnouncement(schoolId, id, notice.announcementId);
+      counts.noticeGuardians = notice.guardians;
+      counts.noticeStaff = notice.staff;
+      counts.noticeStudents = notice.students;
     }
 
     await this.audit.record(schoolId, {
@@ -234,6 +229,7 @@ export class HolidaysService {
         startsOn: toDateString(published.startsOn),
         endsOn: toDateString(published.endsOn),
         ...counts,
+        announcementId: announcementId?.toString() ?? null,
       },
     });
     return this.dto(schoolId, published);
@@ -252,7 +248,35 @@ export class HolidaysService {
     const cancelled = await this.holidays.cancel(schoolId, id, userId, new Date(), dto.reason);
 
     const counts = { noticesWithdrawn: 0, cancellationRecipients: 0 };
-    if (row.status === 'published') {
+    let cancellationAnnouncementId: bigint | null = null;
+    if (row.status === 'published' && row.announcementId !== null) {
+      await this.listeners.cancelled(schoolId, range(cancelled));
+      // contracts/slice-14.md §6.2: the notice announcement's unsent messages are withdrawn (it
+      // stays `sent`, R146), then a second `everyone` announcement tells the school now
+      // (decision 15), unless the holiday is wholly past. The notice's send job may still be
+      // writing its messages after commit: wait for it first, so none escapes the withdrawal (a
+      // job that has not started finds the holiday cancelled and tells nobody).
+      await this.announcements.holdHolidayNotice(schoolId, row.announcementId);
+      counts.noticesWithdrawn = await this.messages.withdrawQueuedForSubject(
+        schoolId,
+        'announcement',
+        row.announcementId,
+      );
+      if (cancelled.endsOn >= (await this.clock.today(schoolId))) {
+        const notice = await this.announcements.sendHolidayNotice(schoolId, {
+          kind: 'cancellation',
+          holidayId: id,
+          name: cancelled.name,
+          startsOn: cancelled.startsOn,
+          endsOn: cancelled.endsOn,
+          reopensOn: null,
+          createdBy: userId,
+        });
+        cancellationAnnouncementId = notice.announcementId;
+        counts.cancellationRecipients = notice.guardians + notice.staff + notice.students;
+      }
+    } else if (row.status === 'published') {
+      // Published before slice 14 (no announcement; not backfilled): slice 10's path, unchanged.
       await this.listeners.cancelled(schoolId, range(cancelled));
       // Unsent notices are withdrawn in one statement; the processor claims only `queued` rows
       // (R105), so each notice is either withdrawn here or already claimed, never both.
@@ -282,7 +306,11 @@ export class HolidaysService {
       subjectType: SUBJECT,
       subjectId: id,
       reason: dto.reason,
-      metadata: { from: row.status, ...counts },
+      metadata: {
+        from: row.status,
+        ...counts,
+        cancellationAnnouncementId: cancellationAnnouncementId?.toString() ?? null,
+      },
     });
     return this.dto(schoolId, cancelled);
   }

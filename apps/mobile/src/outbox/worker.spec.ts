@@ -23,6 +23,7 @@ function item(lane: string, patch: Partial<OutboxItem> = {}): OutboxItem {
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
+      responseDetails: null,
     domainTable: null,
     domainId: null,
     createdAt: created,
@@ -109,6 +110,70 @@ describe('lanes are independent', () => {
                 status: 409,
                 code: 'X',
                 message: 'Refused',
+                retryAfterSeconds: null,
+              }
+            : ok,
+        ),
+    });
+    await worker.trigger('foreground');
+    await worker.idle();
+    expect(store.items.map((i) => i.state)).toEqual(['failed', 'done']);
+  });
+});
+
+describe('slice-16 §10.4', () => {
+  test('a photo stuck in a 30-second upload never delays a register queued after it', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask', 'setImmediate'] });
+    try {
+      const photo = item('diary_attachment');
+      const register = item('submit_register');
+      const store = memoryStore([photo, register]);
+      const finished: string[] = [];
+      const worker = new OutboxWorker({
+        store,
+        isOnline: () => true,
+        now: () => T0,
+        send: (i) =>
+          i.lane === 'diary_attachment'
+            ? new Promise((resolve) => setTimeout(() => resolve(ok), 30_000))
+            : Promise.resolve(ok),
+        onSaved: (i) => {
+          finished.push(i.lane);
+        },
+      });
+      void worker.trigger('enqueued');
+      // The register is done while the photo is still uploading.
+      for (let i = 0; i < 20 && !finished.includes('submit_register'); i += 1) {
+        await Promise.resolve();
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      expect(finished).toEqual(['submit_register']);
+      expect(store.items.find((i) => i.id === photo.id)!.state).toBe('sending');
+      jest.advanceTimersByTime(30_000);
+      await worker.idle();
+      expect(finished).toEqual(['submit_register', 'diary_attachment']);
+      worker.stop();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('a register refused for good does not stop the next register in the lane', async () => {
+    const first = item('submit_register');
+    const second = item('submit_register');
+    const store = memoryStore([first, second]);
+    const worker = new OutboxWorker({
+      store,
+      isOnline: () => true,
+      now: () => T0,
+      send: (i) =>
+        Promise.resolve(
+          i.id === first.id
+            ? {
+                kind: 'response',
+                status: 409,
+                code: 'ATTENDANCE_LOCKED',
+                message: 'Locked',
                 retryAfterSeconds: null,
               }
             : ok,

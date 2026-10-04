@@ -192,6 +192,27 @@ to its path and `EXPO_PUBLIC_PUSH_ENABLED=true` at build time.
 
 The Maestro flows (`apps/mobile/maestro`) run only in CI's `mobile` job, on an emulator.
 
+The flows sign in as a teacher and a parent, so the seed can also build a classroom
+(contracts/slice-16.md §15.3): with `DEV_SCHOOL_CLASSROOM=1` it adds, through the API's own
+routes, Class 5 (daily register) with sections A (30 students) and B (5), the subject English, a
+teacher who is class teacher of 5 A and teaches English in 5 B, a guardian of 5 A roll 1 with a
+login, and today's English diary entry in 5 A with a small photo. It clears the school's weekly
+off days so every day is a teaching day. It needs Redis and object storage running and the
+principal still on the default password; it is idempotent (`classroom created` / `classroom
+exists`) and takes about a minute (the admission route allows 30 a minute).
+
+```sh
+DEV_SCHOOL_PRINCIPAL_CNIC=<13 digits> DEV_SCHOOL_PRINCIPAL_PHONE=<phone> \
+DEV_SCHOOL_CLASSROOM=1 \
+DEV_SCHOOL_TEACHER_CNIC=<13 digits> DEV_SCHOOL_TEACHER_PHONE=<phone> \
+DEV_SCHOOL_GUARDIAN_CNIC=<13 digits> DEV_SCHOOL_GUARDIAN_PHONE=<phone> \
+  pnpm --filter @asms/api seed:dev-school
+```
+
+Each person's default password is their digits. The data-cost fixture of the teacher's day is
+recorded from it with `ASMS_SCHOOL=<code> ASMS_TEACHER_USERNAME=<teacher digits> pnpm --filter
+@asms/mobile capture:fixtures` (on a fresh classroom).
+
 ## Where things are
 
 | Path | Contents |

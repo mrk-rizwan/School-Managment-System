@@ -1,0 +1,8 @@
+# Subflow: the register's state line turns to "Saved on server at HH:MM" — only after the 2xx.
+appId: pk.asms.app.dev
+---
+- extendedWaitUntil:
+    visible:
+      id: 'register.stateLine'
+      text: 'Saved on server at .*'
+    timeout: 60000

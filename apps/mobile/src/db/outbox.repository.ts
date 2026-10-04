@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { mergeBodies } from '../outbox/coalesce';
 import type { OutboxItem } from '../outbox/machine';
 import { getDb, readOwner, type Db } from './database';
+import { PURGE_ORPHAN_LOCAL_ROWS } from './schema';
 
 // The only SQL on the outbox table (slice-15 §7.2). Rows are validated at the boundary.
 
@@ -22,6 +23,7 @@ const Row = z.object({
   response_status: z.number().nullable(),
   response_code: z.string().nullable(),
   response_message: z.string().nullable(),
+  response_details: z.string().nullable(),
   domain_table: z.string().nullable(),
   domain_id: z.string().nullable(),
   created_at: z.string(),
@@ -44,6 +46,7 @@ function toItem(raw: unknown): OutboxItem {
     responseStatus: r.response_status,
     responseCode: r.response_code,
     responseMessage: r.response_message,
+    responseDetails: r.response_details,
     domainTable: r.domain_table,
     domainId: r.domain_id,
     createdAt: r.created_at,
@@ -53,7 +56,8 @@ function toItem(raw: unknown): OutboxItem {
 
 const COLUMNS =
   'id, lane, method, path, natural_key, body, state, attempts, next_attempt_at, sending_since, ' +
-  'response_status, response_code, response_message, domain_table, domain_id, created_at, updated_at';
+  'response_status, response_code, response_message, response_details, domain_table, domain_id, ' +
+  'created_at, updated_at';
 
 function values(item: OutboxItem) {
   return [
@@ -70,6 +74,7 @@ function values(item: OutboxItem) {
     item.responseStatus,
     item.responseCode,
     item.responseMessage,
+    item.responseDetails,
     item.domainTable,
     item.domainId,
     item.createdAt,
@@ -134,6 +139,7 @@ export async function enqueueIn(txn: Db, input: EnqueueInput, now: Date): Promis
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
+    responseDetails: null,
     domainTable: input.domainTable ?? null,
     domainId: input.domainId ?? null,
     createdAt: stamp,
@@ -200,7 +206,8 @@ export async function saveItem(item: OutboxItem): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `UPDATE outbox SET state = ?, attempts = ?, next_attempt_at = ?, sending_since = ?, response_status = ?,
-       response_code = ?, response_message = ?, body = ?, updated_at = ? WHERE id = ?`,
+       response_code = ?, response_message = ?, response_details = ?, body = ?, updated_at = ?
+       WHERE id = ?`,
     [
       item.state,
       item.attempts,
@@ -209,6 +216,7 @@ export async function saveItem(item: OutboxItem): Promise<void> {
       item.responseStatus,
       item.responseCode,
       item.responseMessage,
+      item.responseDetails,
       item.body,
       item.updatedAt,
       item.id,
@@ -249,9 +257,15 @@ export async function countUnsent(): Promise<number> {
 export async function purgeFinished(now: Date): Promise<number> {
   const db = await getDb();
   const cutoff = new Date(now.getTime() - PURGE_AFTER_MS).toISOString();
-  const result = await db.runAsync(
-    "DELETE FROM outbox WHERE state IN ('done', 'failed') AND updated_at < ?",
-    [cutoff],
-  );
-  return result.changes;
+  let changes = 0;
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    const result = await txn.runAsync(
+      "DELETE FROM outbox WHERE state IN ('done', 'failed') AND updated_at < ?",
+      [cutoff],
+    );
+    changes = result.changes;
+    // Their local rows go with them (slice-16 §8).
+    await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
+  });
+  return changes;
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ENV, type Env } from '../config/env';
 import { CryptoModule } from '../common/crypto/crypto.module';
+import { StorageModule } from '../common/storage/storage.module';
 import { Mailer, MailModule } from '../modules/auth/mailer';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { DeviceRepository } from '../repositories/device.repository';
@@ -45,7 +46,7 @@ const REPOSITORIES = [
  * in a test.
  */
 @Module({
-  imports: [CryptoModule, MailModule],
+  imports: [CryptoModule, MailModule, StorageModule],
   providers: [
     ...REPOSITORIES,
     {

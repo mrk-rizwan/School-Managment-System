@@ -8,7 +8,7 @@ import request from 'supertest';
 import { ErrorCode } from '@asms/shared';
 import { SchoolClock } from '../../src/common/school-clock';
 import { ObjectNotFoundError, ObjectStorage } from '../../src/common/storage/object-storage';
-import { thumbnailKey } from '../../src/modules/diary/diary-attachments.service';
+import { thumbnailKey } from '../../src/modules/documents/attachment-files.service';
 import { addDays } from '../../src/common/school-clock';
 import type { DiaryEntryDto, MyDiaryEntryDto } from '../../src/modules/diary/diary.dto';
 import { EXIF_MARKER, jpegWithExif, pdf } from '../documents/fixtures';

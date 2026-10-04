@@ -1,0 +1,19 @@
+# slice-16 §15.2 (16a) — CI only. A teacher marks a register in airplane mode; it reaches the
+# server when the connection returns. ci-run.sh then checks over curl that the server holds the
+# register with two absent marks ("the server has it" is proved outside the app).
+# Airplane mode is Maestro's setAirplaneMode here; with AIRPLANE_MECHANISM=adb, ci-run.sh runs the
+# register-offline-adb-*.yaml steps instead and toggles it with `adb shell cmd connectivity`.
+# Env: SCHOOL_CODE, TEACHER_CNIC, SECTION_A, ENROLMENT_1, ENROLMENT_2.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${TEACHER_CNIC}
+- runFlow: common/open-register.yaml
+- setAirplaneMode: enabled
+- runFlow: common/mark-and-save.yaml
+- setAirplaneMode: disabled
+- runFlow: common/saved-on-server.yaml

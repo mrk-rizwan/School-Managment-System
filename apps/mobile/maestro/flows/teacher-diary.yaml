@@ -1,0 +1,41 @@
+# slice-16 §15.2 (16a) — CI only. Same session as register-offline: the teacher writes today's
+# English diary entry for 5 B (5 A's English entry is the seed's), and sees it reach the server.
+# No photo: the emulator has no camera; the photo lane is proved in Jest.
+# Env: SECTION_B.
+appId: pk.asms.app.dev
+---
+- launchApp
+- tapOn:
+    id: 'tabs.classes'
+- extendedWaitUntil:
+    visible:
+      id: 'classes.section.${SECTION_B}.diary'
+    timeout: 20000
+- tapOn:
+    id: 'classes.section.${SECTION_B}.diary'
+- extendedWaitUntil:
+    visible:
+      id: 'diary.new'
+    timeout: 20000
+- tapOn:
+    id: 'diary.new'
+- extendedWaitUntil:
+    visible:
+      text: 'English'
+    timeout: 20000
+- tapOn:
+    text: 'English'
+- tapOn:
+    id: 'diaryCompose.topic'
+- inputText: 'Pages 12-14'
+- hideKeyboard
+- tapOn:
+    id: 'diaryCompose.save'
+- extendedWaitUntil:
+    visible:
+      text: 'Saved on (device|server).*'
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      text: 'Saved on server at .*'
+    timeout: 60000

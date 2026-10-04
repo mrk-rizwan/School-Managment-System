@@ -17,16 +17,28 @@ export function registerNaturalKey(sectionId: string, date: string, period: numb
   return `section:${sectionId}|date:${date}|period:${period}`;
 }
 
-/** Marks merged by enrolmentId, latest wins; the reason kept unless the newer one is non-empty. */
+/**
+ * Marks merged by enrolmentId, latest wins; the newer reason when it is non-empty, else the
+ * older one. `reason` is left out unless a non-empty one exists: the server takes it absent or
+ * as text, and refuses null with a terminal 422 (wave-F review).
+ */
 export function mergeMarksBody(existing: MarksBody, incoming: MarksBody): MarksBody {
   const byEnrolment = new Map(existing.marks.map((mark) => [mark.enrolmentId, mark]));
   for (const mark of incoming.marks) byEnrolment.set(mark.enrolmentId, mark);
-  const newerReason = typeof incoming.reason === 'string' && incoming.reason.trim() !== '';
+  const nonEmpty = (reason: unknown): reason is string =>
+    typeof reason === 'string' && reason.trim() !== '';
+  const reason = nonEmpty(incoming.reason)
+    ? incoming.reason
+    : nonEmpty(existing.reason)
+      ? existing.reason
+      : null;
+  const { reason: _existingReason, ...existingRest } = existing;
+  const { reason: _incomingReason, ...incomingRest } = incoming;
   return {
-    ...existing,
-    ...incoming,
+    ...existingRest,
+    ...incomingRest,
     marks: [...byEnrolment.values()],
-    reason: newerReason ? incoming.reason : (existing.reason ?? incoming.reason ?? null),
+    ...(reason === null ? {} : { reason }),
   };
 }
 

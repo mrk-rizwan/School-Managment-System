@@ -1,7 +1,7 @@
 import { Capability, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import type { MeAssignmentDto } from '../api/contracts';
 import { hasScreen, SCREEN_REGISTRY } from './screen-registry';
-import { composeTabs, layoutTabs, type TabSource } from './tabs';
+import { composeTabs, layoutTabs, TAB_ORDER, type TabSource } from './tabs';
 
 // slice-15 §5: every fixture asserts the exact ordered list and the five-slot layout.
 
@@ -157,16 +157,17 @@ describe('composeTabs', () => {
   });
 });
 
-describe('the screen registry (slice 15)', () => {
-  test('ships Home, Calendar and Account only', () => {
-    expect([...SCREEN_REGISTRY].sort()).toEqual(['account', 'calendar', 'home']);
+describe('the screen registry (slice 16b)', () => {
+  test('ships every tab', () => {
+    expect([...SCREEN_REGISTRY].sort()).toEqual([...TAB_ORDER].sort());
   });
 
-  test('a principal sees Home, Calendar, Account in this build', () => {
-    expect(composeTabs(fixtures.principal!.me).filter(hasScreen)).toEqual([
-      'home',
-      'calendar',
-      'account',
-    ]);
+  test('a principal sees Home, Today, Announce, Inbox and More (Calendar, Account)', () => {
+    const tabs = composeTabs(fixtures.principal!.me).filter(hasScreen);
+    expect(tabs).toEqual(['home', 'today', 'announce', 'inbox', 'calendar', 'account']);
+    expect(layoutTabs(tabs)).toEqual({
+      bar: ['home', 'today', 'announce', 'inbox', 'more'],
+      more: ['calendar', 'account'],
+    });
   });
 });

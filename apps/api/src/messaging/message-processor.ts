@@ -1,9 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { buffer } from 'node:stream/consumers';
 import { Transactional } from '@nestjs-cls/transactional';
 import type { DeliveryErrorCode, MessageChannel, SuppressionReason } from '@asms/shared';
 import { FieldEncryption } from '../common/crypto/field-encryption';
 import { failureLog } from '../common/errors/failure-log';
 import { recoverConstraint } from '../common/errors/prisma-errors';
+import { ObjectStorage } from '../common/storage/object-storage';
 import { nextMonthStart, yearMonthIn } from '../common/school-clock';
 import { DeviceRepository } from '../repositories/device.repository';
 import {
@@ -22,13 +24,31 @@ import {
 import { WhatsAppNumberRepository, type WhatsAppNumberRecord } from '../repositories/whatsapp-number.repository';
 import type { SchoolId } from '../tenancy/school-id';
 import { ContactResolver, recipientKey, type Contact } from './contacts';
-import { MESSAGING_DRIVERS, type MessagingDrivers, type SendOutcome, type WhatsAppSender } from './drivers/types';
+import {
+  MESSAGING_DRIVERS,
+  type MediaFile,
+  type MessagingDrivers,
+  type SendOutcome,
+  type WhatsAppSender,
+} from './drivers/types';
+import { MediaCache } from './media-cache';
 import { isExternal, legState, type ExternalChannel, type LegState } from './legs';
 import { NotificationService, PK_MOBILE } from './notification.service';
 import { OutboxDispatcher } from './outbox-dispatcher';
 import { cloudTokenAad, pollRefAad, providerRefHash } from './provider-refs';
 import { isAfterFailureSms } from './routing';
-import { maskPhone, smsSegments, titleOf, toGsm7 } from './templates';
+import { maskPhone, smsSegments, smsTextOf, titleOf } from './templates';
+
+/** The stored object's type, from its key's extension (`{school_id}/{ULID}.{jpg|png|pdf}`). */
+const MEDIA_MIMES: Readonly<Record<string, string>> = {
+  jpg: 'image/jpeg',
+  png: 'image/png',
+  pdf: 'application/pdf',
+};
+
+/** The push title and email subject: the message's own (announcements), else the type's. */
+const titleFor = (message: MessageRecord, schoolName: string): string =>
+  message.title ?? titleOf(message.type, message.subjectType, schoolName);
 
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */
 type AttemptContact = Pick<Contact, 'userId' | 'userHasStaff' | 'phone' | 'email'>;
@@ -57,6 +77,8 @@ interface Round {
 @Injectable()
 export class MessageProcessor {
   private readonly logger = new Logger('MessageProcessor');
+  /** One storage read per attachment per fan-out, not per recipient (media-cache.ts). */
+  readonly #media = new MediaCache();
 
   constructor(
     @Inject(MESSAGING_DRIVERS) private readonly drivers: MessagingDrivers,
@@ -71,6 +93,7 @@ export class MessageProcessor {
     private readonly encryption: FieldEncryption,
     private readonly outbox: OutboxDispatcher,
     private readonly notifications: NotificationService,
+    private readonly storage: ObjectStorage,
   ) {}
 
   /** One round. Returns what happened, for tests and the job log. */
@@ -198,7 +221,7 @@ export class MessageProcessor {
     const outcome = await this.drivers.push.send(
       devices.map((d) => d.pushToken),
       {
-        title: titleOf(message.type, message.subjectType, settings.name),
+        title: titleFor(message, settings.name),
         body: message.body,
         // R173: ids only.
         data: {
@@ -226,17 +249,39 @@ export class MessageProcessor {
     const usable = live && (live.status === 'connected' || message.type === 'messaging_test');
     if (!usable) return failed('session_down');
     if (contact.phone === null) return failed('invalid_number');
-    const outcome = await this.drivers.whatsapp[live.provider].sendText(
-      this.sender(schoolId, live),
-      contact.phone,
-      message.body,
-      `asms_${message.type}_v1`,
-    );
+    const driver = this.drivers.whatsapp[live.provider];
+    const template = `asms_${message.type}_v1`;
+    // R148: an attachment travels as bytes with the body as its caption, never as a URL.
+    const outcome =
+      message.mediaObjectKey === null
+        ? await driver.sendText(this.sender(schoolId, live), contact.phone, message.body, template)
+        : await driver.sendMedia(
+            this.sender(schoolId, live),
+            contact.phone,
+            message.body,
+            await this.media(schoolId, message, message.mediaObjectKey),
+            template,
+          );
     if (outcome.kind === 'paced') return outcome;
     const masked = maskPhone(contact.phone);
     if (outcome.kind === 'failed') return failed(outcome.error, masked);
     await this.usage.increment(schoolId, yearMonthIn(settings.timezone, now), 'whatsapp');
     return accepted(outcome.ref === null ? null : providerRefHash('whatsapp', outcome.ref), masked);
+  }
+
+  /**
+   * The attachment's bytes, read from the school's own prefix (as every stream is); a key outside
+   * it throws, so the leg fails as an unexpected error and nothing is sent. Read once per fan-out
+   * through the cache, after the prefix check.
+   */
+  private async media(schoolId: SchoolId, message: MessageRecord, key: string): Promise<MediaFile> {
+    const extension = key.slice(key.lastIndexOf('.') + 1);
+    const mime = MEDIA_MIMES[extension];
+    if (!key.startsWith(`${schoolId}/`) || mime === undefined) {
+      throw new Error('message media key outside the school prefix');
+    }
+    const bytes = await this.#media.get(key, async () => buffer((await this.storage.get(key)).body));
+    return { bytes, mime, filename: `announcement-${message.subjectId}.${extension}` };
   }
 
   private sender(schoolId: SchoolId, live: WhatsAppNumberRecord): WhatsAppSender {
@@ -259,7 +304,8 @@ export class MessageProcessor {
     // bypasses it (§5.1).
     if (!allowed) return suppressed('not_allowed');
     if (contact.phone === null || !PK_MOBILE.test(contact.phone)) return failed('invalid_number');
-    const text = toGsm7(message.body);
+    // R148: an attachment is "see the app" on SMS (contracts/slice-14.md §5.4).
+    const text = smsTextOf(message.body, message.mediaObjectKey !== null);
     const segments = smsSegments(text);
     const yearMonth = yearMonthIn(settings.timezone, now);
     const reserved = await this.usage.reserveSms(schoolId, yearMonth, segments, settings.smsMonthlyCap);
@@ -284,11 +330,7 @@ export class MessageProcessor {
 
   private async email({ schoolId, message, contact, settings, now }: Round): Promise<Attempt> {
     if (contact.email === null) return failed('rejected');
-    const outcome = await this.drivers.email.send(
-      contact.email,
-      titleOf(message.type, message.subjectType, settings.name),
-      message.body,
-    );
+    const outcome = await this.drivers.email.send(contact.email, titleFor(message, settings.name), message.body);
     if (outcome.kind !== 'accepted') return failed(outcome.kind === 'failed' ? outcome.error : 'unknown');
     await this.usage.increment(schoolId, yearMonthIn(settings.timezone, now), 'email');
     return accepted(null, null);

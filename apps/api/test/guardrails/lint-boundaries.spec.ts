@@ -464,6 +464,30 @@ describe('lint boundaries (R61)', () => {
         expect(await lintAs('messaging-driver-import.ts', at)).toEqual([]);
       },
     );
+
+    // contracts/slice-14.md §1.1 (R114): the platform never reads announcements or messages.
+    it.each([
+      'src/modules/platform/messaging/delivery-health.service.ts',
+      'src/modules/platform/schools/schools.service.ts',
+      'src/modules/students/students.service.ts',
+      'src/messaging/notification.service.ts',
+    ])('refuses an announcement or inbox repository at %s', async (at) => {
+      await refusedFor(
+        'announcement-repository-import.ts',
+        at,
+        'Announcement and inbox repositories are imported only from',
+      );
+    });
+
+    it.each([
+      'src/modules/announcements/announcements.service.ts',
+      'src/modules/me/inbox.service.ts',
+      'src/modules/calendar/holidays.service.ts',
+      'src/jobs/job-runner.ts',
+      'src/repositories/announcement.repository.ts',
+    ])('allows an announcement or inbox repository at %s', async (at) => {
+      expect(await lintAs('announcement-repository-import.ts', at)).toEqual([]);
+    });
   });
 
   it('refuses explicit any', async () => {

@@ -34,8 +34,23 @@ const DROPPED_KEYS = new Set(
     'remark',
     'cnic',
     'identity',
+    // Slice 16 (§3.7): typed text and the arrays that could carry names.
+    'topic',
+    'assignment',
+    'learningOutcome',
+    'reason',
+    'title',
+    'studentFullName',
+    'viaStudents',
+    'marks',
+    'audiences',
   ].map((key) => key.toLowerCase()),
 );
+
+/** True when typed text carries a phone number (refused before a write is saved, slice-16 §3.4). */
+export function containsPhone(text: string): boolean {
+  return new RegExp(PHONE.source).test(text);
+}
 
 export function scrubText(text: string): string {
   return text

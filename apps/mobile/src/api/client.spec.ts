@@ -5,9 +5,11 @@ import * as lanes from '../outbox/lanes';
 import type { OutboxItem } from '../outbox/machine';
 import {
   api,
+  authHeaders,
   onSessionLost,
   onUpgradeRequired,
   READ_TIMEOUT_MS,
+  sendMultipart,
   sendRaw,
   setBearerToken,
   unwrap,
@@ -67,6 +69,7 @@ describe('headers', () => {
       responseStatus: null,
       responseCode: null,
       responseMessage: null,
+      responseDetails: null,
       domainTable: null,
       domainId: null,
       createdAt: '',
@@ -75,18 +78,10 @@ describe('headers', () => {
     await sendItem(base);
     expect(fake.calls[0]!.headers.has('Idempotency-Key')).toBe(false);
 
-    // A header lane (slice 16's diary_entry) is simulated by registering it for this test.
-    const spy = jest.spyOn(lanes, 'laneOf').mockReturnValue({
-      method: 'POST',
-      path: '/api/v1/sections/:id/diary-entries',
-      idempotencyHeader: true,
-      coalesces: false,
-      label: 'Diary',
-      remedy: null,
-    });
+    // A header lane (slice 16's diary_entry).
+    expect(lanes.laneOf('diary_entry')?.idempotencyHeader).toBe(true);
     await sendItem({ ...base, lane: 'diary_entry', path: '/api/v1/sections/12/diary-entries' });
     expect(fake.calls[1]!.headers.get('Idempotency-Key')).toBe(base.id);
-    spy.mockRestore();
   });
 });
 
@@ -236,5 +231,58 @@ describe('timeouts', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('slice-16 §11: multipart and the headers for requests the client does not make', () => {
+  test('a multipart upload carries the bearer and X-App-Version, no JSON type, no Origin, no cookie', async () => {
+    const fake = installFakeApi({
+      'POST /api/v1/uploads': () => ({ status: 201, body: { id: 'u1' } }),
+    });
+    setBearerToken(token);
+    const response = await sendMultipart('/api/v1/uploads', 'file', {
+      uri: 'file:///x/p1.jpg',
+      name: 'p1.jpg',
+      mime: 'image/jpeg',
+    });
+    expect(response.status).toBe(201);
+    const [call] = fake.calls;
+    expect(call!.method).toBe('POST');
+    expect(call!.headers.get('Authorization')).toBe(`Bearer ${token}`);
+    expect(call!.headers.get('X-App-Version')).toBe('0.1.0');
+    expect(call!.headers.get('Content-Type') ?? '').not.toContain('application/json');
+    expect(call!.headers.has('Origin')).toBe(false);
+    expect(call!.headers.has('Cookie')).toBe(false);
+    expect(call!.credentials).toBe('omit');
+  });
+
+  test('authHeaders: the bearer only when signed in, never in a URL', () => {
+    expect(authHeaders()).toEqual({ 'X-App-Version': '0.1.0', Accept: 'image/*' });
+    setBearerToken(token);
+    expect(authHeaders('application/pdf')).toEqual({
+      'X-App-Version': '0.1.0',
+      Accept: 'application/pdf',
+      Authorization: `Bearer ${token}`,
+    });
+    setBearerToken(null);
+    expect(authHeaders()).not.toHaveProperty('Authorization');
+  });
+
+  test('no file outside client.ts writes a Bearer header itself', () => {
+    const { readdirSync, readFileSync, statSync } =
+      jest.requireActual<typeof import('node:fs')>('node:fs');
+    const { join, relative } = jest.requireActual<typeof import('node:path')>('node:path');
+    const root = join(__dirname, '..');
+    const files = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        return statSync(path).isDirectory() ? files(path) : [path];
+      });
+    const offenders = files(root)
+      .filter((f) => /\.tsx?$/.test(f) && !/\.spec\.tsx?$/.test(f) && !/[\/]test[\/]/.test(f))
+      .filter((f) => !f.endsWith(join('api', 'client.ts')))
+      .filter((f) => /['"`]Bearer/.test(readFileSync(f, 'utf8')))
+      .map((f) => relative(root, f));
+    expect(offenders).toEqual([]);
   });
 });

@@ -5,7 +5,10 @@
 //   expo-notifications      → src/push/registration.ts    (§8)
 //   openapi-fetch, fetch    → src/api/client.ts           (§2.5)
 //   @react-native-community/netinfo → src/net/connectivity.ts (§7.5)
-//   expo-image              → src/ui/Attachment.tsx       (slice 16; nothing in 15 renders remote images)
+//   expo-image              → src/ui/Attachment.tsx       (slice 16: tap to load, R160)
+//   expo-image-picker, expo-image-manipulator → src/media/picker.ts (slice-16 §13.1)
+//   expo-file-system, expo-sharing            → src/media/files.ts
+//   expo-screen-capture     → src/ui/Screen.tsx           (FLAG_SECURE, slice-16 §13.2)
 //   console                 → src/platform/log.ts         (§10)
 // and bans outright: AsyncStorage (R155), deep imports of @asms/shared, refetchInterval (R160).
 // Inline eslint-disable comments have no effect (the API's rule). Each boundary is proven to fire
@@ -21,6 +24,11 @@ const DOORS = {
   'openapi-fetch': { file: 'src/api/client.ts', what: 'The API client' },
   '@react-native-community/netinfo': { file: 'src/net/connectivity.ts', what: 'Connectivity' },
   'expo-image': { file: 'src/ui/Attachment.tsx', what: 'Remote images (tap to load, R160)' },
+  'expo-image-picker': { file: 'src/media/picker.ts', what: 'The camera and photo library' },
+  'expo-image-manipulator': { file: 'src/media/picker.ts', what: 'Photo downscaling' },
+  'expo-file-system': { file: 'src/media/files.ts', what: 'Files on the device' },
+  'expo-sharing': { file: 'src/media/files.ts', what: 'The share sheet' },
+  'expo-screen-capture': { file: 'src/ui/Screen.tsx', what: 'FLAG_SECURE (Screen secure)' },
 };
 
 const BANNED = [
@@ -33,15 +41,15 @@ const BANNED_PATTERNS = [
   { group: ['@asms/shared/*'], message: 'Import from @asms/shared, never a deep path.' },
 ];
 
-/** The import restriction for a file: every door closed except `open`. */
-function restrictImports(open = null) {
+/** The import restriction for a file: every door closed except those in `open`. */
+function restrictImports(open = []) {
   return [
     'error',
     {
       paths: [
         ...BANNED,
         ...Object.entries(DOORS)
-          .filter(([name]) => name !== open)
+          .filter(([name]) => !open.includes(name))
           .map(([name, door]) => ({
             name,
             message: `${door.what} is reached only through ${door.file}.`,
@@ -116,9 +124,15 @@ module.exports = tsConfig(
     },
   },
   // The doors.
-  ...Object.entries(DOORS).map(([name, door]) => ({
-    files: [door.file],
-    rules: { 'no-restricted-imports': restrictImports(name) },
+  ...[...new Set(Object.values(DOORS).map((door) => door.file))].map((file) => ({
+    files: [file],
+    rules: {
+      'no-restricted-imports': restrictImports(
+        Object.entries(DOORS)
+          .filter(([, door]) => door.file === file)
+          .map(([name]) => name),
+      ),
+    },
   })),
   {
     files: ['src/api/client.ts'],

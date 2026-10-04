@@ -5,8 +5,19 @@ import { colors, fontSize, TAP_TARGET } from '../../ui/theme';
 // The role-aware shell (R156, slice-15 §5): composeTabs(me) intersected with the screens this
 // build has, five slots at most. Routes in this folder that are not in the bar are hidden.
 
-/** The tab routes that exist in this folder. */
-const ROUTES = ['home', 'calendar', 'account', 'more'] as const;
+/** The tab routes that exist in this folder: the screen registry plus "more" (a test holds it so). */
+const ROUTES = [
+  'home',
+  'classes',
+  'today',
+  'announce',
+  'children',
+  'student',
+  'inbox',
+  'calendar',
+  'account',
+  'more',
+] as const;
 
 export default function TabsLayout() {
   const layout = useShellTabs();

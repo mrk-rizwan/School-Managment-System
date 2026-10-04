@@ -11,10 +11,10 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1 complete and closed. **Phase 2 waves D and E done** (2026-10-04): slices 9,
-  10 (messaging, sessions, calendar) and 11, 12, 13, 15 (student and staff attendance, diary and
-  remarks, mobile foundation). **Next: wave F** = slices 14 (announcements) and 16 (mobile screens),
-  then wave G = slice 17 (phase close). Project progress ≈ 59.5 / 157 days ≈ 38 %.
+- **Phase:** Phase 1 complete and closed. **Phase 2 waves D, E and F done** (2026-10-04):
+  slices 9-16 (messaging, calendar, attendance, diary and remarks, announcements and inbox, the
+  Android app for teachers, parents, students and the principal). **Next: wave G** = slice 17
+  (phase close). Project progress = about 70 / 157 days = 45 %.
 - **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
   `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
@@ -179,6 +179,61 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-04 — Phase 2 wave F: slices 14 and 16 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
+
+**Slice 14 (announcements and inbox):** announcements with drafts, scheduling, send-now, cancel,
+attachments (5 MB, jpg/png/pdf), the audience picker (everyone, parents, students, staff, class,
+section, student, family, staff member), per-person recipients with dedupe by login, by identity
+hash and by phone, SMS units and the cap pre-check, delivery counts, `/me/inbox` for every role,
+`MeDto.capabilityScopes`. Holiday notices now go through announcements (pre-slice-14 holiday rows
+keep the old path; retiring it waits on the owner). Web screens on the generated client.
+**Slice 16 (Android screens):** 16a teacher register (offline outbox lanes, coalescing, SQLite
+migrations 2 and 3), diary with photo upload, remarks, parent and student family screens; 16b
+principal Today (unrecorded registers, Record now inside the Today stack, assign cover), Announce
+(composer, SMS usage, delivery) and the Inbox for everyone.
+
+**Decisions taken by the main thread (contracts amended):**
+- **Send-now and holiday publish no longer fan out in the request** (reverses slice-14 decision 9):
+  a cold 3,000-recipient run timed out at 23.7 s against the 15 s request transaction. The request
+  validates, checks scope and the SMS cap, sets `sending` and answers in about 0.1 s; the
+  `announcement-send` job delivers (4.4-6.1 s at 3,000, its own 120 s transaction limit). After 5
+  failed attempts the row returns to `draft` with `send_failed_at` and an audit row (migration
+  `20261004160000_slice14_send_failures`).
+- **Register submit honours `Prefer: return=minimal`** (marks become id, enrolmentId, outcome). The
+  honest teacher scripted day (700 B headers per round trip, a full 25-item inbox page) measured
+  56.0 KB against R160's 50 KB; with the minimal answer it is **44.9 KB**. Budget unchanged.
+- The mobile composer follows slice-14 §12's audience list (wider than slice-16 §7.2, which defers
+  to it); "Send without SMS" patches the same draft to normal and sends it (no duplicate draft); a
+  saved draft locks its fields.
+
+**Reviews:** security PASS twice (slice 14 + 16a; 16b). Fixed: a shared phone could get no
+WhatsApp (dedupe now keeps the sharer who has a phone leg), attachment bytes read once per
+recipient (now a bounded per-process cache), the cover sheet cached staff phones on the phone,
+child names on a non-secure screen, CI logins in process arguments. Correctness found two high
+defects, both fixed: two offline edits of one register merged into `reason: null`, which the
+server refuses, so the register was discarded; and the send-now timeout above. Also fixed:
+scheduling skipped the scope check, clock skew between worker and Redis, the 366-day range, an
+endless sweep retry, Record now leaving the principal in a tab they lack.
+
+**Also fixed this wave (main thread):** BullMQ refuses a custom job id containing ':' unless it
+has exactly three parts, so absence alerts and attendance rollups were never queued, while every
+test passed because none went through a real queue. Every id now uses '-'; new real-Redis tests
+(`test/jobs/job-ids.e2e-spec.ts`, `test/jobs/outbox-dispatcher.e2e-spec.ts`), and the messaging
+harness fails if any enqueue was swallowed. `TRANSACTION_TIMEOUT_MS` = 15 s; the CI Android setup
+and `babel-preset-expo` resolution fixed (`7054730`). Mobile Jest pinned to two workers (it ran out
+of memory with the default).
+
+**Results:** lint and typecheck clean in all packages; API 130 suites / 1,743 tests (2 skipped,
+real-provider); mobile 36 suites / 454 tests, `expo export` and the Gradle embed command clean,
+expo-doctor 21/21; web build; Playwright full suite (see the commit); hook clean.
+
+**Left from this wave (slice 17):** some API suites still enqueue to the real default `messaging`
+queue (a running dev worker would pick them up); a holiday cancel waiting on a long notice job
+could exceed its 15 s limit (safe to retry); the pre-slice-14 holiday path (about 70 lines) can go
+once the owner retires slice-10 decision 1; the new Maestro flows (`principal-today`,
+`principal-announce`, the inbox step) have never run: CI is their first run; the media cache and
+webhook counters are per process.
 
 ## 2026-10-04 — Phase 2 wave E: slices 11, 12, 13, 15 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
 

@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
-import { useSession } from '../../auth/session';
-import { useOnline } from '../../net/connectivity';
-import { Banner } from '../../ui/Banner';
-import { Screen } from '../../ui/Screen';
-import { AsOf, LoadingState, OfflineNotice } from '../../ui/states';
-import { SyncChip } from '../../ui/SyncChip';
-import { colors, fontSize, space } from '../../ui/theme';
+import { useSession } from '../../../auth/session';
+import { MyAttendanceCard } from '../../../family/MyAttendance';
+import { useOnline } from '../../../net/connectivity';
+import { Banner } from '../../../ui/Banner';
+import { Screen } from '../../../ui/Screen';
+import { AsOf, LoadingState, OfflineNotice } from '../../../ui/states';
+import { SyncChip } from '../../../ui/SyncChip';
+import { colors, fontSize, space } from '../../../ui/theme';
 
-// Home (slice-15 §14 task 15.2): who is signed in, at which school, as of when. Slice 16 adds the
-// role cards ("My attendance" for staff, children for parents) here.
+// Home (slice-15 §14 task 15.2): who is signed in, at which school, as of when. Slice 16 adds
+// the staff card "My attendance" (§6); the role tabs carry their own screens.
 export default function HomeScreen() {
   const router = useRouter();
   const session = useSession();
@@ -54,6 +55,7 @@ export default function HomeScreen() {
         </Text>
         <AsOf serverTime={me.serverTime} isDevice={me.serverTimeIsDevice} />
       </View>
+      {me.body.capacities.includes('staff') ? <MyAttendanceCard /> : null}
     </Screen>
   );
 }

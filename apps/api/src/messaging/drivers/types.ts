@@ -40,12 +40,31 @@ export interface WhatsAppSender {
 
 export type HealthOutcome = { ok: true } | { ok: false; code: WhatsAppErrorCode };
 
+/** An attachment sent as bytes, never a URL (R148). */
+export interface MediaFile {
+  bytes: Buffer;
+  /** `image/jpeg`, `image/png` or `application/pdf`. */
+  mime: string;
+  filename: string;
+}
+
 export interface WhatsAppDriver {
   /** `templateName` is the Cloud API's approved template (`asms_<type>_v1`); WAHA ignores it. */
   sendText(
     sender: WhatsAppSender,
     toE164: string,
     text: string,
+    templateName: string,
+  ): Promise<SendOutcome>;
+  /**
+   * The attachment with `caption` (contracts/slice-14.md §5.4): WAHA sendImage / sendFile; the
+   * Cloud API an uploaded-media template message whose body variable is the caption.
+   */
+  sendMedia(
+    sender: WhatsAppSender,
+    toE164: string,
+    caption: string,
+    media: MediaFile,
     templateName: string,
   ): Promise<SendOutcome>;
   health(sender: WhatsAppSender): Promise<HealthOutcome>;

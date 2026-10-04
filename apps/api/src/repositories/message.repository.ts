@@ -32,6 +32,8 @@ export interface NewMessage {
   studentId: bigint | null;
   body: string;
   mediaObjectKey: string | null;
+  /** Subject `announcement` only: the push title and email subject (contracts/slice-14.md §4.4). */
+  title: string | null;
   channelPlan: MessageChannel[];
   status: MessageStatus;
   suppressedReason: SuppressionReason | null;
@@ -48,6 +50,8 @@ export interface MessageRecord {
   staffId: bigint | null;
   studentId: bigint | null;
   body: string;
+  mediaObjectKey: string | null;
+  title: string | null;
   channelPlan: MessageChannel[];
   status: MessageStatus;
   suppressedReason: SuppressionReason | null;
@@ -66,6 +70,8 @@ const SELECT = {
   staffId: true,
   studentId: true,
   body: true,
+  mediaObjectKey: true,
+  title: true,
   channelPlan: true,
   status: true,
   suppressedReason: true,

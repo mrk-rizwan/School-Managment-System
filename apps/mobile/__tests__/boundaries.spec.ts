@@ -100,6 +100,37 @@ const DOORS: [string, string, string][] = [
     "import NetInfo from '@react-native-community/netinfo';\nexport const x = NetInfo;\n",
     'src/net/connectivity.ts',
   ],
+  // slice-16 §13.1: one door per native capability added by slice 16.
+  [
+    'expo-image',
+    "import { Image } from 'expo-image';\nexport const x = Image;\n",
+    'src/ui/Attachment.tsx',
+  ],
+  [
+    'expo-image-picker',
+    "import * as ImagePicker from 'expo-image-picker';\nexport const x = ImagePicker;\n",
+    'src/media/picker.ts',
+  ],
+  [
+    'expo-image-manipulator',
+    "import { ImageManipulator } from 'expo-image-manipulator';\nexport const x = ImageManipulator;\n",
+    'src/media/picker.ts',
+  ],
+  [
+    'expo-file-system',
+    "import { File } from 'expo-file-system';\nexport const x = File;\n",
+    'src/media/files.ts',
+  ],
+  [
+    'expo-sharing',
+    "import { shareAsync } from 'expo-sharing';\nexport const x = shareAsync;\n",
+    'src/media/files.ts',
+  ],
+  [
+    'expo-screen-capture',
+    "import { preventScreenCaptureAsync } from 'expo-screen-capture';\nexport const x = preventScreenCaptureAsync;\n",
+    'src/ui/Screen.tsx',
+  ],
 ];
 
 describe.each(DOORS)('%s has one door', (_name, code, door) => {

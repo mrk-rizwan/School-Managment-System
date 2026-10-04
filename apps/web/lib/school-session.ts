@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { unwrap } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/errors';
+import type { CapabilityScope } from '@/lib/api/school-announcements-contract';
 import { school, type MeDto } from '@/lib/api/school-contract';
 
 // School console session handling (contracts/slice-2.md §1, §4, §10), the same pattern as
@@ -57,7 +58,19 @@ export function useCapabilities() {
   const held = useMemo(() => new Set<string>(me.data?.capabilities ?? []), [me.data]);
   // While GET /me is pending (or failed) nothing is held, so write controls stay hidden.
   const can = useCallback((capability: Capability) => held.has(capability), [held]);
-  return { can };
+  const scopeOf = useCallback((capability: Capability) => capabilityScope(me.data, capability), [me.data]);
+  return { can, scopeOf };
+}
+
+/**
+ * Where a held capability reaches (contracts/slice-14.md §8, `MeDto.capabilityScopes`): `all`
+ * (every row of the school: a principal or office default, a custom role or a grant) or
+ * `assigned_sections` (only through the teacher default: rows come from today's assignments).
+ * Null when the capability is not held. Decides school-wide controls; the API checks every call.
+ */
+export function capabilityScope(me: MeDto | undefined, capability: Capability): CapabilityScope | null {
+  const scopes = me?.capabilityScopes ?? [];
+  return scopes.find((s) => s.capability === capability)?.scope ?? null;
 }
 
 /**

@@ -66,13 +66,6 @@ export interface PublishedHoliday {
   appliesToStaff: boolean;
 }
 
-/** One person each, as §4.7 resolves them; ids only. */
-export interface NoticeRecipients {
-  guardianIds: bigint[];
-  staffIds: bigint[];
-  studentIds: bigint[];
-}
-
 const SELECT = {
   id: true,
   startsOn: true,
@@ -97,8 +90,6 @@ const overlapping = (from: Date | undefined, to: Date | undefined): Prisma.Holid
   ...(from === undefined ? {} : { endsOn: { gte: from } }),
   ...(to === undefined ? {} : { startsOn: { lte: to } }),
 });
-
-const ascending = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
 
 @Injectable()
 export class HolidayRepository {
@@ -238,46 +229,15 @@ export class HolidayRepository {
   }
 
   /**
-   * The holiday notice's recipients (contracts/slice-10.md §4.7), one row per person: guardians
-   * not merged with a live link to an active student; active staff; active students with a live
-   * login while student login is enabled (`studentLoginEnabled`, the school's setting, read by
-   * the caller). A staff member whose login also carries a guardian of the guardian set is
-   * dropped (one person, the guardian plan). Four sequential statements.
+   * The announcement that is the holiday's notice (R151, contracts/slice-14.md §6.1), set once in
+   * the publish transaction. The caller holds the row lock.
    */
-  async noticeRecipients(schoolId: SchoolId, studentLoginEnabled: boolean): Promise<NoticeRecipients> {
-    const guardians = await this.txHost.tx.guardian.findMany({
-      where: {
-        schoolId,
-        mergedIntoId: null,
-        studentLinks: { some: { endedAt: null, student: { is: { status: 'active' } } } },
-      },
-      select: { id: true },
+  setAnnouncement(schoolId: SchoolId, id: bigint, announcementId: bigint): Promise<HolidayRecord> {
+    return this.txHost.tx.holiday.update({
+      where: { schoolId_id: { schoolId, id } },
+      data: { announcementId },
+      select: SELECT,
     });
-    const guardianIds = new Set(guardians.map((g) => g.id));
-    const staff = await this.txHost.tx.staff.findMany({
-      where: { schoolId, status: 'active' },
-      select: { id: true },
-    });
-    const staffIds = staff.map((s) => s.id);
-    const alsoGuardians =
-      staffIds.length === 0 || guardianIds.size === 0
-        ? []
-        : await this.txHost.tx.user.findMany({
-            where: { schoolId, staffId: { in: staffIds }, guardianId: { in: [...guardianIds] } },
-            select: { staffId: true },
-          });
-    const dropped = new Set(alsoGuardians.map((u) => u.staffId));
-    const students = studentLoginEnabled
-      ? await this.txHost.tx.student.findMany({
-          where: { schoolId, status: 'active', user: { is: { status: 'active' } } },
-          select: { id: true },
-        })
-      : [];
-    return {
-      guardianIds: [...guardianIds].sort(ascending),
-      staffIds: staffIds.filter((id) => !dropped.has(id)).sort(ascending),
-      studentIds: students.map((s) => s.id).sort(ascending),
-    };
   }
 
   /** Publisher and canceller staff names: two sequential reads whatever the page size. */

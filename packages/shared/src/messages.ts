@@ -63,6 +63,9 @@ export const SUPPRESSION_REASONS = [
   'backdated',
   // A queued notice withdrawn because its subject was cancelled (contracts/slice-10.md §4.6).
   'subject_cancelled',
+  // A later recipient sharing an earlier one's phone: its WhatsApp and SMS legs were removed and
+  // nothing else was left (contracts/slice-14.md §4.4).
+  'duplicate_phone',
 ] as const;
 export type SuppressionReason = (typeof SUPPRESSION_REASONS)[number];
 

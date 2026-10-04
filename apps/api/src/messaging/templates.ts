@@ -18,6 +18,8 @@ export interface RenderContext {
   schoolName: string;
   timezone: string;
   subjectType: MessageSubjectType;
+  /** The sender's own composed body (announcement types, contracts/slice-14.md §4.4). */
+  body?: string;
 }
 
 // ---------------------------------------------------------------------------------- GSM-7
@@ -166,9 +168,15 @@ const notWritten = (type: MessageType) => (): string => {
   throw new Error(`the ${type} template is written by its own slice`);
 };
 
+/** An announcement's body is the sender's (composeAnnouncement); there is no template. */
+const senderBody = (_vars: Record<string, never>, ctx: RenderContext): string => {
+  if (ctx.body === undefined) throw new Error('an announcement is sent with its composed body');
+  return ctx.body;
+};
+
 const RENDERERS: Renderers = {
-  announcement_urgent: notWritten('announcement_urgent'),
-  announcement_normal: notWritten('announcement_normal'),
+  announcement_urgent: senderBody,
+  announcement_normal: senderBody,
   whatsapp_session_down: notWritten('whatsapp_session_down'),
 
   messaging_test: (vars, ctx) =>
@@ -313,4 +321,65 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
     default:
       return schoolLabel(schoolName);
   }
+}
+
+// ---------------------------------------------------------------------------- announcements
+
+/**
+ * Appended to the SMS text of a message with an attachment (R148: "see the app" on SMS, never a
+ * URL). The processor's SMS leg adds it; segment counts include it (contracts/slice-14.md §4.5).
+ */
+export const ATTACHMENT_SMS_LINE = 'Attachment: open the app to view it.';
+
+/**
+ * The stored body of an announcement's messages (contracts/slice-14.md §5.4): the school's name,
+ * the title and the body. At most 30 + 2 + 120 + 1 + 1,800 = 1,953 characters.
+ */
+export const composeAnnouncement = (schoolName: string, title: string, body: string): string =>
+  `${schoolLabel(schoolName)}: ${title}\n${body}`;
+
+/** The GSM-7 text an SMS leg sends for a stored body (the processor) and its preview (§4.5). */
+export const smsTextOf = (body: string, hasAttachment: boolean): string =>
+  toGsm7(body) + (hasAttachment ? `\n${ATTACHMENT_SMS_LINE}` : '');
+
+/** A title and body that, composed, fit one SMS segment: `name` is cut to make room (R110). */
+function fitHolidayText(
+  schoolName: string,
+  title: string,
+  name: string,
+  body: (name: string) => string,
+): { title: string; body: string } {
+  const fitted = fitOneSegment(name, (n) => composeAnnouncement(schoolName, title, body(n)));
+  return { title, body: fitted.slice(composeAnnouncement(schoolName, title, '').length) };
+}
+
+/**
+ * The announcement that is a holiday's notice (contracts/slice-14.md §6.1, decision 14): title
+ * `School closed Mon 6 Oct to Fri 10 Oct`, body `Eid ul Fitr. Reopens Mon 13 Oct.`, one segment
+ * with the longest fixtures (the name is cut to fit).
+ */
+export function holidayNoticeText(
+  schoolName: string,
+  holiday: { name: string; startsOn: Date; endsOn: Date; reopensOn: Date | null },
+): { title: string; body: string } {
+  const reopens = holiday.reopensOn === null ? '' : ` Reopens ${formatDay(holiday.reopensOn)}.`;
+  return fitHolidayText(
+    schoolName,
+    cutWords(`School closed ${range(holiday.startsOn, holiday.endsOn)}`, 120),
+    holiday.name,
+    (name) => `${name}.${reopens}`,
+  );
+}
+
+/** A published holiday's cancellation notice (§6.2): one segment, the name cut to fit. */
+export function holidayCancellationText(
+  schoolName: string,
+  holiday: { name: string; startsOn: Date; endsOn: Date },
+): { title: string; body: string } {
+  return fitHolidayText(
+    schoolName,
+    cutWords(`Holiday cancelled: ${range(holiday.startsOn, holiday.endsOn)}`, 120),
+    holiday.name,
+    (name) => `The holiday (${name}) is cancelled. School is open as normal.`,
+  );
 }

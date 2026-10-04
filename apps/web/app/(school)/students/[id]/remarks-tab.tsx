@@ -14,10 +14,9 @@ import { Label } from '@/components/ui/label';
 import { unwrap } from '@/lib/api/client';
 import { diaryApi, type RemarkDto, type RemarkQuery } from '@/lib/api/school-diary-contract';
 import type { StudentDetailDto } from '@/lib/api/school-students-contract';
-import { formatDay, formatDateTime, todayInSchool } from '@/lib/format';
+import { formatDay, formatDateTime } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
-import { mySections } from '../../attendance/_lib/attendance-ui';
 import { REMARK_CATEGORY_LABELS, REMARK_VISIBILITY_LABELS, remarkKeys } from '../_lib/remarks-ui';
 import { CorrectRemarkDialog, NewRemarkDialog } from './remark-dialogs';
 
@@ -27,7 +26,7 @@ import { CorrectRemarkDialog, NewRemarkDialog } from './remark-dialogs';
 const LIMIT = 20;
 
 export function RemarksTab({ student }: { student: StudentDetailDto }) {
-  const { can } = useCapabilities();
+  const { can, scopeOf } = useCapabilities();
   const me = useSchoolMe();
   const canWrite = can(Capability.REMARK_WRITE);
   const [category, setCategory] = useState<'' | RemarkCategory>('');
@@ -60,11 +59,12 @@ export function RemarksTab({ student }: { student: StudentDetailDto }) {
     enabled: !datesBackwards,
   });
 
-  // A section-scoped teacher may correct only their own remarks (§5.3); a school-wide holder any.
+  // A section-scoped teacher may correct only their own remarks (§5.3); a school-wide holder
+  // (GET /me capabilityScopes `all`, contracts/slice-14.md §8) any.
   const staffId = me.data?.staffId ?? null;
-  const sectionScoped = mySections(me.data, todayInSchool()).some((s) => s.sectionId === student.current?.sectionId);
+  const schoolWide = scopeOf(Capability.REMARK_WRITE) === 'all';
   const mayCorrect = (r: RemarkDto) =>
-    canWrite && r.supersededAt === null && (r.authorStaffId === staffId || !sectionScoped);
+    canWrite && r.supersededAt === null && (r.authorStaffId === staffId || schoolWide);
 
   // Each superseded original is listed straight after the row that corrects it.
   const rows = orderChains(list.data?.data ?? []);

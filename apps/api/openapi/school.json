@@ -417,6 +417,197 @@
         ],
         "type": "object"
       },
+      "AnnouncementCategory": {
+        "enum": [
+          "holiday",
+          "exam",
+          "fee",
+          "event",
+          "general"
+        ],
+        "type": "string"
+      },
+      "AnnouncementDto": {
+        "properties": {
+          "attachmentMime": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "application/pdf"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "attachmentSizeBytes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceDto"
+            },
+            "type": "array"
+          },
+          "body": {
+            "type": "string"
+          },
+          "cancelReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cancelledAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "cancelledBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementCategory"
+              }
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "expiresOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "holidayId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "messageType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageType"
+              }
+            ]
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementPriority"
+              }
+            ]
+          },
+          "recipientCount": {
+            "type": "number"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "sendFailedAt": {
+            "description": "Set on a draft whose send failed five times and was given up; cleared by the next send",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "sentAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "smsSegments": {
+            "description": "SMS segments per message when the type may travel by SMS now; else null",
+            "nullable": true,
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementStatus"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "category",
+          "priority",
+          "messageType",
+          "status",
+          "audiences",
+          "scheduledAt",
+          "expiresOn",
+          "hasAttachment",
+          "attachmentMime",
+          "attachmentSizeBytes",
+          "holidayId",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "updatedAt",
+          "sentAt",
+          "cancelledAt",
+          "cancelledBy",
+          "cancelReason",
+          "recipientCount",
+          "sendFailedAt",
+          "smsSegments"
+        ],
+        "type": "object"
+      },
+      "AnnouncementPriority": {
+        "enum": [
+          "normal",
+          "urgent"
+        ],
+        "type": "string"
+      },
+      "AnnouncementSort": {
+        "enum": [
+          "-createdAt",
+          "createdAt",
+          "-scheduledAt",
+          "-sentAt"
+        ],
+        "type": "string"
+      },
+      "AnnouncementStatus": {
+        "enum": [
+          "draft",
+          "scheduled",
+          "sending",
+          "sent",
+          "cancelled"
+        ],
+        "type": "string"
+      },
       "ApiErrorBodyDto": {
         "properties": {
           "code": {
@@ -606,6 +797,162 @@
         ],
         "type": "string"
       },
+      "AudienceDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudienceKind"
+              }
+            ]
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceRole"
+            },
+            "type": "array"
+          },
+          "targetId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "targetId",
+          "targetName",
+          "roles"
+        ],
+        "type": "object"
+      },
+      "AudienceInputDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudienceKind"
+              }
+            ]
+          },
+          "roles": {
+            "description": "class, section and student only; 1-2 distinct; absent = both",
+            "items": {
+              "$ref": "#/components/schemas/AudienceRole"
+            },
+            "maxItems": 2,
+            "type": "array"
+          },
+          "targetId": {
+            "description": "Required for class, section, student, guardian, staff_member; forbidden otherwise",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "AudienceItemCountDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudienceKind"
+              }
+            ]
+          },
+          "persons": {
+            "description": "Persons this item contributes before dedupe",
+            "type": "number"
+          },
+          "targetId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "targetId",
+          "targetName",
+          "persons"
+        ],
+        "type": "object"
+      },
+      "AudienceKind": {
+        "enum": [
+          "everyone",
+          "parents",
+          "students",
+          "staff",
+          "class",
+          "section",
+          "student",
+          "guardian",
+          "staff_member"
+        ],
+        "type": "string"
+      },
+      "AudiencePreviewDto": {
+        "properties": {
+          "byAudience": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceItemCountDto"
+            },
+            "type": "array"
+          },
+          "computedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/RecipientCountsDto"
+          },
+          "sms": {
+            "$ref": "#/components/schemas/SmsPreviewDto"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/AudiencePreviewWarning"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "recipients",
+          "byAudience",
+          "sms",
+          "warnings",
+          "computedAt"
+        ],
+        "type": "object"
+      },
+      "AudiencePreviewWarning": {
+        "enum": [
+          "sms_cap_short",
+          "sms_too_long",
+          "no_recipients",
+          "whatsapp_not_connected"
+        ],
+        "type": "string"
+      },
+      "AudienceRole": {
+        "enum": [
+          "parents",
+          "students"
+        ],
+        "type": "string"
+      },
       "CalendarHolidayDto": {
         "properties": {
           "appliesToStaff": {
@@ -642,6 +989,19 @@
           "name",
           "kind",
           "appliesToStaff"
+        ],
+        "type": "object"
+      },
+      "CancelAnnouncementDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -938,6 +1298,37 @@
         ],
         "type": "object"
       },
+      "ChannelCountsDto": {
+        "properties": {
+          "accepted": {
+            "type": "number"
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExternalChannel"
+              }
+            ]
+          },
+          "delivered": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "suppressed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "channel",
+          "accepted",
+          "delivered",
+          "failed",
+          "suppressed"
+        ],
+        "type": "object"
+      },
       "ClassDto": {
         "properties": {
           "academicYearId": {
@@ -1163,6 +1554,69 @@
           "student",
           "guardians",
           "enrolment"
+        ],
+        "type": "object"
+      },
+      "CreateAnnouncementDto": {
+        "properties": {
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceInputDto"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "body": {
+            "description": "Line breaks kept",
+            "maxLength": 1800,
+            "minLength": 1,
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementCategory"
+              }
+            ]
+          },
+          "expiresOn": {
+            "description": "Today or later; the last day it shows in an inbox",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementPriority"
+              }
+            ]
+          },
+          "scheduledAt": {
+            "description": "At least 1 minute and at most 90 days ahead; takes effect at send",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "stagedUploadId": {
+            "description": "One attachment, image or PDF (POST /uploads)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body",
+          "category",
+          "priority",
+          "audiences"
         ],
         "type": "object"
       },
@@ -1763,6 +2217,62 @@
         ],
         "type": "string"
       },
+      "DeliverySummaryDto": {
+        "properties": {
+          "announcementId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "byChannel": {
+            "items": {
+              "$ref": "#/components/schemas/ChannelCountsDto"
+            },
+            "type": "array"
+          },
+          "computedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "messages": {
+            "$ref": "#/components/schemas/MessageStatusCountsDto"
+          },
+          "recipients": {
+            "$ref": "#/components/schemas/RecipientCountsDto"
+          },
+          "smsSegmentsPerMessage": {
+            "nullable": true,
+            "type": "number"
+          },
+          "smsUnitsReserved": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementStatus"
+              }
+            ]
+          },
+          "suppressions": {
+            "items": {
+              "$ref": "#/components/schemas/SuppressionCountDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "announcementId",
+          "status",
+          "recipients",
+          "messages",
+          "byChannel",
+          "suppressions",
+          "smsSegmentsPerMessage",
+          "smsUnitsReserved",
+          "computedAt"
+        ],
+        "type": "object"
+      },
       "DeviceDto": {
         "properties": {
           "appVersion": {
@@ -2187,6 +2697,15 @@
           "CAPABILITY_NOT_HELD",
           "ATTENDANCE_RECORDED_AFTER",
           "UNEXPECTED_RESPONSE"
+        ],
+        "type": "string"
+      },
+      "ExternalChannel": {
+        "enum": [
+          "push",
+          "whatsapp",
+          "sms",
+          "email"
         ],
         "type": "string"
       },
@@ -2874,6 +3393,119 @@
         ],
         "type": "string"
       },
+      "InboxItemDto": {
+        "properties": {
+          "announcementId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "attachmentMime": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "application/pdf"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementCategory"
+              }
+            ],
+            "nullable": true
+          },
+          "expiresOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "hasAttachment": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "The message id (push messageId, app route /inbox/[messageId])",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InboxItemKind"
+              }
+            ]
+          },
+          "messageType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageType"
+              }
+            ]
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessagePriority"
+              }
+            ]
+          },
+          "sentAt": {
+            "description": "When the school sent it",
+            "format": "date-time",
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageSubjectType"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "viaStudents": {
+            "items": {
+              "$ref": "#/components/schemas/ViaStudentDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "messageType",
+          "subjectType",
+          "subjectId",
+          "title",
+          "body",
+          "category",
+          "priority",
+          "sentAt",
+          "expiresOn",
+          "hasAttachment",
+          "attachmentMime",
+          "announcementId",
+          "viaStudents"
+        ],
+        "type": "object"
+      },
+      "InboxItemKind": {
+        "enum": [
+          "announcement",
+          "notice"
+        ],
+        "type": "string"
+      },
       "IssueLoginDto": {
         "properties": {
           "reason": {
@@ -2960,6 +3592,12 @@
             },
             "type": "array"
           },
+          "capabilityScopes": {
+            "items": {
+              "$ref": "#/components/schemas/MeCapabilityScopeDto"
+            },
+            "type": "array"
+          },
           "capacities": {
             "items": {
               "$ref": "#/components/schemas/Capacity"
@@ -3015,6 +3653,7 @@
           "school",
           "roles",
           "capabilities",
+          "capabilityScopes",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -3179,6 +3818,29 @@
         ],
         "type": "object"
       },
+      "MeCapabilityScopeDto": {
+        "properties": {
+          "capability": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Capability"
+              }
+            ]
+          },
+          "scope": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapabilityScope"
+              }
+            ]
+          }
+        },
+        "required": [
+          "capability",
+          "scope"
+        ],
+        "type": "object"
+      },
       "MeDto": {
         "properties": {
           "assignments": {
@@ -3190,6 +3852,12 @@
           "capabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "capabilityScopes": {
+            "items": {
+              "$ref": "#/components/schemas/MeCapabilityScopeDto"
             },
             "type": "array"
           },
@@ -3248,6 +3916,7 @@
           "school",
           "roles",
           "capabilities",
+          "capabilityScopes",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -3290,6 +3959,62 @@
           "sms",
           "email",
           "in_app"
+        ],
+        "type": "string"
+      },
+      "MessagePriority": {
+        "enum": [
+          "urgent",
+          "normal",
+          "low",
+          "internal",
+          "platform"
+        ],
+        "type": "string"
+      },
+      "MessageStatusCountsDto": {
+        "properties": {
+          "delivered": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "queued": {
+            "type": "number"
+          },
+          "sending": {
+            "type": "number"
+          },
+          "sent": {
+            "type": "number"
+          },
+          "suppressed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "queued",
+          "sending",
+          "sent",
+          "delivered",
+          "failed",
+          "suppressed"
+        ],
+        "type": "object"
+      },
+      "MessageSubjectType": {
+        "enum": [
+          "messaging_test",
+          "sms_cap",
+          "attendance_alert",
+          "register_deadline",
+          "announcement",
+          "diary_entry",
+          "remark",
+          "holiday",
+          "holiday_cancellation",
+          "teacher_assignment"
         ],
         "type": "string"
       },
@@ -3367,6 +4092,31 @@
           "months",
           "cap",
           "remaining"
+        ],
+        "type": "object"
+      },
+      "MinimalSubmittedMarkDto": {
+        "properties": {
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkOutcome"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "enrolmentId",
+          "outcome"
         ],
         "type": "object"
       },
@@ -3871,6 +4621,50 @@
         ],
         "type": "object"
       },
+      "PreviewAudienceDto": {
+        "properties": {
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceInputDto"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "body": {
+            "description": "Line breaks kept",
+            "maxLength": 1800,
+            "minLength": 1,
+            "type": "string"
+          },
+          "hasAttachment": {
+            "default": false,
+            "type": "boolean"
+          },
+          "holiday": {
+            "default": false,
+            "description": "Preview as a holiday notice (holiday_notice)",
+            "type": "boolean"
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementPriority"
+              }
+            ]
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "priority",
+          "audiences"
+        ],
+        "type": "object"
+      },
       "ReadmitDto": {
         "properties": {
           "classId": {
@@ -3914,6 +4708,29 @@
         },
         "required": [
           "reason"
+        ],
+        "type": "object"
+      },
+      "RecipientCountsDto": {
+        "properties": {
+          "guardians": {
+            "type": "number"
+          },
+          "staff": {
+            "type": "number"
+          },
+          "students": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "guardians",
+          "staff",
+          "students"
         ],
         "type": "object"
       },
@@ -4148,6 +4965,43 @@
           "web"
         ],
         "type": "string"
+      },
+      "RegisterSubmitMinimalResultDto": {
+        "properties": {
+          "alerts": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmitAlertsDto"
+              }
+            ],
+            "description": "Zeros on a replay"
+          },
+          "created": {
+            "description": "This request created the register",
+            "type": "boolean"
+          },
+          "marks": {
+            "description": "In request order",
+            "items": {
+              "$ref": "#/components/schemas/MinimalSubmittedMarkDto"
+            },
+            "type": "array"
+          },
+          "register": {
+            "$ref": "#/components/schemas/RegisterDto"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RegisterCountsDto"
+          }
+        },
+        "required": [
+          "created",
+          "register",
+          "marks",
+          "summary",
+          "alerts"
+        ],
+        "type": "object"
       },
       "RegisterSubmitResultDto": {
         "properties": {
@@ -4827,6 +5681,37 @@
         },
         "required": [
           "revoked"
+        ],
+        "type": "object"
+      },
+      "SmsPreviewDto": {
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "cap": {
+            "type": "number"
+          },
+          "legs": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "segments": {
+            "type": "number"
+          },
+          "units": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "allowed",
+          "legs",
+          "segments",
+          "units",
+          "remaining",
+          "cap"
         ],
         "type": "object"
       },
@@ -6184,6 +7069,36 @@
         ],
         "type": "object"
       },
+      "SuppressionCountDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SuppressionReason"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "count"
+        ],
+        "type": "object"
+      },
+      "SuppressionReason": {
+        "enum": [
+          "not_allowed",
+          "cap_reached",
+          "no_channel",
+          "backdated",
+          "subject_cancelled",
+          "duplicate_phone"
+        ],
+        "type": "string"
+      },
       "SystemRole": {
         "enum": [
           "principal",
@@ -6368,6 +7283,62 @@
           },
           "startsOn": {
             "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateAnnouncementDto": {
+        "properties": {
+          "audiences": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceInputDto"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "body": {
+            "description": "Line breaks kept",
+            "maxLength": 1800,
+            "minLength": 1,
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementCategory"
+              }
+            ]
+          },
+          "expiresOn": {
+            "description": "null = never expires",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnnouncementPriority"
+              }
+            ]
+          },
+          "scheduledAt": {
+            "description": "null returns a scheduled announcement to draft",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "stagedUploadId": {
+            "description": "null removes the attachment; a value replaces it",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -7024,6 +7995,22 @@
         "required": [
           "schoolCode",
           "token"
+        ],
+        "type": "object"
+      },
+      "ViaStudentDto": {
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName"
         ],
         "type": "object"
       },
@@ -7904,6 +8891,1057 @@
         },
         "tags": [
           "admissions"
+        ]
+      }
+    },
+    "/api/v1/announcements": {
+      "get": {
+        "operationId": "AnnouncementsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnnouncementStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnnouncementCategory"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnnouncementPriority"
+            }
+          },
+          {
+            "description": "created_at as a school-local date",
+            "in": "query",
+            "name": "createdFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "On or after createdFrom; both at most 366 days apart",
+            "in": "query",
+            "name": "createdTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "holidayId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnnouncementSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AnnouncementDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      },
+      "post": {
+        "operationId": "AnnouncementsController_create",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAnnouncementDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/preview-audience": {
+      "post": {
+        "operationId": "AnnouncementsController_preview",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewAudienceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudiencePreviewDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}": {
+      "get": {
+        "operationId": "AnnouncementsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      },
+      "patch": {
+        "operationId": "AnnouncementsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAnnouncementDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}/attachment": {
+      "get": {
+        "operationId": "AnnouncementsController_attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}/cancel": {
+      "post": {
+        "operationId": "AnnouncementsController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelAnnouncementDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}/delivery": {
+      "get": {
+        "operationId": "AnnouncementsController_delivery",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliverySummaryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}/send": {
+      "post": {
+        "operationId": "AnnouncementsController_send",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
+        ]
+      }
+    },
+    "/api/v1/announcements/{id}/thumbnail": {
+      "get": {
+        "operationId": "AnnouncementsController_thumbnail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "announcements"
         ]
       }
     },
@@ -14957,6 +16995,424 @@
         ]
       }
     },
+    "/api/v1/me/inbox": {
+      "get": {
+        "operationId": "InboxController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/InboxItemKind"
+            }
+          },
+          {
+            "description": "Announcements only",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnnouncementCategory"
+            }
+          },
+          {
+            "description": "Fixed",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "-sentAt",
+              "enum": [
+                "-sentAt"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/InboxItemDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/inbox/{id}": {
+      "get": {
+        "operationId": "InboxController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxItemDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/inbox/{id}/attachment": {
+      "get": {
+        "operationId": "InboxController_attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/inbox/{id}/thumbnail": {
+      "get": {
+        "operationId": "InboxController_thumbnail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/sessions/revoke-others": {
       "post": {
         "operationId": "MeSessionsController_revokeOthers",
@@ -17184,6 +19640,15 @@
               "pattern": "^[1-9][0-9]{0,18}$",
               "type": "string"
             }
+          },
+          {
+            "description": "return=minimal: each mark is answered as { id, enrolmentId, outcome } (RegisterSubmitMinimalResultDto), with Preference-Applied: return=minimal. Absent: the full RegisterSubmitResultDto.",
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -17205,7 +19670,7 @@
                 }
               }
             },
-            "description": ""
+            "description": "RegisterSubmitMinimalResultDto with Prefer: return=minimal"
           },
           "201": {
             "content": {
@@ -17215,7 +19680,7 @@
                 }
               }
             },
-            "description": ""
+            "description": "RegisterSubmitMinimalResultDto with Prefer: return=minimal"
           },
           "401": {
             "content": {

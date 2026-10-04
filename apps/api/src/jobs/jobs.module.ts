@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MessagingModule } from '../messaging/messaging.module';
+import { AnnouncementsModule } from '../modules/announcements/announcements.module';
 import { AttendanceModule } from '../modules/attendance/attendance.module';
 import { DocumentsModule } from '../modules/documents/documents.module';
 import { QueueTenancyModule } from '../tenancy/queue.mint';
@@ -15,7 +16,7 @@ import { WorkerHost } from './worker-host';
  * no job.
  */
 @Module({
-  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule],
+  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule, AnnouncementsModule],
   providers: [...JOB_RUNNER_PROVIDERS, ...DELIVERY_HEALTH_ROLLUP_PROVIDERS, SessionPurge, WorkerHost],
   exports: [JobRunner],
 })

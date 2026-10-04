@@ -3,8 +3,10 @@ import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 import {
   ATTENDANCE_MODES,
+  CAPABILITY_SCOPES,
   CAPACITIES,
   Capability,
+  type CapabilityScope,
   SESSION_CHANNELS,
   TEACHER_ROLES,
   type AttendanceMode,
@@ -114,6 +116,19 @@ export class MeSchoolDto {
 }
 
 /** contracts/slice-2.md §4.1, slice-9.md §2.2. Never carries a token, username or identity number. */
+/** Where an effective capability comes from, as breadth only (contracts/slice-14.md §8). */
+export class MeCapabilityScopeDto {
+  @ApiProperty({ enum: Object.values(Capability), enumName: 'Capability' })
+  capability: Capability;
+
+  /**
+   * `all`: a school-wide source (principal or office default, custom role, grant).
+   * `assigned_sections`: held only through the teacher default, so rows come from assignments (R79).
+   */
+  @ApiProperty({ enum: CAPABILITY_SCOPES, enumName: 'CapabilityScope' })
+  scope: CapabilityScope;
+}
+
 export class MeDto {
   @ApiProperty({ type: String })
   id: string;
@@ -138,6 +153,10 @@ export class MeDto {
 
   @ApiProperty({ enum: Object.values(Capability), enumName: 'Capability', isArray: true })
   capabilities: Capability[];
+
+  /** One entry per effective capability, in the same order as `capabilities` (slice-14 §8). */
+  @ApiProperty({ type: () => MeCapabilityScopeDto, isArray: true })
+  capabilityScopes: MeCapabilityScopeDto[];
 
   @ApiProperty({ type: String, format: 'date-time' })
   sessionExpiresAt: Date;

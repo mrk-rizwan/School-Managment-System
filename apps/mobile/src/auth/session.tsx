@@ -21,7 +21,9 @@ import {
 import type { MeDto } from '../api/contracts';
 import { evictCache, readCache, writeCache, type Cached } from '../db/cache';
 import { discardExpiredUnsent, getDb, wipeUnlessOwnedBy, type DiscardedItem } from '../db/database';
+import { recoverWaitingAttachments, sweepPhotoFiles } from '../db/local.repository';
 import { countUnsent, purgeFinished } from '../db/outbox.repository';
+import { deleteCachedDownloads } from '../media/files';
 import { startConnectivity, subscribeConnectivity } from '../net/connectivity';
 import { laneOf } from '../outbox/lanes';
 import { outboxWorker, recoverStaleItems } from '../outbox/runtime';
@@ -194,6 +196,10 @@ export function SessionProvider({
     await getDb();
     const now = new Date();
     await Promise.all([evictCache(now), purgeFinished(now), recoverStaleItems(now)]);
+    // Slice 16 §4.5, §13.3: photos left waiting by a crash, files no row points at, downloads.
+    await recoverWaitingAttachments(now);
+    await sweepPhotoFiles();
+    deleteCachedDownloads();
     const notice = describeDiscarded(await discardExpiredUnsent(now));
     if (notice !== null) update({ discardedNotice: notice });
     const stored = await readSession();

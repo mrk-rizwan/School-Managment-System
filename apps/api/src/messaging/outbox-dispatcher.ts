@@ -6,6 +6,7 @@ import { AfterCommit } from '../tenancy/after-commit';
 import type { SchoolId } from '../tenancy/school-id';
 import {
   alertJobId,
+  announcementSendJobId,
   healthJobId,
   JOB,
   messageJobId,
@@ -13,13 +14,27 @@ import {
   rollupJobId,
   rollupSectionDayJobId,
   type AlertJobPayload,
+  type AnnouncementSendPayload,
   type HealthJobPayload,
   type MessageJobPayload,
   type RollupJobPayload,
 } from './queues';
 
 type QueueName = (typeof QUEUE)[keyof typeof QUEUE];
-type Payload = MessageJobPayload | HealthJobPayload | AlertJobPayload | RollupJobPayload;
+type Payload =
+  | MessageJobPayload
+  | HealthJobPayload
+  | AlertJobPayload
+  | RollupJobPayload
+  | AnnouncementSendPayload;
+
+/** A scheduled announcement's send at its time (contracts/slice-14.md §5.6). */
+export interface AnnouncementSendJob {
+  id: bigint;
+  scheduledAt: Date;
+  /** The outbox sweep's minute when it recovers a lost job. */
+  sweepMinute?: number;
+}
 
 /** An attendance alert row to send at its due time (contracts/slice-11.md §6.4). */
 export interface AlertJob {
@@ -48,6 +63,12 @@ export interface RollupJob {
 export class OutboxDispatcher implements OnModuleDestroy {
   private readonly logger = new Logger('OutboxDispatcher');
   readonly #queues = new Map<QueueName, Queue>();
+  #enqueueFailures = 0;
+  /**
+   * BullMQ's key prefix; undefined is BullMQ's own, which the worker reads. Only a test overrides
+   * it, so its queues are its own and can be obliterated (test/jobs/outbox-dispatcher.e2e-spec.ts).
+   */
+  protected readonly prefix: string | undefined = undefined;
 
   constructor(
     @Inject(ENV) private readonly env: Env,
@@ -59,11 +80,20 @@ export class OutboxDispatcher implements OnModuleDestroy {
     if (!queue) {
       queue = new Queue(name, {
         connection: { url: this.env.REDIS_URL, maxRetriesPerRequest: 1 },
+        ...(this.prefix === undefined ? {} : { prefix: this.prefix }),
         defaultJobOptions: { removeOnComplete: true, removeOnFail: 1000, attempts: 1 },
       });
       this.#queues.set(name, queue);
     }
     return queue;
+  }
+
+  /**
+   * Enqueues that failed since start. A failure is swallowed (the sweep recovers the row), so this
+   * count and the error log line are how one is seen; the messaging harness asserts it stays 0.
+   */
+  get enqueueFailures(): number {
+    return this.#enqueueFailures;
   }
 
   /** Throws outside a transaction (a sender bug: send() must run in the sender's transaction). */
@@ -147,6 +177,32 @@ export class OutboxDispatcher implements OnModuleDestroy {
     );
   }
 
+  /** After the ambient transaction commits: the announcement's send, delayed to its time. */
+  announcementSendAfterCommit(schoolId: SchoolId, job: AnnouncementSendJob): void {
+    this.afterCommit.register(() => this.announcementSends(schoolId, [job]));
+  }
+
+  /** At once (the sweep): `announcement-send` jobs delayed to `scheduledAt` (0 when due). */
+  async announcementSends(
+    schoolId: SchoolId,
+    jobs: readonly AnnouncementSendJob[],
+    now: Date = new Date(),
+  ): Promise<void> {
+    await this.add(
+      jobs.map((job) => ({
+        name: JOB.announcementSend,
+        data: {
+          schoolId: schoolId.toString(),
+          announcementId: job.id.toString(),
+        } satisfies AnnouncementSendPayload,
+        opts: {
+          jobId: announcementSendJobId(job.id, job.scheduledAt, job.sweepMinute),
+          delay: Math.max(0, job.scheduledAt.getTime() - now.getTime()),
+        },
+      })),
+    );
+  }
+
   /** After the ambient transaction commits: the section-days' rollup jobs. */
   rollupsAfterCommit(schoolId: SchoolId, rollups: readonly RollupJob[]): void {
     if (rollups.length === 0) return;
@@ -179,6 +235,7 @@ export class OutboxDispatcher implements OnModuleDestroy {
       await this.queue(queue).addBulk(jobs);
     } catch (error) {
       // The sweep re-enqueues anything lost (R105); the caller's work is already committed.
+      this.#enqueueFailures++;
       this.logger.error({ ...failureLog(error), jobs: jobs.length }, 'enqueue failed');
     }
   }

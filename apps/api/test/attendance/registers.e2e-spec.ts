@@ -3,6 +3,7 @@
 // the amend and its history, replays and the two-teacher race. Rules: R118-R125, R174, R175.
 import { Client } from 'pg';
 import { Capability } from '@asms/shared';
+import { ORIGIN } from '../staff/support';
 import { createSchoolSession } from '../support/school-session';
 import { closeTestDb, type TestSchool } from '../support/schools';
 import { createSubject, createTeacherAssignment, type TestSection } from '../support/students';
@@ -78,6 +79,38 @@ describe('slice 11 registers (e2e)', () => {
     db.auditLog.findMany({ where: { schoolId: school.id, action }, orderBy: { id: 'asc' } });
 
   describe('R119 first submit, later submits, idempotency', () => {
+    it('R160: Prefer: return=minimal cuts each mark to { id, enrolmentId, outcome } and says so; without it the answer is whole; a replay with it is minimal too', async () => {
+      const { teacher, section, children } = await fresh();
+      const minimal = { Cookie: teacher.cookie, Origin: ORIGIN, Prefer: 'return=minimal' };
+      const first = await h.submit(minimal, section, { date: schoolDay(), marks: marks(children, ['present', 'absent', 'late']) });
+      expect([first.status, first.headers['preference-applied']]).toEqual([201, 'return=minimal']);
+      expect(first.headers.vary).toMatch(/Prefer/i);
+      const body = first.body as SubmitResult;
+      expect(Object.keys(body).sort()).toEqual(['alerts', 'created', 'marks', 'register', 'summary']);
+      expect(body).toMatchObject({ created: true, summary: { roster: 3, marked: 3, present: 1, absent: 1, late: 1 } });
+      expect(body.marks).toEqual(
+        children.map((c) => ({ id: expect.stringMatching(/^[1-9][0-9]*$/), enrolmentId: c.enrolmentId.toString(), outcome: 'created' })),
+      );
+
+      // The idempotent replay (same marks): 200, still minimal, the same mark ids.
+      const replay = await h.submit({ ...minimal, Prefer: 'handling=lenient, return=minimal' }, section, {
+        date: schoolDay(),
+        marks: marks(children, ['present', 'absent', 'late']),
+      });
+      expect([replay.status, replay.headers['preference-applied']]).toEqual([200, 'return=minimal']);
+      expect((replay.body as SubmitResult).marks).toEqual(body.marks.map((m) => ({ ...m, outcome: 'unchanged' })));
+      expect((replay.body as { alerts: unknown }).alerts).toEqual({ absencePending: 0, absenceBackdated: 0, lateAdvicePending: 0, cancelled: 0, corrections: 0 });
+
+      // Without the header: the whole marks, no Preference-Applied.
+      const full = await h.submit(teacher.cookie, section, { date: schoolDay(), marks: marks(children, ['present', 'absent', 'late']) });
+      expect([full.status, full.headers['preference-applied']]).toEqual([200, undefined]);
+      expect((full.body as SubmitResult).marks[0]).toMatchObject({ status: 'present', date: schoolDay(), period: 1, outcome: 'unchanged' });
+      expect(JSON.stringify(full.body).length).toBeGreaterThan(JSON.stringify(replay.body).length);
+      // Any other preference is ignored.
+      const other = await h.submit({ ...minimal, Prefer: 'return=representation' }, section, { date: schoolDay(), marks: marks(children, ['present', 'absent', 'late']) });
+      expect([other.headers['preference-applied'], (other.body as SubmitResult).marks[0]]).toEqual([undefined, expect.objectContaining({ status: 'present' })]);
+    });
+
     it('R119: a first submit missing one child is 422 ROSTER_INCOMPLETE naming it, and writes nothing', async () => {
       const { school, teacher, section, children } = await fresh();
       const res = await h.submit(teacher.cookie, section, { date: schoolDay(), marks: marks(children.slice(0, 2)) });

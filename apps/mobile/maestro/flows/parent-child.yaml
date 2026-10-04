@@ -1,0 +1,58 @@
+# slice-16 §15.2 (16a) — CI only. ci-run.sh first waits (as the guardian, over curl) until the
+# worker's rollup says the child was absent today. The parent sees it on the child's card, opens
+# the month, opens the seeded diary entry's photo (thumbnail, on a tap), the remarks, and (16b)
+# the inbox, which opens whatever the school has sent (an empty inbox says so).
+# Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${GUARDIAN_CNIC}
+- tapOn:
+    id: 'tabs.children'
+- extendedWaitUntil:
+    visible:
+      id: 'children.card.${STUDENT_ID}.today'
+      text: 'Absent'
+    timeout: 30000
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.open'
+- extendedWaitUntil:
+    visible:
+      id: 'attendanceMonth.grid'
+    timeout: 20000
+- back
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.diary'
+- extendedWaitUntil:
+    visible:
+      text: '.*Reading: chapter 3.*'
+    timeout: 20000
+- tapOn:
+    text: '.*Reading: chapter 3.*'
+- tapOn:
+    id: 'attachment.show'
+- extendedWaitUntil:
+    visible:
+      id: 'attachment.thumbnail'
+    timeout: 20000
+- tapOn:
+    id: 'diary.entrySheet.close'
+- back
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.remarks'
+- extendedWaitUntil:
+    visible:
+      id: 'familyRemarks.screen'
+    timeout: 20000
+- assertVisible:
+    text: 'No remarks.'
+- tapOn:
+    id: 'tabs.inbox'
+- extendedWaitUntil:
+    visible:
+      id: 'inbox.screen'
+    timeout: 20000

@@ -14,6 +14,7 @@ import {
   mockSchoolApi,
   open,
   page1,
+  scopesOf,
   TABLET,
   expectNoSidewaysScroll,
   type Handler,
@@ -456,4 +457,54 @@ test('principal sees the school default named; correcting writes a new row; REMA
   await second.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('This remark was already corrected. The list now shows the correction.')).toBeVisible();
   await expect(second).toBeHidden();
+});
+
+// ---- School-wide controls follow GET /me capabilityScopes (contracts/slice-14.md §8) ----
+
+test('capabilityScopes: a teacher assigned here and granted diary.write school-wide edits every entry, a colleague’s and one past its window', async ({ page }) => {
+  const granted = {
+    ...TEACHER_ME,
+    capabilityScopes: scopesOf(TEACHER_ME.capabilities, 'assigned_sections', { 'diary.write': 'all' }),
+  };
+  await mockSchoolApi(page, { me: granted, handler: diaryHandler([MATHS, ENGLISH, OLD]) });
+  await open(page, '/sections/sec-a/diary');
+  await page.getByRole('tab', { name: 'week' }).click();
+  // Assigned here, yet the grant reaches every entry: Imran Ali's, and the one past its window.
+  await expect(page.getByRole('button', { name: /^Edit .* entry$/ })).toHaveCount(3);
+  await expect(page.getByTestId('edit-locked')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Edit English entry' }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit English, 6 Oct 2026' }).getByLabel('Reason (optional)')).toBeVisible();
+});
+
+test('capabilityScopes: a section-scoped teacher not assigned to the section is not shown school-wide controls', async ({ page }) => {
+  // The old rule read "not assigned here" as "school-wide"; the scope says otherwise.
+  const elsewhere = { ...TEACHER_ME, assignments: [assignment({ sectionId: 'sec-b', sectionName: 'B' })] };
+  await mockSchoolApi(page, { me: elsewhere, handler: diaryHandler([MATHS, ENGLISH]) });
+  await open(page, '/sections/sec-a/diary');
+  await expect(page.getByTestId('diary-entry-d2')).toBeVisible();
+  await expect(page.getByTestId('diary-entry-d2').getByRole('button', { name: /Edit/ })).toHaveCount(0);
+  // Their own entry (d1, written as author st-t) still opens.
+  await expect(page.getByRole('button', { name: 'Edit Mathematics entry' })).toBeVisible();
+});
+
+test('capabilityScopes: remark "Correct" on a colleague’s remark with remark.write school-wide, never with the teacher default', async ({ page }) => {
+  const granted = {
+    ...TEACHER_ME,
+    capabilityScopes: scopesOf(TEACHER_ME.capabilities, 'assigned_sections', { 'remark.write': 'all' }),
+  };
+  await mockSchoolApi(page, { me: granted, handler: remarksHandler() });
+  await open(page, '/students/s1');
+  await page.getByRole('tab', { name: 'Remarks' }).click();
+  await page.getByRole('button', { name: 'Actions for the remark of 2 Oct 2026' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Correct' })).toBeVisible();
+});
+
+test('capabilityScopes: a teacher of another section corrects only their own remarks', async ({ page }) => {
+  const elsewhere = { ...TEACHER_ME, assignments: [assignment({ sectionId: 'sec-b', sectionName: 'B' })] };
+  await mockSchoolApi(page, { me: elsewhere, handler: remarksHandler() });
+  await open(page, '/students/s1');
+  await page.getByRole('tab', { name: 'Remarks' }).click();
+  await expect(page.getByText('Excellent reading today.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Actions for the remark of 2 Oct 2026' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Actions for the remark of 5 Oct 2026' })).toHaveCount(1);
 });

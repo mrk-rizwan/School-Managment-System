@@ -136,6 +136,33 @@ export const NoPhoneNumber = (): PropertyDecorator =>
 export const NoticeTextField = (min: number, max: number): PropertyDecorator =>
   applyDecorators(NameField(min, max), NoPhoneNumber());
 
+/** `\r` dropped; on each line whitespace runs collapsed and the ends trimmed; the whole trimmed. */
+const collapseLineSpaces = ({ value }: Raw): unknown =>
+  typeof value === 'string'
+    ? value
+        .replace(/\r/g, '')
+        .split('\n')
+        .map((line) => line.replace(SPACE_RUN, ' ').trim())
+        .join('\n')
+        .trim()
+    : value;
+
+/**
+ * Multi-line text that travels in a notice (an announcement body, contracts/slice-14.md §1.5): as
+ * NoticeTextField, but line breaks are kept (`\n` only; `\r` dropped).
+ */
+export const NoticeBodyField = (min: number, max: number): PropertyDecorator =>
+  applyDecorators(
+    Transform(collapseLineSpaces),
+    IsString(),
+    Length(min, max),
+    Matches(/^(?:\n|[^\p{Cc}])*$/u, {
+      message: '$property must not contain control characters other than line breaks',
+    }),
+    NoIdentityNumber(),
+    NoPhoneNumber(),
+  );
+
 /** Free text (a reason, an address): trimmed, `min`-`max` characters, no identity number. */
 export const TextField = (min: number, max: number): PropertyDecorator =>
   applyDecorators(Transform(trim), IsString(), Length(min, max), NoIdentityNumber());

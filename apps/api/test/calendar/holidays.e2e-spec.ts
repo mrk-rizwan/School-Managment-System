@@ -1,8 +1,11 @@
 // Holidays and the calendar end to end (contracts/slice-10.md §1-§5; R116, R117, R167): access and
 // draft visibility, create / patch / publish / cancel with their refusals and audit, the notice and
 // the cancellation (one per person, withdrawn when unsent), the R167 listener seam, and the
-// teaching-day reads for staff and for any signed-in person.
+// teaching-day reads for staff and for any signed-in person. Since slice 14 the notice and the
+// cancellation are announcements naming the holiday (R151, contracts/slice-14.md §6).
+import { AnnouncementSendJob, JOB_TRANSACTION_TIMEOUT_MS } from '../../src/modules/announcements/announcement-send.job';
 import { TRANSACTION_TIMEOUT_MS } from '../../src/tenancy/tenancy.module';
+import { asSchool } from '../messaging/support';
 import { ErrorCode } from '@asms/shared';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
 import { CalendarListenerRegistry, type HolidayRange } from '../../src/modules/calendar/calendar-listener';
@@ -84,6 +87,31 @@ describe('holidays and calendar (e2e)', () => {
       where: { schoolId: school.id, subjectType, subjectId: BigInt(id) },
       orderBy: { id: 'asc' },
     });
+
+  /**
+   * The `announcement-send` jobs the publish and cancel requests committed for this school, run as
+   * the worker runs them (contracts/slice-14.md §6.1: the request commits the notice `sending`).
+   */
+  async function deliverPending(school: TestSchool) {
+    const job = h.app.get(AnnouncementSendJob, { strict: false });
+    const pending = await db.announcement.findMany({ where: { schoolId: school.id, status: 'sending' }, orderBy: { id: 'asc' } });
+    for (const a of pending) await asSchool(h.app, school.id, () => job.run(school.id, a.id));
+  }
+  /** The holiday's notice messages: the announcement it names (R151, contracts/slice-14.md §6.1). */
+  async function noticesOf(school: TestSchool, holidayId: string) {
+    await deliverPending(school);
+    const row = await db.holiday.findFirst({ where: { schoolId: school.id, id: BigInt(holidayId) } });
+    return row?.announcementId == null ? [] : messagesFor(school, 'announcement', String(row.announcementId));
+  }
+  /** The cancellation notice's messages: the second announcement naming the holiday (§6.2). */
+  async function cancellationsOf(school: TestSchool, holidayId: string) {
+    await deliverPending(school);
+    const [, second] = await db.announcement.findMany({
+      where: { schoolId: school.id, holidayId: BigInt(holidayId) },
+      orderBy: { id: 'asc' },
+    });
+    return second === undefined ? [] : messagesFor(school, 'announcement', String(second.id));
+  }
 
   /** A login carrying a guardian or a student (no staff), and its cookie. */
   async function loginFor(school: TestSchool, link: { guardianId: bigint } | { studentId: bigint }) {
@@ -322,46 +350,59 @@ describe('holidays and calendar (e2e)', () => {
     await db.user.update({ where: { schoolId_id: { schoolId: school.id, id: staffParent.userId } }, data: { guardianId: ownGuardian.id } });
 
     const h1 = await made(principal.cookie);
-    expect(await messagesFor(school, 'holiday', h1.id)).toEqual([]); // a draft sends nothing
+    expect(await noticesOf(school, h1.id)).toEqual([]); // a draft sends nothing
     const res = await publish(principal.cookie, h1.id);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: 'published', publishedBy: String(principal.userId), publishedByName: 'Nadia Principal' });
 
-    const notices = await messagesFor(school, 'holiday', h1.id);
+    const notices = await noticesOf(school, h1.id);
     expect(notices.every((m) => m.type === 'holiday_notice')).toBe(true);
+    // R151: one announcement naming the holiday, audience everyone, sent as holiday_notice.
+    const announcementId = (res.body as Holiday).announcementId;
+    expect(announcementId).not.toBeNull();
+    expect(
+      await db.announcement.findFirst({ where: { schoolId: school.id, id: BigInt(announcementId ?? '0') } }),
+    ).toMatchObject({ holidayId: BigInt(h1.id), status: 'sent', category: 'holiday', priority: 'normal', recipientCount: notices.length });
+    expect(
+      await db.announcementAudience.findMany({ where: { schoolId: school.id, announcementId: BigInt(announcementId ?? '0') } }),
+    ).toMatchObject([{ kind: 'everyone' }]);
     const guardians = notices.flatMap((m) => (m.guardianId === null ? [] : [m.guardianId]));
     const staff = notices.flatMap((m) => (m.staffId === null ? [] : [m.staffId]));
     const students = notices.flatMap((m) => (m.studentId === null ? [] : [m.studentId]));
     expect(guardians.sort()).toEqual([parent.id, ownGuardian.id].sort());
     expect(staff.sort()).toEqual([principal.staffId, teacher.staffId].sort());
     expect(students).toEqual([kids[0]!.id]);
-    expect(notices[0]?.body).toMatch(/^.+: School closed .+ for Winter break\. Reopens .+\.$/);
+    expect(notices[0]?.body).toMatch(/^.+: School closed .+\nWinter break\. Reopens .+\.$/);
+    expect(notices[0]?.title).toMatch(/^School closed .+ to .+$/);
 
     const [audit] = (await auditFor(school, h1.id)).filter((a) => a.action === 'holiday.published');
     expect(audit?.metadata).toEqual({
       startsOn: schoolDay(10), endsOn: schoolDay(12), noticeGuardians: 2, noticeStaff: 2, noticeStudents: 1,
+      announcementId,
     });
 
     // Retry-safe: published again is 200, unchanged, no audit, nothing more sent.
     const again = await publish(principal.cookie, h1.id);
     expect(again.status).toBe(200);
     expect((await auditFor(school, h1.id)).filter((a) => a.action === 'holiday.published')).toHaveLength(1);
-    expect(await messagesFor(school, 'holiday', h1.id)).toHaveLength(notices.length);
+    expect(await noticesOf(school, h1.id)).toHaveLength(notices.length);
+    expect(await db.announcement.count({ where: { schoolId: school.id, holidayId: BigInt(h1.id) } })).toBe(1);
   });
 
   it('R117: a ten-week break is one row and one notice per person; a holiday wholly past is published with no notice', async () => {
     const { school, principal } = await fresh();
     const longBreak = await made(principal.cookie, { startsOn: schoolDay(30), endsOn: schoolDay(99), name: 'Summer vacation' });
     expect((await publish(principal.cookie, longBreak.id)).status).toBe(200);
-    expect(await messagesFor(school, 'holiday', longBreak.id)).toHaveLength(1); // the principal
+    expect(await noticesOf(school, longBreak.id)).toHaveLength(1); // the principal
     const past = await made(principal.cookie, { startsOn: schoolDay(-3), endsOn: schoolDay(-2), name: 'Rain closure' });
     expect((await publish(principal.cookie, past.id)).status).toBe(200);
-    expect(await messagesFor(school, 'holiday', past.id)).toEqual([]);
+    expect(await noticesOf(school, past.id)).toEqual([]);
+    expect(await db.announcement.count({ where: { schoolId: school.id, holidayId: BigInt(past.id) } })).toBe(0);
     const [audit] = (await auditFor(school, past.id)).filter((a) => a.action === 'holiday.published');
     expect(audit?.metadata).toMatchObject({ noticeGuardians: 0, noticeStaff: 0, noticeStudents: 0 });
   });
 
-  it('§4.7 size: a publish to 3,000 recipients completes inside the interactive-transaction limit', async () => {
+  it('§4.7 size: a publish to 3,000 recipients answers fast; its notice job writes them inside its own limit', async () => {
     const { school, principal } = await fresh();
     await db.staff.createMany({
       data: Array.from({ length: 3000 }, (_, i) => ({
@@ -371,15 +412,35 @@ describe('holidays and calendar (e2e)', () => {
       })),
     });
     const h1 = await made(principal.cookie);
-    const started = Date.now();
+    let started = Date.now();
     const res = await publish(principal.cookie, h1.id);
-    // 200 proves the transaction committed inside the configured limit (a timeout is a 500). The
-    // wall-clock bound is the same limit, so a slower runner does not fail a passing publish, but
-    // a regression that approaches the limit still does.
+    const requestMs = Date.now() - started;
     expect(res.status).toBe(200);
-    expect(Date.now() - started).toBeLessThan(TRANSACTION_TIMEOUT_MS);
-    expect(await db.message.count({ where: { schoolId: school.id, subjectType: 'holiday', subjectId: BigInt(h1.id) } })).toBe(3001);
-  }, 60_000);
+    // The request commits the holiday and its notice row and counts the audience; it writes no
+    // message. A third of the request transaction limit is the margin.
+    expect(requestMs).toBeLessThan(TRANSACTION_TIMEOUT_MS / 3);
+    const announcementId = BigInt((res.body as Holiday).announcementId ?? '0');
+    expect(await messagesFor(school, 'announcement', String(announcementId))).toHaveLength(0);
+    started = Date.now();
+    await asSchool(h.app, school.id, () => h.app.get(AnnouncementSendJob, { strict: false }).run(school.id, announcementId));
+    const jobMs = Date.now() - started;
+    globalThis.process.stdout.write(`holiday notice, 3,001 recipients: request ${requestMs} ms, job ${jobMs} ms
+`);
+    expect(jobMs).toBeLessThan(JOB_TRANSACTION_TIMEOUT_MS / 2);
+    expect(await noticesOf(school, h1.id)).toHaveLength(3001);
+  }, 180_000);
+
+  it('§6.2: a holiday cancelled before its notice job ran tells nobody of the closure, only of the cancellation', async () => {
+    const { school, principal } = await fresh();
+    const h1 = await made(principal.cookie);
+    const published = (await publish(principal.cookie, h1.id)).body as Holiday;
+    expect((await cancel(principal.cookie, h1.id, 'Exams moved')).status).toBe(200);
+    await deliverPending(school);
+    const notice = await db.announcement.findFirst({ where: { schoolId: school.id, id: BigInt(published.announcementId ?? '0') } });
+    expect(notice).toMatchObject({ status: 'sent', recipientCount: 0 });
+    expect(await messagesFor(school, 'announcement', String(notice?.id))).toEqual([]);
+    expect((await cancellationsOf(school, h1.id)).map((m) => m.staffId)).toEqual([principal.staffId]);
+  });
 
   it('publish a cancelled holiday: 409 ILLEGAL_STATUS_TRANSITION', async () => {
     const { principal } = await fresh();
@@ -408,16 +469,16 @@ describe('holidays and calendar (e2e)', () => {
     expect((await cancel(principal.cookie, h1.id)).status).toBe(200);
     const cancels = (await auditFor(school, h1.id)).filter((a) => a.action === 'holiday.cancelled');
     expect(cancels.map((a) => [a.reason, a.metadata])).toEqual([
-      ['Plans changed', { from: 'draft', noticesWithdrawn: 0, cancellationRecipients: 0 }],
+      ['Plans changed', { from: 'draft', noticesWithdrawn: 0, cancellationRecipients: 0, cancellationAnnouncementId: null }],
     ]);
   });
 
-  it('R117: cancelling a published holiday withdraws unsent notices and tells exactly the people who were or may have been told', async () => {
+  it('R151: cancelling a published holiday withdraws unsent notices and sends a second everyone announcement, resolved now', async () => {
     const { school, principal } = await fresh();
     const teacher = await createSchoolUser(db, school, { systemRole: 'teacher' });
     const h1 = await made(principal.cookie);
     await publish(principal.cookie, h1.id);
-    const notices = await messagesFor(school, 'holiday', h1.id);
+    const notices = await noticesOf(school, h1.id);
     expect(notices).toHaveLength(2);
     // The principal's notice was already handed over; the teacher's is still queued.
     const handed = notices.find((m) => m.staffId === principal.staffId)!;
@@ -430,21 +491,36 @@ describe('holidays and calendar (e2e)', () => {
       where: { schoolId_id: { schoolId: school.id, id: queued.id } },
       data: { status: 'queued', suppressedReason: null, finishedAt: null, claimedAt: null },
     });
-    // Someone who joins after the publish is not told of a cancellation of something never sent.
-    await createSchoolUser(db, school, { systemRole: 'teacher' });
+    // Decision 15: the cancellation goes to everyone now, someone who joined since included.
+    const joined = await createSchoolUser(db, school, { systemRole: 'teacher' });
 
     const res = await cancel(principal.cookie, h1.id, 'Exams moved');
     expect(res.status).toBe(200);
+    expect((res.body as Holiday).announcementId).toBe(String(notices[0]?.subjectId)); // still the notice
     const withdrawn = await db.message.findFirst({ where: { schoolId: school.id, id: queued.id } });
     expect(withdrawn).toMatchObject({ status: 'suppressed', suppressedReason: 'subject_cancelled' });
-    const cancellations = await messagesFor(school, 'holiday_cancellation', h1.id);
-    expect(cancellations.map((m) => [m.type, m.staffId])).toEqual([['holiday_notice', principal.staffId]]);
+    const notice = await db.announcement.findFirst({ where: { schoolId: school.id, id: notices[0]?.subjectId ?? 0n } });
+    expect(notice?.status).toBe('sent'); // R146: a sent announcement is never recalled
+    const cancellations = await cancellationsOf(school, h1.id);
+    expect(cancellations.map((m) => m.type)).toEqual(['holiday_notice', 'holiday_notice', 'holiday_notice']);
+    expect(cancellations.map((m) => m.staffId).sort()).toEqual(
+      [principal.staffId, teacher.staffId, joined.staffId].sort(),
+    );
     expect(cancellations[0]?.body).toMatch(/is cancelled\. School is open as normal\.$/);
+    expect(cancellations[0]?.title).toMatch(/^Holiday cancelled: /);
     const [audit] = (await auditFor(school, h1.id)).filter((a) => a.action === 'holiday.cancelled');
     expect(audit).toMatchObject({
       reason: 'Exams moved',
-      metadata: { from: 'published', noticesWithdrawn: 1, cancellationRecipients: 1 },
+      metadata: {
+        from: 'published',
+        noticesWithdrawn: 1,
+        cancellationRecipients: 3,
+        cancellationAnnouncementId: String(cancellations[0]?.subjectId),
+      },
     });
+    // GET /announcements?holidayId= lists both rows.
+    const listed = await h.get(api(`/announcements?holidayId=${h1.id}`), principal.cookie);
+    expect((listed.body as Page<{ holidayId: string }>).data.map((a) => a.holidayId)).toEqual([h1.id, h1.id]);
     // Dates are free again; R116 counts the days as teaching days again.
     expect((await createHoliday(principal.cookie, holiday())).status).toBe(201);
   });
@@ -463,13 +539,13 @@ describe('holidays and calendar (e2e)', () => {
     });
     const h1 = await made(principal.cookie);
     expect((await publish(principal.cookie, h1.id)).status).toBe(200);
-    const notices = await messagesFor(school, 'holiday', h1.id);
+    const notices = await noticesOf(school, h1.id);
     expect(notices.map((m) => m.guardianId ?? m.staffId).sort()).toEqual(
       [principal.staffId, teacher.staffId, merged.id, survivor.id].sort(),
     );
     // Every notice has been handed over, so none is withdrawn and everyone was told.
     await db.message.updateMany({
-      where: { schoolId: school.id, subjectType: 'holiday', subjectId: BigInt(h1.id), status: 'queued' },
+      where: { schoolId: school.id, id: { in: notices.map((m) => m.id) }, status: 'queued' },
       data: { status: 'sent', finishedAt: new Date() },
     });
     // Since then: one guardian was merged into the other, and the teacher has left.
@@ -487,7 +563,7 @@ describe('holidays and calendar (e2e)', () => {
 
     const res = await cancel(principal.cookie, h1.id, 'Exams moved');
     expect(res.status).toBe(200);
-    const cancellations = await messagesFor(school, 'holiday_cancellation', h1.id);
+    const cancellations = await cancellationsOf(school, h1.id);
     expect(cancellations.map((m) => m.guardianId ?? m.staffId).sort()).toEqual(
       [principal.staffId, survivor.id].sort(),
     );
@@ -501,6 +577,47 @@ describe('holidays and calendar (e2e)', () => {
     await publish(principal.cookie, past.id);
     expect((await cancel(principal.cookie, past.id)).status).toBe(200);
     expect(await messagesFor(school, 'holiday_cancellation', past.id)).toEqual([]);
+    expect(await db.announcement.count({ where: { schoolId: school.id, holidayId: BigInt(past.id) } })).toBe(0);
+  });
+
+  it('R151: a holiday published before slice 14 (no announcement) cancels through the slice-10 path unchanged', async () => {
+    const { school, principal } = await fresh();
+    const teacher = await createSchoolUser(db, school, { systemRole: 'teacher' });
+    const h1 = await made(principal.cookie);
+    // Seeded as slice 10 left it: published, no announcement, notices by subject `holiday`.
+    await db.holiday.update({
+      where: { schoolId_id: { schoolId: school.id, id: BigInt(h1.id) } },
+      data: { status: 'published', publishedAt: new Date(), publishedBy: principal.userId },
+    });
+    const notice = (staffId: bigint, status: 'queued' | 'sent') => ({
+      schoolId: school.id,
+      type: 'holiday_notice' as const,
+      priority: 'normal' as const,
+      subjectType: 'holiday',
+      subjectId: BigInt(h1.id),
+      staffId,
+      body: 'Iqra: School closed for Winter break.',
+      channelPlan: ['push' as const],
+      status,
+      finishedAt: status === 'sent' ? new Date() : null,
+    });
+    await db.message.createMany({ data: [notice(principal.staffId, 'sent'), notice(teacher.staffId, 'queued')] });
+
+    expect((await cancel(principal.cookie, h1.id, 'Exams moved')).status).toBe(200);
+    expect(await messagesFor(school, 'holiday', h1.id)).toMatchObject([
+      { staffId: principal.staffId, status: 'sent' },
+      { staffId: teacher.staffId, status: 'suppressed', suppressedReason: 'subject_cancelled' },
+    ]);
+    const cancellations = await messagesFor(school, 'holiday_cancellation', h1.id);
+    expect(cancellations.map((m) => m.staffId)).toEqual([principal.staffId]);
+    expect(await db.announcement.count({ where: { schoolId: school.id, holidayId: BigInt(h1.id) } })).toBe(0);
+    const [audit] = (await auditFor(school, h1.id)).filter((a) => a.action === 'holiday.cancelled');
+    expect(audit?.metadata).toEqual({
+      from: 'published',
+      noticesWithdrawn: 1,
+      cancellationRecipients: 1,
+      cancellationAnnouncementId: null,
+    });
   });
 
   // ------------------------------------------------------------------------------ R167 seam
@@ -535,7 +652,7 @@ describe('holidays and calendar (e2e)', () => {
       expect((await publish(principal.cookie, h1.id)).status).toBe(500);
       expect(await db.holiday.findFirst({ where: { schoolId: school.id, id: BigInt(h1.id) } })).toMatchObject({ status: 'draft' });
       expect((await auditFor(school, h1.id)).map((a) => a.action)).toEqual(['holiday.created']);
-      expect(await messagesFor(school, 'holiday', h1.id)).toEqual([]);
+      expect(await noticesOf(school, h1.id)).toEqual([]);
 
       failOn = null;
       expect((await publish(principal.cookie, h1.id)).status).toBe(200);

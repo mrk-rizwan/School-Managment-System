@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiExtraModels, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Capability } from '@asms/shared';
 import { RequireCapability } from '../../common/auth/route-access';
@@ -25,12 +25,15 @@ import {
   PercentageRowDto,
   RecordArrivalDto,
   RegisterQueryDto,
+  RegisterSubmitMinimalResultDto,
   RegisterSubmitResultDto,
   RegisterViewDto,
   SectionDayDto,
   StudentAttendanceDto,
   StudentAttendanceQueryDto,
   SubmitRegisterDto,
+  minimalSubmitResult,
+  prefersMinimal,
 } from './attendance.dto';
 import { MarksService } from './marks.service';
 import { RegistersService } from './registers.service';
@@ -64,13 +67,24 @@ export class AttendanceController {
     return this.registers.view(session, id, query);
   }
 
-  /** §4.2: 201 when this request created the register, 200 otherwise (a replay included). */
+  /**
+   * §4.2: 201 when this request created the register, 200 otherwise (a replay included). With
+   * `Prefer: return=minimal` each mark is only `{ id, enrolmentId, outcome }` and the answer says
+   * `Preference-Applied: return=minimal` (slice-16 R160: the app's daily data budget).
+   */
   @Post('sections/:id/submit-register')
   @RequireCapability(MARK)
   @UseGuards(AttendanceWritesThrottleGuard)
   @ApiIdParam()
-  @ApiCreatedResponse({ type: RegisterSubmitResultDto })
-  @ApiOkResponse({ type: RegisterSubmitResultDto })
+  @ApiHeader({
+    name: 'Prefer',
+    required: false,
+    description:
+      'return=minimal: each mark is answered as { id, enrolmentId, outcome } (RegisterSubmitMinimalResultDto), with Preference-Applied: return=minimal. Absent: the full RegisterSubmitResultDto.',
+  })
+  @ApiExtraModels(RegisterSubmitMinimalResultDto)
+  @ApiCreatedResponse({ type: RegisterSubmitResultDto, description: 'RegisterSubmitMinimalResultDto with Prefer: return=minimal' })
+  @ApiOkResponse({ type: RegisterSubmitResultDto, description: 'RegisterSubmitMinimalResultDto with Prefer: return=minimal' })
   @ApiErrors(...COMMON, 404, 409, 422)
   async submit(
     @CurrentSchoolSession() session: SchoolSessionContext,
@@ -78,10 +92,15 @@ export class AttendanceController {
     @Body() body: SubmitRegisterDto,
     @Query() _query: NoQueryDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<RegisterSubmitResultDto> {
+  ): Promise<RegisterSubmitResultDto | RegisterSubmitMinimalResultDto> {
     const result = await this.registers.submit(session, id, body);
     res.status(result.created ? 201 : 200);
-    return result;
+    res.vary('Prefer');
+    // A header, not a body field: read from the request rather than a decorated parameter, which
+    // must be a validated DTO (asms/no-brand-in-request).
+    if (!prefersMinimal(res.req.get('prefer'))) return result;
+    res.setHeader('Preference-Applied', 'return=minimal');
+    return minimalSubmitResult(result);
   }
 
   /** §4.3: one mark, with a reason; online-only in the app. */

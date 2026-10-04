@@ -20,6 +20,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { MeModule } from './modules/me/me.module';
 import { StaffAttendanceModule } from './modules/staff-attendance/staff-attendance.module';
 import { DiaryModule } from './modules/diary/diary.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
 import { MessagingModule } from './messaging/messaging.module';
@@ -59,6 +60,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     StaffAttendanceModule,
     DiaryModule,
     AttendanceModule,
+    AnnouncementsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -84,6 +84,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_list"];
+        put?: never;
+        post: operations["AnnouncementsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/preview-audience": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AnnouncementsController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AnnouncementsController_update"];
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}/attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_attachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AnnouncementsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_delivery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AnnouncementsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/{id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AnnouncementsController_thumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance-arrivals": {
         parameters: {
             query?: never;
@@ -910,6 +1038,70 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["MeSessionsController_registerDevice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InboxController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InboxController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox/{id}/attachment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InboxController_attachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inbox/{id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InboxController_thumbnail"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1939,6 +2131,53 @@ export interface components {
             reason: string;
             status: components["schemas"]["AttendanceStatus"];
         };
+        /** @enum {string} */
+        AnnouncementCategory: "holiday" | "exam" | "fee" | "event" | "general";
+        AnnouncementDto: {
+            /** @enum {string|null} */
+            attachmentMime: "image/jpeg" | "image/png" | "application/pdf" | null;
+            attachmentSizeBytes: number | null;
+            audiences: components["schemas"]["AudienceDto"][];
+            body: string;
+            cancelReason: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelledBy: string | null;
+            category: components["schemas"]["AnnouncementCategory"];
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            createdByName: string;
+            /** Format: date */
+            expiresOn: string | null;
+            hasAttachment: boolean;
+            holidayId: string | null;
+            id: string;
+            messageType: components["schemas"]["MessageType"];
+            priority: components["schemas"]["AnnouncementPriority"];
+            recipientCount: number;
+            /** Format: date-time */
+            scheduledAt: string | null;
+            /**
+             * Format: date-time
+             * @description Set on a draft whose send failed five times and was given up; cleared by the next send
+             */
+            sendFailedAt: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** @description SMS segments per message when the type may travel by SMS now; else null */
+            smsSegments: number | null;
+            status: components["schemas"]["AnnouncementStatus"];
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        AnnouncementPriority: "normal" | "urgent";
+        /** @enum {string} */
+        AnnouncementSort: "-createdAt" | "createdAt" | "-scheduledAt" | "-sentAt";
+        /** @enum {string} */
+        AnnouncementStatus: "draft" | "scheduled" | "sending" | "sent" | "cancelled";
         ApiErrorBodyDto: {
             code: components["schemas"]["ErrorCode"];
             details: {
@@ -1989,6 +2228,40 @@ export interface components {
         AttendanceMode: "daily" | "period";
         /** @enum {string} */
         AttendanceStatus: "present" | "absent" | "late" | "on_leave";
+        AudienceDto: {
+            kind: components["schemas"]["AudienceKind"];
+            roles: components["schemas"]["AudienceRole"][];
+            targetId: string | null;
+            targetName: string | null;
+        };
+        AudienceInputDto: {
+            kind: components["schemas"]["AudienceKind"];
+            /** @description class, section and student only; 1-2 distinct; absent = both */
+            roles?: components["schemas"]["AudienceRole"][];
+            /** @description Required for class, section, student, guardian, staff_member; forbidden otherwise */
+            targetId?: string;
+        };
+        AudienceItemCountDto: {
+            kind: components["schemas"]["AudienceKind"];
+            /** @description Persons this item contributes before dedupe */
+            persons: number;
+            targetId: string | null;
+            targetName: string | null;
+        };
+        /** @enum {string} */
+        AudienceKind: "everyone" | "parents" | "students" | "staff" | "class" | "section" | "student" | "guardian" | "staff_member";
+        AudiencePreviewDto: {
+            byAudience: components["schemas"]["AudienceItemCountDto"][];
+            /** Format: date-time */
+            computedAt: string;
+            recipients: components["schemas"]["RecipientCountsDto"];
+            sms: components["schemas"]["SmsPreviewDto"];
+            warnings: components["schemas"]["AudiencePreviewWarning"][];
+        };
+        /** @enum {string} */
+        AudiencePreviewWarning: "sms_cap_short" | "sms_too_long" | "no_recipients" | "whatsapp_not_connected";
+        /** @enum {string} */
+        AudienceRole: "parents" | "students";
         CalendarHolidayDto: {
             /** @description False: a teaching holiday on which staff still work */
             appliesToStaff: boolean;
@@ -1999,6 +2272,9 @@ export interface components {
             name: string;
             /** Format: date */
             startsOn: string;
+        };
+        CancelAnnouncementDto: {
+            reason: string;
         };
         CancelHolidayDto: {
             reason: string;
@@ -2065,6 +2341,13 @@ export interface components {
             reason: string;
             status: components["schemas"]["StudentStatus"];
         };
+        ChannelCountsDto: {
+            accepted: number;
+            channel: components["schemas"]["ExternalChannel"];
+            delivered: number;
+            failed: number;
+            suppressed: number;
+        };
         ClassDto: {
             academicYearId: string;
             academicYearName: string;
@@ -2121,6 +2404,26 @@ export interface components {
             enrolment: components["schemas"]["AdmissionEnrolmentDto"];
             guardians: components["schemas"]["AdmissionGuardianDto"][];
             student: components["schemas"]["AdmissionStudentDto"];
+        };
+        CreateAnnouncementDto: {
+            audiences: components["schemas"]["AudienceInputDto"][];
+            /** @description Line breaks kept */
+            body: string;
+            category: components["schemas"]["AnnouncementCategory"];
+            /**
+             * Format: date
+             * @description Today or later; the last day it shows in an inbox
+             */
+            expiresOn?: string | null;
+            priority: components["schemas"]["AnnouncementPriority"];
+            /**
+             * Format: date-time
+             * @description At least 1 minute and at most 90 days ahead; takes effect at send
+             */
+            scheduledAt?: string | null;
+            /** @description One attachment, image or PDF (POST /uploads) */
+            stagedUploadId?: string | null;
+            title: string;
         };
         CreateClassDto: {
             academicYearId: string;
@@ -2298,6 +2601,18 @@ export interface components {
         DailySummarySort: "-date" | "date" | "className";
         /** @enum {string} */
         DayStatus: "present" | "absent" | "late" | "on_leave" | "partial";
+        DeliverySummaryDto: {
+            announcementId: string;
+            byChannel: components["schemas"]["ChannelCountsDto"][];
+            /** Format: date-time */
+            computedAt: string;
+            messages: components["schemas"]["MessageStatusCountsDto"];
+            recipients: components["schemas"]["RecipientCountsDto"];
+            smsSegmentsPerMessage: number | null;
+            smsUnitsReserved: number;
+            status: components["schemas"]["AnnouncementStatus"];
+            suppressions: components["schemas"]["SuppressionCountDto"][];
+        };
         DeviceDto: {
             appVersion: string;
             /** Format: date-time */
@@ -2384,6 +2699,8 @@ export interface components {
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
         ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "UNEXPECTED_RESPONSE";
+        /** @enum {string} */
+        ExternalChannel: "push" | "whatsapp" | "sms" | "email";
         ForgotPasswordDto: {
             schoolCode: string;
             /** @description 13 digits; dashes allowed (5-7-1). */
@@ -2565,6 +2882,32 @@ export interface components {
         HolidaySort: "startsOn" | "-startsOn";
         /** @enum {string} */
         HolidayStatus: "draft" | "published" | "cancelled";
+        InboxItemDto: {
+            announcementId: string | null;
+            /** @enum {string|null} */
+            attachmentMime: "image/jpeg" | "image/png" | "application/pdf" | null;
+            body: string;
+            category: components["schemas"]["AnnouncementCategory"] | null;
+            /** Format: date */
+            expiresOn: string | null;
+            hasAttachment: boolean;
+            /** @description The message id (push messageId, app route /inbox/[messageId]) */
+            id: string;
+            kind: components["schemas"]["InboxItemKind"];
+            messageType: components["schemas"]["MessageType"];
+            priority: components["schemas"]["MessagePriority"];
+            /**
+             * Format: date-time
+             * @description When the school sent it
+             */
+            sentAt: string;
+            subjectId: string;
+            subjectType: components["schemas"]["MessageSubjectType"];
+            title: string;
+            viaStudents: components["schemas"]["ViaStudentDto"][];
+        };
+        /** @enum {string} */
+        InboxItemKind: "announcement" | "notice";
         IssueLoginDto: {
             reason?: string;
         };
@@ -2587,6 +2930,7 @@ export interface components {
             /** @description Bearer sessions only; null for cookie. */
             bearerToken: string | null;
             capabilities: components["schemas"]["Capability"][];
+            capabilityScopes: components["schemas"]["MeCapabilityScopeDto"][];
             capacities: components["schemas"]["Capacity"][];
             children: components["schemas"]["MyChildDto"][];
             email: string | null;
@@ -2636,9 +2980,14 @@ export interface components {
             subjectId: string | null;
             subjectName: string | null;
         };
+        MeCapabilityScopeDto: {
+            capability: components["schemas"]["Capability"];
+            scope: components["schemas"]["CapabilityScope"];
+        };
         MeDto: {
             assignments: components["schemas"]["MeAssignmentDto"][];
             capabilities: components["schemas"]["Capability"][];
+            capabilityScopes: components["schemas"]["MeCapabilityScopeDto"][];
             capacities: components["schemas"]["Capacity"][];
             children: components["schemas"]["MyChildDto"][];
             email: string | null;
@@ -2661,6 +3010,18 @@ export interface components {
         /** @enum {string} */
         MessageChannel: "push" | "whatsapp" | "sms" | "email" | "in_app";
         /** @enum {string} */
+        MessagePriority: "urgent" | "normal" | "low" | "internal" | "platform";
+        MessageStatusCountsDto: {
+            delivered: number;
+            failed: number;
+            queued: number;
+            sending: number;
+            sent: number;
+            suppressed: number;
+        };
+        /** @enum {string} */
+        MessageSubjectType: "messaging_test" | "sms_cap" | "attendance_alert" | "register_deadline" | "announcement" | "diary_entry" | "remark" | "holiday" | "holiday_cancellation" | "teacher_assignment";
+        /** @enum {string} */
         MessageType: "absence_alert" | "late_advice" | "attendance_corrected" | "announcement_urgent" | "announcement_normal" | "holiday_notice" | "diary_posted" | "remark_posted" | "register_unrecorded" | "sms_cap_reached" | "messaging_test" | "whatsapp_session_down" | "cover_assigned";
         /** @enum {string} */
         MessagingTestChannel: "whatsapp" | "sms" | "push";
@@ -2676,6 +3037,11 @@ export interface components {
             /** @description This month, then last month (Asia/Karachi) */
             months: components["schemas"]["UsageMonthDto"][];
             remaining: number;
+        };
+        MinimalSubmittedMarkDto: {
+            enrolmentId: string;
+            id: string;
+            outcome: components["schemas"]["MarkOutcome"];
         };
         MyCalendarDto: {
             /** Format: date */
@@ -2804,6 +3170,20 @@ export interface components {
             systemRole: components["schemas"]["SystemRole"] | null;
             userRoleId: string;
         };
+        PreviewAudienceDto: {
+            audiences: components["schemas"]["AudienceInputDto"][];
+            /** @description Line breaks kept */
+            body?: string;
+            /** @default false */
+            hasAttachment?: boolean;
+            /**
+             * @description Preview as a holiday notice (holiday_notice)
+             * @default false
+             */
+            holiday?: boolean;
+            priority: components["schemas"]["AnnouncementPriority"];
+            title?: string;
+        };
         ReadmitDto: {
             classId: string;
             /**
@@ -2817,6 +3197,12 @@ export interface components {
         };
         ReasonDto: {
             reason: string;
+        };
+        RecipientCountsDto: {
+            guardians: number;
+            staff: number;
+            students: number;
+            total: number;
         };
         RecordArrivalDto: {
             /** @description HH:MM, school time */
@@ -2876,6 +3262,16 @@ export interface components {
         };
         /** @enum {string} */
         RegisterSource: "app" | "web";
+        RegisterSubmitMinimalResultDto: {
+            /** @description Zeros on a replay */
+            alerts: components["schemas"]["SubmitAlertsDto"];
+            /** @description This request created the register */
+            created: boolean;
+            /** @description In request order */
+            marks: components["schemas"]["MinimalSubmittedMarkDto"][];
+            register: components["schemas"]["RegisterDto"];
+            summary: components["schemas"]["RegisterCountsDto"];
+        };
         RegisterSubmitResultDto: {
             /** @description Zeros on a replay */
             alerts: components["schemas"]["SubmitAlertsDto"];
@@ -3043,6 +3439,14 @@ export interface components {
         SessionChannel: "cookie" | "bearer";
         SessionsRevokedDto: {
             revoked: number;
+        };
+        SmsPreviewDto: {
+            allowed: boolean;
+            cap: number;
+            legs: number;
+            remaining: number;
+            segments: number;
+            units: number;
         };
         StaffAmendDto: {
             /** @description The status the client last saw */
@@ -3392,6 +3796,12 @@ export interface components {
             status: components["schemas"]["AttendanceStatus"];
             studentId: string;
         };
+        SuppressionCountDto: {
+            count: number;
+            reason: components["schemas"]["SuppressionReason"];
+        };
+        /** @enum {string} */
+        SuppressionReason: "not_allowed" | "cap_reached" | "no_channel" | "backdated" | "subject_cancelled" | "duplicate_phone";
         /** @enum {string} */
         SystemRole: "principal" | "office_staff" | "teacher";
         TeacherAssignmentDto: {
@@ -3444,6 +3854,26 @@ export interface components {
             name?: string;
             /** Format: date */
             startsOn?: string;
+        };
+        UpdateAnnouncementDto: {
+            audiences?: components["schemas"]["AudienceInputDto"][];
+            /** @description Line breaks kept */
+            body?: string;
+            category?: components["schemas"]["AnnouncementCategory"];
+            /**
+             * Format: date
+             * @description null = never expires
+             */
+            expiresOn?: string | null;
+            priority?: components["schemas"]["AnnouncementPriority"];
+            /**
+             * Format: date-time
+             * @description null returns a scheduled announcement to draft
+             */
+            scheduledAt?: string | null;
+            /** @description null removes the attachment; a value replaces it */
+            stagedUploadId?: string | null;
+            title?: string;
         };
         UpdateClassDto: {
             /** @description Changes only while the class has no section (409 CLASS_YEAR_IMMUTABLE) */
@@ -3615,6 +4045,10 @@ export interface components {
         VerifyEmailDto: {
             schoolCode: string;
             token: string;
+        };
+        ViaStudentDto: {
+            fullName: string;
+            studentId: string;
         };
         /** @enum {string} */
         WhatsAppErrorCode: "unreachable" | "logged_out" | "session_failed" | "token_rejected" | "number_mismatch" | "unknown";
@@ -4161,6 +4595,729 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["AnnouncementStatus"];
+                category?: components["schemas"]["AnnouncementCategory"];
+                priority?: components["schemas"]["AnnouncementPriority"];
+                /** @description created_at as a school-local date */
+                createdFrom?: string;
+                /** @description On or after createdFrom; both at most 366 days apart */
+                createdTo?: string;
+                holidayId?: string;
+                sort?: components["schemas"]["AnnouncementSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AnnouncementDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewAudienceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudiencePreviewDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelAnnouncementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliverySummaryDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AnnouncementsController_thumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8802,6 +9959,271 @@ export interface operations {
             };
         };
     };
+    InboxController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                kind?: components["schemas"]["InboxItemKind"];
+                /** @description Announcements only */
+                category?: components["schemas"]["AnnouncementCategory"];
+                /** @description Fixed */
+                sort?: "-sentAt";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InboxItemDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    InboxController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItemDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    InboxController_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    InboxController_thumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MeSessionsController_revokeOthers: {
         parameters: {
             query?: never;
@@ -10332,7 +11754,10 @@ export interface operations {
     AttendanceController_submit: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description return=minimal: each mark is answered as { id, enrolmentId, outcome } (RegisterSubmitMinimalResultDto), with Preference-Applied: return=minimal. Absent: the full RegisterSubmitResultDto. */
+                Prefer?: string;
+            };
             path: {
                 id: string;
             };
@@ -10344,6 +11769,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description RegisterSubmitMinimalResultDto with Prefer: return=minimal */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -10352,6 +11778,7 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterSubmitResultDto"];
                 };
             };
+            /** @description RegisterSubmitMinimalResultDto with Prefer: return=minimal */
             201: {
                 headers: {
                     [name: string]: unknown;

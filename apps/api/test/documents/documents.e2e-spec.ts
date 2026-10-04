@@ -526,8 +526,8 @@ describe('uploads and documents (e2e)', () => {
     it('a key outside the school prefix is never served (500, logged)', async () => {
       // The CHECK forbids such a row, so the guard is reached only through a corrupted read. Mock
       // the repository read to prove the service refuses rather than streams.
-      const repo = app.get(StudentDocumentRepository, { strict: false });
-      const spy = jest.spyOn(repo, 'findById').mockResolvedValueOnce({
+      // On the prototype: two modules provide the repository, so app.get may return either.
+      const spy = jest.spyOn(StudentDocumentRepository.prototype, 'findById').mockResolvedValueOnce({
         id: 1n,
         studentId: subject.id,
         type: 'other',

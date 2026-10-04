@@ -36,7 +36,7 @@ test('no Firebase → skipped and logged, no throw, no outbox row, no native cal
   await expect(registerForPush(yes, NOW)).resolves.toBe('skipped_no_firebase');
   expect(await listByState('pending')).toHaveLength(0);
   expect(mocked.getDevicePushTokenAsync).not.toHaveBeenCalled();
-  expect(logText()).toContain('push.skipped {"reason":"no_firebase"}');
+  expect(logText()).toContain('push.skipped {"cause":"no_firebase"}');
 });
 
 test('permission denied → skipped; not asked again within 30 days', async () => {

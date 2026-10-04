@@ -1,0 +1,69 @@
+{
+  "capturedAt": "2026-10-04T16:43:54.085Z",
+  "base": "dev API",
+  "exchanges": [
+    {
+      "method": "GET",
+      "path": "/api/v1/me/inbox?limit=25&page=1",
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "id": "42",
+            "kind": "announcement",
+            "messageType": "announcement_normal",
+            "subjectType": "announcement",
+            "subjectId": "3",
+            "title": "Sports day",
+            "body": "Sports day practice starts Monday after the last period. Class teachers, please send the list of participants by Friday.",
+            "category": "general",
+            "priority": "normal",
+            "sentAt": "2026-10-04T16:43:53.698Z",
+            "expiresOn": null,
+            "hasAttachment": false,
+            "attachmentMime": null,
+            "announcementId": "3",
+            "viaStudents": []
+          },
+          {
+            "id": "40",
+            "kind": "announcement",
+            "messageType": "announcement_normal",
+            "subjectType": "announcement",
+            "subjectId": "2",
+            "title": "Exam duty roster",
+            "body": "The mid-term exam duty roster is on the staff room board. Check your invigilation slots for next week.",
+            "category": "general",
+            "priority": "normal",
+            "sentAt": "2026-10-04T16:43:53.559Z",
+            "expiresOn": null,
+            "hasAttachment": false,
+            "attachmentMime": null,
+            "announcementId": "2",
+            "viaStudents": []
+          },
+          {
+            "id": "38",
+            "kind": "announcement",
+            "messageType": "announcement_normal",
+            "subjectType": "announcement",
+            "subjectId": "1",
+            "title": "Staff meeting",
+            "body": "Staff meeting in the library at 1:30 pm today. Bring your register files and the term plan.",
+            "category": "general",
+            "priority": "normal",
+            "sentAt": "2026-10-04T16:43:53.383Z",
+            "expiresOn": null,
+            "hasAttachment": false,
+            "attachmentMime": null,
+            "announcementId": "1",
+            "viaStudents": []
+          }
+        ],
+        "page": 1,
+        "limit": 25,
+        "total": 3
+      }
+    }
+  ]
+}

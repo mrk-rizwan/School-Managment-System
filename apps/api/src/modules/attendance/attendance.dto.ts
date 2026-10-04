@@ -192,6 +192,38 @@ export class RegisterSubmitResultDto {
   @ApiProperty({ type: SubmitAlertsDto, description: 'Zeros on a replay' }) alerts: SubmitAlertsDto;
 }
 
+/** A mark as `Prefer: return=minimal` answers it (contracts/slice-11.md §4.2, slice-16 R160). */
+export class MinimalSubmittedMarkDto {
+  @ApiProperty(ID) id: string;
+  @ApiProperty(ID) enrolmentId: string;
+  @ApiProperty({ enum: MARK_OUTCOMES, enumName: 'MarkOutcome' }) outcome: MarkOutcome;
+}
+
+/**
+ * The submit's answer to `Prefer: return=minimal`: the same object with each mark cut to its id,
+ * enrolment and outcome (the app already holds what it sent). Answered with
+ * `Preference-Applied: return=minimal`.
+ */
+export class RegisterSubmitMinimalResultDto {
+  @ApiProperty({ description: 'This request created the register' }) created: boolean;
+  @ApiProperty({ type: RegisterDto }) register: RegisterDto;
+  @ApiProperty({ type: MinimalSubmittedMarkDto, isArray: true, description: 'In request order' })
+  marks: MinimalSubmittedMarkDto[];
+  @ApiProperty({ type: RegisterCountsDto }) summary: RegisterCountsDto;
+  @ApiProperty({ type: SubmitAlertsDto, description: 'Zeros on a replay' }) alerts: SubmitAlertsDto;
+}
+
+/** RFC 7240: `Prefer` may carry several comma-separated preferences; `return=minimal` is one token. */
+export const prefersMinimal = (prefer: string | undefined): boolean =>
+  (prefer ?? '')
+    .split(',')
+    .some((token) => token.trim().toLowerCase().replace(/\s+/g, '') === 'return=minimal');
+
+export const minimalSubmitResult = (result: RegisterSubmitResultDto): RegisterSubmitMinimalResultDto => ({
+  ...result,
+  marks: result.marks.map(({ id, enrolmentId, outcome }) => ({ id, enrolmentId, outcome })),
+});
+
 export class MarkChangeDto {
   @ApiProperty(ID) id: string;
   @ApiProperty(ID) markId: string;

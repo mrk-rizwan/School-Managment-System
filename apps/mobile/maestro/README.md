@@ -1,25 +1,36 @@
 # Maestro flows — CI only
 
-These flows drive the debug APK on an Android emulator. They run in the `mobile` job of
-`.github/workflows/ci.yml` (slice-15 §13.3); they are **not** a local gate, because a development
-machine is not guaranteed an Android SDK or emulator.
+These flows drive the e2e APK on an Android emulator. They run in the `mobile` job of
+`.github/workflows/ci.yml` (slice-15 §13.3, slice-16 §15.2), in this order, through `ci-run.sh`;
+they are **not** a local gate, because a development machine is not guaranteed an Android SDK or
+emulator.
 
 | Flow                                | API state                       | Proves                                                                                   |
 | ----------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
 | `flows/sign-in-shell-sign-out.yaml` | `MOBILE_MIN_APP_VERSION=0.0.0`  | sign-in → role-aware shell → calendar "as of" → sign-out with the school code remembered |
 | `flows/update-required.yaml`        | `MOBILE_MIN_APP_VERSION=99.0.0` | a 426 shows only the update screen, with the minimum version                             |
+| `flows/register-offline.yaml`       | API and worker                  | a register marked in airplane mode says "Saved on device", then "Saved on server" when the connection returns; `ci-run.sh` then checks over `curl` that the server holds it with two absent marks |
+| `flows/teacher-diary.yaml`          | API and worker                  | a diary entry reaches the server                                                         |
+| `flows/parent-child.yaml`           | API, worker, object storage     | after the worker's rollup, the parent's card says "Absent"; the month opens; the seeded diary photo's thumbnail loads on a tap; the inbox opens |
+| `flows/principal-today.yaml`        | API and worker                  | Today lists the unrecorded 5 B register; "Record now" records it pre-filled; the row leaves Today; `ci-run.sh` checks over `curl` that the server has it |
+| `flows/principal-announce.yaml`     | API and worker                  | a short notice to 5 A shows "Reaches … · SMS …" before sending, appears on the list, and is in the guardian's inbox |
 
-Both read `SCHOOL_CODE` and `PRINCIPAL_CNIC` (the seeded principal: `seed:dev-school`; the default
-password is the same digits). Elements are selected by `testID`, `screen.element` — for example
-`signIn.schoolCode`, `tabs.home`, `account.signOut`.
+They read `SCHOOL_CODE`, `PRINCIPAL_CNIC`, `TEACHER_CNIC` and `GUARDIAN_CNIC` (the seeded people;
+each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the
+ids `ci-run.sh` reads over the API as those people: `SECTION_A`, `SECTION_B`, `ENROLMENT_1`,
+`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
+example `signIn.schoolCode`, `classes.section.<id>.register`, `register.chip.<enrolmentId>`,
+`children.card.<studentId>.today`.
+
+Airplane mode is Maestro's `setAirplaneMode`. If the emulator ignores it, run the job with
+`AIRPLANE_MECHANISM=adb`: `ci-run.sh` then runs `register-offline-adb-1/2/3.yaml` and toggles
+airplane mode with `adb shell cmd connectivity airplane-mode enable|disable` between them. The
+mechanism that worked is recorded in the WORKLOG after the first CI run.
 
 To run them by hand on a machine with an emulator and Maestro 2.x:
 
 ```sh
-pnpm --filter @asms/api seed:dev-school          # DEV_SCHOOL_PRINCIPAL_CNIC and _PHONE in the environment; a non-localhost database also needs ALLOW_DEV_SEED=1
+pnpm --filter @asms/api seed:dev-school          # with the classroom variables; see the README's "Mobile app"
 adb install android/app/build/outputs/apk/debug/app-debug.apk
 maestro test -e SCHOOL_CODE=demo -e PRINCIPAL_CNIC=<13 digits> maestro/flows/sign-in-shell-sign-out.yaml
 ```
-
-Slice 16 adds `register-offline.yaml` (airplane mode through `adb shell`) and the parent and
-principal flows to the same job.

@@ -1,5 +1,6 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { useSyncExternalStore } from 'react';
+import type { OnlineOnlyAction } from '../outbox/lanes';
 
 // The only reader of NetInfo (lint): one boolean and a subscription (slice-15 §7.5). Offline is a
 // banner state, not an error state. The outbox never trusts the flag alone: when it says online a
@@ -43,4 +44,16 @@ export function stopConnectivity(): void {
 /** The connectivity flag as React state, for the offline banner and online-only buttons. */
 export function useOnline(): boolean {
   return useSyncExternalStore(subscribeConnectivity, isOnline);
+}
+
+/**
+ * An online-only action (R162): enabled only while online; offline it renders disabled with the
+ * reason, never a toast after the tap. Every direct write a screen makes goes through this.
+ */
+export function useOnlineOnly(_action: OnlineOnlyAction): {
+  enabled: boolean;
+  reason: string | null;
+} {
+  const online = useOnline();
+  return { enabled: online, reason: online ? null : 'Needs a connection' };
 }

@@ -1,0 +1,6 @@
+# The adb fallback, step 3 (online again): the queued register reaches the server.
+appId: pk.asms.app.dev
+---
+- launchApp
+- runFlow: common/open-register.yaml
+- runFlow: common/saved-on-server.yaml

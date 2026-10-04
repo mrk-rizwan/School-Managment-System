@@ -6,8 +6,8 @@ import type { MyCalendarDto } from '../../api/contracts';
 import { queryKeys } from '../../api/query-keys';
 import { useCachedQuery } from '../../db/use-cached-query';
 import { useOnline } from '../../net/connectivity';
-import { Button } from '../../ui/Button';
 import { ListRow } from '../../ui/ListRow';
+import { MonthHeader } from '../../ui/MonthHeader';
 import { Screen } from '../../ui/Screen';
 import { Sheet } from '../../ui/Sheet';
 import {
@@ -100,41 +100,18 @@ export default function CalendarScreen() {
       }
       testID="calendar.screen"
     >
-      <View style={styles.month}>
-        <Button
-          label="Previous"
-          variant="secondary"
-          onPress={() => setOffset(offset - 1)}
-          testID="calendar.previous"
-        />
-        <Text style={styles.monthTitle} testID="calendar.month">
-          {title}
-        </Text>
-        <Button
-          label="Next"
-          variant="secondary"
-          onPress={() => setOffset(offset + 1)}
-          testID="calendar.next"
-        />
-      </View>
+      <MonthHeader
+        title={title}
+        onPrevious={() => setOffset(offset - 1)}
+        onNext={() => setOffset(offset + 1)}
+        testID="calendar"
+      />
       {content}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  month: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.sm,
-  },
-  monthTitle: {
-    fontSize: fontSize.title,
-    fontWeight: '600',
-    color: colors.foreground,
-    flexShrink: 1,
-  },
   body: { gap: space.md },
   detail: { fontSize: fontSize.small, color: colors.foreground },
 });

@@ -28,6 +28,7 @@ function item(patch: Partial<OutboxItem> = {}): OutboxItem {
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
+      responseDetails: null,
     domainTable: null,
     domainId: null,
     createdAt: T0.toISOString(),

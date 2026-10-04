@@ -1,0 +1,15 @@
+# Subflow: from Home, the teacher's 5 A register for today, roster on screen. Env: SECTION_A.
+appId: pk.asms.app.dev
+---
+- tapOn:
+    id: 'tabs.classes'
+- extendedWaitUntil:
+    visible:
+      id: 'classes.section.${SECTION_A}.register'
+    timeout: 20000
+- tapOn:
+    id: 'classes.section.${SECTION_A}.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.roster'
+    timeout: 30000

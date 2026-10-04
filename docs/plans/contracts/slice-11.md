@@ -416,6 +416,16 @@ screen is the empty register to fill in. Not paginated: a section has at most 20
 **201** `RegisterSubmitResultDto` when `created`, **200** otherwise. The returned `marks` cover the
 items sent, in request order, each with its `outcome`.
 
+**`Prefer: return=minimal`** (RFC 7240; amended 2026-10-04 for slice 16's R160 budget): when the
+request's `Prefer` header carries the `return=minimal` token (among others, any case), the answer
+is `RegisterSubmitMinimalResultDto` — `created`, `register`, `summary` and `alerts` as above, and
+`marks: [{ id, enrolmentId, outcome }]` in request order — with `Preference-Applied:
+return=minimal`; every response carries `Vary: Prefer`. Status codes, refusals and the idempotent
+replay are unchanged (a replay with the header is minimal too: `200`, outcomes `unchanged`). Without
+the header the answer is the full `RegisterSubmitResultDto` (the web sends none). The app already
+holds what it sent; the full answer is about 7.9 KB for 30 marks. `POST /attendance-marks/:id/amend`
+answers one `AttendanceMarkDto`, not this shape, and is unchanged.
+
 Errors: `422` (shape, `REFERENCE_NOT_FOUND`, `ROSTER_INCOMPLETE`, `INVALID_VALUE`) · `404` · `403
 PERMISSION_DENIED` (`subject_teacher_daily_mode`) · `409 NOT_A_TEACHING_DAY` · `409
 ATTENDANCE_LOCKED` · `409 AMENDMENT_REASON_REQUIRED` · `409 CONCURRENT_UPDATE` (the natural-key race

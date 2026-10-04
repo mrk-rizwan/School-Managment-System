@@ -14,7 +14,9 @@ import {
   UserRoundIcon,
   IdCardIcon,
   KeyRoundIcon,
+  MegaphoneIcon,
   MessageSquareIcon,
+  InboxIcon,
   SlidersHorizontalIcon,
   UsersRoundIcon,
   type LucideIcon,
@@ -46,6 +48,13 @@ export const schoolNav: NavItem[] = [
   },
   // Office staff do not hold diary.write by default, so they do not see the diary (slice-13 §1.1).
   { href: '/diary', label: 'Diary', icon: BookOpenCheckIcon, capability: 'diary.write' },
+  // Senders read their own announcements, or every one with .school (contracts/slice-14.md §1.1).
+  {
+    href: '/announcements',
+    label: 'Announcements',
+    icon: MegaphoneIcon,
+    capability: ['announcement.send.scope', 'announcement.send.school'],
+  },
   {
     href: '/staff-attendance',
     label: 'Staff attendance',
@@ -86,6 +95,8 @@ export const schoolNav: NavItem[] = [
     icon: MessageSquareIcon,
     capability: 'school.settings.manage',
   },
+  // Every signed-in person reads the messages addressed to them (contracts/slice-14.md §7).
+  { href: '/inbox', label: 'Inbox', icon: InboxIcon, capability: null },
   // Every signed-in school user: email, password (slice 2).
   { href: '/account', label: 'Your account', icon: CircleUserRoundIcon, capability: null },
 ];

@@ -1,4 +1,4 @@
-import { errorFields, scrub, scrubText } from './scrub';
+import { containsPhone, errorFields, scrub, scrubText } from './scrub';
 import { clearLog, log, logLines, LOG_CAPACITY, logText } from './log';
 import { meFixture } from '../test/fake-api';
 import { IDENTITY_PATTERN, PHONE_PATTERN, TOKEN_PATTERN } from '../test/patterns';
@@ -114,5 +114,39 @@ describe('the log ring buffer', () => {
     expect(text).not.toMatch(IDENTITY_PATTERN);
     expect(text).not.toMatch(PHONE_PATTERN);
     expect(text).not.toMatch(TOKEN_PATTERN);
+  });
+});
+
+describe('slice-16 §3.7: the typed text and arrays of slice 16 are dropped by key', () => {
+  test.each([
+    'topic',
+    'assignment',
+    'learningOutcome',
+    'reason',
+    'title',
+    'studentFullName',
+    'fullName',
+    'viaStudents',
+    'marks',
+    'audiences',
+  ])('%s', (key) => {
+    expect(scrub({ [key]: 'anything', sectionId: '12' })).toEqual({ sectionId: '12' });
+  });
+
+  test('a marks array that slips into a log line is dropped whole; the count stays', () => {
+    const fields = {
+      sectionId: '12',
+      count: 2,
+      marks: [
+        { enrolmentId: '101', status: 'absent', studentFullName: 'Ali Raza' },
+        { enrolmentId: '102', status: 'present', note: 'Father 0300 1234567' },
+      ],
+    };
+    expect(scrub(fields)).toEqual({ sectionId: '12', count: 2 });
+  });
+
+  test('containsPhone finds a Pakistani mobile in typed text', () => {
+    expect(containsPhone('Call 0300 1234567')).toBe(true);
+    expect(containsPhone('Pages 12–14, roll 30')).toBe(false);
   });
 });

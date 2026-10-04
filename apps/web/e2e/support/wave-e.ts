@@ -2,6 +2,7 @@ import { Capability, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import { expect, type Page, type Request } from '@playwright/test';
 import type { ApiErrorEnvelope } from '../../lib/api/errors';
 import type { AcademicYearDto, ClassDto, SectionDto, SubjectDto } from '../../lib/api/school-academics-contract';
+import type { CapabilityScope } from '../../lib/api/school-announcements-contract';
 import type { MeDto } from '../../lib/api/school-contract';
 
 // Fixtures and the mocked API shared by the wave-E specs (attendance, staff attendance, diary
@@ -30,6 +31,14 @@ export const assignment = (extra: Partial<Assignment>): Assignment => ({
   ...extra,
 });
 
+/** GET /me `capabilityScopes` (contracts/slice-14.md §8): one entry per capability, in order. */
+export const scopesOf = (capabilities: readonly Capability[], scope: CapabilityScope, overrides: Partial<Record<Capability, CapabilityScope>> = {}) =>
+  capabilities.map((capability) => ({ capability, scope: overrides[capability] ?? scope }));
+
+const ALL_CAPABILITIES = Object.values(Capability).sort();
+const OFFICE_CAPABILITIES = [...SYSTEM_ROLE_DEFAULTS.office_staff].sort();
+const TEACHER_CAPABILITIES = [...SYSTEM_ROLE_DEFAULTS.teacher].sort();
+
 export const PRINCIPAL_ME: MeDto = {
   id: 'u-principal',
   staffId: 'st-p',
@@ -39,7 +48,8 @@ export const PRINCIPAL_ME: MeDto = {
   passwordIsDefault: false,
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
-  capabilities: Object.values(Capability).sort(),
+  capabilities: ALL_CAPABILITIES,
+  capabilityScopes: scopesOf(ALL_CAPABILITIES, 'all'),
   sessionExpiresAt: '2026-11-02T05:00:00.000Z',
   capacities: ['staff'],
   assignments: [],
@@ -51,7 +61,8 @@ export const OFFICE_ME: MeDto = {
   staffId: 'st-o',
   fullName: 'Bilal Office',
   roles: ['office_staff'],
-  capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
+  capabilities: OFFICE_CAPABILITIES,
+  capabilityScopes: scopesOf(OFFICE_CAPABILITIES, 'all'),
 };
 export const TEACHER_ME: MeDto = {
   ...PRINCIPAL_ME,
@@ -59,7 +70,8 @@ export const TEACHER_ME: MeDto = {
   staffId: 'st-t',
   fullName: 'Ayesha Malik',
   roles: ['teacher'],
-  capabilities: [...SYSTEM_ROLE_DEFAULTS.teacher].sort(),
+  capabilities: TEACHER_CAPABILITIES,
+  capabilityScopes: scopesOf(TEACHER_CAPABILITIES, 'assigned_sections'),
   assignments: [assignment({})],
 };
 
