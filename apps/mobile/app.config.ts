@@ -64,7 +64,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-notifications',
       'expo-image',
       'expo-status-bar',
-      ['expo-splash-screen', { backgroundColor: '#FFFFFF' }],
+      // Android's generated splash style always references drawable/splashscreen_logo, so an image
+      // is required or the release build fails at resource linking. The asset is a transparent
+      // placeholder until the school-facing logo exists.
+      ['expo-splash-screen', { backgroundColor: '#FFFFFF', image: './assets/splash-icon.png', imageWidth: 200 }],
       [
         'expo-build-properties',
         {
