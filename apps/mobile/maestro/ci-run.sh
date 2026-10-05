@@ -52,8 +52,13 @@ flow() { # name, file, extra -e args...
     echo "::group::flow $name failed: API log, worker log, app log"
     tail -n 80 "$root/api.log" || true
     tail -n 30 "$root/worker.log" || true
-    adb logcat -d -t 2000 >"$out/$name-logcat.txt" 2>&1 || true
-    grep -E "ReactNativeJS|AndroidRuntime|ReactNative" "$out/$name-logcat.txt" | tail -n 80 || true
+    # A release build writes no app log, so the screen itself is the evidence: a screenshot, the
+    # element tree, and warnings or worse from everything but Maestro's own dump.
+    adb exec-out screencap -p >"$out/$name.png" 2>/dev/null || true
+    maestro hierarchy >"$out/$name-hierarchy.json" 2>/dev/null || true
+    adb logcat -d '*:W' Maestro:S >"$out/$name-logcat.txt" 2>&1 || true
+    grep -E "ReactNative|AndroidRuntime|pk\.asms|expo" "$out/$name-logcat.txt" | tail -n 80 || true
+    grep -oE '"(text|resource-id|accessibilityText)" *: *"[^"]+"' "$out/$name-hierarchy.json" | head -n 60 || true
     echo "::endgroup::"
     return 1
   fi
