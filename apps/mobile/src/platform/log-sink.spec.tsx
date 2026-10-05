@@ -23,7 +23,15 @@ import { logLines, logText } from './log';
 
 const CNIC = '35202-7654321-3';
 const CNIC_DIGITS = CNIC.replaceAll('-', '');
-const PHONES = ['+923001234567', '03001234567', '0300 1234567', '+92 300 1234567'];
+const PHONES = [
+  '+923001234567',
+  '03001234567',
+  '0300 1234567',
+  '+92 300 1234567',
+  '0300 123 4567',
+  '0300-123-4567',
+  '+92 300 123 4567',
+];
 /** A failure's text as a broken network layer or proxy might word it. */
 const LEAKY = `upstream refused user ${CNIC} (${CNIC_DIGITS}), contact ${PHONES.join(' / ')}`;
 const TOKEN = 'T'.repeat(43);

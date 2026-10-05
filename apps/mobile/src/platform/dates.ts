@@ -4,9 +4,15 @@ const DAY_MS = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const ms = (date: string) => Date.parse(`${date}T00:00:00Z`);
 
-/** A well-formed YYYY-MM-DD that names a real day. */
-export const isIsoDate = (text: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(ms(text));
+/**
+ * A well-formed YYYY-MM-DD that names a real day. Parsing alone is not enough: an engine may roll
+ * 2026-02-30 over to 2 March, so the parsed day must format back to the same text.
+ */
+export const isIsoDate = (text: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const parsed = ms(text);
+  return !Number.isNaN(parsed) && iso(parsed) === text;
+};
 
 export const addDays = (date: string, days: number) => iso(ms(date) + days * DAY_MS);
 

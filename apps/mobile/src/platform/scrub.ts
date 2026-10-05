@@ -7,9 +7,10 @@ const TOKEN = /[A-Za-z0-9_-]{43,}/g;
 const IDENTITY = /\d{5}-\d{7}-\d|\d{13,}/g;
 /**
  * A Pakistani mobile: +92 / 92 / 0, then 3xx, then seven digits; a space or dash may follow the
- * country code and the 3xx (+92 300 1234567, +92-300-1234567).
+ * country code, the 3xx and the next three digits (+92 300 1234567, +92-300-1234567,
+ * 0300 123 4567, 0300-123-4567).
  */
-const PHONE = /(\+?92[\s-]?|0)3\d{2}[\s-]?\d{7}/g;
+const PHONE = /(\+?92[\s-]?|0)3\d{2}[\s-]?\d{3}[\s-]?\d{4}/g;
 /** An email address. */
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 

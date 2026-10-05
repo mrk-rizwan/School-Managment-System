@@ -278,7 +278,7 @@ describe('R16: identity numbers never reach logs, responses, audit or idempotenc
 // (apps/mobile/src/platform/log-sink.spec.tsx).
 
 /** The phone pattern, spaced and dashed forms included (as the mobile scrubber's). */
-const PHONE = /(\+?92[\s-]?|(?<![0-9])0)3[0-9]{2}[\s-]?[0-9]{7}(?![0-9])/;
+const PHONE = /(\+?92[\s-]?|(?<![0-9])0)3[0-9]{2}[\s-]?[0-9]{3}[\s-]?[0-9]{4}(?![0-9])/;
 const leaks = (text: string) => PATTERN.test(text) || PHONE.test(text);
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
@@ -415,12 +415,17 @@ describe('R16 (slice 17): messages, delivery rows, push payloads and the worker 
     const cnic = randomIdentityDigits();
     const phones = [wa.phone, keypad.phone].filter((p): p is string => p !== null);
     expect(phones).toHaveLength(2);
-    const secrets = [cnic, dashed(cnic), ...phones, ...phones.map((p) => p.replace('+92', '0'))];
+    // A phone as a person writes it, split 4-3-4 ("0300 123 4567") or 3-3-4 after the country code.
+    const local = (p: string) => p.replace('+92', '0');
+    const split = (p: string, sep: string) => [local(p).slice(0, 4), local(p).slice(4, 7), local(p).slice(7)].join(sep);
+    const e164Split = (p: string) => `+92 ${p.slice(3, 6)} ${p.slice(6, 9)} ${p.slice(9)}`;
+    const writtenForms = (p: string) => [local(p), split(p, ' '), split(p, '-'), e164Split(p)];
+    const secrets = [cnic, dashed(cnic), ...phones, ...phones.flatMap(writtenForms)];
 
-    // Provider errors as WAHA, Sendpk and FCM word them: the number, and a CNIC echoed back.
-    // (A phone written with spaces, "0300 1234567", is not masked by the API scrubber today: see
-    // the known-gap test in test/messaging/scrub.spec.ts.)
-    const providerText = (to: string) => `provider said: ${to} rejected (ref ${dashed(cnic)}, ${cnic}); call ${to.replace('+92', '0')}`;
+    // Provider errors as WAHA, Sendpk and FCM word them: the number in every written form, and a
+    // CNIC echoed back.
+    const providerText = (to: string) =>
+      `provider said: ${to} rejected (ref ${dashed(cnic)}, ${cnic}); call ${writtenForms(to).join(' or ')}`;
     jest.spyOn(drivers.whatsapp.waha, 'sendText').mockImplementation((_s, to) => Promise.reject(new Error(providerText(to))));
     jest.spyOn(drivers.sms, 'send').mockImplementation((to) => Promise.reject(new Error(providerText(to))));
     jest.spyOn(drivers.push, 'send').mockImplementation(() => Promise.reject(new Error(providerText(phones[0] ?? ''))));
@@ -515,7 +520,7 @@ describe('R16 (slice 17): messages, delivery rows, push payloads and the worker 
     // Every school any suite wrote (tests never truncate). subject_id is a polymorphic id (an
     // audit row, YYYYMM, a holiday), not text, so messages are scanned by their text columns.
     const ID_SQL = '[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]';
-    const PHONE_SQL = '(\\+?92[ -]?|(^|[^0-9])0)3[0-9]{2}[ -]?[0-9]{7}([^0-9]|$)';
+    const PHONE_SQL = '(\\+?92[ -]?|(^|[^0-9])0)3[0-9]{2}[ -]?[0-9]{3}[ -]?[0-9]{4}([^0-9]|$)';
     const pg = new Client({ connectionString: process.env.DATABASE_URL });
     await pg.connect();
     try {

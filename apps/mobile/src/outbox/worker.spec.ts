@@ -254,6 +254,32 @@ describe('triggers', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  // Wave G audit L1: a 401 or 426 from a send in flight lands while the scan reads the store.
+  test.each(['pause', 'block'] as const)(
+    'a %s raised while the store is read stops that scan from sending',
+    async (stop) => {
+      const store = memoryStore([item('a'), item('b')]);
+      const read = store.listDue.bind(store);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      store.listDue = async (now: Date) => {
+        const due = await read(now);
+        await gate;
+        return due;
+      };
+      const send = jest.fn(() => Promise.resolve(ok));
+      const worker = new OutboxWorker({ store, isOnline: () => true, now: () => T0, send });
+      const ticking = worker.trigger('foreground');
+      await Promise.resolve();
+      worker[stop]();
+      release();
+      await ticking;
+      await worker.idle();
+      expect(send).not.toHaveBeenCalled();
+      expect(store.items.every((i) => i.state === 'pending')).toBe(true);
+    },
+  );
+
   test('enqueued tells the views offline too; a plain offline tick does not', async () => {
     const worker = new OutboxWorker({
       store: memoryStore([item('a')]),

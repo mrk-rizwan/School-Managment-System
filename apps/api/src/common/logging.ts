@@ -15,13 +15,13 @@ const IDENTITY_NUMBER = new RegExp(
 /**
  * A Pakistani mobile in E.164 or local form (R111, slice 9): `+923001234567`, `923001234567`,
  * `03001234567`, also URL-encoded (`%2B92...`). As in provider error text, one space or dash may
- * follow the country code and the 3xx (`+92 300 1234567`, `0300-1234567`), the mobile scrubber's
- * coverage. The digit guards keep ids and timestamps whole. Phone numbers never reach a log line
- * unmasked.
+ * follow the country code, the 3xx and the next three digits (`+92 300 1234567`, `0300-1234567`,
+ * `0300 123 4567`, `+92-300-123-4567`), the mobile scrubber's coverage. The digit guards keep ids
+ * and timestamps whole. Phone numbers never reach a log line unmasked.
  */
 const PHONE_SEPARATOR = String.raw`(?:[\s-]|%20|%2D)?`;
 export const PHONE_NUMBER = new RegExp(
-  String.raw`(?:(?:\+|%2B)?92${PHONE_SEPARATOR}|(?<!\d)0)3\d{2}${PHONE_SEPARATOR}\d{7}(?!\d)`,
+  String.raw`(?:(?:\+|%2B)?92${PHONE_SEPARATOR}|(?<!\d)0)3\d{2}${PHONE_SEPARATOR}\d{3}${PHONE_SEPARATOR}\d{4}(?!\d)`,
   'gi',
 );
 

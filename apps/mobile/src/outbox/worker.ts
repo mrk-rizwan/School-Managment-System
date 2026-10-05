@@ -149,7 +149,10 @@ export class OutboxWorker {
       log('warn', 'outbox.scan_failed', errorFields(error));
       return;
     }
+    // A send that was in flight may have hit a 401 or 426 while the store was read.
+    if (this.paused || this.blocked) return;
     for (const item of due) {
+      if (this.paused || this.blocked) return;
       if (this.busyLanes.size >= MAX_CONCURRENT_LANES) break;
       if (!isDue(item, this.busyLanes.has(item.lane), now)) continue;
       this.busyLanes.add(item.lane);

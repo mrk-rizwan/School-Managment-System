@@ -37,10 +37,18 @@ describe('R16: a spaced or dashed phone in a log line', () => {
     ['E.164, dashed', '+92-300-1234567'],
     ['without plus, spaced', '92 300 1234567'],
     ['URL-encoded, spaced', '%2B92%20300%201234567'],
+    // Wave G audit M1: the seven digits written 3-4, as people write a number.
+    ['local, spaced 4-3-4', '0300 123 4567'],
+    ['local, dashed 4-3-4', '0300-123-4567'],
+    ['E.164, spaced 3-3-4', '+92 300 123 4567'],
+    ['E.164, dashed 3-3-4', '+92-300-123-4567'],
+    ['without plus, spaced 3-3-4', '92 300 123 4567'],
+    ['URL-encoded, 4-3-4', '0300%20123%2D4567'],
   ])('is masked: %s', (_name, phone) => {
     const out = scrub(`{"stack":"Error: provider said ${phone} rejected"}`);
     expect(out).not.toContain(phone);
     expect(out).not.toContain('1234567');
+    expect(out).not.toContain('4567');
     expect(out).toContain('[phone]');
   });
 
@@ -52,7 +60,18 @@ describe('R16: a spaced or dashed phone in a log line', () => {
     ['ids and counts', '{"schoolId":"92","messageId":"3001234","count":0,"attempt":3}'],
     ['a spaced id list', '{"ids":"92 300 123456 0300 12345678"}'],
     ['a stack line', '{"stack":"at Object.<anonymous> (src/x.ts:92:3)"}'],
+    ['a time with seconds', '{"msg":"03:00:12.345 then 0300 123 45678"}'],
+    ['epoch seconds', '{"at":1759550400,"at2":"0300123456"}'],
+    ['money', '{"amount":"PKR 300,123,456","total":"Rs. 3001234"}'],
+    ['a UUID with a 03 group', '{"id":"0e3a9c1d-0312-0345-6789-034567890123"}'],
   ])('leaves %s alone', (_name, line) => {
     expect(scrub(line)).toBe(line);
+  });
+
+  it('keeps the digit guards on the 3-4 split', () => {
+    // A longer run before or after is an id, not a phone.
+    expect('10300 123 4567'.match(PHONE_NUMBER)).toBeNull();
+    expect('0300 123 45678'.match(PHONE_NUMBER)).toBeNull();
+    expect('epoch 1759550400000'.match(PHONE_NUMBER)).toBeNull();
   });
 });

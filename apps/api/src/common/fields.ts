@@ -116,10 +116,10 @@ export const NameField = (
 
 /**
  * A Pakistani mobile number in free text (plan §4.2's R16 phone pattern), plain, spaced or dashed
- * (`+92 300 1234567` too, as the mobile app's containsPhone).
+ * (`+92 300 1234567` and `0300 123 4567` too, as the mobile app's containsPhone).
  * Text that reaches a phone or the messages table must not carry one (R111).
  */
-const PHONE_IN_TEXT = /(\+?92[\s-]?|0)3[0-9]{2}[\s-]?[0-9]{7}/;
+const PHONE_IN_TEXT = /(\+?92[\s-]?|0)3[0-9]{2}[\s-]?[0-9]{3}[\s-]?[0-9]{4}/;
 
 export const NoPhoneNumber = (): PropertyDecorator =>
   ValidateBy({

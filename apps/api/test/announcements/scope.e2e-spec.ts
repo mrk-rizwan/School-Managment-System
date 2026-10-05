@@ -114,6 +114,8 @@ describe('announcements: access, shape and scope (e2e)', () => {
     expect([ok.title, ok.body]).toEqual(['Sports day', 'Line one\nLine two']);
     for (const extra of [
       { title: 'Call 03001234567' },
+      { title: 'Call 0300 123 4567' },
+      { body: 'Ring +92-300-123-4567 today' },
       { body: 'CNIC 3520112345671 here' },
       { body: 'Tab\tinside' },
       { body: 'x'.repeat(1801) },

@@ -18,6 +18,15 @@ describe('scrubText', () => {
     ['+92 300 1234567', 'call +92 300 1234567 now', 'call [phone] now'],
     ['+92-300-1234567', 'call +92-300-1234567', 'call [phone]'],
     ['92 300 1234567', 'call 92 300 1234567', 'call [phone]'],
+    // Wave G audit M1: the seven digits written 3-4.
+    ['0300 123 4567', 'call 0300 123 4567 now', 'call [phone] now'],
+    ['0300-123-4567', 'call 0300-123-4567', 'call [phone]'],
+    ['+92 300 123 4567', 'call +92 300 123 4567 now', 'call [phone] now'],
+    ['+92-300-123-4567', 'call +92-300-123-4567', 'call [phone]'],
+    ['an ISO timestamp', 'at 2026-10-04T05:00:00.000Z', 'at 2026-10-04T05:00:00.000Z'],
+    ['a date range', 'range 2026-03-01 2026-03-31', 'range 2026-03-01 2026-03-31'],
+    ['a ULID', 'key 01K6Z3QWX8M5T0V2B9N4R7C1HD', 'key 01K6Z3QWX8M5T0V2B9N4R7C1HD'],
+    ['money', 'PKR 300,123 and Rs. 3001234', 'PKR 300,123 and Rs. 3001234'],
     ['email', 'sent to ayesha.khan+x@example.com.pk ok', 'sent to [email] ok'],
     ['bearer token', `Bearer ${'a'.repeat(43)}`, 'Bearer [token]'],
     ['token in a URL', `https://x.test/reset#${'Z9_-'.repeat(11)}`, 'https://x.test/reset#[token]'],
@@ -110,7 +119,7 @@ describe('the log ring buffer', () => {
     const text = logText();
     expect(text).not.toContain(meFixture().fullName);
     expect(text).not.toContain(meFixture().email!);
-    expect(text).not.toMatch(/\+92[\s-]?3\d{2}[\s-]?\d{7}/);
+    expect(text).not.toMatch(/\+92[\s-]?3\d{2}[\s-]?\d{3}[\s-]?\d{4}/);
     expect(text).not.toMatch(IDENTITY_PATTERN);
     expect(text).not.toMatch(PHONE_PATTERN);
     expect(text).not.toMatch(TOKEN_PATTERN);
@@ -147,6 +156,10 @@ describe('slice-16 §3.7: the typed text and arrays of slice 16 are dropped by k
 
   test('containsPhone finds a Pakistani mobile in typed text', () => {
     expect(containsPhone('Call 0300 1234567')).toBe(true);
+    expect(containsPhone('Call 0300 123 4567')).toBe(true);
+    expect(containsPhone('Call 0300-123-4567')).toBe(true);
+    expect(containsPhone('Call +92 300 123 4567')).toBe(true);
+    expect(containsPhone('Due 2026-03-01 at 08:30, PKR 3,000')).toBe(false);
     expect(containsPhone('Pages 12–14, roll 30')).toBe(false);
   });
 });

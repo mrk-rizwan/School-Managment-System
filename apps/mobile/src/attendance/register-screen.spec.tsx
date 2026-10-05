@@ -12,6 +12,8 @@ import { errorBody, resetDevice, type Handler } from '../test/fake-api';
 import { recorded, registerView, teacherMe, TODAY } from '../test/fixtures';
 import { IDENTITY_PATTERN, PHONE_PATTERN } from '../test/patterns';
 import { eventually, renderSignedIn, setOnline, settleOutbox } from '../test/screen';
+import { useLocalSearchParams } from 'expo-router';
+import { RegisterRouteScreen } from './RegisterRouteScreen';
 import { RegisterScreen } from './RegisterScreen';
 
 // slice-16 §4.2, §15.1 (attendance/register-screen.spec.tsx): the real screen, session, SQLite,
@@ -332,6 +334,23 @@ test('the register is a secure screen', async () => {
   await mount(registerView());
   expect(preventScreenCaptureAsync).toHaveBeenCalled();
 });
+
+// Wave G audit L2: a date that does not exist (2026-02-30 parses, rolled over to 2 March) is not
+// taken from the route; the register opens on today.
+test.each(['2026-02-30', '2026-13-01', '2026-04-31', 'yesterday'])(
+  'the route ignores an impossible date (%s) and opens today',
+  async (date) => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ sectionId: '12', date, period: '1' });
+    const { fake } = await renderSignedIn(<RegisterRouteScreen secure />, teacherMe(), {
+      [GET]: () => ({ status: 200, body: registerView() }),
+    });
+    await screen.findByTestId('register.roster');
+    const gets = fake.calls.filter((c) => `${c.method} ${c.path}` === GET);
+    expect(gets.length).toBeGreaterThan(0);
+    expect(gets.map((c) => c.query.get('date'))).toEqual(gets.map(() => TODAY));
+    expect(screen.getByTestId('register.date')).toHaveTextContent(`Today, ${TODAY}`);
+  },
+);
 
 describe('wave-F review fixes', () => {
   test('a tap on an unmarked row starts the cycle at present', () => {

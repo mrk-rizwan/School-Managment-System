@@ -332,6 +332,144 @@ describe('slice 11 alerts and arrivals (e2e)', () => {
     });
   });
 
+  // Plan §9 (phase gate): each contact capability from a register submit to its delivery rows for
+  // the late advice and the corrected notice. Both types are `normal` priority and in the SMS
+  // allow-list default (packages/shared MESSAGE_TYPE_TABLE; schema default of
+  // school_settings.sms_allowed_types, register item 22). Expected legs follow
+  // src/messaging/routing.ts planChannels; `in_app` never writes a delivery row, so it is left out.
+  describe('plan §9, rule 17: late advice and corrected notice reach each capability (R106, R126)', () => {
+    type ChildOpts = Parameters<AttendanceHarness['child']>[2];
+    type Row = [channel: string, status: string, error: string | null];
+    const accepted = (channel: string): Row => [channel, 'accepted', null];
+    const cases: [label: string, childOpts: ChildOpts, external: string[], rows: Row[]][] = [
+      // routing.ts guardian_keypad, normal: sms(true) — SMS is the only leg.
+      ['keypad', { capability: 'keypad' }, ['sms'], [accepted('sms')]],
+      // routing.ts guardian_whatsapp, normal, W (number connected, phone held): whatsapp, then the
+      // after-failure sms* (isAfterFailureSms). WhatsApp was accepted, so sms* is never attempted.
+      ['whatsapp', { capability: 'whatsapp' }, ['whatsapp', 'sms'], [accepted('whatsapp')]],
+      // routing.ts guardian_smartphone_data, normal, no live device: push(D) absent, sms(!D) — SMS.
+      ['smartphone_data without a device', { capability: 'smartphone_data', guardianLogin: true }, ['sms'], [accepted('sms')]],
+      // routing.ts guardian_smartphone_data, normal, live device: push(D); sms(!D) is not planned.
+      ['smartphone_data with a device', { capability: 'smartphone_data', device: true }, ['push'], [accepted('push')]],
+    ];
+
+    const deliveriesOf = async (school: TestSchool, messageId: bigint): Promise<Row[]> =>
+      (await db.messageDelivery.findMany({ where: { schoolId: school.id, messageId }, orderBy: { id: 'asc' } }))
+        .map((d) => [d.channel, d.status, d.errorCode]);
+    const deliver = (school: TestSchool, messageId: bigint, now: Date) =>
+      asSchool(h.app, school.id, () => messageProcessor.run(school.id, messageId, now));
+    const externalPlan = (plan: readonly string[]) => plan.filter((c) => c !== 'in_app');
+
+    it('the school settings default allows SMS for late_advice and attendance_corrected (register item 22)', async () => {
+      const school = await h.school();
+      const settings = await db.schoolSettings.findFirst({ where: { schoolId: school.id } });
+      expect(settings?.smsAllowedTypes).toEqual(expect.arrayContaining(['late_advice', 'attendance_corrected']));
+    });
+
+    it.each(cases)(
+      'R126: a %s guardian — absent at 08:00, alert at 09:30, arrival at 10:00 → attendance_corrected delivery rows',
+      async (_label, childOpts, external, expected) => {
+        const ctx = await fresh({ lateAdviceEnabled: true }, childOpts);
+        await connectedNumber(db, ctx.school);
+        await register(ctx, 'absent');
+        const [absence] = await alertsOf(ctx.school, ctx.child);
+        expect(await runAlert(ctx.school, absence?.id ?? 0n, at(T, '09:30'))).toBe('sent');
+        const [absenceMessage] = await messagesOf(ctx.school, ctx.child.guardianId);
+        expect(await deliver(ctx.school, absenceMessage?.id ?? 0n, at(T, '09:31'))).toBe('finished');
+
+        h.clockAt(at(T, '10:00'));
+        const arrival = await h.post('/attendance-arrivals', { studentId: ctx.child.studentId.toString(), date: T, arrivedAt: '10:00' }, ctx.office.cookie);
+        expect(arrival.status).toBe(200);
+        const corrected = (await alertsOf(ctx.school, ctx.child)).find((r) => r.kind === 'corrected');
+        expect(await runAlert(ctx.school, corrected?.id ?? 0n, at(T, '10:00'))).toBe('sent');
+        const messages = await messagesOf(ctx.school, ctx.child.guardianId);
+        expect(messages.map((m) => m.type)).toEqual(['absence_alert', 'attendance_corrected']);
+        const message = messages[1];
+        expect(message?.priority).toBe('normal');
+        expect(externalPlan(message?.channelPlan ?? [])).toEqual(external);
+
+        h.drivers.calls.length = 0;
+        expect(await deliver(ctx.school, message?.id ?? 0n, at(T, '10:01'))).toBe('finished');
+        expect(await deliveriesOf(ctx.school, message?.id ?? 0n)).toEqual(expected);
+        expect(h.drivers.calls.map((c) => c.channel)).toEqual(expected.map(([channel]) => channel));
+        expect(h.drivers.of('sms').every((c) => /now marked late \(arrived 10:00\)\.$/.test(c.text ?? ''))).toBe(true);
+        expect((await db.message.findFirst({ where: { schoolId: ctx.school.id, id: message?.id ?? 0n } }))?.status).toBe('sent');
+      },
+    );
+
+    it.each(cases)(
+      'R126: a %s guardian — absent at 08:00, arrival at 08:40 (late advice on) → late_advice delivery rows at 09:30',
+      async (_label, childOpts, external, expected) => {
+        const ctx = await fresh({ lateAdviceEnabled: true }, childOpts);
+        await connectedNumber(db, ctx.school);
+        await register(ctx, 'absent');
+        h.clockAt(at(T, '08:40'));
+        const arrival = await h.post('/attendance-arrivals', { studentId: ctx.child.studentId.toString(), date: T, arrivedAt: '08:40' }, ctx.office.cookie);
+        expect(arrival.status).toBe(200);
+        const rows = await alertsOf(ctx.school, ctx.child);
+        expect(rows.map((r) => [r.kind, r.status])).toEqual([
+          ['absence', 'cancelled'],
+          ['late', 'pending'],
+        ]);
+        expect(await runAlert(ctx.school, rows[1]?.id ?? 0n, at(T, '09:30'))).toBe('sent');
+        const messages = await messagesOf(ctx.school, ctx.child.guardianId);
+        expect(messages.map((m) => m.type)).toEqual(['late_advice']);
+        const message = messages[0];
+        expect(message?.priority).toBe('normal');
+        expect(externalPlan(message?.channelPlan ?? [])).toEqual(external);
+
+        expect(await deliver(ctx.school, message?.id ?? 0n, at(T, '09:31'))).toBe('finished');
+        expect(await deliveriesOf(ctx.school, message?.id ?? 0n)).toEqual(expected);
+        expect(h.drivers.calls.map((c) => c.channel)).toEqual(expected.map(([channel]) => channel));
+        expect(h.drivers.of('sms').every((c) => /arrived late today, .* at 08:40\.$/.test(c.text ?? ''))).toBe(true);
+      },
+    );
+
+    it('R106: a WhatsApp guardian whose WhatsApp leg fails permanently gets the corrected notice by the after-failure SMS', async () => {
+      const ctx = await fresh({}, { capability: 'whatsapp' });
+      await connectedNumber(db, ctx.school);
+      await register(ctx, 'absent');
+      const [absence] = await alertsOf(ctx.school, ctx.child);
+      await runAlert(ctx.school, absence?.id ?? 0n, at(T, '09:30'));
+      const [absenceMessage] = await messagesOf(ctx.school, ctx.child.guardianId);
+      await deliver(ctx.school, absenceMessage?.id ?? 0n, at(T, '09:31'));
+
+      h.clockAt(at(T, '10:00'));
+      await h.post('/attendance-arrivals', { studentId: ctx.child.studentId.toString(), date: T, arrivedAt: '10:00' }, ctx.office.cookie);
+      const corrected = (await alertsOf(ctx.school, ctx.child)).find((r) => r.kind === 'corrected');
+      await runAlert(ctx.school, corrected?.id ?? 0n, at(T, '10:00'));
+      const message = (await messagesOf(ctx.school, ctx.child.guardianId))[1];
+      expect(message?.type).toBe('attendance_corrected');
+      h.drivers.failWhatsApp('not_on_whatsapp'); // permanent for WhatsApp (legs.ts PERMANENT_FAILURES)
+      expect(await deliver(ctx.school, message?.id ?? 0n, at(T, '10:01'))).toBe('finished');
+      expect(await deliveriesOf(ctx.school, message?.id ?? 0n)).toEqual([
+        ['whatsapp', 'failed', 'not_on_whatsapp'],
+        accepted('sms'),
+      ]);
+    });
+
+    it('R109: with late_advice removed from the allow list, a keypad guardian gets one suppressed (not_allowed) SMS row and no SMS', async () => {
+      const ctx = await fresh({ lateAdviceEnabled: true }, { capability: 'keypad' });
+      await db.schoolSettings.updateMany({
+        where: { schoolId: ctx.school.id },
+        data: { smsAllowedTypes: ['absence_alert', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'] },
+      });
+      await register(ctx, 'absent');
+      h.clockAt(at(T, '08:40'));
+      await h.post('/attendance-arrivals', { studentId: ctx.child.studentId.toString(), date: T, arrivedAt: '08:40' }, ctx.office.cookie);
+      const late = (await alertsOf(ctx.school, ctx.child)).find((r) => r.kind === 'late');
+      expect(await runAlert(ctx.school, late?.id ?? 0n, at(T, '09:30'))).toBe('sent');
+      const [message] = await messagesOf(ctx.school, ctx.child.guardianId);
+      // routing.ts: the keypad SMS leg fails only predicate A and is the only external leg, so the
+      // plan is empty and the leg is recorded as suppressed: not_allowed (slice-9 §7.4).
+      expect(message).toMatchObject({ type: 'late_advice', status: 'suppressed', suppressedReason: 'not_allowed' });
+      expect(externalPlan(message?.channelPlan ?? [])).toEqual([]);
+      const deliveries = await db.messageDelivery.findMany({ where: { schoolId: ctx.school.id, messageId: message?.id ?? 0n } });
+      expect(deliveries.map((d) => [d.channel, d.status, d.suppressedReason])).toEqual([['sms', 'suppressed', 'not_allowed']]);
+      expect(h.drivers.of('sms')).toEqual([]);
+    });
+  });
+
   describe('R168 the gate', () => {
     it('R168: an arrival on a first-absent day makes the mark late with arrivedAt, the automatic reason and an arrivals row; a replay is 200 and writes nothing', async () => {
       const ctx = await fresh();

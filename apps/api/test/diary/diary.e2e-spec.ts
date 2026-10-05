@@ -195,6 +195,7 @@ describe('diary entries (e2e)', () => {
       ['assignment', 'Write 3520212345671 twice'],
       ['learningOutcome', 'Knows 3520212345671'],
       ['topic', 'Call 0300 1234567 for help'],
+      ['topic', 'Call 0300-123-4567 for help'],
     ] as const) {
       const res = await write(r, r.classTeacher.cookie, { [field]: value });
       expect(res.status).toBe(422);

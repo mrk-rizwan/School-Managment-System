@@ -33,7 +33,7 @@ export const todayInSchool = () => dayInSchoolFormat.format(new Date());
 const timeFormat = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
   minute: '2-digit',
-  hour12: false,
+  hourCycle: 'h23',
   timeZone: DEFAULT_TIMEZONE,
 });
 /** An instant as HH:MM (00:00-23:59) in school time. */

@@ -56,12 +56,18 @@ slice 0 are not counted.
 
 ## Left to do (ordered)
 
-1. **Phase 2 wave G (slice 17, the phase close) — in progress 2026-10-05.** Reviews done:
-   whole-phase security PASS with two conditions (WAHA deployment profile and document; a de-linked
-   guardian's inbox), mobile code-quality, docs sweep. Then the fix round, `phase-gate`, and the
-   Phase 3 inheritance section. **Blocked on the owner:** the real-driver proof on staging (one
-   WhatsApp through WAHA, one SMS through Sendpk, delivery rows `delivered`) needs the Sendpk
-   account and sender registration and a WAHA host.
+1. **Real-driver proof — a hard precondition of the first production deployment and of the
+   Phase 3 gate** (phase gate, 2026-10-05; deferred from Phase 2 because it is owner-blocked).
+   One WhatsApp message through WAHA and one SMS through Sendpk on staging, delivery rows
+   `delivered`, plus WAHA's first real start (uid 1000, read-only root) and the 7-day purge
+   decision (GOWS vs WEBJS, `docs/deployment.md`). **Owner action, requested 2026-10-03:** the
+   Sendpk account and PTA sender registration (15-30 days), and a WAHA host. Before the first
+   real send, the vendor's answers to the 15 questions go into `docs/plans/contracts/slice-9.md`
+   §9; if an answer changes anything beyond `src/messaging/drivers/sms.ts` and
+   `src/messaging/legs.spec.ts`, it is rework reviewed by `data-architect`. The deferral is safe
+   only while R112 holds (a missing driver credential fails production boot); if that rule is
+   relaxed, the deferral lapses. It becomes a FAIL if the accounts exist, or a school is
+   scheduled to go live, before the proof is done.
 2. **Product owner: settle the schema-freeze register items 7-11, 13 (grace), 21, 24, 25**
    (partial payment, sibling discount, concession scope, proration, exit states, results approval
    unit, late-payment charge, banking). Phase 3's schema cannot freeze without 7-11. Items 22, 23,
@@ -253,8 +259,20 @@ or dashes, and the notice-text check missed `+92 300 1234567`.
 **Results:** lint and typecheck clean everywhere; API 130 suites / 1,779 tests (2 skipped,
 real-provider); mobile 38 suites / 500 tests; web build; Playwright (see the commit).
 
-**Not done in Phase 2:** the real-driver proof on staging (owner accounts); see "What Phase 3
-inherits".
+**Phase gate, first run (03146b1, CI green): FAIL on two items, both closed.** (1) Plan §9's
+end-to-end tests now take the late advice and the corrected notice from a register submit to
+delivery rows for a keypad, a WhatsApp and a smartphone-without-WhatsApp guardian
+(`test/attendance/alerts.e2e-spec.ts` from line 340), plus the WhatsApp-to-SMS fallback and an
+SMS-disallowed type. (2) `code-auditor` on the wave G diff: no critical or high defect; the new
+inbox predicate verified clean. Fixed: phone patterns in the API log scrubber, the notice-text
+check and the mobile scrubber missed the 3+4 split (`0300 123 4567`, `+92 300 123 4567`); the
+outbox scan could send after a pause raised during its read; `isIsoDate` accepted 30 February;
+`formatTime` uses `hourCycle: 'h23'`. The gate accepted the real-driver proof as an owner-blocked
+deferral on the conditions in "Left to do" item 1. Known, not proven: the mobile screens at
+360 dp (the CI emulator uses the default device profile).
+
+**Not done in Phase 2:** the real-driver proof on staging (owner accounts); see "Left to do"
+item 1 and "What Phase 3 inherits".
 
 ## 2026-10-05 — Wave F CI: the Android app's first device run (main thread) — DONE
 
