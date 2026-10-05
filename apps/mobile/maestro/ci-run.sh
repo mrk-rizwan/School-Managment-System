@@ -85,6 +85,14 @@ airplane() { adb shell cmd connectivity airplane-mode "$1"; sleep 3; }
 
 adb install -r "$APK"
 
+# The software-rendered emulator's launcher is slow to settle, and its "isn't responding" dialog
+# covered the app on a run (2026-10-05). Hide system error dialogs, let the launcher settle, and
+# dismiss anything already showing.
+adb shell settings put global hide_error_dialogs 1 || true
+sleep 20
+adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+adb shell input keyevent KEYCODE_HOME || true
+
 # --- slice 15 ---------------------------------------------------------------------------------
 start_api 0.0.0
 flow sign-in sign-in-shell-sign-out.yaml
