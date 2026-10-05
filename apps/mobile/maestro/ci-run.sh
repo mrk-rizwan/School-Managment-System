@@ -25,8 +25,18 @@ wait_for() { # url, what
   echo "$2 did not answer $1"; tail -n 50 "$root/api.log" "$root/worker.log" || true; return 1
 }
 
-stop() { # pid file
-  if [ -f "$1" ]; then kill "$(cat "$1")" 2>/dev/null || true; sleep 2; fi
+stop() { # pid file. Waits for the process to exit: Nest's graceful shutdown outlasted a fixed
+  # two seconds, so the restarted API hit EADDRINUSE and the old one kept answering (2026-10-05).
+  [ -f "$1" ] || return 0
+  local pid
+  pid="$(cat "$1")"
+  kill "$pid" 2>/dev/null || return 0
+  for _ in $(seq 1 30); do
+    kill -0 "$pid" 2>/dev/null || return 0
+    sleep 1
+  done
+  kill -9 "$pid" 2>/dev/null || true
+  sleep 1
 }
 
 # The API and the worker restart together whenever MOBILE_MIN_APP_VERSION changes. Without the
