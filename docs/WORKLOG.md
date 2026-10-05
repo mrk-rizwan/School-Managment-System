@@ -11,10 +11,10 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1 complete and closed. **Phase 2 waves D, E and F done** (2026-10-04):
-  slices 9-16 (messaging, calendar, attendance, diary and remarks, announcements and inbox, the
-  Android app for teachers, parents, students and the principal). **Next: wave G** = slice 17
-  (phase close). Project progress = about 70 / 157 days = 45 %.
+- **Phase:** Phase 1 complete and closed. **Phase 2 waves D, E and F done** (2026-10-04/05):
+  slices 9-16. **CI fully green on `e4ec096` (run 37292986940), including the first complete
+  Android emulator run: all seven Maestro flows pass.** **Next: wave G** = slice 17 (phase close).
+  Phase 2 = 40.5 / 42 days (96 %); project = 70.5 / 157 days (45 %).
 - **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
   `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
@@ -179,6 +179,36 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-05 — Wave F CI: the Android app's first device run (main thread) — DONE
+
+Seven pushes between `406ee5b` and `e4ec096` took the mobile CI job from "never built an APK" to
+all seven Maestro flows passing. In order:
+
+- **Build:** `babel-preset-expo` resolved through expo (`7054730`'s fix was uncommitted at the
+  time); the splash plugin needs an image or Android resource linking fails (transparent
+  placeholder `apps/mobile/assets/splash-icon.png` until a logo exists); the e2e APK builds for
+  `x86_64` only (four ABIs took 20-54 min); the runner frees ~20 GB of unused toolchains before the
+  emulator image; the ci job's limit is 45 min.
+- **App defects found only on the device (now covered by Jest):** Expo replaces the global
+  `fetch` and its responses are not `instanceof Response`; the openapi-fetch middleware returned
+  the response, so every typed call threw after a 200 and sign-in said "No connection". The
+  middleware now only inspects, and the Jest fake fetch answers like Expo's (114 tests fail with
+  the old line). Same pass: uploads send an expo-file-system `File`, only real network failures
+  read as offline, outbox sends that throw for other reasons fail once, the sign-in button always
+  leaves busy, exclusive SQLite transactions get secure_delete/foreign_keys/busy_timeout and run
+  one at a time. Then: the sync chip never appeared after an offline save (the outbox list was
+  refreshed only by the worker, which skips listeners offline) — fixed for registers, diary,
+  remarks and Discard.
+- **CI script defects:** the principal's calendar and account are under More (six tabs); the
+  emulator's launcher "isn't responding" dialog is hidden; `ci-run.sh` recorded the subshell's pid,
+  so API restarts never happened (EADDRINUSE) and the update-required flow signed in — it now
+  execs node and refuses to start while the old API answers. A failing flow prints the API log and
+  saves a screenshot and `maestro hierarchy`.
+- A staff-attendance test assumed the third newest workday was inside the 3-day window, which a
+  Sunday breaks (failed on a Monday); it uses the newest workday.
+
+Airplane mode worked through Maestro's `setAirplaneMode`; the adb fallback was not needed.
 
 ## 2026-10-04 — Phase 2 wave F: slices 14 and 16 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
 
