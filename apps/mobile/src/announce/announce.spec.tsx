@@ -12,7 +12,8 @@ import type {
 import { queryClient } from '../api/query-client';
 import { getDb } from '../db/database';
 import { listUnfinished } from '../db/outbox.repository';
-import { errorBody, meFixture, resetDevice, type Handler } from '../test/fake-api';
+import { errorBody, resetDevice, type Handler } from '../test/fake-api';
+import { meFixture } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline } from '../test/screen';
 import { AnnouncementScreen } from './AnnouncementScreen';
 import { AnnounceScreen } from './AnnounceScreen';
@@ -141,7 +142,11 @@ describe('the reduced picker (slice-14 §12)', () => {
       'Reaches 83 people (60 parents, 20 students, 3 staff) · SMS: 40 units of 900 left',
     );
     expect(
-      previewLine(previewDto({ sms: { allowed: false, cap: 1000, legs: 0, remaining: 900, segments: 1, units: 0 } })),
+      previewLine(
+        previewDto({
+          sms: { allowed: false, cap: 1000, legs: 0, remaining: 900, segments: 1, units: 0 },
+        }),
+      ),
     ).toMatch(/SMS: none for this message$/);
   });
 });
@@ -306,7 +311,11 @@ describe('compose', () => {
         return sends === 1
           ? {
               status: 409,
-              body: errorBody('SMS_CAP_EXCEEDED', 'cap', { smsUnits: 120, remaining: 40, cap: 1000 }),
+              body: errorBody('SMS_CAP_EXCEEDED', 'cap', {
+                smsUnits: 120,
+                remaining: 40,
+                cap: 1000,
+              }),
             }
           : { status: 200, body: announcement({ status: 'sending' }) };
       },
@@ -387,7 +396,9 @@ describe('compose', () => {
       'POST /api/v1/announcements': () => ({
         status: 422,
         body: errorBody('VALIDATION_FAILED', 'Invalid', {
-          fields: [{ path: 'audiences[0].targetId', code: 'REFERENCE_NOT_FOUND', message: 'not found' }],
+          fields: [
+            { path: 'audiences[0].targetId', code: 'REFERENCE_NOT_FOUND', message: 'not found' },
+          ],
         }),
       }),
     });
@@ -447,12 +458,19 @@ describe('compose', () => {
       'POST /api/v1/announcements/preview-audience': () => {
         calls += 1;
         return calls === 1
-          ? { status: 429, body: errorBody('RATE_LIMITED', 'Too many'), headers: { 'Retry-After': '7' } }
+          ? {
+              status: 429,
+              body: errorBody('RATE_LIMITED', 'Too many'),
+              headers: { 'Retry-After': '7' },
+            }
           : { status: 200, body: previewDto() };
       },
     });
     await renderSignedIn(<ComposeScreen />, principal(), routes);
-    const previewer = createPreviewer((state) => states.push(state.kind), () => clock);
+    const previewer = createPreviewer(
+      (state) => states.push(state.kind),
+      () => clock,
+    );
     const json = JSON.stringify({ audiences: [{ kind: 'everyone' }], priority: 'normal' });
     previewer.want(json);
     await previewer.run(json);
@@ -504,7 +522,13 @@ describe('the list and one announcement', () => {
       'GET /api/v1/announcements': () =>
         page([
           announcement(),
-          announcement({ id: '801', title: 'Exam week', status: 'sent', sentAt: '2026-10-03T04:00:00.000Z', recipientCount: 83 }),
+          announcement({
+            id: '801',
+            title: 'Exam week',
+            status: 'sent',
+            sentAt: '2026-10-03T04:00:00.000Z',
+            recipientCount: 83,
+          }),
           announcement({ id: '802', title: 'Fees reminder', status: 'sending' }),
         ]),
       'POST /api/v1/announcements/800/send': () => {
@@ -559,7 +583,9 @@ describe('the list and one announcement', () => {
       'GET /api/v1/announcements/801/delivery': () => ({ status: 200, body: delivery }),
     });
     expect(await screen.findByText('83 people')).toBeOnTheScreen();
-    expect(screen.getByText('SMS: 5 accepted · 5 delivered · 0 failed · 0 suppressed')).toBeOnTheScreen();
+    expect(
+      screen.getByText('SMS: 5 accepted · 5 delivered · 0 failed · 0 suppressed'),
+    ).toBeOnTheScreen();
     expect(screen.queryByTestId('announcement.send')).toBeNull();
   });
 });

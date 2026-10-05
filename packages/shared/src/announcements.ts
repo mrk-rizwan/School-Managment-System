@@ -6,8 +6,30 @@ export type AnnouncementCategory = (typeof ANNOUNCEMENT_CATEGORIES)[number];
 export const ANNOUNCEMENT_PRIORITIES = ['normal', 'urgent'] as const;
 export type AnnouncementPriority = (typeof ANNOUNCEMENT_PRIORITIES)[number];
 
-export const ANNOUNCEMENT_STATUSES = ['draft', 'scheduled', 'sending', 'sent', 'cancelled'] as const;
+export const ANNOUNCEMENT_STATUSES = [
+  'draft',
+  'scheduled',
+  'sending',
+  'sent',
+  'cancelled',
+] as const;
 export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUSES)[number];
+
+/** Display labels, shared by the web and the mobile app. */
+export const ANNOUNCEMENT_CATEGORY_LABELS: Record<AnnouncementCategory, string> = {
+  holiday: 'Holiday',
+  exam: 'Exam',
+  fee: 'Fee',
+  event: 'Event',
+  general: 'General',
+};
+export const ANNOUNCEMENT_STATUS_LABELS: Record<AnnouncementStatus, string> = {
+  draft: 'Draft',
+  scheduled: 'Scheduled',
+  sending: 'Sending',
+  sent: 'Sent',
+  cancelled: 'Cancelled',
+};
 
 /** `everyone` combines with nothing; `staff` and `staff_member` need announcement.send.school. */
 export const AUDIENCE_KINDS = [
@@ -48,7 +70,11 @@ export const TARGETED_AUDIENCE_KINDS = [
   'staff_member',
 ] as const satisfies readonly AudienceKind[];
 /** Kinds that take roles (default both). */
-export const ROLE_AUDIENCE_KINDS = ['class', 'section', 'student'] as const satisfies readonly AudienceKind[];
+export const ROLE_AUDIENCE_KINDS = [
+  'class',
+  'section',
+  'student',
+] as const satisfies readonly AudienceKind[];
 
 export const ANNOUNCEMENT_BODY_MAX = 1800;
 export const ANNOUNCEMENT_TITLE_MAX = 120;

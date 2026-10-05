@@ -6,7 +6,7 @@ import { Field } from './Field';
 import { ModalSheet } from './ModalSheet';
 import { colors, fontSize } from './theme';
 
-export const REASON_MIN = 3;
+const REASON_MIN = 3;
 export const REASON_MAX = 500;
 
 /** The reason field's error, or null when it may be sent (3–500, no identity or phone pattern). */

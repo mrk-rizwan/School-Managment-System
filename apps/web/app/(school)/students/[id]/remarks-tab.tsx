@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, REMARK_CATEGORIES, REMARK_VISIBILITIES, type RemarkCategory, type RemarkVisibility } from '@asms/shared';
+import { Capability, REMARK_CATEGORIES, REMARK_CATEGORY_LABELS, REMARK_VISIBILITIES, type RemarkCategory, type RemarkVisibility } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { PlusIcon } from 'lucide-react';
@@ -17,7 +17,7 @@ import type { StudentDetailDto } from '@/lib/api/school-students-contract';
 import { formatDay, formatDateTime } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
-import { REMARK_CATEGORY_LABELS, REMARK_VISIBILITY_LABELS, remarkKeys } from '../_lib/remarks-ui';
+import { REMARK_VISIBILITY_LABELS, remarkKeys } from '../_lib/remarks-ui';
 import { CorrectRemarkDialog, NewRemarkDialog } from './remark-dialogs';
 
 // contracts/slice-13.md §5, §11 "Student → Remarks tab": every visibility for staff; a remark is

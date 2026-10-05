@@ -15,13 +15,19 @@ import { attachmentMimeOf, type InboxItemDto, type InboxQueryDto } from '../anno
 import { AttachmentFiles, type AttachedFile } from '../documents/attachment-files.service';
 
 // contracts/slice-14.md §7 (R147, R148, R164, R165): the messages addressed to the caller's
-// persons, resolved at read time, so a guardian issued a login after a send still sees it.
+// persons, resolved at read time, so a guardian issued a login after a send still sees it. The
+// guardian's children are read once per request: they filter the guardian's rows about one student
+// (§7.1) and name the students of each row (§7.2).
 
-const personsOf = (session: SchoolSessionContext): InboxPersons => ({
+type GuardianChildren = Awaited<ReturnType<PermissionsService['guardianChildren']>>;
+
+const personsOf = (session: SchoolSessionContext, guardian: GuardianChildren): InboxPersons => ({
   guardianId: session.access.guardianId,
+  guardianScope: guardian.scope,
   staffId: session.access.staffId,
   studentId: session.access.studentId,
 });
+
 
 @Injectable()
 export class InboxService {
@@ -38,9 +44,10 @@ export class InboxService {
   /** §7.3: newest first; one page carries no bytes (R160). */
   async list(session: SchoolSessionContext, query: InboxQueryDto): Promise<Page<InboxItemDto>> {
     const schoolId = this.context.schoolId;
+    const guardian = await this.permissions.guardianChildren(schoolId, session.access);
     const { rows, total } = await this.inbox.list(
       schoolId,
-      personsOf(session),
+      personsOf(session, guardian),
       await this.clock.today(schoolId),
       {
         ...(query.kind === undefined ? {} : { kind: query.kind }),
@@ -48,13 +55,15 @@ export class InboxService {
       },
       { skip: (query.page - 1) * query.limit, take: query.limit },
     );
-    return toPage(await this.items(schoolId, session, rows), query, total);
+    return toPage(await this.items(schoolId, session, guardian, rows), query, total);
   }
 
   /** §7.4: one item by its message id under the same predicate (an expired one is 404). */
   async get(session: SchoolSessionContext, id: bigint): Promise<InboxItemDto> {
     const schoolId = this.context.schoolId;
-    const [item] = await this.items(schoolId, session, [await this.require(schoolId, session, id)]);
+    const guardian = await this.permissions.guardianChildren(schoolId, session.access);
+    const row = await this.require(schoolId, session, guardian, id);
+    const [item] = await this.items(schoolId, session, guardian, [row]);
     if (!item) throw notFound();
     return item;
   }
@@ -62,7 +71,8 @@ export class InboxService {
   /** §7.5 (R148): only to a recipient, through the §7.1 predicate; never a URL. */
   async attachment(session: SchoolSessionContext, id: bigint, thumb: boolean): Promise<AttachedFile> {
     const schoolId = this.context.schoolId;
-    const row = await this.require(schoolId, session, id);
+    const guardian = await this.permissions.guardianChildren(schoolId, session.access);
+    const row = await this.require(schoolId, session, guardian, id);
     const mime = row.attachmentMime;
     if (row.mediaObjectKey === null || row.announcementId === null || mime === null || row.attachmentSizeBytes === null) {
       throw notFound();
@@ -73,8 +83,13 @@ export class InboxService {
     return thumb ? this.files.thumbnail(schoolId, file, name, log) : this.files.open(schoolId, file, name, log);
   }
 
-  private async require(schoolId: SchoolId, session: SchoolSessionContext, id: bigint): Promise<InboxRow> {
-    const row = await this.inbox.find(schoolId, personsOf(session), await this.clock.today(schoolId), id);
+  private async require(
+    schoolId: SchoolId,
+    session: SchoolSessionContext,
+    guardian: GuardianChildren,
+    id: bigint,
+  ): Promise<InboxRow> {
+    const row = await this.inbox.find(schoolId, personsOf(session, guardian), await this.clock.today(schoolId), id);
     if (!row) throw notFound();
     return row;
   }
@@ -82,11 +97,12 @@ export class InboxService {
   private async items(
     schoolId: SchoolId,
     session: SchoolSessionContext,
+    guardian: GuardianChildren,
     rows: readonly InboxRow[],
   ): Promise<InboxItemDto[]> {
     const settings = await this.school.find(schoolId);
     const schoolName = settings?.name ?? '';
-    const via = await this.viaStudents(schoolId, session, rows);
+    const via = await this.viaStudents(schoolId, session, guardian.children, rows);
     return rows.map((row) => {
       const announcement = row.subjectType === 'announcement' && row.announcementId !== null;
       return {
@@ -116,14 +132,13 @@ export class InboxService {
   private async viaStudents(
     schoolId: SchoolId,
     session: SchoolSessionContext,
+    children: GuardianChildren['children'],
     rows: readonly InboxRow[],
   ): Promise<Map<bigint, { studentId: string; fullName: string }[]>> {
     const result = new Map<bigint, { studentId: string; fullName: string }[]>();
     const guardianId = session.access.guardianId;
     const own = rows.filter((row) => guardianId !== null && row.guardianId === guardianId);
-    if (guardianId === null || own.length === 0) return result;
-    const { children } = await this.permissions.guardianChildren(schoolId, session.access);
-    if (children.length === 0) return result;
+    if (guardianId === null || own.length === 0 || children.length === 0) return result;
     const names = new Map(children.map((c) => [c.studentId, c.fullName]));
     const scopeIds = children.map((c) => c.studentId);
     const of = (subjectType: string) => own.filter((row) => row.subjectType === subjectType);

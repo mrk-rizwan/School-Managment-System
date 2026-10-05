@@ -1,9 +1,9 @@
 import {
   ApiError,
-  DEFAULT_TIMEZONE,
   describeApiError,
   formatDateTime,
-  todayInSchool,
+  formatTime,
+  isTodayInSchool,
 } from '@asms/shared';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { isNetworkError } from '../api/client';
@@ -73,19 +73,9 @@ export function NoPermissionState({
   );
 }
 
-const timeFormat = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: DEFAULT_TIMEZONE,
-});
-const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIMEZONE });
-
 /** "as of 09:32" in school time today, else with the date; "(device time)" when no Date header. */
 export function formatAsOf(serverTime: string, isDevice = false): string {
-  const instant = new Date(serverTime);
-  const sameDay = dayFormat.format(instant) === todayInSchool();
-  const when = sameDay ? timeFormat.format(instant) : formatDateTime(serverTime);
+  const when = isTodayInSchool(serverTime) ? formatTime(serverTime) : formatDateTime(serverTime);
   return `as of ${when}${isDevice ? ' (device time)' : ''}`;
 }
 
@@ -106,6 +96,20 @@ export function OfflineNotice({
       </Text>
     </View>
   );
+}
+
+/**
+ * The offline notice of a cached read: shown while cached data is on screen and the phone is
+ * offline or the last refresh failed; nothing while no data is cached.
+ */
+export function cachedOfflineBanner(
+  cached: { serverTime: string; serverTimeIsDevice: boolean } | undefined,
+  online: boolean,
+  failed: boolean,
+) {
+  return cached !== undefined && (!online || failed) ? (
+    <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
+  ) : null;
 }
 
 /** The quiet "as of" line under a heading. */

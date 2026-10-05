@@ -18,6 +18,7 @@ import {
   rollupSectionDayJobId,
 } from '../../src/messaging/queues';
 import type { AfterCommit } from '../../src/tenancy/after-commit';
+import { guardQueues, takeRefusedProductionEnqueues } from '../core/app';
 import type { SchoolId } from '../../src/tenancy/school-id';
 import { closeTestDb, createSchool } from '../support/schools';
 
@@ -166,6 +167,23 @@ describe('OutboxDispatcher enqueues what its contract names (real Redis)', () =>
     } finally {
       refused.mockRestore();
       await other.onModuleDestroy();
+    }
+  });
+
+  it('slice 17: under the test guard, the production dispatcher (default prefix) cannot put a job on a production queue', async () => {
+    guardQueues();
+    const production = new OutboxDispatcher(env, {} as AfterCommit);
+    try {
+      await production.messages(schoolId, [{ id: 1n, round: 0 }]);
+      await production.alerts(schoolId, [{ id: 1n, dueAt: now }], now);
+      // Refused before it reached Redis; the dispatcher counts it as it counts any failed enqueue.
+      expect(production.enqueueFailures).toBe(2);
+      expect(takeRefusedProductionEnqueues()).toEqual([`bull:${QUEUE.messaging}`, `bull:${QUEUE.attendance}`]);
+      // A test-prefixed queue is untouched by the guard.
+      await dispatcher.messages(schoolId, [{ id: 103n, round: 0 }]);
+      expect(await readBack(QUEUE.messaging, messageJobId(103n, 0))).toMatchObject({ id: 'message-103-0' });
+    } finally {
+      await production.onModuleDestroy();
     }
   });
 });

@@ -1,6 +1,6 @@
 import { containsPhone, errorFields, scrub, scrubText } from './scrub';
 import { clearLog, log, logLines, LOG_CAPACITY, logText } from './log';
-import { meFixture } from '../test/fake-api';
+import { meFixture } from '../test/fixtures';
 import { IDENTITY_PATTERN, PHONE_PATTERN, TOKEN_PATTERN } from '../test/patterns';
 
 // slice-15 §10 (R155, R16 with the phone pattern).

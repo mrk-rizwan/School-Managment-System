@@ -2,12 +2,14 @@ import { todayInSchool } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MyChildDto, StudentAttendanceDto } from '../api/contracts';
 import { useSession } from '../auth/session';
+import { sectionTitle } from '../classes/my-classes';
 import { useCachedQuery } from '../db/use-cached-query';
-import { monthToDate } from '../diary/dates';
 import { useOnline } from '../net/connectivity';
+import { monthToDate } from '../platform/dates';
+import { monthLine } from '../ui/AttendanceMonth';
 import { ListRow } from '../ui/ListRow';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
@@ -35,16 +37,14 @@ export function todayLine(data: StudentAttendanceDto, today: string): string {
   return statusTone(day.status).word;
 }
 
-export function monthLine(data: StudentAttendanceDto): string {
-  return data.percentage === null
-    ? 'No recorded days yet'
-    : `${data.percentage}% — ${data.countedDays} of ${data.teachingDays} days`;
-}
-
 function ChildCard({ child }: { child: MyChildDto }) {
   const router = useRouter();
   const today = todayInSchool();
-  const read = familyRead({ kind: 'child', studentId: child.studentId }, 'attendance', monthToDate(today));
+  const read = familyRead(
+    { kind: 'child', studentId: child.studentId },
+    'attendance',
+    monthToDate(today),
+  );
   const query = useCachedQuery<StudentAttendanceDto>(read.key, read.path, read.params, read.fetch);
   const data = query.data?.body;
   const day = data?.days.find((d) => d.date === today);
@@ -59,7 +59,7 @@ function ChildCard({ child }: { child: MyChildDto }) {
         title={child.fullName}
         detail={
           child.current
-            ? `${child.current.className} ${child.current.sectionName}${
+            ? `${sectionTitle(child.current.className, child.current.sectionName)}${
                 child.current.rollNo === null ? '' : ` · Roll ${child.current.rollNo}`
               }`
             : 'No current class'
@@ -117,19 +117,14 @@ export function ChildrenScreen({ secure }: { secure?: boolean }) {
           <OfflineNotice serverTime={me.serverTime} isDevice={me.serverTimeIsDevice} />
         ) : null
       }
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          enabled={online}
-          onRefresh={() => {
-            setRefreshing(true);
-            void session
-              .refreshMe()
-              .then(() => client.invalidateQueries({ queryKey: ['me', 'children'] }))
-              .finally(() => setRefreshing(false));
-          }}
-        />
-      }
+      refreshing={refreshing}
+      onRefresh={() => {
+        setRefreshing(true);
+        void session
+          .refreshMe()
+          .then(() => client.invalidateQueries({ queryKey: ['me', 'children'] }))
+          .finally(() => setRefreshing(false));
+      }}
       testID="children.screen"
     >
       {me.body.children.length === 0 ? (

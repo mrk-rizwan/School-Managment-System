@@ -1,18 +1,10 @@
-import { ErrorCode, type RemarkCategory, type RemarkVisibility } from '@asms/shared';
+import { ErrorCode, type RemarkVisibility } from '@asms/shared';
 import { NOT_ASSIGNED_ON_DATE, refusalMessage, type RefusalMessages } from '@/lib/api/errors';
 
 // Pieces shared by the student's remarks tab and its dialogs (contracts/slice-13.md §5, §11).
 
 export const remarkKeys = { student: (id: string) => ['school', 'remarks', id] as const };
 
-export const REMARK_CATEGORY_LABELS: Record<RemarkCategory, string> = {
-  academic: 'Academic',
-  behaviour: 'Behaviour',
-  homework: 'Homework',
-  attendance: 'Attendance',
-  participation: 'Participation',
-  general: 'General',
-};
 /** Visibility is a level (R140): the student level includes guardians. */
 export const REMARK_VISIBILITY_LABELS: Record<RemarkVisibility, string> = {
   internal: 'Staff only',

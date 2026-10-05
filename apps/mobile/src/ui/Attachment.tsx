@@ -14,7 +14,11 @@ import { colors, fontSize, radius, space } from './theme';
 // parent decides. The bearer travels in a header, never in the URL. A PDF is downloaded, handed
 // to the share sheet and deleted.
 
-export function formatBytes(bytes: number | null): string {
+/** The word a list row shows for an attachment: "PDF", "Photo", or none. */
+export const attachmentWord = (mime: string | null) =>
+  mime === null ? null : mime === 'application/pdf' ? 'PDF' : 'Photo';
+
+function formatBytes(bytes: number | null): string {
   if (bytes === null) return '';
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;

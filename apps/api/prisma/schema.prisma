@@ -1573,6 +1573,13 @@ model MessageDelivery {
   @@unique([schoolId, id], map: "message_deliveries_school_id_id_key")
   /// A crashed worker cannot write an attempt twice; also the message FK's index.
   @@unique([schoolId, messageId, channel, attempt], map: "message_deliveries_attempt_key")
+  /// The housekeeping sweeps, per school every 2 to 15 minutes: expireUnreported and
+  /// listAwaitingPoll (channel, status, attempted_at), listUnrolledReports (attempted_at), and
+  /// countByChannelAndStatus (status with delivered_at or failed_at).
+  @@index([schoolId, channel, status, attemptedAt], map: "message_deliveries_school_id_channel_status_attempted_at_idx")
+  @@index([schoolId, attemptedAt], map: "message_deliveries_school_id_attempted_at_idx")
+  @@index([schoolId, status, deliveredAt], map: "message_deliveries_school_id_status_delivered_at_idx")
+  @@index([schoolId, status, failedAt], map: "message_deliveries_school_id_status_failed_at_idx")
   @@map("message_deliveries")
 }
 
@@ -1954,6 +1961,8 @@ model AttendanceDayStatus {
   @@index([schoolId, enrolmentId, studentId], map: "attendance_day_status_school_id_enrolment_id_student_id_idx")
   /// The per-section-day recompute; also the section FK's index.
   @@index([schoolId, sectionId, date], map: "attendance_day_status_school_id_section_id_date_idx")
+  /// The whole-school percentage report: a date range across every student.
+  @@index([schoolId, date, studentId], map: "attendance_day_status_school_id_date_student_id_idx")
   @@map("attendance_day_status")
 }
 

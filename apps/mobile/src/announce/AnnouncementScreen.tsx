@@ -1,16 +1,16 @@
 import { formatDateTime } from '@asms/shared';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { api, unwrap, unwrapWithDate } from '../api/client';
+import { api, unwrapWithDate } from '../api/client';
 import type { AnnouncementDto, DeliverySummaryDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { useCachedQuery } from '../db/use-cached-query';
-import { useOnline, useOnlineOnly } from '../net/connectivity';
+import { useOnline } from '../net/connectivity';
 import { Button } from '../ui/Button';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { AsOf, NoDataState, OfflineNotice } from '../ui/states';
+import { AsOf, cachedOfflineBanner, NoDataState } from '../ui/states';
 import { colors, fontSize } from '../ui/theme';
 import {
   audienceLabel,
@@ -19,6 +19,7 @@ import {
   sendFailure,
   SENDING_REFRESH_MS,
   statusWord,
+  useSendAnnouncement,
 } from './announce-model';
 
 // One announcement — /announce/[id] (slice-16 §7.2): its fields and, once sent, the delivery
@@ -26,9 +27,9 @@ import {
 // here (online only). Audience names are classes and sections, never a child: not secure.
 
 export function AnnouncementScreen({ id }: { id: string }) {
-  const client = useQueryClient();
+
   const online = useOnline();
-  const sendGate = useOnlineOnly('send_announcement');
+  const { gate: sendGate, send: sendAnnouncement } = useSendAnnouncement();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -36,8 +37,7 @@ export function AnnouncementScreen({ id }: { id: string }) {
     queryKeys.announcement(id),
     `/api/v1/announcements/${id}`,
     {},
-    () =>
-      unwrapWithDate(api.GET('/api/v1/announcements/{id}', { params: { path: { id } } })),
+    () => unwrapWithDate(api.GET('/api/v1/announcements/{id}', { params: { path: { id } } })),
   );
   // `sending` is a send that succeeded and is being delivered: its counts are already live.
   const status = one.data?.body.status;
@@ -47,9 +47,7 @@ export function AnnouncementScreen({ id }: { id: string }) {
     `/api/v1/announcements/${id}/delivery`,
     {},
     () =>
-      unwrapWithDate(
-        api.GET('/api/v1/announcements/{id}/delivery', { params: { path: { id } } }),
-      ),
+      unwrapWithDate(api.GET('/api/v1/announcements/{id}/delivery', { params: { path: { id } } })),
     { enabled: sent, staleTime: 0 },
   );
 
@@ -71,12 +69,7 @@ export function AnnouncementScreen({ id }: { id: string }) {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await unwrap(
-        api.POST('/api/v1/announcements/{id}/send', { params: { path: { id } } }),
-      );
-      // Send-now answers `sending` (a job delivers it); the page shows it at once.
-      client.setQueryData(queryKeys.announcement(id), { ...one.data!, body: result });
-      await client.invalidateQueries({ queryKey: ['announcements'] });
+      await sendAnnouncement(id);
     } catch (error) {
       setMessage(sendFailure(error, true).message);
     } finally {
@@ -102,11 +95,7 @@ export function AnnouncementScreen({ id }: { id: string }) {
     <Screen
       title={a.title}
       testID="announcement.screen"
-      banner={
-        !online || one.isError ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(cached, online, one.isError)}
       footer={
         a.status === 'draft' ? (
           <>
@@ -136,9 +125,7 @@ export function AnnouncementScreen({ id }: { id: string }) {
       <Text selectable style={styles.body}>
         {a.body}
       </Text>
-      <Text style={styles.caption}>
-        To: {a.audiences.map(audienceLabel).join(', ')}
-      </Text>
+      <Text style={styles.caption}>To: {a.audiences.map(audienceLabel).join(', ')}</Text>
       <AsOf serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
       {sent ? (
         <Sheet title="Delivery" testID="announcement.delivery">

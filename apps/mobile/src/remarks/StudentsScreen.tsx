@@ -3,12 +3,13 @@ import { useRouter } from 'expo-router';
 import { api, unwrapWithDate } from '../api/client';
 import type { RegisterViewDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
+import { sectionTitle } from '../classes/my-classes';
 import { useCachedQuery } from '../db/use-cached-query';
 import { useOnline } from '../net/connectivity';
 import { ListRow } from '../ui/ListRow';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { cachedOfflineBanner, EmptyState, NoDataState } from '../ui/states';
 
 // A section's students — /classes/[sectionId]/students (slice-16 §4.1, §4.6): the roster of
 // today's register view (period 1), the same cached row the register uses. Children's names:
@@ -39,11 +40,7 @@ export function StudentsScreen({ sectionId, secure }: { sectionId: string; secur
     <Screen
       title="Students"
       secure={secure}
-      banner={
-        cached !== undefined && (!online || roster.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(cached, online, roster.isError)}
       testID="students.screen"
     >
       {cached === undefined ? (
@@ -56,7 +53,7 @@ export function StudentsScreen({ sectionId, secure }: { sectionId: string; secur
       ) : cached.body.roster.length === 0 ? (
         <EmptyState title="No students in this section." />
       ) : (
-        <Sheet title={`${cached.body.section.className} ${cached.body.section.name}`}>
+        <Sheet title={sectionTitle(cached.body.section.className, cached.body.section.name)}>
           {cached.body.roster
             .filter((row) => row.onRoster)
             .map((row) => (

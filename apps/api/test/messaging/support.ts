@@ -19,7 +19,7 @@ import { FieldCipher } from '../../src/common/crypto/field-encryption';
 import type { GuardedPrismaClient } from '../../src/repositories/prisma';
 import { QueueTenancy } from '../../src/tenancy/queue.mint';
 import type { SchoolId } from '../../src/tenancy/school-id';
-import { createTestApp } from '../core/app';
+import { createTestApp, queuePrefixOf } from '../core/app';
 import { createSchoolSession, createSchoolUser, type TestSchoolUser } from '../support/school-session';
 import { createSchool, testDb, type TestSchool } from '../support/schools';
 import { createGuardian, randomPhone } from '../support/students';
@@ -144,6 +144,11 @@ export async function messagingApp(
   });
   const enqueued: Enqueued[] = [];
   const outbox = app.get(OutboxDispatcher, { strict: false });
+  // Slice 17: the methods not mocked below (and any a suite's restoreAllMocks un-mocks) enqueue
+  // under createTestApp's test-only prefix, never where a worker listens; the app's close() fails
+  // if anything reached a production-named queue (test/core/app.ts).
+  const prefix = queuePrefixOf(app);
+  if (!prefix?.startsWith('asms-test-')) throw new Error(`the messaging harness enqueues under ${prefix ?? 'the default prefix'}`);
   jest.spyOn(outbox, 'messages').mockImplementation((schoolId, jobs) => {
     for (const job of jobs) enqueued.push({ kind: 'message', schoolId, id: job.id, delayMs: job.delayMs ?? 0 });
     return Promise.resolve();

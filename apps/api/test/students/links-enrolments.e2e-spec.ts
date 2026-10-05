@@ -375,9 +375,10 @@ describe('guardian links and enrolments (e2e)', () => {
       expect((await patch(body)).status).toBe(422);
     }
     const audits = await auditFor(school, 'enrolment', enrolment.id);
-    expect(audits.map((a) => a.metadata)).toEqual([
-      { from: null, to: 8 },
-      { from: 8, to: null },
+    // R57 (slice 17): the action, actor and target of each change.
+    expect(audits.map((a) => [a.action, a.actorUserId, a.subjectId, a.metadata])).toEqual([
+      ['enrolment.roll_no_set', office.userId, enrolment.id, { from: null, to: 8 }],
+      ['enrolment.roll_no_set', office.userId, enrolment.id, { from: 8, to: null }],
     ]);
     // A left enrolment's number is free again (the unique index covers active rows only).
     await db.enrolment.update({

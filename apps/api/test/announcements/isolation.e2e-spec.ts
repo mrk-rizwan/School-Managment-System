@@ -10,12 +10,13 @@ import { InboxRepository } from '../../src/repositories/inbox.repository';
 import type { SchoolId } from '../../src/tenancy/school-id';
 import { createTestApp } from '../core/app';
 import { asSchool } from '../messaging/support';
-import { expectIsolated } from '../support/isolation';
+import { expectIsolated, studentsScope } from '../support/isolation';
 import { createSchoolUser } from '../support/school-session';
 import { closeTestDb, createTwoSchools, testDb } from '../support/schools';
 import { createGuardian, createStudent, linkGuardian } from '../support/students';
 
 const db = () => testDb();
+const noStudents = studentsScope([]);
 
 describe('slice 14 tenant isolation', () => {
   let app: NestExpressApplication;
@@ -182,9 +183,9 @@ describe('slice 14 tenant isolation', () => {
         });
         return message.id;
       },
-      read: (schoolId, id) => as(schoolId, () => inbox.find(schoolId, { guardianId, staffId: null, studentId: null }, new Date(), id)),
+      read: (schoolId, id) => as(schoolId, () => inbox.find(schoolId, { guardianId, guardianScope: noStudents, staffId: null, studentId: null }, new Date(), id)),
       list: async (schoolId) =>
-        (await as(schoolId, () => inbox.list(schoolId, { guardianId, staffId: null, studentId: null }, new Date(), {}, { skip: 0, take: 50 }))).rows,
+        (await as(schoolId, () => inbox.list(schoolId, { guardianId, guardianScope: noStudents, staffId: null, studentId: null }, new Date(), {}, { skip: 0, take: 50 }))).rows,
     });
   });
 });

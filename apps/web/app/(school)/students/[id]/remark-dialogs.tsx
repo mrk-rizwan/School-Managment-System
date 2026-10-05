@@ -4,6 +4,7 @@ import {
   Capability,
   ErrorCode,
   REMARK_CATEGORIES,
+  REMARK_CATEGORY_LABELS,
   REMARK_VISIBILITIES,
   containsIdentityNumber,
   newIdempotencyKey,
@@ -32,7 +33,7 @@ import type { StudentDetailDto } from '@/lib/api/school-students-contract';
 import { todayInSchool } from '@/lib/format';
 import { schoolKeys, useCapabilities } from '@/lib/school-session';
 import { useSubjectOptions } from '../../academics/_lib/options';
-import { REMARK_CATEGORY_LABELS, REMARK_VISIBILITY_LABELS, remarkErrorMessage, remarkKeys } from '../_lib/remarks-ui';
+import { REMARK_VISIBILITY_LABELS, remarkErrorMessage, remarkKeys } from '../_lib/remarks-ui';
 
 // A new remark (contract §5.2) and a correction (§5.3), both opened from the student's remarks tab.
 

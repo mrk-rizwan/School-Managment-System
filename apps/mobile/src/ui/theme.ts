@@ -1,3 +1,5 @@
+import { ATTENDANCE_STATUS_LABELS } from '@asms/shared';
+
 // Theme tokens: the web's palette (apps/web/app/globals.css, oklch) as sRGB hex — the normative
 // mobile values (slice-15 §12). Light only; the shape keeps a dark set additive. One accent, the
 // system font, a 4-dp spacing scale, 48-dp tap targets. No gradients, no decoration. Attendance
@@ -64,28 +66,28 @@ const TONES: Record<ChipStatus, StatusTone> = {
     foreground: statusColors.onStatus,
     border: 'none',
     letter: 'P',
-    word: 'Present',
+    word: ATTENDANCE_STATUS_LABELS.present,
   },
   absent: {
     background: statusColors.absent,
     foreground: statusColors.onStatus,
     border: 'none',
     letter: 'A',
-    word: 'Absent',
+    word: ATTENDANCE_STATUS_LABELS.absent,
   },
   late: {
     background: statusColors.late,
     foreground: statusColors.onStatus,
     border: 'none',
     letter: 'L',
-    word: 'Late',
+    word: ATTENDANCE_STATUS_LABELS.late,
   },
   on_leave: {
     background: statusColors.on_leave,
     foreground: statusColors.onStatus,
     border: 'none',
     letter: 'O',
-    word: 'On leave',
+    word: ATTENDANCE_STATUS_LABELS.on_leave,
   },
   partial: {
     background: statusColors.partial,

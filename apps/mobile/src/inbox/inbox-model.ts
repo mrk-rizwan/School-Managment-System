@@ -1,4 +1,11 @@
-import { DEFAULT_TIMEZONE, formatDay, todayInSchool, type AnnouncementCategory } from '@asms/shared';
+import {
+  ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_CATEGORY_LABELS,
+  formatDate,
+  formatTime,
+  isTodayInSchool,
+  type AnnouncementCategory,
+} from '@asms/shared';
 import type { InboxItemDto } from '../api/contracts';
 
 // The inbox (slice-16 §7.3, contracts/slice-14.md §7), pure. Nothing here records that a message
@@ -8,27 +15,15 @@ export const INBOX_LIMIT = 25;
 
 export const CATEGORY_CHIPS: { value: AnnouncementCategory | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'holiday', label: 'Holiday' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'fee', label: 'Fee' },
-  { value: 'event', label: 'Event' },
-  { value: 'general', label: 'General' },
+  ...ANNOUNCEMENT_CATEGORIES.map((value) => ({
+    value,
+    label: ANNOUNCEMENT_CATEGORY_LABELS[value],
+  })),
 ];
 
-const timeFormat = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: DEFAULT_TIMEZONE,
-});
-const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIMEZONE });
-
 /** "09:32" when sent today in school time, else the date. */
-export function sentLabel(sentAt: string, today: string = todayInSchool()): string {
-  const instant = new Date(sentAt);
-  const day = dayFormat.format(instant);
-  return day === today ? timeFormat.format(instant) : formatDay(day);
-}
+export const sentLabel = (sentAt: string, today?: string): string =>
+  isTodayInSchool(sentAt, today) ? formatTime(sentAt) : formatDate(sentAt);
 
 /** "via Ali" — the child's first name, for a parent of several children. */
 export const viaLabel = (fullName: string) => `via ${fullName.trim().split(/\s+/)[0] ?? fullName}`;
@@ -50,6 +45,3 @@ export function childScreenOf(
       return null;
   }
 }
-
-export const attachmentWord = (mime: InboxItemDto['attachmentMime']) =>
-  mime === null ? null : mime === 'application/pdf' ? 'PDF' : 'Photo';

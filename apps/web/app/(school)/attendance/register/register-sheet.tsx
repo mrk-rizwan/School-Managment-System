@@ -20,7 +20,7 @@ import {
   type RosterRowDto,
   type SubmitMarkBody,
 } from '@/lib/api/school-attendance-contract';
-import { formatDate, formatDay, todayInSchool } from '@/lib/format';
+import { formatDate, formatDay, formatTime, todayInSchool } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
   AlertCell,
@@ -29,7 +29,7 @@ import {
   TIME_PATTERN,
   attendanceErrorMessage,
   attendanceKeys,
-  timeOf,
+
 } from '../_lib/attendance-ui';
 import { AmendmentsDialog, arrivalOf, useMarkSheet, type MarkDraft, type SavedMark } from '../_lib/mark-sheet';
 import { CorrectMarkDialog, MarkHistoryDialog } from './mark-dialogs';
@@ -306,7 +306,7 @@ function RegisterStatus({ view }: { view: RegisterViewDto }) {
   const register = view.register;
   const when = (iso: string) => {
     const day = formatDate(iso);
-    return day === formatDay(view.date) ? `at ${timeOf(iso)}` : `on ${day} at ${timeOf(iso)}`;
+    return day === formatDay(view.date) ? `at ${formatTime(iso)}` : `on ${day} at ${formatTime(iso)}`;
   };
   const readOnly = !view.canSubmit
     ? 'You can read this register but not change it.'

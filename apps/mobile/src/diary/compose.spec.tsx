@@ -6,11 +6,12 @@ import { ImageManipulator } from 'expo-image-manipulator';
 import { queryClient } from '../api/query-client';
 import { getAttachment, listLocalDiaryEntries } from '../db/local.repository';
 import { listByState } from '../db/outbox.repository';
-import { meFixture, resetDevice } from '../test/fake-api';
+import { resetDevice } from '../test/fake-api';
 import { CACHE, DOCUMENT, fileExists, putFile } from '../test/file-system';
-import { assignment, teacherMe, TODAY } from '../test/fixtures';
+import { assignment, meFixture, teacherMe, TODAY } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline, settleOutbox } from '../test/screen';
-import { DiaryComposeScreen, ownSubjects } from './DiaryComposeScreen';
+import { ownSubjects } from '../classes/subjects';
+import { DiaryComposeScreen } from './DiaryComposeScreen';
 
 // slice-16 §4.4, §4.5 (diary/compose.spec.tsx).
 
@@ -42,7 +43,9 @@ describe('where the subjects come from', () => {
         assignment({ role: 'subject_teacher', subjectId: '7', subjectName: 'English' }),
       ],
     });
-    expect(ownSubjects(me, Capability.DIARY_WRITE, '12', '20')).toEqual([{ id: '7', name: 'English' }]);
+    expect(ownSubjects(me, Capability.DIARY_WRITE, '12', '20')).toEqual([
+      { id: '7', name: 'English' },
+    ]);
     const { fake } = await renderSignedIn(
       <DiaryComposeScreen sectionId="12" classId="20" />,
       me,
@@ -62,7 +65,9 @@ describe('where the subjects come from', () => {
     );
     // A subject teacher granted the key school-wide gets the school's list.
     const granted = teacherMe({
-      assignments: [assignment({ role: 'subject_teacher', subjectId: '7', subjectName: 'English' })],
+      assignments: [
+        assignment({ role: 'subject_teacher', subjectId: '7', subjectName: 'English' }),
+      ],
     });
     granted.capabilityScopes = granted.capabilityScopes.map((s) =>
       s.capability === Capability.DIARY_WRITE ? { ...s, scope: 'all' as const } : s,

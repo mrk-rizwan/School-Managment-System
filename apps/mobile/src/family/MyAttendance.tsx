@@ -1,40 +1,14 @@
 import { todayInSchool } from '@asms/shared';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
-import { api, unwrapWithDate } from '../api/client';
 import type { MyStaffAttendanceDto } from '../api/contracts';
-import { queryKeys } from '../api/query-keys';
 import { useCachedQuery } from '../db/use-cached-query';
-import { useOnline } from '../net/connectivity';
-import { AttendanceMonth } from '../ui/AttendanceMonth';
+import { attendanceMonth } from '../platform/dates';
 import { ListRow } from '../ui/ListRow';
-import { MonthHeader } from '../ui/MonthHeader';
-import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { AsOf, NoDataState, OfflineNotice } from '../ui/states';
-import { colors, fontSize } from '../ui/theme';
-import { attendanceMonth } from './FamilyScreens';
+import { staffAttendanceRead } from './source';
 
-// A staff member's own attendance (slice-16 §6, R135): the Home card and /home/my-attendance.
-// The DTO has no note and no marker's name (slice-12 decision 6); neither is rendered. The
-// user's own data: not secure.
-
-function useStaffMonth(offset: number) {
-  const month = attendanceMonth(todayInSchool(), offset);
-  const query = useCachedQuery<MyStaffAttendanceDto>(
-    queryKeys.staffAttendance(month.dateFrom, month.dateTo),
-    '/api/v1/me/staff/attendance',
-    { dateFrom: month.dateFrom, dateTo: month.dateTo },
-    () =>
-      unwrapWithDate(
-        api.GET('/api/v1/me/staff/attendance', {
-          params: { query: { dateFrom: month.dateFrom, dateTo: month.dateTo } },
-        }),
-      ),
-  );
-  return { month, query };
-}
+// A staff member's own attendance (slice-16 §6, R135): the Home card; the month screen at
+// /home/my-attendance is AttendanceMonthScreen. The user's own data: not secure.
 
 /** "October: 18 of 20 working days" — present and late days of the working days so far. */
 export function staffCardLine(title: string, data: MyStaffAttendanceDto): string {
@@ -44,7 +18,9 @@ export function staffCardLine(title: string, data: MyStaffAttendanceDto): string
 
 export function MyAttendanceCard() {
   const router = useRouter();
-  const { month, query } = useStaffMonth(0);
+  const month = attendanceMonth(todayInSchool(), 0);
+  const read = staffAttendanceRead(month);
+  const query = useCachedQuery(read.key, read.path, read.params, read.fetch);
   const data = query.data?.body;
   return (
     <Sheet testID="home.myAttendance">
@@ -63,47 +39,3 @@ export function MyAttendanceCard() {
     </Sheet>
   );
 }
-
-export function MyAttendanceScreen() {
-  const online = useOnline();
-  const [offset, setOffset] = useState(0);
-  const { month, query } = useStaffMonth(offset);
-  const cached = query.data;
-  return (
-    <Screen
-      title="My attendance"
-      banner={
-        cached !== undefined && (!online || query.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
-      testID="myAttendance.screen"
-    >
-      <MonthHeader
-        title={month.title}
-        onPrevious={() => setOffset(offset - 1)}
-        onNext={() => setOffset(offset + 1)}
-        nextDisabled={offset >= 0}
-        testID="myAttendance"
-      />
-      {cached === undefined ? (
-        <NoDataState
-          isError={query.isError}
-          error={query.error}
-          onRetry={() => void query.refetch()}
-          offlineMessage="This month is not on this phone yet."
-        />
-      ) : (
-        <>
-          <AsOf serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-          <AttendanceMonth kind="staff" data={cached.body} testID="myAttendance.month" />
-          <Text style={styles.caption}>Marked by the office. Ask the office about a mistake.</Text>
-        </>
-      )}
-    </Screen>
-  );
-}
-
-const styles = StyleSheet.create({
-  caption: { fontSize: fontSize.small, color: colors.mutedForeground },
-});

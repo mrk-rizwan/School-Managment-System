@@ -36,6 +36,89 @@ services:
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: [miniodata:/data]
 
+  # WhatsApp through WAHA (Phase 2 plan §3, docs/deployment.md). Off by default: it starts only with
+  # `docker compose --profile whatsapp up`. Not needed in development, where an absent WAHA_URL
+  # selects the log driver. Env names verified 2026-10-05 against
+  # https://waha.devlike.pro/docs/how-to/config/ and /docs/how-to/observability/.
+  waha:
+    profiles: ["whatsapp"]
+    # WAHA 2026.9.2, WEBJS image (the `latest-<version>` tag), amd64 only. Pinned by the index digest
+    # read from Docker Hub on 2026-10-05. Upgrading is a reviewed change: read the changelog, re-read
+    # the config page above, re-check the webhook HMAC headers (contracts/slice-9.md §8.2).
+    image: devlikeapro/waha:latest-2026.9.2@sha256:280bdc8f860267a2488a45d00ec88529646f7468c0bf0283c595d6efdd1b5e3b
+    # The image sets no USER and would run as root. 1000 is the `node` user of its Node base image.
+    # A fresh named volume is root-owned: chown it once (docs/deployment.md) before the first start.
+    user: "1000:1000"
+    read_only: true
+    # /tmp: WEBJS's Chromium, the GOWS socket and WAHA's zip of session data write here. Memory only.
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    # No `ports:`. Nothing outside the waha_private network can reach the API (and its QR, chats and
+    # send endpoints); only the API container joins that network in production.
+    networks: [waha_private, waha_egress]
+    volumes:
+      - waha_sessions:/app/.sessions
+    # Refuse to start without an API key of at least 16 characters (the API's own minimum). Checked
+    # here, not with ${WAHA_API_KEY:?}: Compose interpolates every service, profile or not, so `:?`
+    # would stop `docker compose up` for every developer whose .env has no WAHA key.
+    entrypoint:
+      - /usr/bin/tini
+      - --
+      - sh
+      - -c
+      - '[ "$${#WAHA_API_KEY}" -ge 16 ] || { echo "WAHA_API_KEY missing or shorter than 16 characters, refusing to start" >&2; exit 1; }; exec /entrypoint.sh'
+    environment:
+      # X-Api-Key on every request except /ping. Same value the API sends (WAHA_API_KEY in .env).
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WHATSAPP_API_KEY_EXCLUDE_PATH: ping
+      # Dashboard and swagger read and send on every paired school's account. Off.
+      WAHA_DASHBOARD_ENABLED: "false"
+      WHATSAPP_SWAGGER_ENABLED: "false"
+      WAHA_DEBUG_MODE: "false"
+      WAHA_APPS_ENABLED: "false"
+      WAHA_PROMETHEUS_ENABLED: "false"
+      # debug and trace print message content.
+      WAHA_LOG_LEVEL: info
+      WAHA_HTTP_LOG_LEVEL: info
+      WAHA_LOG_FORMAT: JSON
+      # The pairing QR is shown to the principal once, never logged (default True prints it).
+      WAHA_PRINT_QR: "False"
+      # Inbound messages are counted and ignored: never download their media.
+      WAHA_EVENTS_DOWNLOAD_MEDIA: "false"
+      WAHA_API_DOWNLOAD_MEDIA: "false"
+      # Media files removed after 24 h (seconds). The folder is on the /tmp tmpfs, never on disk.
+      WHATSAPP_FILES_LIFETIME: "86400"
+      WHATSAPP_FILES_FOLDER: /tmp/whatsapp-files
+      # Restore this worker's sessions after a restart, so a deploy does not mean a QR re-scan.
+      WAHA_WORKER_ID: asms-waha
+      # No WHATSAPP_HOOK_URL / WHATSAPP_HOOK_HMAC_KEY: the API sets the webhook URL and its HMAC key
+      # (WAHA_WEBHOOK_SECRET) on each session it creates (WahaDriver). A global hook as well would
+      # deliver every event twice. WAHA_WEBHOOK_SECRET therefore stays in the API's env only.
+      #
+      # NOT SET - message store purge every 7 days (plan §3). No WAHA environment variable for it was
+      # found in the docs above. The WEBJS engine keeps chat history in the browser profile inside
+      # waha_sessions; GOWS can disable local message storage per session
+      # (config.gows.storage.messages = false), which needs an engine decision and a WahaDriver
+      # change. Open item, docs/deployment.md.
+    healthcheck:
+      # /ping is unauthenticated (WHATSAPP_API_KEY_EXCLUDE_PATH above). Node is in the image.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ping').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
 volumes:
   pgdata:
   miniodata:
+  # WhatsApp session keys: a logged-in account per school. Must sit on encrypted host storage, be
+  # backed up encrypted, and be excluded from log shipping (docs/deployment.md).
+  waha_sessions:
+
+networks:
+  # internal: no route off the host. WAHA and, in production, the API container.
+  waha_private:
+    internal: true
+  # WAHA alone: outbound to WhatsApp and to APP_URL for its webhooks. Nothing else joins it.
+  waha_egress:

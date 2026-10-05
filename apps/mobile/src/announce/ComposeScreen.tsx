@@ -2,6 +2,7 @@ import {
   ApiError,
   ANNOUNCEMENT_BODY_MAX,
   ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_CATEGORY_LABELS,
   ANNOUNCEMENT_TITLE_MAX,
   newIdempotencyKey,
   type AnnouncementCategory,
@@ -46,13 +47,6 @@ import {
 // can send. No names on this screen: not secure.
 
 const PREVIEW_DEBOUNCE_MS = 600;
-const CATEGORY_LABELS: Record<AnnouncementCategory, string> = {
-  holiday: 'Holiday',
-  exam: 'Exam',
-  fee: 'Fee',
-  event: 'Event',
-  general: 'General',
-};
 
 type Page<T> = { data: T[]; page: number; limit: number; total: number };
 
@@ -61,10 +55,7 @@ type Page<T> = { data: T[]; page: number; limit: number; total: number };
  * flight is sent when it returns, and only the latest request's answer is shown. After a 429 no
  * request goes out until the wait the server named has passed (review L3).
  */
-export function createPreviewer(
-  show: (state: PreviewState) => void,
-  now: () => number = Date.now,
-) {
+export function createPreviewer(show: (state: PreviewState) => void, now: () => number = Date.now) {
   const previewer = {
     latest: null as string | null,
     inFlight: false,
@@ -268,7 +259,8 @@ export function ComposeScreen() {
   const kinds: ChoiceKind[] = ['everyone', 'parents', 'students', 'staff', 'class', 'section'];
   const locked = createdId !== null;
   const editable = online && !locked;
-  const parentsOnly = choice.kind === 'class' || choice.kind === 'section' ? choice.parentsOnly : false;
+  const parentsOnly =
+    choice.kind === 'class' || choice.kind === 'section' ? choice.parentsOnly : false;
   const pickTarget = (kind: 'class' | 'section', targetId: string | null) =>
     setChoice({ kind, targetId, parentsOnly });
 
@@ -362,7 +354,10 @@ export function ComposeScreen() {
       />
       <SegmentedPicker
         label="Category"
-        options={ANNOUNCEMENT_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+        options={ANNOUNCEMENT_CATEGORIES.map((c) => ({
+          value: c,
+          label: ANNOUNCEMENT_CATEGORY_LABELS[c],
+        }))}
         value={category}
         onChange={setCategory}
         disabled={!editable}
@@ -386,7 +381,9 @@ export function ComposeScreen() {
       {errors.audience ? <Text style={styles.error}>{errors.audience}</Text> : null}
       {choice.kind === 'class' || choice.kind === 'section' ? (
         classes.data === undefined ? (
-          <Text style={styles.note}>{classes.isError ? 'Cannot load classes.' : 'Loading classes…'}</Text>
+          <Text style={styles.note}>
+            {classes.isError ? 'Cannot load classes.' : 'Loading classes…'}
+          </Text>
         ) : (
           <SegmentedPicker
             label="Class"
@@ -397,7 +394,7 @@ export function ComposeScreen() {
               pickTarget(choice.kind, choice.kind === 'class' ? id : null);
             }}
             disabled={!editable}
-        testID="announce.class"
+            testID="announce.class"
           />
         )
       ) : null}
@@ -408,7 +405,7 @@ export function ComposeScreen() {
           value={choice.targetId}
           onChange={(id) => pickTarget('section', id)}
           disabled={!editable}
-        testID="announce.section"
+          testID="announce.section"
         />
       ) : null}
       {choice.kind === 'class' || choice.kind === 'section' ? (
@@ -421,7 +418,7 @@ export function ComposeScreen() {
           value={parentsOnly ? 'parents' : 'both'}
           onChange={(value) => setChoice({ ...choice, parentsOnly: value === 'parents' })}
           disabled={!editable}
-        testID="announce.roles"
+          testID="announce.roles"
         />
       ) : null}
       <View style={styles.spacer} />

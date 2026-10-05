@@ -1,8 +1,8 @@
 'use client';
 
+import { ANNOUNCEMENT_CATEGORY_LABELS } from '@asms/shared';
 import { Badge } from '@/components/ui/badge';
 import type { InboxItemDto } from '@/lib/api/school-announcements-contract';
-import { CATEGORY_LABELS } from '../../announcements/_lib/announcements-ui';
 
 // Pieces shared by the inbox list and item (contracts/slice-14.md §7).
 
@@ -11,7 +11,7 @@ export function InboxTags({ item }: { item: Pick<InboxItemDto, 'priority' | 'cat
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {item.priority === 'urgent' && <Badge variant="destructive">Urgent</Badge>}
-      <Badge variant="outline">{item.category ? CATEGORY_LABELS[item.category] : 'Notice'}</Badge>
+      <Badge variant="outline">{item.category ? ANNOUNCEMENT_CATEGORY_LABELS[item.category] : 'Notice'}</Badge>
     </span>
   );
 }

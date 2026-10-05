@@ -119,5 +119,6 @@ export function actionsFor(
   };
 }
 
-export const sectionTitle = (row: { className: string; sectionName: string }) =>
-  `${row.className} ${row.sectionName}`.trim();
+/** "Class 5 A": a section by its class and its own name. */
+export const sectionTitle = (className: string, sectionName: string) =>
+  `${className} ${sectionName}`.trim();

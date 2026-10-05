@@ -1,12 +1,5 @@
 import { BACKOFF_MS, backoff } from './backoff';
-import {
-  canDiscard,
-  isDue,
-  remedyItem,
-  transition,
-  type OutboxItem,
-  type Outcome,
-} from './machine';
+import { canDiscard, isDue, transition, type OutboxItem, type Outcome } from './machine';
 
 // Every row of slice-15 §7.4 as a named test.
 
@@ -28,7 +21,7 @@ function item(patch: Partial<OutboxItem> = {}): OutboxItem {
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
-      responseDetails: null,
+    responseDetails: null,
     domainTable: null,
     domainId: null,
     createdAt: T0.toISOString(),
@@ -54,29 +47,19 @@ function sending(patch: Partial<OutboxItem> = {}) {
   return transition(item(patch), { type: 'send', now: T0 }).item;
 }
 
-const flags = { online: true, paused: false, blocked: false };
-
 describe('pending → sending', () => {
-  test('a due item in an idle lane, online, not paused or blocked, is sent', () => {
-    expect(isDue(item(), flags, false, T0)).toBe(true);
+  test('a due item in an idle lane is sent', () => {
+    expect(isDue(item(), false, T0)).toBe(true);
     const next = sending();
     expect(next).toMatchObject({ state: 'sending', attempts: 1, sendingSince: T0.toISOString() });
   });
 
   test.each([
-    ['the lane is busy', flags, true, item()],
-    ['offline', { ...flags, online: false }, false, item()],
-    ['the queue is paused (401)', { ...flags, paused: true }, false, item()],
-    ['the queue is blocked (426)', { ...flags, blocked: true }, false, item()],
-    [
-      'next_attempt_at is in the future',
-      flags,
-      false,
-      item({ nextAttemptAt: at(1000).toISOString() }),
-    ],
-    ['the item is not pending', flags, false, item({ state: 'failed' })],
-  ])('not sent when %s', (_name, queue, busy, candidate) => {
-    expect(isDue(candidate, queue, busy, T0)).toBe(false);
+    ['the lane is busy', true, item()],
+    ['next_attempt_at is in the future', false, item({ nextAttemptAt: at(1000).toISOString() })],
+    ['the item is not pending', false, item({ state: 'failed' })],
+  ])('not sent when %s', (_name, busy, candidate) => {
+    expect(isDue(candidate, busy, T0)).toBe(false);
   });
 });
 
@@ -253,29 +236,6 @@ describe('discard and remedy', () => {
     expect(canDiscard(item({ state: 'failed' }))).toBe(true);
     expect(canDiscard(item({ state: 'sending' }))).toBe(false);
     expect(canDiscard(item({ state: 'done' }))).toBe(false);
-  });
-
-  test('a remedy creates a NEW pending row; the failed one is unchanged', () => {
-    const failed = item({
-      state: 'failed',
-      attempts: 2,
-      responseStatus: 409,
-      responseCode: 'AMENDMENT_REASON_REQUIRED',
-      responseMessage: 'Give a reason',
-    });
-    const fresh = remedyItem(failed, 'new-id', at(5), '{"marks":[],"reason":"late"}');
-    expect(fresh).toMatchObject({
-      id: 'new-id',
-      state: 'pending',
-      attempts: 0,
-      responseStatus: null,
-      body: '{"marks":[],"reason":"late"}',
-    });
-    expect(failed.state).toBe('failed');
-  });
-
-  test('a remedy applies only to a failed item', () => {
-    expect(() => remedyItem(item(), 'x', T0)).toThrow();
   });
 });
 

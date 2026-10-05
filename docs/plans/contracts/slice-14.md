@@ -720,13 +720,26 @@ For the caller's `access` (`guardianId`, `staffId`, `studentId` from `users`; an
 
 ```
 m.school_id = :school
-AND (m.guardian_id = :guardianId OR m.staff_id = :staffId OR m.student_id = :studentId)   -- null ids match nothing
+AND ((m.guardian_id = :guardianId AND guardianSubjectInScope(m))                          -- null ids match nothing
+     OR m.staff_id = :staffId OR m.student_id = :studentId)
 AND m.type <> 'messaging_test'                                                             -- a test is not a notice (decision 17)
 AND NOT (m.status = 'suppressed' AND m.suppressed_reason = 'subject_cancelled')            -- withdrawn before anyone was told
 AND NOT EXISTS (announcement a ON m.subject_type = 'announcement' AND a.id = m.subject_id
                  AND a.expires_on IS NOT NULL AND a.expires_on < :today)                   -- R147
 LEFT JOIN announcements a (same join) for title, body, category, expires_on, attachment mime
 ```
+
+`guardianSubjectInScope(m)` (Phase 2 close, R164 amended; security review, low): a guardian row
+whose subject belongs to a student reads only while that student is in the caller's **current**
+guardian scope (`PermissionsService.guardianChildren`, the scope `/me/children` uses). Student-linked
+subject types: `attendance_alert` (absence and late alerts and corrections; the alert's
+`student_id`), `remark` (the remark's `student_id`) and `diary_entry` (any scope student with an
+enrolment in the entry's section in force on its date, §7.2's predicate). Every other subject type
+(`announcement`, `holiday`, `holiday_cancellation`, and the staff-only types) is not about one
+student and passes. An empty scope passes none of the three. Staff and student rows are unchanged.
+The same predicate serves `GET /me/inbox/:id` and both attachment routes, so a filtered row is
+`404` there. Each subject check is an `EXISTS` on the subject's `(school_id, id)` key, inside the
+`(school_id, guardian_id, created_at)` index scan.
 
 Consequences, each a test: a guardian issued a login **after** a message was written sees it (the
 row names the guardian, not a user); a `no_channel` or `duplicate_phone` suppression is **in** the
@@ -749,7 +762,8 @@ intersected with the scope; for `subjectType = attendance_alert` the alert's `st
 entry's section in force on the entry's date (slice 13 §6.1's predicate); otherwise `[]`. Resolved
 for the page in **one query per subject type present** (at most four), never per row. Names come
 from `students.full_name`. A child whose link ended is not named, even on an old row (R164: ended
-link, gone next request). Staff and student callers always get `[]`.
+link, gone next request), and since the Phase 2 close a row about only that child is not listed at
+all (§7.1). Staff and student callers always get `[]`.
 
 ### 7.3 `GET /me/inbox` — paginated
 

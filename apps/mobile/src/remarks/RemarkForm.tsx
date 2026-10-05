@@ -1,4 +1,10 @@
-import { formatDay, REMARK_CATEGORIES, todayInSchool, type RemarkCategory } from '@asms/shared';
+import {
+  formatDay,
+  REMARK_CATEGORIES,
+  REMARK_CATEGORY_LABELS,
+  todayInSchool,
+  type RemarkCategory,
+} from '@asms/shared';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import type { CreateRemarkDto } from '../api/contracts';
@@ -17,15 +23,6 @@ import { colors, fontSize } from '../ui/theme';
 // A new remark (slice-16 §4.6), saved on the device with its outbox row; the outbox id is the
 // Idempotency-Key. Visibility defaults to "School default": the field is left out and the server
 // applies the school's setting, which the app cannot read (decision 10).
-
-export const CATEGORY_LABELS: Record<RemarkCategory, string> = {
-  academic: 'Academic',
-  behaviour: 'Behaviour',
-  homework: 'Homework',
-  attendance: 'Attendance',
-  participation: 'Participation',
-  general: 'General',
-};
 
 type Visibility = NonNullable<CreateRemarkDto['visibility']>;
 const VISIBILITY_OPTIONS: { value: Visibility | 'default'; label: string }[] = [
@@ -124,7 +121,7 @@ function OpenRemarkForm({ studentId, subjects, resend, onClose, onSaved }: Omit<
       />
       <SegmentedPicker
         label="Category"
-        options={REMARK_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+        options={REMARK_CATEGORIES.map((c) => ({ value: c, label: REMARK_CATEGORY_LABELS[c] }))}
         value={category}
         onChange={setCategory}
         testID="remarkForm.category"

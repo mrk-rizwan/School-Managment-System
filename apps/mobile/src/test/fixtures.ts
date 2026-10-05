@@ -1,5 +1,6 @@
 import type {
   DiaryEntryDto,
+  LoginResultDto,
   MeAssignmentDto,
   MeDto,
   RegisterViewDto,
@@ -7,8 +8,7 @@ import type {
   StudentAttendanceDto,
 } from '../api/contracts';
 import { todayInSchool } from '@asms/shared';
-import { addDays } from '../diary/dates';
-import { meFixture } from './fake-api';
+import { addDays } from '../platform/dates';
 
 // DTO builders for screen tests. Names, a phone and an identity number appear only where a test
 // needs them to prove they never reach a body, a log or a screen they do not belong on.
@@ -16,6 +16,43 @@ import { meFixture } from './fake-api';
 /** The school's today, as the screens compute it. */
 export const TODAY = todayInSchool();
 const DAY = (back: number) => addDays(TODAY, -back);
+
+/** The signed-in user as /me reports it: a principal unless overridden. */
+export function meFixture(overrides: Partial<MeDto> = {}): MeDto {
+  const capabilities =
+    overrides.capabilities ??
+    (['attendance.student.view_all', 'announcement.send.school'] as MeDto['capabilities']);
+  // As the server reports it (slice-14 §8): a teacher's defaults are scoped to their assignments,
+  // every other source is school-wide.
+  const scope =
+    overrides.roles?.length === 1 && overrides.roles[0] === 'teacher'
+      ? ('assigned_sections' as const)
+      : ('all' as const);
+  return {
+    id: '41',
+    fullName: 'Ayesha Khan',
+    email: 'ayesha@example.com',
+    hasVerifiedEmail: true,
+    passwordIsDefault: false,
+    school: { id: '7', name: 'Demo School', shortCode: 'demo', status: 'active' },
+    roles: ['principal'],
+    capabilities,
+    capabilityScopes: capabilities.map((capability) => ({ capability, scope })),
+    sessionExpiresAt: '2027-01-02T00:00:00.000Z',
+    capacities: ['staff'],
+    assignments: [],
+    children: [],
+    staffId: '5',
+    ...overrides,
+  };
+}
+
+export function loginFixture(
+  token = 'T'.repeat(43),
+  overrides: Partial<MeDto> = {},
+): LoginResultDto {
+  return { ...meFixture(overrides), bearerToken: token };
+}
 
 export const NAMES = ['Ali Raza', 'Sara Khan', 'Bilal Ahmed', 'Hina Iqbal', 'Usman Tariq'];
 

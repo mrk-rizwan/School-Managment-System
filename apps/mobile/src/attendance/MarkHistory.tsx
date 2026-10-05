@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { api, unwrap } from '../api/client';
 import { queryKeys } from '../api/query-keys';
 import { colors, fontSize, space } from '../ui/theme';
-import { STATUS_WORDS } from './register-model';
+import { markWord } from './register-model';
 
 /**
  * A mark's history (slice-16 §4.2): GET /attendance-marks/:id/changes, opened online only and not
@@ -28,7 +28,7 @@ export function MarkHistory({ markId }: { markId: string }) {
       <Text style={styles.heading}>Mark history</Text>
       {changes.data.data.map((change) => (
         <Text key={change.id} style={styles.line}>
-          {`${STATUS_WORDS[change.fromStatus]} → ${STATUS_WORDS[change.toStatus]}, by ${
+          {`${markWord(change.fromStatus)} → ${markWord(change.toStatus)}, by ${
             change.changedByName ?? 'staff'
           }, ${formatDateTime(change.changedAt)}: ${change.reason}`}
         </Text>

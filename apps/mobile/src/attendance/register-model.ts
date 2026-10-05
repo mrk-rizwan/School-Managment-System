@@ -1,4 +1,4 @@
-import type { AttendanceStatus } from '@asms/shared';
+import { ATTENDANCE_STATUS_LABELS, type AttendanceStatus } from '@asms/shared';
 import type {
   AttendanceMarkDto,
   RegisterDto,
@@ -25,7 +25,7 @@ export function registerMode(view: RegisterViewDto): RegisterMode {
 export const editable = (mode: RegisterMode) => mode === 'new' || mode === 'amend';
 
 /** A tap cycles present → absent → late → on leave → present. */
-export const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
+const NEXT_STATUS: Record<AttendanceStatus, AttendanceStatus> = {
   present: 'absent',
   absent: 'late',
   late: 'on_leave',
@@ -49,7 +49,7 @@ export function amendmentLines(
     if (!Array.isArray(parsed.amendments)) return null;
     return parsed.amendments.map(
       (a) =>
-        `${nameOf(a.enrolmentId)}: ${a.from ? STATUS_WORDS[a.from] : 'not marked'} → ${STATUS_WORDS[a.to]}`,
+        `${nameOf(a.enrolmentId)}: ${a.from ? markWord(a.from) : 'not marked'} → ${markWord(a.to)}`,
     );
   } catch {
     return null;
@@ -160,12 +160,9 @@ export function namelessLine(local: LocalRegister): string {
   return `${n} ${n === 1 ? 'mark' : 'marks'} saved on device (${c.absent} absent, ${c.late} late) — sign in to see names`;
 }
 
-export const STATUS_WORDS: Record<AttendanceStatus, string> = {
-  present: 'present',
-  absent: 'absent',
-  late: 'late',
-  on_leave: 'on leave',
-};
+/** A mark's status mid-sentence: the shared label, lower-cased ("on leave"). */
+export const markWord = (status: AttendanceStatus) =>
+  ATTENDANCE_STATUS_LABELS[status].toLowerCase();
 
 /** HH:MM, 00:00–23:59. */
 export const isClockTime = (text: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(text);

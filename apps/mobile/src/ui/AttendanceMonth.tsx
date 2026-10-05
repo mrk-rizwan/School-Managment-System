@@ -2,6 +2,7 @@ import { formatDay } from '@asms/shared';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MyStaffAttendanceDto, StudentAttendanceDto } from '../api/contracts';
+import { weekday } from '../platform/dates';
 import { ModalSheet } from './ModalSheet';
 import { StatusChip } from './StatusChip';
 import { colors, fontSize, radius, space, statusTone, TAP_TARGET, type ChipStatus } from './theme';
@@ -43,6 +44,13 @@ function cellsOf(props: Props): Cell[] {
   }));
 }
 
+/** "92% — 23 of 25 days", or none recorded yet: the head of a student's month. */
+export function monthLine(data: StudentAttendanceDto): string {
+  return data.percentage === null
+    ? 'No recorded days yet'
+    : `${data.percentage}% — ${data.countedDays} of ${data.teachingDays} days`;
+}
+
 /** The words of the summary line. */
 export function summaryLine(props: Props): string[] {
   const d = props.data;
@@ -54,12 +62,8 @@ export function summaryLine(props: Props): string[] {
   ];
   if (props.kind === 'student') {
     const s = props.data;
-    const head =
-      s.percentage === null
-        ? 'No recorded days yet'
-        : `${s.percentage}% — ${s.countedDays} of ${s.teachingDays} days`;
     const lines = [
-      head,
+      monthLine(s),
       [...counts, `${s.partial} partly absent`, `${s.unrecorded} not recorded`].join(' · '),
     ];
     if (s.excludedLeaveDays > 0) {
@@ -75,8 +79,6 @@ export function summaryLine(props: Props): string[] {
     [...counts, `${s.unrecorded} not recorded`].join(' · '),
   ];
 }
-
-const weekday = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay();
 
 export function AttendanceMonth(props: Props) {
   const cells = cellsOf(props);

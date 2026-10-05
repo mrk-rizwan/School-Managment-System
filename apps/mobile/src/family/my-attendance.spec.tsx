@@ -7,7 +7,8 @@ import { monthRange } from '../platform/dates';
 import { resetDevice } from '../test/fake-api';
 import { teacherMe, TODAY } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline } from '../test/screen';
-import { MyAttendanceCard, MyAttendanceScreen, staffCardLine } from './MyAttendance';
+import { AttendanceMonthScreen } from './FamilyScreens';
+import { MyAttendanceCard, staffCardLine } from './MyAttendance';
 
 // slice-16 §6 (home/my-attendance.spec.tsx): the staff card on Home and the month screen.
 
@@ -53,10 +54,10 @@ test('the card: "<Month>: n of m working days", this month to today; opens the m
 });
 
 test('the month screen: staff wording, no note, no marker; not a secure screen', async () => {
-  await renderSignedIn(<MyAttendanceScreen />, teacherMe(), {
+  await renderSignedIn(<AttendanceMonthScreen source={{ kind: 'staff' }} />, teacherMe(), {
     [MINE]: () => ({ status: 200, body: mine() }),
   });
-  expect(await screen.findByTestId('myAttendance.month.grid')).toBeOnTheScreen();
+  expect(await screen.findByTestId('attendanceMonth.grid')).toBeOnTheScreen();
   expect(screen.getByText('20 working days')).toBeOnTheScreen();
   expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
 });

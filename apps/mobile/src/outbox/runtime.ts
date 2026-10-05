@@ -58,19 +58,17 @@ function invalidate(keys: readonly (readonly unknown[])[]): void {
 }
 
 /**
- * Lays a submit's response over the cached register view — in memory (an open screen) and on
- * disk (the "as of" offline). False when there is no view to update or the response is not the
- * shape the screen needs: the caller then invalidates instead (no open screen means no fetch).
+ * Lays a submit's response (already checked against its shape) over the cached register view —
+ * in memory (an open screen) and on disk (the "as of" offline). False when there is no view to
+ * update: the caller then invalidates instead (no open screen means no fetch).
  */
 async function applyToCachedRegister(
   sectionId: string,
   sent: SubmitRegisterDto,
   outcome: SentOutcome,
+  minimal: boolean,
 ): Promise<boolean> {
   const { date, period } = sent;
-  const minimal = /\breturn=minimal\b/.test(outcome.preferenceApplied ?? '');
-  const submitted = (minimal ? MinimalShape : SubmitShape).safeParse(outcome.body);
-  if (!submitted.success) return false;
   const queryKey = queryKeys.register(sectionId, date, period);
   const key = cacheKey(`/api/v1/sections/${sectionId}/register`, { date, period });
   const cached =
@@ -92,47 +90,33 @@ async function applyToCachedRegister(
   return true;
 }
 
-/** Enough of RegisterSubmitResultDto to rebuild the view from it. */
-const SubmitShape = z.object({
-  register: z.object({ id: z.string(), teachingDay: z.boolean() }),
-  marks: z.array(z.object({ enrolmentId: z.string(), id: z.string(), status: z.string() })),
-});
-
-/** RegisterSubmitMinimalResultDto: the register, and per mark its id and outcome only. */
-const MinimalShape = z.object({
-  register: z.object({ id: z.string(), teachingDay: z.boolean() }),
-  marks: z.array(
-    z.object({
-      enrolmentId: z.string(),
-      id: z.string(),
-      outcome: z.enum(['created', 'amended', 'unchanged']),
+// The submit's answer, one schema per shape (`Prefer: return=minimal` or not): enough of it to
+// record the summary and rebuild the register view.
+const registerResult = <M extends z.ZodTypeAny>(mark: M) =>
+  z.object({
+    register: z.object({ id: z.string(), teachingDay: z.boolean() }),
+    summary: z.object({
+      roster: z.number(),
+      marked: z.number(),
+      present: z.number(),
+      absent: z.number(),
+      late: z.number(),
+      onLeave: z.number(),
     }),
-  ),
-});
-
-const RegisterResult = z.object({
-  register: z.object({ id: z.string() }),
-  summary: z.object({
-    roster: z.number(),
-    marked: z.number(),
-    present: z.number(),
-    absent: z.number(),
-    late: z.number(),
-    onLeave: z.number(),
+    marks: z.array(mark),
+  });
+/** RegisterSubmitResultDto. */
+const SubmitResult = registerResult(
+  z.object({ enrolmentId: z.string(), id: z.string(), status: z.string() }),
+);
+/** RegisterSubmitMinimalResultDto: per mark its id and outcome only. */
+const MinimalSubmitResult = registerResult(
+  z.object({
+    enrolmentId: z.string(),
+    id: z.string(),
+    outcome: z.enum(['created', 'amended', 'unchanged']),
   }),
-});
-const RegisterBody = z.object({
-  date: z.string(),
-  period: z.number(),
-  marks: z.array(
-    z.object({
-      enrolmentId: z.string(),
-      status: z.enum(['present', 'absent', 'late', 'on_leave']),
-      note: z.string().optional(),
-      arrivedAt: z.string().optional(),
-    }),
-  ),
-});
+);
 const WithId = z.object({ id: z.string() });
 const WithSection = z.object({ id: z.string(), sectionId: z.string() });
 
@@ -152,24 +136,21 @@ const savedAt = (outcome: SentOutcome) => {
 export const ON_SAVED: Record<string, (item: OutboxItem, outcome: SentOutcome) => Promise<void>> = {
   device_register: (item) => onDeviceRegistered(item),
   async submit_register(item, outcome) {
-    const result = RegisterResult.safeParse(outcome.body);
+    const minimal = /\breturn=minimal\b/.test(outcome.preferenceApplied ?? '');
+    const result = (minimal ? MinimalSubmitResult : SubmitResult).safeParse(outcome.body);
     await markRegisterSaved(item.id, {
       serverRegisterId: result.success ? result.data.register.id : null,
       savedAt: savedAt(outcome),
       summary: result.success ? result.data.summary : null,
     });
-    const body = RegisterBody.safeParse(JSON.parse(item.body));
-    if (!body.success) {
-      invalidate([]);
-      return;
-    }
+    // The stored body is this app's own, built by buildRegisterBody: no need to re-validate it.
+    const sent = JSON.parse(item.body) as SubmitRegisterDto;
     const sectionId = idAfter(item.path, 'sections');
-    const { date, period } = body.data;
     // R160 (main-thread decision, 2026-10-04): the open register is updated from the submit's
     // own response, never refetched; the principal's console and reports are invalidated.
-    const [registerKey, ...others] = invalidationKeys.register(sectionId, date, period);
+    const [registerKey, ...others] = invalidationKeys.register(sectionId, sent.date, sent.period);
     const applied = result.success
-      ? await applyToCachedRegister(sectionId, body.data, outcome)
+      ? await applyToCachedRegister(sectionId, sent, outcome, minimal)
       : false;
     invalidate(applied ? others : [registerKey!, ...others]);
   },

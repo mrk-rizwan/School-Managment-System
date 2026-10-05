@@ -1,4 +1,10 @@
-import { ApiError, ATTENDANCE_STATUSES, ErrorCode, type AttendanceStatus } from '@asms/shared';
+import {
+  ApiError,
+  ATTENDANCE_STATUS_LABELS,
+  ATTENDANCE_STATUSES,
+  ErrorCode,
+  type AttendanceStatus,
+} from '@asms/shared';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { api, isNetworkError, unwrap } from '../api/client';
@@ -13,7 +19,7 @@ import { ModalSheet } from '../ui/ModalSheet';
 import { reasonError } from '../ui/ReasonSheet';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
 import { colors, fontSize } from '../ui/theme';
-import { isClockTime, STATUS_WORDS } from './register-model';
+import { isClockTime, markWord } from './register-model';
 
 // Amend one mark — online only (slice-16 §4.3, R162): POST /attendance-marks/:id/amend with the
 // status the screen holds as fromStatus, so a stale phone never silently reverses a colleague
@@ -21,7 +27,7 @@ import { isClockTime, STATUS_WORDS } from './register-model';
 
 const STATUS_OPTIONS = ATTENDANCE_STATUSES.map((status) => ({
   value: status,
-  label: STATUS_WORDS[status].replace(/^./, (c) => c.toUpperCase()),
+  label: ATTENDANCE_STATUS_LABELS[status],
 }));
 
 export type AmendFailure =
@@ -46,7 +52,7 @@ export function describeAmendError(error: unknown): AmendFailure {
       kind: 'stale',
       currentStatus: status,
       message: `This mark was changed by a colleague${
-        status ? ` to ${STATUS_WORDS[status]}` : ''
+        status ? ` to ${markWord(status)}` : ''
       }. Reload and amend again.`,
     };
   }
@@ -162,7 +168,7 @@ function OpenAmendMarkSheet({
         </>
       }
     >
-      <Text style={styles.note}>{`Now: ${STATUS_WORDS[fromStatus]}`}</Text>
+      <Text style={styles.note}>{`Now: ${markWord(fromStatus)}`}</Text>
       <SegmentedPicker
         label="New status"
         options={STATUS_OPTIONS}

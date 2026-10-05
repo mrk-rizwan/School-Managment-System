@@ -2,7 +2,7 @@ import { todayInSchool } from '@asms/shared';
 import { useQueries } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { api, unwrapWithDate } from '../api/client';
 import type { SectionDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
@@ -70,16 +70,11 @@ export function MyClassesScreen() {
           <OfflineNotice serverTime={me.serverTime} isDevice={me.serverTimeIsDevice} />
         ) : null
       }
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          enabled={online}
-          onRefresh={() => {
-            setRefreshing(true);
-            void session.refreshMe().finally(() => setRefreshing(false));
-          }}
-        />
-      }
+      refreshing={refreshing}
+      onRefresh={() => {
+        setRefreshing(true);
+        void session.refreshMe().finally(() => setRefreshing(false));
+      }}
       testID="classes.screen"
     >
       {rows.length === 0 ? (
@@ -94,7 +89,7 @@ export function MyClassesScreen() {
           return (
             <Sheet key={row.sectionId} testID={`classes.section.${row.sectionId}`}>
               <View style={styles.head}>
-                <Text style={styles.title}>{sectionTitle(row)}</Text>
+                <Text style={styles.title}>{sectionTitle(row.className, row.sectionName)}</Text>
                 <Text style={styles.caption}>
                   {[
                     ...row.roles,

@@ -1,7 +1,8 @@
 import { allowScreenCaptureAsync, preventScreenCaptureAsync } from 'expo-screen-capture';
-import { useEffect, useId, type ReactElement, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View, type RefreshControlProps } from 'react-native';
+import { useEffect, useId, type ReactNode } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useOnline } from '../net/connectivity';
 import { colors, fontSize, space } from './theme';
 
 type Props = {
@@ -12,8 +13,10 @@ type Props = {
   banner?: ReactNode;
   children: ReactNode;
   scroll?: boolean;
-  /** Pull-to-refresh for a scrolling screen (disabled offline by the caller). */
-  refreshControl?: ReactElement<RefreshControlProps>;
+  /** Pull-to-refresh for a scrolling screen, disabled offline (slice-16 §3.1). */
+  onRefresh?: () => void;
+  /** The refresh spinner, for a caller that tracks its own refresh. */
+  refreshing?: boolean;
   /**
    * A screen that shows a child's name (slice-16 §13.2): Android FLAG_SECURE while it is
    * mounted — no screenshot, no recent-apps thumbnail, no screen recording of the window.
@@ -42,12 +45,14 @@ export function Screen({
   banner,
   children,
   scroll = true,
-  refreshControl,
+  onRefresh,
+  refreshing = false,
   secure = false,
   footer,
   testID,
 }: Props) {
   useSecureWindow(secure);
+  const online = useOnline();
   const body = <View style={[styles.content, !scroll && styles.fill]}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']} testID={testID}>
@@ -65,7 +70,19 @@ export function Screen({
       ) : null}
       {banner}
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scroll} refreshControl={refreshControl}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                enabled={online}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+              />
+            ) : undefined
+          }
+        >
           {body}
         </ScrollView>
       ) : (

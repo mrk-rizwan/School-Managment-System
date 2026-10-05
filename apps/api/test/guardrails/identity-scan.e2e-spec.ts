@@ -15,7 +15,29 @@ import { randomBytes } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Client } from 'pg';
 import request from 'supertest';
+import { MESSAGE_TYPES, type MessageSubjectType, type MessageType } from '@asms/shared';
+import { JobRunner } from '../../src/jobs/job-runner';
+import { NotificationService } from '../../src/messaging/notification.service';
+import {
+  composeAnnouncement,
+  holidayCancellationText,
+  holidayNoticeText,
+  renderMessage,
+  renderWhatsAppSessionDown,
+  smsTextOf,
+  type RenderContext,
+  type Rendered,
+} from '../../src/messaging/templates';
 import { Mailer } from '../../src/modules/auth/mailer';
+import {
+  asSchool,
+  connectedNumber,
+  guardian,
+  messagingApp,
+  messagingSchool,
+  tx,
+  type FakeDrivers,
+} from '../messaging/support';
 import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
 import { randomIdentityDigits } from '../support/school-session';
@@ -24,13 +46,15 @@ import { createClassWithSection, randomPhone, type TestSection } from '../suppor
 import { FakeMailer, nextIp, ORIGIN, sessionCookieOf } from '../school-auth/support';
 
 const PATTERN = /[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]/;
+/** Every log line of every app in this file (see the second app's note). */
+const fileLogs: string[] = [];
 const dashed = (d: string) => `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`;
 
 describe('R16: identity numbers never reach logs, responses, audit or idempotency rows', () => {
   let app: NestExpressApplication;
   let school: TestSchool;
   let section: TestSection;
-  const logs: string[] = [];
+  const logs = fileLogs;
   const bodies: string[] = [];
   const used: string[] = [];
   const db = testDb();
@@ -244,5 +268,277 @@ describe('R16: identity numbers never reach logs, responses, audit or idempotenc
       const keys = await pg.query('SELECT 1 FROM idempotency_keys WHERE school_id = $1', [school.id.toString()]);
       expect(keys.rowCount).toBe(1);
     });
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Slice 17 (plan §6 slice 17, §9): the R16 scan, with the phone pattern, extended to every message
+// template, the messages and message_deliveries tables (provider error text included), push
+// payloads and the worker's own log lines. The mobile log sink has its own scan
+// (apps/mobile/src/platform/log-sink.spec.tsx).
+
+/** The phone pattern, spaced and dashed forms included (as the mobile scrubber's). */
+const PHONE = /(\+?92[\s-]?|(?<![0-9])0)3[0-9]{2}[\s-]?[0-9]{7}(?![0-9])/;
+const leaks = (text: string) => PATTERN.test(text) || PHONE.test(text);
+const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+describe('R16 (slice 17): every message template, rendered with realistic values', () => {
+  const SCHOOL = 'Government Girls High School Number 2 Gulshan-e-Iqbal Karachi';
+  const ctx = (subjectType: MessageSubjectType, body?: string): RenderContext => ({
+    schoolName: SCHOOL,
+    timezone: 'Asia/Karachi',
+    subjectType,
+    ...(body === undefined ? {} : { body }),
+  });
+  const child = { studentName: 'Muhammad Abdul Rehman Siddiqui Qureshi', className: 'Class Ten', sectionName: 'Blue' };
+  const announcement = composeAnnouncement(
+    SCHOOL,
+    'Parent-teacher meeting',
+    'Meet the class teacher on Saturday from 9 to 12. Bring the report card.',
+  );
+
+  // One entry per type, typed so that a new MessageType fails to compile until it is rendered here.
+  const RENDERED: { [K in MessageType]: () => Rendered[] } = {
+    absence_alert: () => [renderMessage('absence_alert', { ...child, date: day('2026-10-05') }, ctx('attendance_alert'))],
+    late_advice: () => [
+      renderMessage('late_advice', { ...child, date: day('2026-10-05'), arrivedAt: '08:42' }, ctx('attendance_alert')),
+      renderMessage('late_advice', { ...child, date: day('2026-10-05'), arrivedAt: null }, ctx('attendance_alert')),
+    ],
+    attendance_corrected: () =>
+      (['present', 'late', 'partial', 'on_leave', 'absent'] as const).map((status) =>
+        renderMessage(
+          'attendance_corrected',
+          { ...child, date: day('2026-10-05'), status, arrivedAt: status === 'late' ? '09:05' : null },
+          ctx('attendance_alert'),
+        ),
+      ),
+    announcement_urgent: () => [renderMessage('announcement_urgent', {}, ctx('announcement', announcement))],
+    announcement_normal: () => [renderMessage('announcement_normal', {}, ctx('announcement', announcement))],
+    holiday_notice: () => [
+      renderMessage(
+        'holiday_notice',
+        { name: 'Quaid-e-Azam Day and Christmas', startsOn: day('2026-12-24'), endsOn: day('2026-12-26'), reopensOn: day('2026-12-28') },
+        ctx('holiday'),
+      ),
+      renderMessage('holiday_notice', { name: 'Iqbal Day', startsOn: day('2026-11-09'), endsOn: day('2026-11-09') }, ctx('holiday_cancellation')),
+    ],
+    diary_posted: () => [
+      renderMessage(
+        'diary_posted',
+        {
+          className: 'Class Five',
+          sectionName: 'A',
+          subjectName: 'Mathematics',
+          date: day('2026-10-05'),
+          topic: 'Pages 12 to 14, exercise 4',
+          dueOn: day('2026-10-07'),
+        },
+        ctx('diary_entry'),
+      ),
+    ],
+    remark_posted: () => [
+      renderMessage('remark_posted', { studentName: child.studentName, category: 'behaviour', date: day('2026-10-05') }, ctx('remark')),
+    ],
+    register_unrecorded: () => [
+      renderMessage(
+        'register_unrecorded',
+        {
+          date: day('2026-10-05'),
+          deadlineTime: '10:00',
+          sections: Array.from({ length: 7 }, (_, i) => ({
+            className: `Class ${i + 1}`,
+            sectionName: 'A',
+            coverStaffName: i === 0 ? 'Rabia Khan' : null,
+          })),
+        },
+        ctx('register_deadline'),
+      ),
+    ],
+    sms_cap_reached: () => [renderMessage('sms_cap_reached', { cap: 5000, nextMonthStart: day('2026-11-01') }, ctx('sms_cap'))],
+    messaging_test: () => [
+      renderMessage('messaging_test', { senderName: 'Nadia Principal', time: new Date('2026-10-05T04:30:00Z') }, ctx('messaging_test')),
+    ],
+    // Not sent through renderMessage (no messages row): the platform alert.
+    whatsapp_session_down: () => [
+      renderWhatsAppSessionDown({ schoolName: SCHOOL, schoolId: 4821n, at: new Date('2026-10-05T04:30:00Z'), errorCode: 'logged_out' }),
+    ],
+    cover_assigned: () => [
+      renderMessage(
+        'cover_assigned',
+        { className: 'Class Ten', sectionName: 'Blue', startsOn: day('2026-10-05'), endsOn: day('2026-10-09') },
+        ctx('teacher_assignment'),
+      ),
+    ],
+  };
+
+  it.each(MESSAGE_TYPES.map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {
+    const rendered = RENDERED[type]();
+    expect(rendered.length).toBeGreaterThan(0);
+    for (const { title, body } of rendered) {
+      expect(body.length).toBeGreaterThan(0);
+      expect([title, body, smsTextOf(body, true)].filter(leaks)).toEqual([]);
+    }
+  });
+
+  it('R16: the holiday announcement texts and a composed announcement hold none either', () => {
+    const holiday = { name: 'Eid ul Fitr', startsOn: day('2027-03-10'), endsOn: day('2027-03-12'), reopensOn: day('2027-03-15') };
+    const texts = [holidayNoticeText(SCHOOL, holiday), holidayCancellationText(SCHOOL, holiday)].flatMap((t) => [t.title, t.body]);
+    expect([...texts, announcement].filter(leaks)).toEqual([]);
+  });
+});
+
+describe('R16 (slice 17): messages, delivery rows, push payloads and the worker log', () => {
+  let app: NestExpressApplication;
+  let drivers: FakeDrivers;
+  // The file's one log sink (below): nestjs-pino keeps the first app's logger as its root, so
+  // this app's out-of-request lines (the worker's) reach the first app's stream, not this one's.
+  const logs = fileLogs;
+  // The first describe's afterAll closes the shared client; this block opens its own.
+  let db: ReturnType<typeof testDb>;
+  const subject = () => BigInt(Date.now() % 1_000_000_000) * 100n + BigInt(Math.floor(Math.random() * 100));
+
+  beforeAll(async () => {
+    ({ app, drivers } = await messagingApp({ write: (line: string) => void logs.push(line) }));
+    db = testDb();
+  });
+
+  afterAll(async () => {
+    await app.close();
+    await closeTestDb();
+  });
+
+  it('R16: a worker round whose providers fail with text holding phones and identity numbers leaks none of it', async () => {
+    const school = await messagingSchool();
+    await connectedNumber(db, school);
+    const wa = await guardian(db, school, { capability: 'whatsapp', login: true, device: true });
+    const keypad = await guardian(db, school, { capability: 'keypad' });
+    const cnic = randomIdentityDigits();
+    const phones = [wa.phone, keypad.phone].filter((p): p is string => p !== null);
+    expect(phones).toHaveLength(2);
+    const secrets = [cnic, dashed(cnic), ...phones, ...phones.map((p) => p.replace('+92', '0'))];
+
+    // Provider errors as WAHA, Sendpk and FCM word them: the number, and a CNIC echoed back.
+    // (A phone written with spaces, "0300 1234567", is not masked by the API scrubber today: see
+    // the known-gap test in test/messaging/scrub.spec.ts.)
+    const providerText = (to: string) => `provider said: ${to} rejected (ref ${dashed(cnic)}, ${cnic}); call ${to.replace('+92', '0')}`;
+    jest.spyOn(drivers.whatsapp.waha, 'sendText').mockImplementation((_s, to) => Promise.reject(new Error(providerText(to))));
+    jest.spyOn(drivers.sms, 'send').mockImplementation((to) => Promise.reject(new Error(providerText(to))));
+    jest.spyOn(drivers.push, 'send').mockImplementation(() => Promise.reject(new Error(providerText(phones[0] ?? ''))));
+
+    const notifications = app.get(NotificationService, { strict: false });
+    const id = subject();
+    await asSchool(app, school.id, () =>
+      tx.run(async () => {
+        await notifications.send(school.id, {
+          type: 'holiday_notice',
+          subject: { type: 'holiday', id },
+          recipients: [{ guardianId: wa.id }, { guardianId: keypad.id }],
+          vars: { name: 'Iqbal Day', startsOn: day('2026-11-09'), endsOn: day('2026-11-09'), reopensOn: day('2026-11-10') },
+        });
+        await notifications.send(school.id, {
+          type: 'announcement_urgent',
+          subject: { type: 'announcement', id },
+          recipients: [{ guardianId: wa.id }, { guardianId: keypad.id }],
+          vars: {},
+          title: 'Early closing',
+          body: composeAnnouncement('Iqra Model School', 'Early closing', 'School closes at noon today.'),
+        });
+      }),
+    );
+    const messages = await db.message.findMany({ where: { schoolId: school.id }, orderBy: { id: 'asc' } });
+    expect(messages).toHaveLength(4);
+
+    // The worker's own entry point, as BullMQ calls it; then a forged payload with identity-shaped ids.
+    const runner = app.get(JobRunner, { strict: false });
+    try {
+      for (const m of messages) {
+        expect(await runner.messaging('message', { schoolId: school.id.toString(), messageId: m.id.toString() })).toBe('done');
+      }
+      expect(await runner.messaging('message', { schoolId: cnic, messageId: dashed(cnic) })).toBe('dropped');
+    } finally {
+      jest.restoreAllMocks();
+    }
+
+    const deliveries = await db.messageDelivery.findMany({ where: { schoolId: school.id }, orderBy: { id: 'asc' } });
+    // Not vacuous: each provider was reached and threw its text, and each failure has its row.
+    const failed = deliveries.filter((d) => d.status === 'failed');
+    expect(new Set(failed.map((d) => d.channel))).toEqual(new Set(['whatsapp', 'sms', 'push']));
+    expect(failed.every((d) => d.errorCode === 'provider_unavailable')).toBe(true);
+    // The processor's "attempt failed unexpectedly" warnings, one per provider that threw.
+    const warnings = logs.filter((l) => l.includes('"context":"MessageProcessor"') && l.includes('"errorClass":"Error"'));
+    expect(warnings.length).toBeGreaterThanOrEqual(3);
+    // Each carries its message; pino writes msg last, after the stack, so a truncated view hides it.
+    expect(warnings.filter((l) => !l.trimEnd().endsWith('"msg":"attempt failed unexpectedly"}'))).toEqual([]);
+
+    const stored = JSON.stringify(
+      [messages, deliveries.map(({ providerRefHash: _h, pollRef: _p, ...row }) => row)],
+      (_k, v: unknown) => (typeof v === 'bigint' ? v.toString() : v),
+    );
+    const workerLog = logs.join('\n');
+    for (const secret of secrets) {
+      expect(stored).not.toContain(secret);
+      expect(workerLog).not.toContain(secret);
+    }
+    expect(messages.flatMap((m) => [m.body, m.title ?? '']).filter(leaks)).toEqual([]);
+    expect(deliveries.map((d) => d.toMasked ?? '').filter((t) => /[0-9]{7}/.test(t))).toEqual([]);
+    expect(logs.filter(leaks)).toEqual([]);
+    // The scrubber did the work: the provider text reached the log, masked.
+    expect(workerLog).toContain('[phone]');
+    expect(workerLog).toContain('[id]');
+  });
+
+  it('R16: a push payload carries a title, the body and ids only', async () => {
+    const school = await messagingSchool();
+    const g = await guardian(db, school, { capability: 'smartphone_data', login: true, device: true });
+    drivers.calls.length = 0;
+    await asSchool(app, school.id, () =>
+      tx.run(() =>
+        app.get(NotificationService, { strict: false }).send(school.id, {
+          type: 'holiday_notice',
+          subject: { type: 'holiday', id: subject() },
+          recipients: [{ guardianId: g.id }],
+          vars: { name: 'Iqbal Day', startsOn: day('2026-11-09'), endsOn: day('2026-11-09') },
+        }),
+      ),
+    );
+    const [message] = await db.message.findMany({ where: { schoolId: school.id } });
+    expect(message).toBeDefined();
+    const runner = app.get(JobRunner, { strict: false });
+    expect(await runner.messaging('message', { schoolId: school.id.toString(), messageId: String(message?.id) })).toBe('done');
+    const pushes = drivers.of('push').map((c) => JSON.stringify(c.push));
+    expect(pushes).toHaveLength(1);
+    expect(pushes.filter(leaks)).toEqual([]);
+    expect(pushes[0]).not.toContain(g.phone ?? 'no phone');
+  });
+
+  it('R16: no stored message text, delivery row or announcement, whole tables, matches either pattern', async () => {
+    // Every school any suite wrote (tests never truncate). subject_id is a polymorphic id (an
+    // audit row, YYYYMM, a holiday), not text, so messages are scanned by their text columns.
+    const ID_SQL = '[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]';
+    const PHONE_SQL = '(\\+?92[ -]?|(^|[^0-9])0)3[0-9]{2}[ -]?[0-9]{7}([^0-9]|$)';
+    const pg = new Client({ connectionString: process.env.DATABASE_URL });
+    await pg.connect();
+    try {
+      const count = async (table: string, text: string) =>
+        Number(
+          (
+            await pg.query<{ n: string }>(
+              `SELECT count(*)::text AS n FROM ${table} t WHERE ${text} ~ $1 OR ${text} ~ $2`,
+              [ID_SQL, PHONE_SQL],
+            )
+          ).rows[0]?.n,
+        );
+      expect(Number((await pg.query<{ n: string }>('SELECT count(*)::text AS n FROM messages')).rows[0]?.n)).toBeGreaterThan(0);
+      expect(await count('messages', `concat_ws(' ', t.body, t.title, t.media_object_key)`)).toBe(0);
+      expect(
+        await count(
+          'message_deliveries',
+          `(to_jsonb(t) - 'provider_ref_hash' - 'poll_ref' - 'attempted_at' - 'delivered_at' - 'failed_at')::text`,
+        ),
+      ).toBe(0);
+      expect(await count('announcements', `concat_ws(' ', t.title, t.body, t.cancel_reason, t.attachment_object_key)`)).toBe(0);
+    } finally {
+      await pg.end();
+    }
   });
 });

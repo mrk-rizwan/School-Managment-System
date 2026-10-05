@@ -2,6 +2,8 @@
 // invisible to, and unwritable by, school B. Each tenant table's test supplies the operations;
 // the helper owns the assertions so every table is held to the same standard.
 import type { SchoolId } from '../../src/tenancy/school-id';
+import type { Scope } from '../../src/tenancy/scope';
+import { scopeStudents } from '../../src/tenancy/scope.mint';
 import type { TwoSchools } from './schools';
 
 export interface IsolationProbe<Id> {
@@ -45,3 +47,6 @@ export async function expectIsolated<Id>(
     expect(probe.snapshot(await probe.read(a.id, id))).toEqual(probe.snapshot(owned));
   }
 }
+
+/** A guardian or student capacity scope of exactly these students, to call a scoped repository directly. */
+export const studentsScope = (ids: readonly bigint[]): Scope => scopeStudents(ids);

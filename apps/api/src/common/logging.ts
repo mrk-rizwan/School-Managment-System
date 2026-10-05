@@ -14,9 +14,16 @@ const IDENTITY_NUMBER = new RegExp(
 
 /**
  * A Pakistani mobile in E.164 or local form (R111, slice 9): `+923001234567`, `923001234567`,
- * `03001234567`, also URL-encoded (`%2B92...`). Phone numbers never reach a log line unmasked.
+ * `03001234567`, also URL-encoded (`%2B92...`). As in provider error text, one space or dash may
+ * follow the country code and the 3xx (`+92 300 1234567`, `0300-1234567`), the mobile scrubber's
+ * coverage. The digit guards keep ids and timestamps whole. Phone numbers never reach a log line
+ * unmasked.
  */
-export const PHONE_NUMBER = /(?:\+|%2B)?92(?:3\d{9})(?!\d)|(?<!\d)03\d{9}(?!\d)/gi;
+const PHONE_SEPARATOR = String.raw`(?:[\s-]|%20|%2D)?`;
+export const PHONE_NUMBER = new RegExp(
+  String.raw`(?:(?:\+|%2B)?92${PHONE_SEPARATOR}|(?<!\d)0)3\d{2}${PHONE_SEPARATOR}\d{7}(?!\d)`,
+  'gi',
+);
 
 /** Where log lines go. Tests override this token to capture output. */
 export const LOG_DESTINATION = Symbol('LOG_DESTINATION');

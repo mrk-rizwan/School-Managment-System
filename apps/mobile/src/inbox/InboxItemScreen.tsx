@@ -1,4 +1,4 @@
-import { formatDateTime } from '@asms/shared';
+import { ANNOUNCEMENT_CATEGORY_LABELS, formatDateTime } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
@@ -13,9 +13,9 @@ import { useOnline } from '../net/connectivity';
 import { Attachment } from '../ui/Attachment';
 import { Button } from '../ui/Button';
 import { Screen } from '../ui/Screen';
-import { AsOf, NoDataState, OfflineNotice } from '../ui/states';
+import { AsOf, cachedOfflineBanner, NoDataState } from '../ui/states';
 import { colors, fontSize, space } from '../ui/theme';
-import { CATEGORY_CHIPS, childScreenOf, sentLabel } from './inbox-model';
+import { childScreenOf, sentLabel } from './inbox-model';
 
 // One message — /inbox/[id] (slice-16 §7.3, slice-14 §7.4). Opened from the list it uses the
 // row already on the phone; from a push it reads GET /me/inbox/:id. "Open <child>" goes to the
@@ -62,25 +62,21 @@ export function InboxItemScreen({ id, secure }: { id: string; secure: boolean })
   const item = cached.body;
   const hasChildren = me !== null && composeTabs(me.body).includes('children');
   const target = childScreenOf(item.messageType);
-  const category = CATEGORY_CHIPS.find((c) => c.value === item.category)?.label;
+  const category = item.category === null ? null : ANNOUNCEMENT_CATEGORY_LABELS[item.category];
 
   return (
     <Screen
       title={item.title}
       secure={secure}
       testID="inboxItem.screen"
-      banner={
-        listed === undefined && (!online || fetched.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(
+        listed === undefined ? cached : undefined,
+        online,
+        fetched.isError,
+      )}
     >
       <Text style={styles.caption} testID="inboxItem.meta">
-        {[
-          item.priority === 'urgent' ? 'Urgent' : null,
-          category ?? null,
-          `Sent ${sentLabel(item.sentAt)}`,
-        ]
+        {[item.priority === 'urgent' ? 'Urgent' : null, category, `Sent ${sentLabel(item.sentAt)}`]
           .filter(Boolean)
           .join(' · ')}
       </Text>

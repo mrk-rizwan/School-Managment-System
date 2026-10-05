@@ -1,6 +1,6 @@
 'use client';
 
-import { ANNOUNCEMENT_SMS_MAX_SEGMENTS, Capability, ErrorCode, type AnnouncementCategory, type AnnouncementPriority, type AnnouncementStatus } from '@asms/shared';
+import { ANNOUNCEMENT_SMS_MAX_SEGMENTS, ANNOUNCEMENT_STATUS_LABELS, Capability, ErrorCode, type AnnouncementPriority, type AnnouncementStatus } from '@asms/shared';
 import { Badge } from '@/components/ui/badge';
 import { refusalMessage, toApiError, type RefusalMessages } from '@/lib/api/errors';
 import {
@@ -28,21 +28,7 @@ export const announcementKeys = {
 
 export const announcementHref = (id: string) => `/announcements/${id}`;
 
-export const CATEGORY_LABELS: Record<AnnouncementCategory, string> = {
-  holiday: 'Holiday',
-  exam: 'Exam',
-  fee: 'Fee',
-  event: 'Event',
-  general: 'General',
-};
 export const PRIORITY_LABELS: Record<AnnouncementPriority, string> = { normal: 'Normal', urgent: 'Urgent' };
-export const STATUS_LABELS: Record<AnnouncementStatus, string> = {
-  draft: 'Draft',
-  scheduled: 'Scheduled',
-  sending: 'Sending',
-  sent: 'Sent',
-  cancelled: 'Cancelled',
-};
 const STATUS_VARIANT = {
   draft: 'outline',
   scheduled: 'secondary',
@@ -58,7 +44,7 @@ const STATUS_VARIANT = {
 export const SENDING_TOAST = 'Sending now. This page shows when it has gone.';
 
 export function AnnouncementStatusBadge({ status }: { status: AnnouncementStatus }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABELS[status]}</Badge>;
+  return <Badge variant={STATUS_VARIANT[status]}>{ANNOUNCEMENT_STATUS_LABELS[status]}</Badge>;
 }
 
 export function PriorityBadge({ priority }: { priority: AnnouncementPriority }) {

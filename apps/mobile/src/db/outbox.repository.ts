@@ -92,7 +92,7 @@ export type EnqueueInput = {
   domainId?: string | null;
 };
 
-export async function insertItem(db: Db, item: OutboxItem): Promise<void> {
+async function insertItem(db: Db, item: OutboxItem): Promise<void> {
   await db.runAsync(
     `INSERT INTO outbox (${COLUMNS}) VALUES (${COLUMNS.split(',')
       .map(() => '?')
@@ -221,11 +221,6 @@ export async function saveItem(item: OutboxItem): Promise<void> {
       item.id,
     ],
   );
-}
-
-export async function deleteItem(id: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM outbox WHERE id = ?', [id]);
 }
 
 /** "Retry now": every pending item becomes due. */

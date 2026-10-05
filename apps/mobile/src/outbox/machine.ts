@@ -52,21 +52,19 @@ export type MachineEvent =
 /** Queue-level consequences; item state never carries them. */
 export type Effect = 'pause' | 'block' | 'saved_on_server';
 
-export type QueueFlags = { online: boolean; paused: boolean; blocked: boolean };
-
-export const STALE_SENDING_MS = 60_000;
-export const DEFAULT_RETRY_AFTER_SECONDS = 60;
+const STALE_SENDING_MS = 60_000;
+const DEFAULT_RETRY_AFTER_SECONDS = 60;
 /** Terminal statuses: a bad body, a missing row, a refusal or a conflict never heals by retrying. */
-export const TERMINAL_STATUSES: ReadonlySet<number> = new Set([403, 404, 409, 422]);
+const TERMINAL_STATUSES: ReadonlySet<number> = new Set([403, 404, 409, 422]);
 
-/** pending -> sending is allowed: the lane is idle, the queue runs and the item is due. */
-export function isDue(item: OutboxItem, flags: QueueFlags, laneBusy: boolean, now: Date): boolean {
+/**
+ * pending -> sending is allowed: the item is due and its lane idle. Whether the queue runs at
+ * all (online, not paused, not blocked) is the worker's check before it scans.
+ */
+export function isDue(item: OutboxItem, laneBusy: boolean, now: Date): boolean {
   return (
     item.state === 'pending' &&
     !laneBusy &&
-    flags.online &&
-    !flags.paused &&
-    !flags.blocked &&
     (item.nextAttemptAt === null || Date.parse(item.nextAttemptAt) <= now.getTime())
   );
 }
@@ -185,33 +183,4 @@ export function transition(
 /** "Discard" is offered on pending and failed items (a sending one is in flight). */
 export function canDiscard(item: OutboxItem): boolean {
   return item.state === 'pending' || item.state === 'failed';
-}
-
-/**
- * A lane's remedy on a failed item: a NEW pending row (the failed row stays until its 7-day
- * purge). `body` replaces the body when the remedy changes it (a register's added reason).
- */
-export function remedyItem(
-  failed: OutboxItem,
-  id: string,
-  now: Date,
-  body: string = failed.body,
-): OutboxItem {
-  if (failed.state !== 'failed') throw new Error('a remedy applies to a failed item only');
-  const stamp = now.toISOString();
-  return {
-    ...failed,
-    id,
-    body,
-    state: 'pending',
-    attempts: 0,
-    nextAttemptAt: null,
-    sendingSince: null,
-    responseStatus: null,
-    responseCode: null,
-    responseMessage: null,
-    responseDetails: null,
-    createdAt: stamp,
-    updatedAt: stamp,
-  };
 }

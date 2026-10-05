@@ -1,4 +1,4 @@
-import { DEFAULT_TIMEZONE, todayInSchool } from '@asms/shared';
+import { formatTime, todayInSchool } from '@asms/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +10,7 @@ import type {
   SubmitRegisterDto,
 } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
+import { sectionTitle } from '../classes/my-classes';
 import { readRegister, discardItem, resendWithRemedy, saveRegister } from '../db/local.repository';
 import { findItem } from '../db/outbox.repository';
 import { useCachedQuery } from '../db/use-cached-query';
@@ -27,7 +28,7 @@ import { ReasonSheet } from '../ui/ReasonSheet';
 import { Screen } from '../ui/Screen';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
 import { localState, StateLine } from '../ui/StateLine';
-import { NoDataState, OfflineNotice } from '../ui/states';
+import { cachedOfflineBanner, NoDataState } from '../ui/states';
 import { StatusChip } from '../ui/StatusChip';
 import { SyncChip } from '../ui/SyncChip';
 import { colors, fontSize, space, TAP_TARGET } from '../ui/theme';
@@ -42,11 +43,11 @@ import {
   isClockTime,
   localMarksApply,
   marksToSend,
+  markWord,
   namelessLine,
   nextStatus,
   registerMode,
   rowValue,
-  STATUS_WORDS,
   type Edits,
   type RegisterMode,
   type RowValue,
@@ -57,14 +58,7 @@ import {
 // Save writes the local register and its outbox row in one transaction and says so. "Saved on
 // server" appears only after the server's 2xx (R157).
 
-export const ROW_HEIGHT = 56;
-
-const timeFormat = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: DEFAULT_TIMEZONE,
-});
+const ROW_HEIGHT = 56;
 
 const BANNERS: Partial<Record<RegisterMode, string>> = {
   locked: 'The amendment window closed. Ask the principal.',
@@ -239,16 +233,16 @@ export function RegisterScreen({
   const nameOf = (enrolmentId: string) =>
     rows.find((r) => r.enrolmentId === enrolmentId)?.studentFullName ?? 'A student';
   const changeLines = changed.map((row) => {
-    const from = row.mark ? STATUS_WORDS[row.mark.status] : 'not marked';
+    const from = row.mark ? markWord(row.mark.status) : 'not marked';
     const to = valueOf(row).status;
-    return `${row.studentFullName}: ${from} → ${to ? STATUS_WORDS[to] : 'not marked'}`;
+    return `${row.studentFullName}: ${from} → ${to ? markWord(to) : 'not marked'}`;
   });
   const register = registerView.register;
 
   const header = (
     <View style={styles.header}>
       <Text style={styles.title}>
-        {`${registerView.section.className} ${registerView.section.name}`}
+        {sectionTitle(registerView.section.className, registerView.section.name)}
       </Text>
       <Pressable
         accessibilityRole="button"
@@ -275,7 +269,7 @@ export function RegisterScreen({
       ) : null}
       {register ? (
         <Text style={styles.caption} testID="register.recordedBy">
-          {`Recorded by ${register.submittedByName ?? 'staff'} at ${timeFormat.format(new Date(register.submittedAt))}`}
+          {`Recorded by ${register.submittedByName ?? 'staff'} at ${formatTime(register.submittedAt)}`}
           {register.lastAmendedByName ? ` · Amended by ${register.lastAmendedByName}` : ''}
         </Text>
       ) : null}
@@ -307,9 +301,7 @@ export function RegisterScreen({
 
   const banner = (
     <View style={styles.banners}>
-      {!online || view.isError ? (
-        <OfflineNotice serverTime={cached!.serverTime} isDevice={cached!.serverTimeIsDevice} />
-      ) : null}
+      {cachedOfflineBanner(cached, online, view.isError)}
       {BANNERS[mode] ? (
         <Banner tone="warning" text={BANNERS[mode]} testID="register.banner" />
       ) : null}
@@ -355,7 +347,7 @@ export function RegisterScreen({
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${row.studentFullName}: ${value.status ? STATUS_WORDS[value.status] : 'not marked'}`}
+              accessibilityLabel={`${row.studentFullName}: ${value.status ? markWord(value.status) : 'not marked'}`}
               onPress={rowEditable ? () => cycle(row) : () => setRowOpen(row)}
               onLongPress={() => setRowOpen(row)}
               style={styles.row}
@@ -406,7 +398,7 @@ export function RegisterScreen({
           // the device's marks only when an older row has none.
           ...(amendmentLines(failed?.responseDetails ?? null, nameOf) ??
             (localRegister?.marks ?? []).map(
-              (m) => `${nameOf(m.enrolmentId)}: ${STATUS_WORDS[m.status]}`,
+              (m) => `${nameOf(m.enrolmentId)}: ${markWord(m.status)}`,
             )),
         ]}
         confirmLabel="Resend with this reason"
@@ -484,7 +476,7 @@ function RowSheet({
     <ModalSheet visible title={row.studentFullName} onClose={onClose} testID="register.rowSheet">
       <View style={styles.sheetRow}>
         <StatusChip status={value.status} />
-        <Text style={styles.body}>{value.status ? STATUS_WORDS[value.status] : 'Not marked'}</Text>
+        <Text style={styles.body}>{value.status ? markWord(value.status) : 'Not marked'}</Text>
         {row.mark?.amended ? <Text style={styles.caption}>amended</Text> : null}
       </View>
       {canEdit ? (

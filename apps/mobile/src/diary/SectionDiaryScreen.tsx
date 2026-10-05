@@ -1,6 +1,6 @@
 import { Capability, formatDay, todayInSchool } from '@asms/shared';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { api, isNetworkError, unwrap, unwrapWithDate } from '../api/client';
 import type { DiaryEntryDto } from '../api/contracts';
@@ -16,6 +16,7 @@ import { useCachedQuery } from '../db/use-cached-query';
 import { useOnline } from '../net/connectivity';
 import { remedyFor } from '../outbox/lanes';
 import { outboxWorker, useLocalQuery } from '../outbox/runtime';
+import { weekWindow } from '../platform/dates';
 import { log } from '../platform/log';
 import { errorFields } from '../platform/scrub';
 import { Button } from '../ui/Button';
@@ -26,7 +27,6 @@ import { localState, StateLine } from '../ui/StateLine';
 import { EmptyState, OfflineNotice } from '../ui/states';
 import { SyncChip } from '../ui/SyncChip';
 import { colors, fontSize, space } from '../ui/theme';
-import { weekWindow } from './dates';
 import { DiaryEntrySheet, DiaryWindow, dueLine, entryView } from './DiaryEntrySheet';
 
 // A section's diary — /classes/[sectionId]/diary (slice-16 §4.4). This week first, "Earlier"
@@ -40,12 +40,15 @@ function DiaryWeek({
   back,
   onOpen,
   hide,
+  onCount,
 }: {
   sectionId: string;
   back: number;
   onOpen: (entry: DiaryEntryDto) => void;
   /** Server ids already shown as this phone's own rows. */
   hide: ReadonlySet<string>;
+  /** How many entries the week holds, once it is loaded. */
+  onCount: (back: number, count: number) => void;
 }) {
   const { dateFrom, dateTo } = weekWindow(todayInSchool(), back);
   const query = useCachedQuery<Page>(
@@ -59,6 +62,10 @@ function DiaryWeek({
         }),
       ),
   );
+  const count = query.data?.body.data.length;
+  useEffect(() => {
+    if (count !== undefined) onCount(back, count);
+  }, [back, count, onCount]);
   return (
     <DiaryWindow
       query={query}
@@ -85,6 +92,14 @@ export function SectionDiaryScreen({
   const online = useOnline();
   const { me } = useSession();
   const [weeks, setWeeks] = useState(1);
+  // Entries per loaded week: "No entries." once every week shown is loaded and empty.
+  const [counts, setCounts] = useState<Record<number, number>>({});
+  const onCount = useCallback(
+    (back: number, count: number) =>
+      setCounts((known) => (known[back] === count ? known : { ...known, [back]: count })),
+    [],
+  );
+  const noEntries = Array.from({ length: weeks }, (_, back) => counts[back]).every((n) => n === 0);
   const [open, setOpen] = useState<DiaryEntryDto | null>(null);
   const [openLocal, setOpenLocal] = useState<LocalDiaryEntry | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -209,7 +224,14 @@ export function SectionDiaryScreen({
         </Sheet>
       ) : null}
       {Array.from({ length: weeks }, (_, back) => (
-        <DiaryWeek key={back} sectionId={sectionId} back={back} onOpen={setOpen} hide={hide} />
+        <DiaryWeek
+          key={back}
+          sectionId={sectionId}
+          back={back}
+          onOpen={setOpen}
+          hide={hide}
+          onCount={onCount}
+        />
       ))}
       <Button
         label="Earlier"
@@ -217,7 +239,7 @@ export function SectionDiaryScreen({
         onPress={() => setWeeks(weeks + 1)}
         testID="diary.earlier"
       />
-      {localEntries.length === 0 && weeks === 0 ? <EmptyState title="No entries." /> : null}
+      {localEntries.length === 0 && noEntries ? <EmptyState title="No entries." /> : null}
 
       <DiaryEntrySheet
         entry={open ? entryView(open, open.subjectName) : null}

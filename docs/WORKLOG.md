@@ -42,32 +42,30 @@ them when each phase is planned, and say so in the report.
 | Phase | Scope | Est. days |
 |---|---|---|
 | 1 Foundation | slices 0–8 (plan §5) | 30 |
-| 2 Daily operations | attendance, diary, notices, WhatsApp/SMS drivers, first React Native app | 40 |
+| 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
 | 3 Financial | fee heads, charges, payments, verification, receipts, expenses, payroll | 35 |
 | 4 Academic | assessments, results, report cards, certificates, promotion | 30 |
 | 5 Extended | biometric, advanced reporting, transport | 20 |
-| **Total** | | **155** |
+| **Total** | | **157** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
-slice in progress counts half. **Project % = days done ÷ 155.** Planning and reviews done before
+slice in progress counts half. **Project % = days done ÷ 157.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
+11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Planning and reviews done before
 slice 0 are not counted.
 
 ## Left to do (ordered)
 
-1. **Product owner: open GitHub Actions for the Phase 1 close commit** and record the result in
-   "Current state". The repo is private and this machine has no GitHub login. A failure is fixed
-   before any Phase 2 code.
-2. **Product owner: settle the schema-freeze register items 7–13 and 21–26** (partial payment,
-   sibling discount, concession scope, proration, exit states, staff leave, grace/retention,
-   results approval unit, SMS allow list, late arrival, late-payment charge, banking, remark
-   visibility). Phase 1 was meant to close them and did not; Phase 3's schema cannot freeze
-   without 7–13.
-3. **Opus: execute Phase 2** from `docs/plans/phase-2-daily-operations.md`. Order: groundwork
-   commit (§6.1 shared enums, error codes, message-type table; the `cover` enum value in its own
-   migration) → wave D (slices 9 + 10) → wave E (11, 12, 13, 15 in parallel) → wave F (14, 16)
-   → wave G (17). Slices 9 and 10 need no owner answer to start; see §1.2 for what each later
-   slice waits on.
+1. **Phase 2 wave G (slice 17, the phase close) — in progress 2026-10-05.** Reviews done:
+   whole-phase security PASS with two conditions (WAHA deployment profile and document; a de-linked
+   guardian's inbox), mobile code-quality, docs sweep. Then the fix round, `phase-gate`, and the
+   Phase 3 inheritance section. **Blocked on the owner:** the real-driver proof on staging (one
+   WhatsApp through WAHA, one SMS through Sendpk, delivery rows `delivered`) needs the Sendpk
+   account and sender registration and a WAHA host.
+2. **Product owner: settle the schema-freeze register items 7-11, 13 (grace), 21, 24, 25**
+   (partial payment, sibling discount, concession scope, proration, exit states, results approval
+   unit, late-payment charge, banking). Phase 3's schema cannot freeze without 7-11. Items 22, 23,
+   26 are built with defaults the owner tunes; 12 (cover) and 13 (suspension) are partly answered.
 3a. **Owner answered Phase 2 §1.2 on 2026-10-03** (recorded in the plan): the principal pairs
    the school's own WhatsApp number; the platform admin sets each school's SMS cap; **nothing is
    disturbed under suspension until termination** (this lifts Phase 1 R80's read-only rule —
@@ -95,12 +93,61 @@ slice 0 are not counted.
    exists; numeric reset code vs emailed link; email every principal when the principal role is
    added or removed.
 6. Small leftovers, not defects (also listed under "What Phase 2 inherits"): S3 mid-stream
-   truncation, no bucket reconcile, pg "already executing a query" warnings, the
-   `students-real.spec.ts` flake under two workers; and grant-screen guidance on
+   truncation, no bucket reconcile, pg "already executing a query" warnings; and grant-screen guidance on
    delegating `class.manage` + `staff.create` + `user.account.manage` together is not written yet.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## What Phase 3 inherits from Phase 2 (written at the Phase 2 close, 2026-10-05)
+
+**Built and standing:** messaging (one row per person, routing by contact capability, WAHA and
+Cloud API WhatsApp drivers, Sendpk SMS, FCM push, email), the worker and its job model (claim-first,
+enqueue after commit, payloads resolved through exception 3), bearer sessions and devices,
+calendar and holidays, cover assignments, student and staff attendance with alerts and reports,
+diary and remarks, announcements and the inbox, and the Android app (teacher, parent, student,
+principal) with its offline outbox. `docs/deployment.md` holds every production requirement.
+
+**Deferred, with the condition that brings each back:**
+- **Real-driver proof on staging** (one WhatsApp through WAHA, one SMS through Sendpk, delivery rows
+  `delivered`): blocked on the owner's Sendpk account and sender registration (PTA, 15-30 days)
+  and a WAHA host. Until then both drivers are proven only against recorded fakes and the
+  Sendpk adapter's assumptions; the 15 vendor questions in
+  `docs/research/sms-gateways-2026-10-03.md` must be answered before the first real send.
+- **WAHA's 7-day message-store purge**: no setting on the default WEBJS engine; needs the GOWS
+  engine with message storage off and a change to how `WahaDriver` creates sessions. Decide at
+  the first staging deployment.
+- **Deployment topology**: WAHA has no published port, so the API must run as a container on
+  `waha_private` (`docs/deployment.md`). The first real start of WAHA as uid 1000 on a read-only
+  root is untested.
+- **Firebase and Play**: push is off (`EXPO_PUBLIC_PUSH_ENABLED=false`) until the owner creates
+  the Firebase project; the Android applicationId `pk.asms.app` is PROVISIONAL until the owner
+  confirms it before the first Play upload. The splash image is a transparent placeholder.
+- **The whole-school attendance percentage report** takes about 0.8 s at 3,000 students even
+  with its index (the cost is `DISTINCT ON` over the window); a monthly per-student total is the
+  rewrite if a faster report is needed (performance review, 2026-10-05).
+- **The registers console** evaluates suspension per enrolment; revisit at 10,000 students.
+- **Per-request memo of school settings** (about six round trips per register submit): not
+  worth it yet.
+- **The pre-slice-14 holiday notice path** (about 70 lines) can go once the owner retires
+  slice-10 decision 1.
+- **Media cache and webhook counters are per process**; with one worker that is one read per
+  attachment.
+
+**Growth figures for Phase 3 planning** (one school, per year, measured): attendance_marks about
+1.3 M rows / 270 MB (per-period classes dominate), attendance_day_status 0.55 M / 150 MB,
+messages 0.2 M / 100 MB, message_deliveries 0.13 M / 50 MB. Bulk inserts cost about 5
+foreign-key probes per row by design (composite foreign keys); the 120 s job limit allows about
+60,000 recipients per announcement.
+
+**What Phase 3 must settle first** (register): items 7-11 block its schema (partial payment,
+sibling discount, concession scope, proration, exit states), and 24-25 (late-payment charge,
+banking) decide its first screens. Phase 3 has no plan yet: write
+`docs/plans/phase-3-financial.md` in the Phase 2 plan's style before any code.
+
+**Owner items still open from Phase 2:** register item 30 (privileged capabilities on a default
+password), whether suspended students' families receive announcements (part of item 11), and
+the provisional main-thread decisions listed under "Left to do" item 4.
 
 ## What Phase 2 inherits from Phase 1 (written at the Phase 1 close, 2026-10-03)
 
@@ -131,7 +178,8 @@ slice 0 are not counted.
   in hand SQL; new migrations come from `pnpm db:migration:new --name x` (create-only, then edit).
 - No `Promise.all` inside a transaction; mail, queue dispatch and file moves after commit.
 - After any API contract change: `pnpm --filter @asms/api build && pnpm --filter @asms/api openapi
-  && pnpm --filter @asms/web api:generate`; CI fails on drift.
+  && pnpm --filter @asms/web api:generate && pnpm --filter @asms/mobile api:generate`; CI fails on
+  drift in either client.
 - Every endpoint has a contract in `docs/plans/contracts/` before or with its code; every mutating
   route is classified in the audit table in `apps/api/test/core/routes.e2e-spec.ts` (a new
   unclassified route fails the suite).
@@ -179,6 +227,34 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-05 — Phase 2 wave G: slice 17, the phase close (Opus 5.5 builds, Fable 5.1 reviews)
+
+**Reviews:** whole-phase security PASS with two conditions, both closed: (1) WAHA's deployment
+requirements now exist as a compose `whatsapp` profile (no published port, private plus
+egress-only networks, dashboard and swagger off, non-root, read-only root, image pinned by
+digest) and `docs/deployment.md` (WAHA, exactly one worker, the edge proxy, the bucket, env per
+provider, backups, database settings); (2) a guardian unlinked from a child no longer sees that
+child's alerts, remarks or diary entries in the inbox (R164 amended; announcements stay).
+Performance at 3,000 students x three years: everything named is fine except four full scans of
+`message_deliveries` per school every 2-15 min and the whole-school percentage report; five
+indexes added (`20261005130629_phase2_close_indexes`, 96 ms to 0.07 ms on the SMS poll).
+Mobile code quality: no duplicated screens; 13 tidy-ups, about 170 production lines removed net,
+date and time formatters and enum display labels moved to `packages/shared` for web and mobile.
+Docs sweep: CLAUDE.md rewritten for six named exceptions and six constructors, the register
+updated with the owner's Phase 2 answers, README gained the worker step.
+
+**Guardrails (R16, R57, R68):** identity and phone scans over every template, delivery rows, the
+worker's log and the mobile log ring; every audit action read back by a test; a table of all
+171 routes with their guard; tests use their own queue prefix and fail if a job reaches a
+production-named queue. Found and fixed: the API log scrubber missed phones written with spaces
+or dashes, and the notice-text check missed `+92 300 1234567`.
+
+**Results:** lint and typecheck clean everywhere; API 130 suites / 1,779 tests (2 skipped,
+real-provider); mobile 38 suites / 500 tests; web build; Playwright (see the commit).
+
+**Not done in Phase 2:** the real-driver proof on staging (owner accounts); see "What Phase 3
+inherits".
 
 ## 2026-10-05 — Wave F CI: the Android app's first device run (main thread) — DONE
 

@@ -10,6 +10,16 @@ export const REMARK_CATEGORIES = [
 ] as const;
 export type RemarkCategory = (typeof REMARK_CATEGORIES)[number];
 
+/** Display labels, shared by the web and the mobile app. */
+export const REMARK_CATEGORY_LABELS: Record<RemarkCategory, string> = {
+  academic: 'Academic',
+  behaviour: 'Behaviour',
+  homework: 'Homework',
+  attendance: 'Attendance',
+  participation: 'Participation',
+  general: 'General',
+};
+
 /** A level: `student` implies `guardian`. Register item 26's default is `guardian`. */
 export const REMARK_VISIBILITIES = ['internal', 'guardian', 'student'] as const;
 export type RemarkVisibility = (typeof REMARK_VISIBILITIES)[number];

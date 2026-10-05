@@ -1,5 +1,11 @@
 # Phase 1 — Foundation: build plan (TypeScript stack)
 
+> **Complete (closed 2026-10-03). Superseded in part by Phase 2** (`phase-2-daily-operations.md`):
+> R37 → R174 (a section change closes the old enrolment and opens a new one; `section_id` is never
+> edited, a closed enrolment keeps its roll number); R80 lifted (a suspended school is not
+> read-only; only `terminated` is refused); the §7 defaults gave office staff
+> `attendance.student.mark` (all scope). Where this file and `CLAUDE.md` disagree, `CLAUDE.md` wins.
+
 **Audience:** the Opus 5.5 session that writes the code. Self-contained; read `CLAUDE.md` and
 `docs/WORKLOG.md` first, then this file top to bottom before touching anything.
 **Author:** Fable 5.1, 2026-10-02. **Replaces** the Laravel/Filament plan of 2026-10-01 (git

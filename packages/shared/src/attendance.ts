@@ -4,6 +4,14 @@
 export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'on_leave'] as const;
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
+/** A mark's word, shared by the web and the mobile app; mid-sentence, lower-case it. */
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  present: 'Present',
+  absent: 'Absent',
+  late: 'Late',
+  on_leave: 'On leave',
+};
+
 /** The derived status of an enrolment-day (R127): `partial` mixes absent or on-leave periods. */
 export const DAY_STATUSES = [...ATTENDANCE_STATUSES, 'partial'] as const;
 export type DayStatus = (typeof DAY_STATUSES)[number];

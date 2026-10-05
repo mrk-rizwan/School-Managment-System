@@ -10,9 +10,9 @@ import { downloadCalls, filesUnder, CACHE } from '../test/file-system';
 import { guardianMe, studentAttendance, TODAY } from '../test/fixtures';
 import { IDENTITY_PATTERN, PHONE_PATTERN } from '../test/patterns';
 import { eventually, renderSignedIn, setOnline } from '../test/screen';
-import { monthToDate } from '../diary/dates';
+import { monthToDate } from '../platform/dates';
 import { ChildrenScreen } from './ChildrenScreen';
-import { FamilyAttendanceScreen, FamilyDiaryScreen, FamilyRemarksScreen } from './FamilyScreens';
+import { AttendanceMonthScreen, FamilyDiaryScreen, FamilyRemarksScreen } from './FamilyScreens';
 import { StudentIndexScreen } from './StudentIndexScreen';
 
 // slice-16 §5.1–5.5 (children/children.spec.tsx, children/diary.spec.tsx,
@@ -145,7 +145,7 @@ describe('Children (§5.1)', () => {
 describe('a child’s month (§5.2)', () => {
   test('this month reads the same key the card used; Next is off at the current month', async () => {
     const { fake } = await renderSignedIn(
-      <FamilyAttendanceScreen source={{ kind: 'child', studentId: '501' }} secure />,
+      <AttendanceMonthScreen source={{ kind: 'child', studentId: '501' }} secure />,
       guardianMe(),
       { [CHILD_ATTENDANCE]: () => ({ status: 200, body: studentAttendance() }) },
     );
@@ -304,7 +304,7 @@ describe('the student (§5.5)', () => {
   test.each([
     [
       'attendance',
-      <FamilyAttendanceScreen key="a" source={{ kind: 'own' }} secure />,
+      <AttendanceMonthScreen key="a" source={{ kind: 'own' }} secure />,
       '/api/v1/me/student/attendance',
       () => ({ status: 200, body: studentAttendance() }),
       'attendanceMonth.grid',

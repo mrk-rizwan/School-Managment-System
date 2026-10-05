@@ -1,5 +1,6 @@
-// Route and OpenAPI hygiene over the REAL application (no test-only modules): the R68 snapshot
-// of routes that need no capability, the §3.9 rule that every operation documents the error
+// Route and OpenAPI hygiene over the REAL application (no test-only modules): the R68 table of
+// every route's guard with its argument (route-guards.ts, slice 17), the R68 snapshot of routes
+// that need no capability, the §3.9 rule that every operation documents the error
 // envelope, R66 (every id in the document is a string) and the R57 audit classification of
 // every state-changing route.
 import { readdirSync, readFileSync } from 'node:fs';
@@ -10,6 +11,7 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { MetadataScanner, ModulesContainer, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { OpenAPIObject } from '@nestjs/swagger';
+import { Client } from 'pg';
 import {
   AuthenticatedOnly,
   PlatformSession,
@@ -24,6 +26,7 @@ import { API_PREFIX } from '../../src/common/http';
 import { buildOpenApiDocuments } from '../../src/openapi-documents';
 import { PlatformModule } from '../../src/modules/platform/platform.module';
 import { createTestApp } from './app';
+import { byPathThenMethod, ROUTE_GUARDS } from './route-guards';
 
 type Access =
   | 'public'
@@ -37,6 +40,8 @@ interface Route {
   method: string;
   path: string;
   access: Access[];
+  /** The declared guard with its argument: capabilities, capacity, provider or platform level. */
+  guard: string;
   handler: string;
   /** The @PlatformSession level, if declared. */
   level: string | undefined;
@@ -64,6 +69,17 @@ const ACCESS_KEYS: [Access, string][] = [
   ['webhook', keyOf(Webhook('waha'))],
 ];
 const PLATFORM_KEY = keyOf(PlatformSession());
+
+/**
+ * A guard as the R68 table records it: the decorator and what it was given. @RequireCapability's
+ * list is ANY-of and kept in its declared order; @RequireCapacity names the capacity, @Webhook the
+ * provider, @PlatformSession the level. The flag decorators are their label alone.
+ */
+function guardText(label: Access, value: unknown): string {
+  if (Array.isArray(value)) return `${label}: ${value.map(String).join(' | ')}`;
+  if (typeof value === 'string') return `${label}: ${value}`;
+  return label;
+}
 
 /** PlatformModule and every module it imports, recursively. */
 function platformModuleTree(): Set<unknown> {
@@ -118,16 +134,19 @@ function nestRoutes(app: NestExpressApplication): Route[] {
         const method = reflector.get<RequestMethod | undefined>(METHOD_METADATA, handler);
         const methodPaths = reflector.get<string | string[] | undefined>(PATH_METADATA, handler);
         if (method === undefined || methodPaths === undefined) continue;
-        const access = ACCESS_KEYS.filter(
-          ([, key]) =>
-            reflector.getAllAndOverride<unknown>(key, [handler, controller]) !== undefined,
-        ).map(([label]) => label);
+        const declared = ACCESS_KEYS.flatMap(([label, key]): [Access, unknown][] => {
+          const value = reflector.getAllAndOverride<unknown>(key, [handler, controller]);
+          return value === undefined ? [] : [[label, value]];
+        });
+        const access = declared.map(([label]) => label);
+        const guard = declared.map(([label, value]) => guardText(label, value)).join(' + ');
         for (const c of controllerPaths) {
           for (const m of asArray(methodPaths)) {
             routes.push({
               method: RequestMethod[method],
               path: joinPath(API_PREFIX, c, m),
               access,
+              guard,
               handler: `${controller.name}.${name}`,
               level: reflector.getAllAndOverride<string | undefined>(PLATFORM_KEY, [handler, controller]),
               inPlatformModule: platformTree.has(module.metatype),
@@ -342,22 +361,50 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/webhooks/waha': 'none: a provider report with no actor; it moves a delivery forward or triggers a health check',
 };
 
-/** The text of every non-generated, non-test source file under src/. */
-function sourceText(): string {
+/** Every .ts file under `root` that `keep` admits, generated code skipped. */
+function tsFiles(root: string, keep: (path: string) => boolean): string[] {
   const files: string[] = [];
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (entry.name !== 'generated') walk(path);
-      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.spec.ts')) {
+      } else if (entry.name.endsWith('.ts') && keep(path)) {
         files.push(path);
       }
     }
   };
-  walk(join(__dirname, '../../src'));
-  return files.map((f) => readFileSync(f, 'utf8')).join('\n');
+  walk(root);
+  return files;
 }
+
+/** The text of every non-generated, non-test source file under src/. */
+function sourceText(): string {
+  return tsFiles(join(__dirname, '../../src'), (path) => !path.endsWith('.spec.ts'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n');
+}
+
+/** The text of each behavioural suite under test/ (this file and its tables excluded). */
+function suiteTexts(): string[] {
+  const tables = new Set([__filename, join(__dirname, 'route-guards.ts')]);
+  return tsFiles(join(__dirname, '..'), (path) => /\.(e2e-)?spec\.ts$/.test(path) && !tables.has(path)).map(
+    (file) => readFileSync(file, 'utf8'),
+  );
+}
+
+/** The audit actions the reviewed table names, once each. */
+const auditActions = (): string[] => [
+  ...new Set(Object.values(MUTATION_AUDIT).flatMap((c) => (typeof c === 'string' ? [] : c))),
+];
+
+/**
+ * Audit actions a route writes with no actor, and why (R57 asks for actor, target and reason):
+ * the login-spray alarm counts anonymous failures across many usernames, so nobody is the actor.
+ */
+const ACTORLESS_ACTIONS: Record<string, string> = {
+  login_failure_spike: 'anonymous failed logins in a burst, recorded by the alarm, not by a person',
+};
 
 const OPERATIONS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
 
@@ -465,11 +512,67 @@ describe('Routes and OpenAPI over the real AppModule', () => {
     expect(missing).toEqual([]);
   });
 
+  it('R57 (slice 17): every audit action the table names is read back by a behavioural suite', () => {
+    // The table says what a route writes; a suite that drives the route and reads the row back is
+    // what proves it. An action named here and read back by no suite is an unproved claim.
+    const suites = suiteTexts();
+    expect(suites.length).toBeGreaterThan(50);
+    const unproved = auditActions().filter((action) => !suites.some((text) => text.includes(`'${action}'`)));
+    expect(unproved.sort()).toEqual([]);
+  });
+
+  it('R57 (slice 17): every stored row of a route audit action names its actor and its subject', async () => {
+    // Whole tables, every school any suite wrote (tests never truncate): a route that wrote its
+    // row without the person who acted, or without what it acted on, is found here.
+    const actions = auditActions();
+    const checked = actions.filter((a) => !(a in ACTORLESS_ACTIONS));
+    expect(Object.keys(ACTORLESS_ACTIONS).filter((a) => !actions.includes(a))).toEqual([]);
+    const pg = new Client({ connectionString: process.env.DATABASE_URL });
+    await pg.connect();
+    try {
+      const school = await pg.query<{ action: string; rows: string }>(
+        `SELECT action, count(*)::text AS rows FROM audit_log
+          WHERE action = ANY($1)
+            AND ((actor_user_id IS NULL AND actor_platform_user_id IS NULL) OR subject_id IS NULL)
+          GROUP BY action`,
+        [checked],
+      );
+      expect(school.rows).toEqual([]);
+      const platform = await pg.query<{ action: string; rows: string }>(
+        `SELECT action, count(*)::text AS rows FROM platform_audit_log
+          WHERE action = ANY($1) AND (actor_platform_user_id IS NULL OR subject_id IS NULL)
+          GROUP BY action`,
+        [checked],
+      );
+      expect(platform.rows).toEqual([]);
+      // Not vacuous: rows of these actions exist to be checked.
+      const seen = await pg.query<{ n: string }>(
+        `SELECT ((SELECT count(*) FROM audit_log WHERE action = ANY($1))
+               + (SELECT count(*) FROM platform_audit_log WHERE action = ANY($1)))::text AS n`,
+        [checked],
+      );
+      expect(Number(seen.rows[0]?.n)).toBeGreaterThan(0);
+    } finally {
+      await pg.end();
+    }
+  });
+
   it('R68: every route declares exactly one access decorator', () => {
     const wrong = routes
       .filter((r) => r.access.length !== 1)
       .map((r) => `${r.method} ${r.path} (${r.handler}): [${r.access.join(', ')}]`);
     expect(wrong).toEqual([]);
+  });
+
+  it('R68 (slice 17): every route guard, with its capabilities, capacity, provider or level, matches the reviewed table', () => {
+    const actual = Object.fromEntries(
+      routes
+        .map((r): [string, string] => [`${r.method} ${r.path}`, r.guard])
+        .sort(([a], [b]) => byPathThenMethod(a, b)),
+    );
+    if (process.env.PRINT_ROUTE_GUARDS) process.stdout.write(`${JSON.stringify(actual, null, 2)}
+`);
+    expect(actual).toEqual(ROUTE_GUARDS);
   });
 
   it('R68: the routes needing no capability match the reviewed snapshot', () => {

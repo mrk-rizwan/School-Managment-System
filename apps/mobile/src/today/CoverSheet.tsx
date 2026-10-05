@@ -4,29 +4,25 @@ import { StyleSheet, Text } from 'react-native';
 import { api, unwrap, unwrapWithDate } from '../api/client';
 import type { SectionDayDto, StaffDto, TeacherAssignmentDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
+import { sectionTitle } from '../classes/my-classes';
 import { useCachedQuery } from '../db/use-cached-query';
 import { useOnlineOnly } from '../net/connectivity';
+import { isIsoDate } from '../platform/dates';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { ListRow } from '../ui/ListRow';
 import { ModalSheet } from '../ui/ModalSheet';
 import { LoadingState } from '../ui/states';
 import { colors, fontSize } from '../ui/theme';
-import {
-  coveredAssignment,
-  coverOutcome,
-  isIsoDate,
-  looksLikeIdentity,
-  sectionLabel,
-} from './today-model';
+import { coveredAssignment, coverOutcome, looksLikeIdentity } from './today-model';
 
 // Assign cover — online only (slice-16 §7.1, R162; `assign_cover` is never a lane). The staff
 // list shows names and designations only — never a phone or an identity number (§13.5).
 
 /** A staff row as the picker keeps it. */
-export type StaffChoice = Pick<StaffDto, 'id' | 'fullName' | 'designation'>;
+type StaffChoice = Pick<StaffDto, 'id' | 'fullName' | 'designation'>;
 
-export const staffChoice = ({ id, fullName, designation }: StaffDto): StaffChoice => ({
+const staffChoice = ({ id, fullName, designation }: StaffDto): StaffChoice => ({
   id,
   fullName,
   designation,
@@ -88,7 +84,9 @@ function OpenCoverSheet({ row, onClose, onDone }: Omit<Props, 'row'> & { row: Se
     (s) => identityTyped || needle === '' || s.fullName.toLowerCase().includes(needle),
   );
   const covered =
-    classTeacher === null ? null : coveredAssignment(assignments.data?.body.data ?? [], row.sectionId);
+    classTeacher === null
+      ? null
+      : coveredAssignment(assignments.data?.body.data ?? [], row.sectionId);
   const waitingForCovered = classTeacher !== null && assignments.data === undefined;
   // Without the class teacher's row the cover cannot name what it covers: no submit (review L4).
   const coveredFailed = waitingForCovered && assignments.isError;
@@ -130,7 +128,7 @@ function OpenCoverSheet({ row, onClose, onDone }: Omit<Props, 'row'> & { row: Se
   return (
     <ModalSheet
       visible
-      title={`Cover for ${sectionLabel(row)}`}
+      title={`Cover for ${sectionTitle(row.className, row.sectionName)}`}
       onClose={onClose}
       testID="cover"
       footer={

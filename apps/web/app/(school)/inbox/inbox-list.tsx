@@ -1,6 +1,6 @@
 'use client';
 
-import { ANNOUNCEMENT_CATEGORIES, INBOX_ITEM_KINDS, type AnnouncementCategory, type InboxItemKind } from '@asms/shared';
+import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_CATEGORY_LABELS, INBOX_ITEM_KINDS, type AnnouncementCategory, type InboxItemKind } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { PaperclipIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -14,7 +14,7 @@ import { announcementsApi, type InboxQuery } from '@/lib/api/school-announcement
 import { formatDateTime } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
-import { CATEGORY_LABELS, announcementKeys } from '../announcements/_lib/announcements-ui';
+import { announcementKeys } from '../announcements/_lib/announcements-ui';
 import { InboxTags, aboutLine } from './_lib/inbox-ui';
 
 // contracts/slice-14.md §7.3: every signed-in person's messages, newest first: announcements and
@@ -54,7 +54,7 @@ export function InboxList() {
             <option value="">Any</option>
             {ANNOUNCEMENT_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
+                {ANNOUNCEMENT_CATEGORY_LABELS[c]}
               </option>
             ))}
           </FilterSelect>

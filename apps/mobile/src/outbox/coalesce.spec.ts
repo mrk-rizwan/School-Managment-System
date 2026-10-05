@@ -25,20 +25,27 @@ const register = (marks: [string, string][], reason?: string) => ({
 });
 
 describe('mergeMarksBody', () => {
+  const body = (patch: Partial<Parameters<typeof mergeMarksBody>[0]> = {}) => ({
+    date: '2026-10-05',
+    period: 1,
+    marks: [],
+    ...patch,
+  });
+
   test('marks merge by enrolmentId, latest wins; order of first appearance kept', () => {
     const merged = mergeMarksBody(
-      {
+      body({
         marks: [
           { enrolmentId: '1', status: 'present' },
           { enrolmentId: '2', status: 'present' },
         ],
-      },
-      {
+      }),
+      body({
         marks: [
           { enrolmentId: '2', status: 'absent' },
           { enrolmentId: '3', status: 'late' },
         ],
-      },
+      }),
     );
     expect(merged.marks).toEqual([
       { enrolmentId: '1', status: 'present' },
@@ -48,16 +55,14 @@ describe('mergeMarksBody', () => {
   });
 
   test('the reason is kept unless the newer one is non-empty, and left out when none is', () => {
-    expect(mergeMarksBody({ marks: [], reason: 'first' }, { marks: [] }).reason).toBe('first');
-    expect(mergeMarksBody({ marks: [], reason: 'first' }, { marks: [], reason: '  ' }).reason).toBe(
-      'first',
+    expect(mergeMarksBody(body({ reason: 'first' }), body()).reason).toBe('first');
+    expect(mergeMarksBody(body({ reason: 'first' }), body({ reason: '  ' })).reason).toBe('first');
+    expect(mergeMarksBody(body({ reason: 'first' }), body({ reason: 'second' })).reason).toBe(
+      'second',
     );
-    expect(
-      mergeMarksBody({ marks: [], reason: 'first' }, { marks: [], reason: 'second' }).reason,
-    ).toBe('second');
     // Never null: the server refuses `reason: null` with a terminal 422 (wave-F review).
-    expect(mergeMarksBody({ marks: [] }, { marks: [] })).not.toHaveProperty('reason');
-    expect(mergeMarksBody({ marks: [], reason: null }, { marks: [], reason: '' })).not.toHaveProperty(
+    expect(mergeMarksBody(body(), body())).not.toHaveProperty('reason');
+    expect(mergeMarksBody(body({ reason: null }), body({ reason: '' }))).not.toHaveProperty(
       'reason',
     );
   });

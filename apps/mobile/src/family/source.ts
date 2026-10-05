@@ -87,6 +87,17 @@ export function familyRead<R extends Resource>(
   };
 }
 
+/** A staff member's own attendance for a range (slice-16 §6): the Home card and its month. */
+export function staffAttendanceRead(range: Range) {
+  const query = { dateFrom: range.dateFrom, dateTo: range.dateTo };
+  return {
+    key: queryKeys.staffAttendance(query.dateFrom, query.dateTo),
+    path: '/api/v1/me/staff/attendance',
+    params: query,
+    fetch: () => unwrapWithDate(api.GET('/api/v1/me/staff/attendance', { params: { query } })),
+  };
+}
+
 /** The entry's base path: `/thumbnail` and `/attachment` hang off it. */
 export function attachmentBase(source: FamilySource, entryId: string): string {
   return source.kind === 'child'

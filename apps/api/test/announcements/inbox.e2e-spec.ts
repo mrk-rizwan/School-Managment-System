@@ -10,7 +10,7 @@ import { asSchool, connectedNumber } from '../messaging/support';
 import { ORIGIN } from '../staff/support';
 import { createSchoolSession, randomIdentityDigits, testIdentityHash } from '../support/school-session';
 import { closeTestDb } from '../support/schools';
-import { createGuardian, isoDay, linkGuardian } from '../support/students';
+import { createGuardian, createSubject, day, isoDay, linkGuardian } from '../support/students';
 import { AnnouncementHarness, announcement, campus, type Announcement, type Campus } from './support';
 
 const UNUSABLE = '$argon2id$v=19$m=19456,t=2,p=1$dGVzdHNhbHQ$dGVzdC1vbmx5LW5vdC1hLWhhc2g';
@@ -20,6 +20,7 @@ interface Item {
   kind: string;
   messageType: string;
   subjectType: string;
+  subjectId: string;
   title: string;
   body: string;
   category: string | null;
@@ -117,6 +118,90 @@ describe('announcements: inbox and attachments (e2e)', () => {
     const otherCookie = await signIn(other, { guardianId: other.parent.id });
     expect(await inbox(otherCookie)).toEqual([]);
     expect((await h.read(`/me/inbox/${item?.id}`, otherCookie)).status).toBe(404);
+  });
+
+  it('R164 (Phase 2 close): an ended link hides the guardian\'s earlier notices about that child, on the list, the item and both attachment routes; a co-guardian still linked keeps them; announcements stay', async () => {
+    const c = await campus(h);
+    const [zara, ali] = [c.kids[0]!, c.kids[1]!];
+    const coGuardian = await createGuardian(db, c.school, { fullName: 'Kamran Khan' });
+    await linkGuardian(db, c.school, zara, coGuardian, { isPrimaryContact: false, isFeePayer: false, canLogin: true });
+    const enrolmentOf = async (studentId: bigint) =>
+      (await db.enrolment.findFirstOrThrow({ where: { schoolId: c.school.id, studentId } })).id;
+    const date = day(isoDay(-1));
+    const alert = await db.attendanceAlert.create({
+      data: { schoolId: c.school.id, enrolmentId: await enrolmentOf(zara.id), studentId: zara.id, date, kind: 'absence', dueAt: new Date() },
+    });
+    const remarkOf = async (studentId: bigint) =>
+      db.remark.create({
+        data: {
+          schoolId: c.school.id, enrolmentId: await enrolmentOf(studentId), studentId, authorStaffId: c.teacher.staffId,
+          date, category: 'homework', text: 'Homework not done.', visibility: 'guardian',
+        },
+      });
+    const [zaraRemark, aliRemark] = [await remarkOf(zara.id), await remarkOf(ali.id)];
+    const entry = await db.diaryEntry.create({
+      data: {
+        schoolId: c.school.id, sectionId: c.sectionA.id, classId: c.sectionA.classId, academicYearId: c.sectionA.academicYearId,
+        date, subjectId: (await createSubject(db, c.school)).id, authorStaffId: c.teacher.staffId, topic: 'Fractions',
+      },
+    });
+    // The announcement carries an attachment, so the attachment routes have a file to refuse.
+    const notice = await h.sendAndDeliver(
+      c.school.id,
+      (await h.draft(announcement([{ kind: 'parents' }], { stagedUploadId: await stage(await png(64, 64), c.principal.cookie) }), c.principal.cookie)).id,
+      c.principal.cookie,
+    );
+    const message = (guardianId: bigint, type: 'absence_alert' | 'remark_posted' | 'diary_posted', subjectType: 'attendance_alert' | 'remark' | 'diary_entry', subjectId: bigint) =>
+      ({ schoolId: c.school.id, type, priority: 'normal' as const, subjectType, subjectId, guardianId, body: 'About Zara', channelPlan: [], status: 'sent' as const, finishedAt: new Date() });
+    for (const g of [c.parent.id, coGuardian.id]) {
+      await db.message.createMany({
+        data: [
+          message(g, 'absence_alert', 'attendance_alert', alert.id),
+          message(g, 'remark_posted', 'remark', zaraRemark.id),
+          message(g, 'diary_posted', 'diary_entry', entry.id),
+        ],
+      });
+    }
+    await db.message.create({ data: message(c.parent.id, 'remark_posted', 'remark', aliRemark.id) });
+    const cookie = await signIn(c, { guardianId: c.parent.id });
+    const coCookie = await signIn(c, { guardianId: coGuardian.id });
+    const subjects = (items: Item[]) => items.map((i) => `${i.subjectType}:${i.subjectId}`).sort();
+    const all = [`attendance_alert:${alert.id}`, `diary_entry:${entry.id}`, `remark:${zaraRemark.id}`];
+    expect(subjects(await inbox(cookie))).toEqual([...all, `remark:${aliRemark.id}`, `announcement:${notice.id}`].sort());
+
+    // The office ends the parent's link to Zara.
+    await db.studentGuardian.updateMany({
+      where: { schoolId: c.school.id, guardianId: c.parent.id, studentId: zara.id },
+      data: { endedAt: new Date() },
+    });
+    const after = await inbox(cookie);
+    // The diary entry stays: Ali is in section A on its date too, so it is still about a child in scope.
+    expect(subjects(after)).toEqual([`diary_entry:${entry.id}`, `remark:${aliRemark.id}`, `announcement:${notice.id}`].sort());
+    expect(after.find((i) => i.subjectType === 'diary_entry')?.viaStudents.map((v) => v.fullName)).toEqual(['Ali Khan']);
+    expect((await h.read('/me/inbox', cookie)).body).toMatchObject({ total: 3 });
+    const hidden = await db.message.findMany({
+      where: { schoolId: c.school.id, guardianId: c.parent.id, subjectId: { in: [alert.id, zaraRemark.id] } },
+    });
+    expect(hidden).toHaveLength(2);
+    for (const m of hidden) {
+      expect((await h.read(`/me/inbox/${m.id}`, cookie)).status).toBe(404);
+      expect((await download(`/me/inbox/${m.id}/attachment`, cookie)).status).toBe(404);
+      expect((await download(`/me/inbox/${m.id}/thumbnail`, cookie)).status).toBe(404);
+    }
+    // The announcement and its attachment stay visible.
+    const kept = after.find((i) => i.subjectType === 'announcement');
+    expect((await download(`/me/inbox/${kept?.id}/attachment`, cookie)).status).toBe(200);
+    // The co-guardian still linked to Zara keeps every row about her.
+    expect(subjects(await inbox(coCookie))).toEqual([...all, `announcement:${notice.id}`].sort());
+    const coAlert = await db.message.findFirstOrThrow({ where: { schoolId: c.school.id, guardianId: coGuardian.id, subjectId: alert.id } });
+    expect((await h.read(`/me/inbox/${coAlert.id}`, coCookie)).status).toBe(200);
+
+    // Ending the last link to section A's children hides the diary entry as well.
+    await db.studentGuardian.updateMany({
+      where: { schoolId: c.school.id, guardianId: c.parent.id, studentId: ali.id },
+      data: { endedAt: new Date() },
+    });
+    expect(subjects(await inbox(cookie))).toEqual([`announcement:${notice.id}`]);
   });
 
   it('the inbox predicate: no messaging test, no withdrawn notice; a suppressed no_channel message is in; a staff-guardian sees one row', async () => {

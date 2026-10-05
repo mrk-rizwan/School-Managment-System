@@ -8,7 +8,7 @@ import { errorBody, resetDevice, type Handler } from '../test/fake-api';
 import { DOCUMENT, putFile } from '../test/file-system';
 import { diaryEntry, teacherMe, TODAY } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline, settleOutbox } from '../test/screen';
-import { weekWindow } from './dates';
+import { weekWindow } from '../platform/dates';
 import { SectionDiaryScreen } from './SectionDiaryScreen';
 
 // slice-16 §4.4 (diary/list.spec.tsx): the section's diary with this phone's unsent entries.
@@ -66,6 +66,16 @@ test('"Earlier" adds the week before as its own read', async () => {
     .filter((c) => c.path.endsWith('/diary-entries'))
     .map((c) => c.query.get('dateFrom'));
   expect(froms).toEqual([weekWindow(TODAY, 0).dateFrom, weekWindow(TODAY, 1).dateFrom]);
+});
+
+test('"No entries." shows once every loaded week is empty, and not while a week has one', async () => {
+  let entries: unknown[] = [];
+  await mount({ [LIST]: () => page(entries) });
+  expect(await screen.findByTestId('state.empty')).toHaveTextContent('No entries.');
+  entries = [diaryEntry()];
+  fireEvent.press(screen.getByTestId('diary.earlier'));
+  await screen.findByTestId('diary.entry.300');
+  expect(screen.queryByTestId('state.empty')).toBeNull();
 });
 
 test('an entry written offline shows "Saved on device" above the server rows, then "Saved on server"', async () => {

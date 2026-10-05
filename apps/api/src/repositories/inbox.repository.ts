@@ -9,7 +9,8 @@ import {
   type MessageType,
 } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
-import { oneOf, sqlDate } from './attendance-sql';
+import type { Scope } from '../tenancy/scope';
+import { oneOf, sqlDate, studentInScopeSql } from './attendance-sql';
 import { Prisma } from './generated/prisma/client';
 import type { PrismaTxAdapter } from './prisma';
 
@@ -17,11 +18,36 @@ import type { PrismaTxAdapter } from './prisma';
 // read time, joined to announcements by subject. Every statement filters school_id on every table
 // it reads (test/announcements/isolation.e2e-spec.ts).
 
-/** The caller's persons; null ids match nothing. */
+/**
+ * The caller's persons; null ids match nothing. `guardianScope` is the guardian capacity's current
+ * children (PermissionsService.guardianChildren, the scope /me/children uses): a guardian row about
+ * one child is shown only while that child is in it.
+ */
 export interface InboxPersons {
   guardianId: bigint | null;
+  guardianScope: Scope;
   staffId: bigint | null;
   studentId: bigint | null;
+}
+
+/**
+ * R164 as amended at the Phase 2 close: a guardian row whose subject belongs to one student reads
+ * only while that student is in the guardian's current scope, so ending a link hides the earlier
+ * notices that name the child. Announcements, holidays and every other subject type are not about
+ * one student and stay. A diary entry is about the students enrolled in its section on its date
+ * (slice 13 §6.1, as studentsOfDiaryEntries); an alert or remark names its student.
+ */
+function guardianSubjectInScope(scope: Scope): Prisma.Sql {
+  const inScope = (studentId: Prisma.Sql) => studentInScopeSql(scope, Prisma.sql`m.school_id`, studentId);
+  return Prisma.sql`(m.subject_type NOT IN ('attendance_alert', 'remark', 'diary_entry')
+    OR (m.subject_type = 'attendance_alert' AND EXISTS (SELECT 1 FROM attendance_alerts al
+         WHERE al.school_id = m.school_id AND al.id = m.subject_id AND ${inScope(Prisma.sql`al.student_id`)}))
+    OR (m.subject_type = 'remark' AND EXISTS (SELECT 1 FROM remarks r
+         WHERE r.school_id = m.school_id AND r.id = m.subject_id AND ${inScope(Prisma.sql`r.student_id`)}))
+    OR (m.subject_type = 'diary_entry' AND EXISTS (SELECT 1 FROM diary_entries d
+         JOIN enrolments e ON e.school_id = d.school_id AND e.section_id = d.section_id
+          AND e.started_on <= d.date AND (e.ended_on IS NULL OR e.ended_on >= d.date)
+         WHERE d.school_id = m.school_id AND d.id = m.subject_id AND ${inScope(Prisma.sql`e.student_id`)})))`;
 }
 
 export interface InboxRow {
@@ -92,13 +118,16 @@ export class InboxRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
 
   /**
-   * §7.1's predicate: addressed to one of the persons; no messaging test; not withdrawn before
-   * anyone was told; not an announcement that expired before `today` (R147). The channel plan is
-   * not a predicate (decision 16).
+   * §7.1's predicate: addressed to one of the persons (a guardian row about one student only
+   * while the student is in the guardian's scope); no messaging test; not withdrawn before anyone
+   * was told; not an announcement that expired before `today` (R147). The channel plan is not a
+   * predicate (decision 16).
    */
   private where(schoolId: SchoolId, persons: InboxPersons, today: Date, filter: InboxFilter): Prisma.Sql | null {
     const own: Prisma.Sql[] = [];
-    if (persons.guardianId !== null) own.push(Prisma.sql`m.guardian_id = ${persons.guardianId}`);
+    if (persons.guardianId !== null) {
+      own.push(Prisma.sql`(m.guardian_id = ${persons.guardianId} AND ${guardianSubjectInScope(persons.guardianScope)})`);
+    }
     if (persons.staffId !== null) own.push(Prisma.sql`m.staff_id = ${persons.staffId}`);
     if (persons.studentId !== null) own.push(Prisma.sql`m.student_id = ${persons.studentId}`);
     if (own.length === 0) return null;

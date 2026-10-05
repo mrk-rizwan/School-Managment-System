@@ -1,13 +1,14 @@
-import { Capability, formatDay } from '@asms/shared';
+import { Capability, formatDay, REMARK_CATEGORY_LABELS } from '@asms/shared';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { api, unwrapWithDate } from '../api/client';
-import type { RemarkDto, SubjectDto } from '../api/contracts';
+import type { RemarkDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { useSession } from '../auth/session';
 import { discardItem, listLocalRemarks, type LocalRemark } from '../db/local.repository';
+import { sectionTitle } from '../classes/my-classes';
+import { useSubjectChoices } from '../classes/subjects';
 import { useCachedQuery } from '../db/use-cached-query';
-import { ownSubjects } from '../diary/DiaryComposeScreen';
 import { useOnline } from '../net/connectivity';
 import { remedyFor } from '../outbox/lanes';
 import { useLocalQuery } from '../outbox/runtime';
@@ -15,10 +16,10 @@ import { Button } from '../ui/Button';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
 import { localState, StateLine } from '../ui/StateLine';
-import { EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { cachedOfflineBanner, EmptyState, NoDataState } from '../ui/states';
 import { SyncChip } from '../ui/SyncChip';
 import { colors, fontSize, space } from '../ui/theme';
-import { CATEGORY_LABELS, RemarkForm } from './RemarkForm';
+import { RemarkForm } from './RemarkForm';
 import { useTodayRoster } from './StudentsScreen';
 
 // One student — /classes/[sectionId]/students/[studentId] (slice-16 §4.6): name and roll from the
@@ -59,20 +60,7 @@ export function StudentSheetScreen({
   );
   const local = useLocalQuery(queryKeys.localRemarks(studentId), () => listLocalRemarks(studentId));
   const classId = roster.data?.body.section.classId ?? null;
-  const own = me ? ownSubjects(me.body, Capability.REMARK_WRITE, sectionId, classId) : [];
-  const school = useCachedQuery<{ data: SubjectDto[] }>(
-    queryKeys.subjects,
-    '/api/v1/subjects',
-    { limit: 50 },
-    () => unwrapWithDate(api.GET('/api/v1/subjects', { params: { query: { limit: 50 } } })),
-    { enabled: own === 'all' && formOpen },
-  );
-  const subjects =
-    own === 'all'
-      ? (school.data?.body.data ?? [])
-          .filter((s) => s.archivedAt === null)
-          .map((s) => ({ id: s.id, name: s.name }))
-      : own;
+  const { subjects } = useSubjectChoices(Capability.REMARK_WRITE, sectionId, classId, formOpen);
   const canWrite = me?.body.capabilities.includes(Capability.REMARK_WRITE) ?? false;
   const shownServerIds = new Set(
     (local.data ?? []).flatMap((r) => (r.serverId ? [r.serverId] : [])),
@@ -97,11 +85,7 @@ export function StudentSheetScreen({
       title={row?.studentFullName ?? 'Student'}
       accessory={<SyncChip />}
       secure={secure}
-      banner={
-        cached !== undefined && (!online || remarks.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(cached, online, remarks.isError)}
       testID="student.screen"
       footer={
         canWrite ? (
@@ -120,7 +104,7 @@ export function StudentSheetScreen({
         <Text style={styles.caption}>
           {[
             roster.data
-              ? `${roster.data.body.section.className} ${roster.data.body.section.name}`
+              ? sectionTitle(roster.data.body.section.className, roster.data.body.section.name)
               : null,
             row.rollNo === null ? null : `Roll ${row.rollNo}`,
           ]
@@ -136,7 +120,7 @@ export function StudentSheetScreen({
             return (
               <View key={remark.id} style={styles.item} testID={`student.local.${remark.id}`}>
                 <Text style={styles.heading}>
-                  {`${CATEGORY_LABELS[remark.category as keyof typeof CATEGORY_LABELS] ?? remark.category} · ${formatDay(remark.date)}`}
+                  {`${REMARK_CATEGORY_LABELS[remark.category as keyof typeof REMARK_CATEGORY_LABELS] ?? remark.category} · ${formatDay(remark.date)}`}
                 </Text>
                 <Text style={styles.body}>{remark.text}</Text>
                 <StateLine state={localState(remark.outbox, remark.savedOnServerAt)} />
@@ -182,7 +166,7 @@ export function StudentSheetScreen({
               <View key={remark.id} style={styles.item} testID={`student.remark.${remark.id}`}>
                 <Text style={styles.heading}>
                   {[
-                    CATEGORY_LABELS[remark.category],
+                    REMARK_CATEGORY_LABELS[remark.category],
                     formatDay(remark.date),
                     remark.subjectName,
                     VISIBILITY_BADGE[remark.visibility],

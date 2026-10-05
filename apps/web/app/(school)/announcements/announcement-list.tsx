@@ -2,8 +2,10 @@
 
 import {
   ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_CATEGORY_LABELS,
   ANNOUNCEMENT_PRIORITIES,
   ANNOUNCEMENT_STATUSES,
+  ANNOUNCEMENT_STATUS_LABELS,
   type AnnouncementCategory,
   type AnnouncementPriority,
   type AnnouncementStatus,
@@ -32,10 +34,8 @@ import { useListPage } from '@/lib/hooks';
 import { useSchoolMe } from '@/lib/school-session';
 import {
   AnnouncementStatusBadge,
-  CATEGORY_LABELS,
   PRIORITY_LABELS,
   PriorityBadge,
-  STATUS_LABELS,
   announcementHref,
   announcementKeys,
   audienceLabel,
@@ -97,7 +97,7 @@ export function AnnouncementList() {
           </div>
         ),
       }),
-      column.accessor('category', { header: 'Category', cell: (info) => CATEGORY_LABELS[info.getValue()] }),
+      column.accessor('category', { header: 'Category', cell: (info) => ANNOUNCEMENT_CATEGORY_LABELS[info.getValue()] }),
       column.accessor('priority', { header: 'Priority', cell: (info) => <PriorityBadge priority={info.getValue()} /> }),
       column.accessor('status', { header: 'Status', cell: (info) => <AnnouncementStatusBadge status={info.getValue()} /> }),
       column.accessor('recipientCount', {
@@ -167,7 +167,7 @@ export function AnnouncementList() {
             <option value="">Any</option>
             {STATUS_FILTERS.map((s) => (
               <option key={s} value={s}>
-                {STATUS_LABELS[s]}
+                {ANNOUNCEMENT_STATUS_LABELS[s]}
               </option>
             ))}
           </FilterSelect>
@@ -175,7 +175,7 @@ export function AnnouncementList() {
             <option value="">Any</option>
             {ANNOUNCEMENT_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
+                {ANNOUNCEMENT_CATEGORY_LABELS[c]}
               </option>
             ))}
           </FilterSelect>

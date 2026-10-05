@@ -13,12 +13,11 @@ import { logText } from '../platform/log';
 import {
   errorBody,
   installFakeApi,
-  loginFixture,
-  meFixture,
   resetDevice,
   SERVER_DATE,
   type Handler,
 } from '../test/fake-api';
+import { loginFixture, meFixture } from '../test/fixtures';
 import { IDENTITY_PATTERN, PHONE_PATTERN, TOKEN_PATTERN } from '../test/patterns';
 import { secureStoreContents } from '../test/secure-store';
 import { databaseFileExists, filesStartingWith } from '../test/sqlite-adapter';
@@ -543,7 +542,9 @@ describe('device faults: only a request that got no answer is "No connection"', 
     jest.spyOn(sessionStore, 'writeSession').mockRejectedValue(new Error('keystore unavailable'));
     mount();
     await submitOnTheScreen();
-    expect(await screen.findByTestId('signIn.error')).toHaveTextContent('Sign-in failed. Try again.');
+    expect(await screen.findByTestId('signIn.error')).toHaveTextContent(
+      'Sign-in failed. Try again.',
+    );
     expect(logText()).toMatch(/error auth\.sign_in_failed/);
     expect(session().status).toBe('signed-out');
   });
@@ -555,7 +556,9 @@ describe('device faults: only a request that got no answer is "No connection"', 
     // readSession runs before signIn's own try: its failure rejects signIn itself.
     jest.spyOn(sessionStore, 'readSession').mockRejectedValue(new Error('secure store locked'));
     await submitOnTheScreen();
-    expect(await screen.findByTestId('signIn.error')).toHaveTextContent('Sign-in failed. Try again.');
+    expect(await screen.findByTestId('signIn.error')).toHaveTextContent(
+      'Sign-in failed. Try again.',
+    );
     expect(screen.getByTestId('signIn.submit').props.accessibilityState).toMatchObject({
       busy: false,
     });

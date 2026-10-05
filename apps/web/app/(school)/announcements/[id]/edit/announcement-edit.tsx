@@ -1,5 +1,6 @@
 'use client';
 
+import { ANNOUNCEMENT_STATUS_LABELS } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PageHeader } from '@/components/app-shell';
@@ -7,7 +8,7 @@ import { BackLink, EmptyState, QueryStates, StateCard } from '@/components/page-
 import { buttonVariants } from '@/components/ui/button';
 import { unwrap } from '@/lib/api/client';
 import { announcementsApi } from '@/lib/api/school-announcements-contract';
-import { STATUS_LABELS, announcementHref, announcementKeys, isEditable } from '../../_lib/announcements-ui';
+import { announcementHref, announcementKeys, isEditable } from '../../_lib/announcements-ui';
 import { AnnouncementCompose } from '../../announcement-compose';
 
 // contracts/slice-14.md §5.7: content is editable while draft or scheduled only (R146).
@@ -32,7 +33,7 @@ export function AnnouncementEdit({ id }: { id: string }) {
             <PageHeader title="Edit announcement" />
             <StateCard>
               <EmptyState
-                title={`This announcement is ${STATUS_LABELS[a.status].toLowerCase()}`}
+                title={`This announcement is ${ANNOUNCEMENT_STATUS_LABELS[a.status].toLowerCase()}`}
                 description="A sent or cancelled announcement cannot change. Write a new one instead."
                 action={
                   <Link href="/announcements/new" className={buttonVariants({ variant: 'outline' })}>

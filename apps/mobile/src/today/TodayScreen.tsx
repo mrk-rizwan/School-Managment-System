@@ -1,7 +1,7 @@
 import { Capability, formatDay, todayInSchool } from '@asms/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { api, unwrapWithDate } from '../api/client';
 import type { DailySummaryDto, SectionDayDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
@@ -14,17 +14,12 @@ import { Button } from '../ui/Button';
 import { Paging } from '../ui/Paging';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { AsOf, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { AsOf, cachedOfflineBanner, EmptyState, NoDataState } from '../ui/states';
 import { SyncChip } from '../ui/SyncChip';
 import { colors, fontSize, space } from '../ui/theme';
+import { sectionTitle } from '../classes/my-classes';
 import { CoverSheet } from './CoverSheet';
-import {
-  byClass,
-  notTeachingDay,
-  sectionLabel,
-  summaryLine,
-  unrecordedDetail,
-} from './today-model';
+import { byClass, notTeachingDay, summaryLine, unrecordedDetail } from './today-model';
 
 // Today — /today (slice-16 §7.1): what was not recorded today and the day's summary, both
 // cached with their "as of". Record now opens the register (offline-capable); Assign cover is
@@ -76,8 +71,7 @@ export function TodayScreen() {
   if (me === null) return null;
   // MeDto.capabilityScopes (slice-14 §8): only a school-wide mark key writes any register.
   const canRecord = schoolWide(me.body, Capability.ATTENDANCE_STUDENT_MARK);
-  const canCover =
-    holds(me.body, Capability.CLASS_MANAGE) && holds(me.body, Capability.STAFF_VIEW);
+  const canCover = holds(me.body, Capability.CLASS_MANAGE) && holds(me.body, Capability.STAFF_VIEW);
 
   const cached = unrecorded.data ?? summary.data;
   const failed = unrecorded.isError || summary.isError;
@@ -87,9 +81,7 @@ export function TodayScreen() {
 
   const banner = (
     <View style={styles.banners}>
-      {cached !== undefined && (!online || failed) ? (
-        <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-      ) : null}
+      {cachedOfflineBanner(cached, online, failed)}
       {notice ? (
         <Banner text={notice} onDismiss={() => setNotice(null)} testID="today.notice" />
       ) : null}
@@ -102,17 +94,10 @@ export function TodayScreen() {
       accessory={<SyncChip />}
       banner={banner}
       testID="today.screen"
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          enabled={online}
-          onRefresh={() => {
-            void unrecorded.refetch();
-            void summary.refetch();
-          }}
-          colors={[colors.primary]}
-        />
-      }
+      onRefresh={() => {
+        void unrecorded.refetch();
+        void summary.refetch();
+      }}
     >
       <Text style={styles.date}>{formatDay(today)}</Text>
       <Sheet title="Not recorded" testID="today.unrecorded">
@@ -136,7 +121,7 @@ export function TodayScreen() {
                 style={styles.row}
                 testID={`today.unrecorded.${row.sectionId}`}
               >
-                <Text style={styles.title}>{sectionLabel(row)}</Text>
+                <Text style={styles.title}>{sectionTitle(row.className, row.sectionName)}</Text>
                 {unrecordedDetail(row).map((line) => (
                   <Text key={line} style={styles.detail}>
                     {line}

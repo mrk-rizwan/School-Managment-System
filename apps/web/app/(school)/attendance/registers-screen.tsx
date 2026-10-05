@@ -22,13 +22,13 @@ import {
   type RegisterListSort,
   type SectionDayDto,
 } from '@/lib/api/school-attendance-contract';
-import { formatDay, todayInSchool } from '@/lib/format';
+import { formatDay, formatTime, todayInSchool } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities } from '@/lib/school-session';
 import { NO_PLACEMENT, PlacementSelects, type Placement } from '../students/_lib/placement';
 import { ArrivalDialog } from './_lib/arrival-dialog';
 import { AttendanceTabs, registerHref } from './_lib/attendance-nav';
-import { attendanceKeys, timeOf } from './_lib/attendance-ui';
+import { attendanceKeys } from './_lib/attendance-ui';
 
 // contracts/slice-11.md §10.1, §13: the registers of a day, live (never the summary table), and
 // the principal's "not recorded" tile above them.
@@ -211,7 +211,7 @@ function RegisterList() {
       header: 'Recorded by',
       cell: ({ row }) =>
         row.original.submittedByName && row.original.submittedAt
-          ? `${row.original.submittedByName}, ${timeOf(row.original.submittedAt)}`
+          ? `${row.original.submittedByName}, ${formatTime(row.original.submittedAt)}`
           : '—',
     }),
     column.display({ id: 'teacher', header: 'Class teacher', cell: ({ row }) => teacherLine(row.original) }),

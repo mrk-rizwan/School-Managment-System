@@ -1,13 +1,7 @@
 import { ErrorCode, toApiError } from '@asms/shared';
 import createClient from 'openapi-fetch';
-import {
-  errorBody,
-  installFakeApi,
-  loginFixture,
-  meFixture,
-  resetDevice,
-  SERVER_DATE,
-} from '../test/fake-api';
+import { errorBody, installFakeApi, resetDevice, SERVER_DATE } from '../test/fake-api';
+import { loginFixture, meFixture } from '../test/fixtures';
 import { DOCUMENT, File, putFile } from '../test/file-system';
 import { sendItem } from '../outbox/runtime';
 import * as lanes from '../outbox/lanes';
@@ -318,7 +312,11 @@ describe('slice-16 §11: multipart and the headers for requests the client does 
     });
     setBearerToken(token);
     putFile(`${DOCUMENT}outbox/p1.jpg`, 1234);
-    const response = await sendMultipart('/api/v1/uploads', 'file', new File(`${DOCUMENT}outbox/p1.jpg`));
+    const response = await sendMultipart(
+      '/api/v1/uploads',
+      'file',
+      new File(`${DOCUMENT}outbox/p1.jpg`),
+    );
     expect(response.status).toBe(201);
     const [call] = fake.calls;
     expect(call!.method).toBe('POST');

@@ -3,15 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { api, unwrapWithDate } from '../api/client';
-import type { MeDto, SubjectDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
-import { schoolWide } from '../auth/capabilities';
 import { useSession } from '../auth/session';
+import { useSubjectChoices } from '../classes/subjects';
 import { listLocalDiaryEntries, saveDiaryEntry, type LocalPhoto } from '../db/local.repository';
-import { useCachedQuery } from '../db/use-cached-query';
 import { deleteOutboxFile } from '../media/files';
 import { pickPhoto } from '../media/picker';
+import { addDays } from '../platform/dates';
 import { sensitiveTextError } from '../outbox/bodies';
 import { outboxWorker } from '../outbox/runtime';
 import { log } from '../platform/log';
@@ -23,48 +21,11 @@ import { Screen } from '../ui/Screen';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
 import { LoadingState } from '../ui/states';
 import { colors, fontSize, space } from '../ui/theme';
-import { addDays } from './dates';
 
 // A new diary entry — /classes/[sectionId]/diary/new (slice-16 §4.4). Saved on the device in one
 // transaction with its outbox row (the outbox id is the Idempotency-Key); a chosen photo waits
 // in its own row and is sent after the entry reaches the server (§4.5). Not secure: no child's
 // name. "Photograph the board or the book, not the children."
-
-type Subject = { id: string; name: string };
-
-/**
- * Where the subject list comes from (slice-16 §4.4): the school's list when the key is held
- * school-wide (`MeDto.capabilityScopes`, slice-14 §8 — the principal, a grant) or the caller is
- * the section's class teacher or cover; else a subject teacher's own subjects on the section.
- * Without either, nothing: scope comes from assignments, never from the key alone (rule 13).
- */
-export function ownSubjects(
-  me: Pick<MeDto, 'assignments' | 'capabilities' | 'capabilityScopes'>,
-  capability: Capability,
-  sectionId: string,
-  classId: string | null,
-): Subject[] | 'all' {
-  if (schoolWide(me, capability)) return 'all';
-  const onSection = me.assignments.filter(
-    (a) => a.sectionId === sectionId || (a.sectionId === null && a.classId === classId),
-  );
-  if (onSection.some((a) => a.role === 'class_teacher' || a.role === 'cover')) return 'all';
-  const subjects = new Map<string, string>();
-  for (const a of onSection) {
-    if (a.subjectId !== null && a.subjectName !== null) subjects.set(a.subjectId, a.subjectName);
-  }
-  return [...subjects].map(([id, name]) => ({ id, name }));
-}
-
-function useSchoolSubjects(enabled: boolean) {
-  return useCachedQuery<{ data: SubjectDto[] }>(
-    queryKeys.subjects,
-    '/api/v1/subjects',
-    { limit: 50 },
-    () => unwrapWithDate(api.GET('/api/v1/subjects', { params: { query: { limit: 50 } } })),
-    { enabled },
-  );
-}
 
 export function DiaryComposeScreen({
   sectionId,
@@ -93,14 +54,11 @@ export function DiaryComposeScreen({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const own = me ? ownSubjects(me.body, Capability.DIARY_WRITE, sectionId, classId) : [];
-  const school = useSchoolSubjects(own === 'all');
-  const subjects: Subject[] =
-    own === 'all'
-      ? (school.data?.body.data ?? [])
-          .filter((s) => s.archivedAt === null)
-          .map((s) => ({ id: s.id, name: s.name }))
-      : own;
+  const { subjects, loading: subjectsLoading } = useSubjectChoices(
+    Capability.DIARY_WRITE,
+    sectionId,
+    classId,
+  );
 
   useEffect(() => {
     if (resend === null) return;
@@ -192,7 +150,7 @@ export function DiaryComposeScreen({
         onPress={() => setDateOpen(true)}
         testID="diaryCompose.date"
       />
-      {subjects.length === 0 && own === 'all' && school.isPending ? (
+      {subjects.length === 0 && subjectsLoading ? (
         <LoadingState label="Loading subjects" />
       ) : (
         <SegmentedPicker

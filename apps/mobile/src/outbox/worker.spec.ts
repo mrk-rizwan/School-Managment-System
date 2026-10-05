@@ -23,7 +23,7 @@ function item(lane: string, patch: Partial<OutboxItem> = {}): OutboxItem {
     responseStatus: null,
     responseCode: null,
     responseMessage: null,
-      responseDetails: null,
+    responseDetails: null,
     domainTable: null,
     domainId: null,
     createdAt: created,
@@ -269,13 +269,11 @@ describe('triggers', () => {
   });
 
   test('401 pauses the queue and 426 blocks it', async () => {
-    const effects: string[] = [];
     const store = memoryStore([item('a'), item('b')]);
     const worker = new OutboxWorker({
       store,
       isOnline: () => true,
       now: () => T0,
-      onEffect: (effect) => effects.push(effect),
       send: (i) =>
         Promise.resolve({
           kind: 'response',
@@ -287,7 +285,6 @@ describe('triggers', () => {
     });
     await worker.trigger('foreground');
     await worker.idle();
-    expect(effects.sort()).toEqual(['block', 'pause']);
     expect(worker.status()).toMatchObject({ paused: true, blocked: true });
     expect(store.items.every((i) => i.state === 'pending')).toBe(true);
   });

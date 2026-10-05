@@ -10,9 +10,10 @@ import { Paging } from '../ui/Paging';
 import { RefreshableList } from '../ui/RefreshableList';
 import { Screen } from '../ui/Screen';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
-import { AsOf, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { attachmentWord } from '../ui/Attachment';
+import { AsOf, cachedOfflineBanner, EmptyState, NoDataState } from '../ui/states';
 import { colors, fontSize, radius, space, statusColors, TAP_TARGET } from '../ui/theme';
-import { attachmentWord, CATEGORY_CHIPS, INBOX_LIMIT, sentLabel, viaLabel } from './inbox-model';
+import { CATEGORY_CHIPS, INBOX_LIMIT, sentLabel, viaLabel } from './inbox-model';
 
 // Inbox — /inbox (slice-16 §7.3, slice-14 §7.3): every message the school sent this person,
 // newest first, cached with its "as of". One filter, the category. No image loads here (R160).
@@ -67,11 +68,7 @@ export function InboxScreen({ secure }: { secure: boolean }) {
       secure={secure}
       scroll={false}
       testID="inbox.screen"
-      banner={
-        cached !== undefined && (!online || query.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(cached, online, query.isError)}
     >
       {cached === undefined ? (
         <>

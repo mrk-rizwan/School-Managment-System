@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorCode, type AttendanceStatus, type DayStatus } from '@asms/shared';
+import { ATTENDANCE_STATUS_LABELS, ErrorCode, type AttendanceStatus, type DayStatus } from '@asms/shared';
 import { useId } from 'react';
 import { ApiError, NOT_ASSIGNED_ON_DATE, refusalMessage, type RefusalMessages } from '@/lib/api/errors';
 import type {
@@ -10,7 +10,7 @@ import type {
   StaleStatusDetails,
 } from '@/lib/api/school-attendance-contract';
 import type { MeDto } from '@/lib/api/school-contract';
-import { formatDay } from '@/lib/format';
+import { formatDay, formatTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 // Pieces shared by the attendance screens: the register, the registers console, the reports, the
@@ -34,13 +34,7 @@ export const attendanceKeys = {
 /** The four mark values, in the order the buttons show them. Student and staff share them. */
 export const MARK_STATUSES = ['present', 'absent', 'late', 'on_leave'] as const satisfies readonly AttendanceStatus[];
 
-export const STATUS_LABELS: Record<DayStatus, string> = {
-  present: 'Present',
-  absent: 'Absent',
-  late: 'Late',
-  on_leave: 'On leave',
-  partial: 'Part of the day',
-};
+export const STATUS_LABELS: Record<DayStatus, string> = { ...ATTENDANCE_STATUS_LABELS, partial: 'Part of the day' };
 /** The one-letter label on a status button and a heat-map cell. */
 export const STATUS_LETTER: Record<DayStatus, string> = {
   present: 'P',
@@ -118,16 +112,8 @@ export function StatusButtons({
 
 // ---- Times. Instants are shown in Pakistan time (CLAUDE.md: Asia/Karachi for every school). ----
 
-const timeFormat = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: 'Asia/Karachi',
-});
-/** An instant as `HH:MM` in the school's time zone. */
-export const timeOf = (iso: string) => timeFormat.format(new Date(iso));
 /** Now as `HH:MM` in the school's time zone (the arrival dialog's default). */
-export const nowInSchool = () => timeFormat.format(new Date());
+export const nowInSchool = () => formatTime(new Date().toISOString());
 
 /** `HH:MM`, 00:00–23:59 (the API's pattern). */
 export const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
@@ -139,9 +125,9 @@ export function alertPhrases(alert: AlertSummaryDto | null): string[] {
   if (!alert) return [];
   const phrases: string[] = [];
   if (alert.absence === 'sent') {
-    phrases.push(alert.absenceResolvedAt ? `told ${timeOf(alert.absenceResolvedAt)}` : 'told');
+    phrases.push(alert.absenceResolvedAt ? `told ${formatTime(alert.absenceResolvedAt)}` : 'told');
   } else if (alert.absence === 'pending') {
-    phrases.push(alert.absenceDueAt ? `pending ${timeOf(alert.absenceDueAt)}` : 'pending');
+    phrases.push(alert.absenceDueAt ? `pending ${formatTime(alert.absenceDueAt)}` : 'pending');
   } else if (alert.absence === 'cancelled') {
     phrases.push(
       alert.absenceCancelReason === 'backdated'

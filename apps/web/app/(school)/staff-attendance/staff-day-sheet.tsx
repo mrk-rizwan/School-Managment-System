@@ -18,12 +18,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { unwrap } from '@/lib/api/client';
 import { calendarApi } from '@/lib/api/school-calendar-contract';
 import { staffAttendanceApi, type StaffDayDto, type StaffDayQuery } from '@/lib/api/school-staff-attendance-contract';
-import { formatDay, todayInSchool } from '@/lib/format';
+import { formatDay, formatTime, todayInSchool } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useListSearch } from '@/lib/list-search';
 import { useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
-import { STATUS_LABELS, StatusButtons, attendanceErrorMessage, attendanceKeys, timeOf } from '../attendance/_lib/attendance-ui';
+import { STATUS_LABELS, StatusButtons, attendanceErrorMessage, attendanceKeys } from '../attendance/_lib/attendance-ui';
 import { AmendmentsDialog, useMarkSheet, type MarkDraft } from '../attendance/_lib/mark-sheet';
 import { addDays, calendarKeys } from '../calendar/_lib/calendar-ui';
 import { STAFF_STATUS_LABELS } from '../staff/_lib/staff-ui';
@@ -278,7 +278,7 @@ function StaffDaySheet({ date }: { date: string }) {
                     <TableCell className="px-4 text-xs text-muted-foreground">
                       {row.mark ? (
                         <>
-                          {row.mark.markedByName ?? 'Unknown'}, {timeOf(row.mark.markedAt)}
+                          {row.mark.markedByName ?? 'Unknown'}, {formatTime(row.mark.markedAt)}
                           {row.mark.amended && (
                             <Badge variant="ghost" className="ml-1">
                               Amended{row.mark.lastAmendedByName ? ` by ${row.mark.lastAmendedByName}` : ''}

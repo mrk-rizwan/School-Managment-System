@@ -1,4 +1,5 @@
 import {
+  ANNOUNCEMENT_STATUS_LABELS,
   ApiError,
   ErrorCode,
   rateLimitMessage,
@@ -7,11 +8,21 @@ import {
   type AudienceInput,
   type AudienceKind,
 } from '@asms/shared';
-import { isNetworkError } from '../api/client';
-import type { AudiencePreviewDto, DeliverySummaryDto, MessagingUsageDto } from '../api/contracts';
+import { useQueryClient } from '@tanstack/react-query';
+import { api, isNetworkError, unwrap } from '../api/client';
+import type {
+  AnnouncementDto,
+  AudiencePreviewDto,
+  DeliverySummaryDto,
+  MessagingUsageDto,
+} from '../api/contracts';
+import { queryKeys } from '../api/query-keys';
+import type { Cached } from '../db/cache';
+import { useOnlineOnly } from '../net/connectivity';
 
-// Announce (slice-16 §7.2, aligned with contracts/slice-14.md §2, §4, §12), pure: the reduced
-// audience picker's shapes, the preview line, the send outcomes, the usage and delivery words.
+// Announce (slice-16 §7.2, aligned with contracts/slice-14.md §2, §4, §12): the reduced
+// audience picker's shapes, the preview line, the send outcomes, the usage and delivery words —
+// all pure — and the one send of a saved draft.
 // Delivery is "accepted / delivered / failed / suppressed" — there is no such thing as a message
 // someone has opened (R150).
 
@@ -166,14 +177,32 @@ export function sendFailure(error: unknown, draftSaved: boolean): SendFailure {
   }
 }
 
-export const STATUS_LABELS: Record<AnnouncementStatus, string> = {
-  draft: 'Draft',
-  scheduled: 'Scheduled',
+const STATUS_LABELS: Record<AnnouncementStatus, string> = {
+  ...ANNOUNCEMENT_STATUS_LABELS,
   // Send-now answers `sending` and a job delivers it (slice-14 change, wave F): a success.
   sending: 'Sending…',
-  sent: 'Sent',
-  cancelled: 'Cancelled',
 };
+
+/**
+ * Sending a saved draft, online only (R162): `gate` enables the button; `send(id)` posts it,
+ * shows the answer on its detail at once (send-now answers `sending`, a job delivers it) and
+ * fetches every announcement list and detail again. Retry-safe by state: an announcement already
+ * sent answers 200 (slice-14 §5.5).
+ */
+export function useSendAnnouncement() {
+  const client = useQueryClient();
+  const gate = useOnlineOnly('send_announcement');
+  async function send(id: string): Promise<void> {
+    const result = await unwrap(
+      api.POST('/api/v1/announcements/{id}/send', { params: { path: { id } } }),
+    );
+    client.setQueryData<Cached<AnnouncementDto>>(queryKeys.announcement(id), (old) =>
+      old === undefined ? old : { ...old, body: result },
+    );
+    await client.invalidateQueries({ queryKey: ['announcements'] });
+  }
+  return { gate, send };
+}
 
 /** A draft whose send failed five times (`sendFailedAt`); a new send clears it on the server. */
 export const SEND_FAILED_TEXT = 'Sending failed. Try again.';

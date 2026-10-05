@@ -1,16 +1,14 @@
+import type { SubmitRegisterDto } from '../api/contracts';
+
 // Coalescing by natural key (slice-15 §7.4, R158): a second write to a register (section, date,
 // period) while a PENDING row for it exists merges into that row, so an offline correction
 // becomes one submit, not a terminal failure. A row already SENDING is never touched: the write
 // starts a new pending row, and later writes merge into that one. The partial unique index
-// outbox_pending_natural_key makes a second pending row for one key impossible.
-//
-// Slice 15 ships the rule for a generic `marks[]` body; slice 16 fills in the register's own
-// fields if it needs more than this.
+// outbox_pending_natural_key makes a second pending row for one key impossible. The register
+// (submit_register) is the one lane with a natural key.
 
-export type MarksBody = {
-  marks: ({ enrolmentId: string } & Record<string, unknown>)[];
-  reason?: string | null;
-} & Record<string, unknown>;
+/** A stored register body; a body stored before the wave-F fix may hold `reason: null`. */
+type MarksBody = Omit<SubmitRegisterDto, 'reason'> & { reason?: string | null };
 
 /** `section:<id>|date:<YYYY-MM-DD>|period:<n>` */
 export function registerNaturalKey(sectionId: string, date: string, period: number): string {

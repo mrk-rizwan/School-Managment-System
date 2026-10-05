@@ -1,4 +1,4 @@
-import { DEFAULT_TIMEZONE } from '@asms/shared';
+import { formatTime } from '@asms/shared';
 import { StyleSheet, Text } from 'react-native';
 import type { OutboxView } from '../db/local.repository';
 import { colors, fontSize } from './theme';
@@ -6,13 +6,6 @@ import { colors, fontSize } from './theme';
 // The outbox state of a local row (slice-16 §12): on the device, sending, on the server at a
 // time, or not saved with the server's reason. "Saved on server" appears only after the server's
 // 2xx (R157, plan §0.15): from a done outbox row or the time its follow-up wrote.
-
-const timeFormat = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: DEFAULT_TIMEZONE,
-});
 
 export type LocalState =
   | { kind: 'device'; retryInMinutes: number | null }
@@ -51,7 +44,7 @@ export function describeLocalState(state: LocalState): string {
     case 'sending':
       return 'Sending';
     case 'server':
-      return `Saved on server at ${timeFormat.format(new Date(state.at))}`;
+      return `Saved on server at ${formatTime(state.at)}`;
     case 'failed':
       return `Not saved: ${state.message}`;
   }

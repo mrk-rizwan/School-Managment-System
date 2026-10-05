@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { DeliveryHealthRollup } from '../../src/jobs/delivery-health-rollup';
 import { MessageProcessor } from '../../src/messaging/message-processor';
+import { PlatformAuditRepository } from '../../src/repositories/platform/platform-audit.repository';
 import { signedInPlatformAdmin } from '../support/platform';
 import { createSchoolSession, createSchoolUser, type TestSchoolUser } from '../support/school-session';
 import { closeTestDb, testDb, type TestSchool } from '../support/schools';
@@ -171,7 +172,7 @@ describe('slice 9 messaging routes (e2e)', () => {
 
     it('connect-cloud-api: wrong effective provider is 409 MISMATCH; verified details connect, token never returned', async () => {
       const school = await messagingSchool();
-      const { cookie } = await signedIn(school);
+      const { user, cookie } = await signedIn(school);
       const phone = randomPhone();
       const phoneNumberId = String(Date.now()).slice(-12);
       const accessToken = `EAAG${'x'.repeat(40)}`;
@@ -189,6 +190,12 @@ describe('slice 9 messaging routes (e2e)', () => {
       expect(ok.text).not.toContain(phoneNumberId);
       const row = await db.whatsAppNumber.findFirst({ where: { schoolId: school.id, status: 'connected' } });
       expect(row?.cloudAccessToken?.startsWith('v1:')).toBe(true);
+      // R57 (slice 17): one row naming the actor and the number; neither the token nor the id.
+      const audits = await db.auditLog.findMany({ where: { schoolId: school.id, action: 'whatsapp.cloud_api_connected' } });
+      expect(audits).toHaveLength(1);
+      expect(audits[0]).toMatchObject({ actorUserId: user.userId, subjectId: row?.id });
+      expect(JSON.stringify(audits[0]?.metadata)).not.toContain(accessToken);
+      expect(JSON.stringify(audits[0]?.metadata)).not.toContain(phoneNumberId);
       drivers.cloudVerify = { ok: false, reason: 'token_rejected' };
       const again = await post('/messaging/whatsapp/connect-cloud-api', cookie, { phone, phoneNumberId, accessToken });
       expect(again.body).toMatchObject({ error: { code: 'WHATSAPP_ALREADY_CONNECTED' } });
@@ -241,6 +248,60 @@ describe('slice 9 messaging routes (e2e)', () => {
       const same = (current.body as { defaultWhatsappProvider: string }).defaultWhatsappProvider;
       expect((await platformPatch('/settings', admin.cookie, { defaultWhatsappProvider: same })).status).toBe(200);
       expect(await db.platformAuditLog.count({ where: { action: 'platform_settings.updated' } })).toBe(before);
+    });
+
+    it('R57 (slice 17): a real PATCH /platform/settings change writes platform_settings.updated with actor and changes (rolled back)', async () => {
+      // The platform settings row is global: committing a provider change would reroute every
+      // suite running beside this one. So the change runs for real up to its audit insert, which
+      // is captured, and then the transaction is failed, leaving nothing committed.
+      const admin = await signedInPlatformAdmin();
+      const current = (await http().get('/api/v1/platform/settings').set('Cookie', admin.cookie)).body as {
+        defaultWhatsappProvider: string;
+        enabledWhatsappProviders: string[];
+      };
+      const other = current.enabledWhatsappProviders.find((p) => p !== current.defaultWhatsappProvider);
+      expect(other).toBeDefined();
+      // Every PlatformAuditRepository instance (each platform module provides its own); other
+      // actions pass through untouched.
+      const recorded: unknown[] = [];
+      const original = Reflect.get<PlatformAuditRepository, 'record'>(PlatformAuditRepository.prototype, 'record');
+      const spy = jest
+        .spyOn(PlatformAuditRepository.prototype, 'record')
+        .mockImplementation(async function (this: PlatformAuditRepository, entry) {
+          await original.call(this, entry);
+          if (entry.action !== 'platform_settings.updated') return;
+          recorded.push(entry);
+          throw new Error('rolled back by the test');
+        });
+      try {
+        const res = await platformPatch('/settings', admin.cookie, { defaultWhatsappProvider: other });
+        expect(res.status).toBe(500);
+      } finally {
+        spy.mockRestore();
+        // Should the interception ever miss, put the shared row back at once.
+        const now = (await http().get('/api/v1/platform/settings').set('Cookie', admin.cookie)).body as {
+          defaultWhatsappProvider: string;
+        };
+        if (now.defaultWhatsappProvider !== current.defaultWhatsappProvider) {
+          await platformPatch('/settings', admin.cookie, { defaultWhatsappProvider: current.defaultWhatsappProvider });
+        }
+      }
+      expect(recorded).toEqual([
+        {
+          actorPlatformUserId: admin.id,
+          schoolId: null,
+          action: 'platform_settings.updated',
+          subjectType: 'platform_settings',
+          subjectId: 1n,
+          metadata: { changes: { defaultWhatsappProvider: { from: current.defaultWhatsappProvider, to: other } } },
+        },
+      ]);
+      // Nothing committed: the setting and the audit trail are as they were.
+      const after = (await http().get('/api/v1/platform/settings').set('Cookie', admin.cookie)).body as {
+        defaultWhatsappProvider: string;
+      };
+      expect(after.defaultWhatsappProvider).toBe(current.defaultWhatsappProvider);
+      expect(await db.platformAuditLog.count({ where: { action: 'platform_settings.updated', actorPlatformUserId: admin.id } })).toBe(0);
     });
 
     it('R114: GET /platform/messaging/health shows counts, statuses and caps only, from the rollup', async () => {

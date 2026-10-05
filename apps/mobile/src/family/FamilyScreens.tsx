@@ -1,30 +1,32 @@
-import { formatDay, todayInSchool } from '@asms/shared';
+import { formatDay, REMARK_CATEGORY_LABELS, todayInSchool } from '@asms/shared';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { MyDiaryEntryDto, MyRemarkDto, StudentAttendanceDto } from '../api/contracts';
+import type {
+  MyDiaryEntryDto,
+  MyRemarkDto,
+  MyStaffAttendanceDto,
+  StudentAttendanceDto,
+} from '../api/contracts';
 import { useSession } from '../auth/session';
+import { sectionTitle } from '../classes/my-classes';
 import { useCachedQuery } from '../db/use-cached-query';
-import { fortnightWindow } from '../diary/dates';
 import { DiaryEntrySheet, DiaryWindow, entryView } from '../diary/DiaryEntrySheet';
 import { useOnline } from '../net/connectivity';
-import { monthRange } from '../platform/dates';
-import { CATEGORY_LABELS } from '../remarks/RemarkForm';
+import { attendanceMonth, fortnightWindow } from '../platform/dates';
 import { AttendanceMonth } from '../ui/AttendanceMonth';
 import { Button } from '../ui/Button';
 import { MonthHeader } from '../ui/MonthHeader';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { AsOf, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { AsOf, cachedOfflineBanner, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
 import { colors, fontSize, space } from '../ui/theme';
-import {
-  attachmentBase,
-  familyRead,
-  type FamilySource,
-} from './source';
+import { attachmentBase, familyRead, staffAttendanceRead, type FamilySource } from './source';
 
 // A child's (or a student's own) attendance, diary and remarks (slice-16 §5.2–§5.5). One
 // component per concern, bound to a source; every one is secure — the header is a child's name.
 // They render only what the /me DTOs carry: no note, no teacher, no phone exists there (R165).
+// The attendance month also serves a staff member's own (slice-16 §6, R135): the user's own
+// data, not secure; its DTO has no note and no marker's name (slice-12 decision 6).
 
 /** The header: the child's name from /me, or the student's own. */
 function useSubjectName(source: FamilySource): string {
@@ -34,41 +36,32 @@ function useSubjectName(source: FamilySource): string {
   return me.body.children.find((c) => c.studentId === source.studentId)?.fullName ?? '';
 }
 
-/** The month at `offset` from this one; this month runs to today (the children cards' key). */
-export function attendanceMonth(today: string, offset: number) {
-  const month = monthRange(today, offset);
-  return offset === 0 ? { ...month, dateTo: today } : month;
-}
-
-function offlineBanner(
-  cached: { serverTime: string; serverTimeIsDevice: boolean } | undefined,
-  online: boolean,
-  failed: boolean,
-) {
-  return cached !== undefined && (!online || failed) ? (
-    <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-  ) : null;
-}
-
-export function FamilyAttendanceScreen({
+/** A month of attendance, a month at a time: a child's, a student's own, or a staff member's. */
+export function AttendanceMonthScreen({
   source,
   secure,
 }: {
-  source: FamilySource;
+  source: FamilySource | { kind: 'staff' };
   secure?: boolean;
 }) {
   const online = useOnline();
-  const name = useSubjectName(source);
+  const staff = source.kind === 'staff';
+  const name = useSubjectName(staff ? { kind: 'own' } : source);
   const [offset, setOffset] = useState(0);
   const month = attendanceMonth(todayInSchool(), offset);
-  const read = familyRead(source, 'attendance', month);
-  const query = useCachedQuery<StudentAttendanceDto>(read.key, read.path, read.params, read.fetch);
+  const read = staff ? staffAttendanceRead(month) : familyRead(source, 'attendance', month);
+  const query = useCachedQuery<StudentAttendanceDto | MyStaffAttendanceDto>(
+    read.key,
+    read.path,
+    read.params,
+    read.fetch,
+  );
   const cached = query.data;
   return (
     <Screen
-      title={name}
+      title={staff ? 'My attendance' : name}
       secure={secure}
-      banner={offlineBanner(cached, online, query.isError)}
+      banner={cachedOfflineBanner(cached, online, query.isError)}
       testID="attendance.screen"
     >
       <MonthHeader
@@ -88,7 +81,16 @@ export function FamilyAttendanceScreen({
       ) : (
         <>
           <AsOf serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-          <AttendanceMonth kind="student" data={cached.body} />
+          {'workingDays' in cached.body ? (
+            <>
+              <AttendanceMonth kind="staff" data={cached.body} />
+              <Text style={styles.caption}>
+                Marked by the office. Ask the office about a mistake.
+              </Text>
+            </>
+          ) : (
+            <AttendanceMonth kind="student" data={cached.body} />
+          )}
         </>
       )}
     </Screen>
@@ -112,7 +114,7 @@ function DiaryFortnight({
       query={query}
       range={range}
       rowTitle={(entry) =>
-        `${formatDay(entry.date)} · ${entry.className} ${entry.sectionName} · ${entry.subjectName}`
+        `${formatDay(entry.date)} · ${sectionTitle(entry.className, entry.sectionName)} · ${entry.subjectName}`
       }
       onOpen={onOpen}
       testID={`familyDiary.window.${back}`}
@@ -145,7 +147,14 @@ export function FamilyDiaryScreen({ source, secure }: { source: FamilySource; se
         testID="familyDiary.earlier"
       />
       <DiaryEntrySheet
-        entry={open ? entryView(open, `${open.className} ${open.sectionName} · ${open.subjectName}`) : null}
+        entry={
+          open
+            ? entryView(
+                open,
+                `${sectionTitle(open.className, open.sectionName)} · ${open.subjectName}`,
+              )
+            : null
+        }
         attachmentBase={open ? attachmentBase(source, open.id) : null}
         onClose={() => setOpen(null)}
       />
@@ -169,7 +178,7 @@ export function FamilyRemarksScreen({
     <Screen
       title={name}
       secure={secure}
-      banner={offlineBanner(cached, online, query.isError)}
+      banner={cachedOfflineBanner(cached, online, query.isError)}
       testID="familyRemarks.screen"
     >
       <Text style={styles.heading}>Remarks</Text>
@@ -191,7 +200,11 @@ export function FamilyRemarksScreen({
               testID={`familyRemarks.remark.${remark.id}`}
             >
               <Text style={styles.itemHeading}>
-                {[CATEGORY_LABELS[remark.category], formatDay(remark.date), remark.subjectName]
+                {[
+                  REMARK_CATEGORY_LABELS[remark.category],
+                  formatDay(remark.date),
+                  remark.subjectName,
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </Text>

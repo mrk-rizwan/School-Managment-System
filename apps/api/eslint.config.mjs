@@ -276,7 +276,7 @@ const SYNTAX = {
     {
       selector: `${ASSERTION} ${brandRef('"SchoolId"')}`,
       message:
-        'Never assert a SchoolId. It comes from the session, the school lookup or the scheduler fan-out.',
+        'Never assert a SchoolId. It is minted only in src/tenancy/school-id.mint.ts: the session, the school lookup, the scheduler fan-out, a queue payload or a delivery report (named exceptions 2-5), or the platform module.',
     },
   ],
   scopeCast: [
@@ -525,8 +525,10 @@ export default tseslint.config(
     rules: restrictSyntaxWith(REPOSITORY_LAYER, 'prismaClient'),
   },
   {
-    // Named exceptions 2-4 are the platform, school-lookup and session repositories, the only
-    // ones that mint a SchoolId.
+    // The repositories that mint a SchoolId: the school lookup (named exception 2), the fan-out
+    // (3), the session (4) and the delivery-report correlation (5), plus the platform repositories
+    // (1). The queue-payload mint (3) and the session mint (4) are called from src/tenancy
+    // (queue.mint.ts, school-session-resolver.ts).
     files: [
       'src/repositories/platform/**/*.ts',
       'src/repositories/session*.ts',
@@ -608,6 +610,12 @@ export default tseslint.config(
     rules: restrictImports({
       exempt: ['queueMint', 'messagingDrivers', 'repositoryInternals', 'platformRepositories'],
     }),
+  },
+  {
+    // The test app's queue guard (slice 17): every test app enqueues under a test-only prefix,
+    // and an add to a production-named queue is refused, so it wraps BullMQ's Queue.
+    files: ['test/core/app.ts'],
+    rules: restrictImports({ exempt: ['bullmq'] }),
   },
   {
     // The two tests that read jobs back from the real BullMQ library: every job-id shape (ids

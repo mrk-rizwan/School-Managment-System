@@ -1,8 +1,12 @@
-// The only constructors of SchoolId (plan §3.1). Importing this file is restricted by lint
-// (apps/api/eslint.config.mjs): the named-exception repositories may use everything except
-// fromPlatformSchool, src/modules/platform/** may use only fromPlatformSchool. Every SchoolId
-// therefore originates from a row the server itself read or wrote: a session, the pre-auth school
-// lookup, the scheduler fan-out, or a school the platform has just created.
+// The only constructors of SchoolId (plan §3.1; CLAUDE.md "The named exceptions"), six, one per
+// path: fromPlatformSchool (exception 1), schoolIdFromLookup (2), schoolIdsForFanOut and
+// schoolIdFromQueuePayload (3), schoolIdFromSession (4), schoolIdFromDeliveryReport (5).
+// Importing this file is restricted by lint (apps/api/eslint.config.mjs): the named-exception
+// repositories may use everything except fromPlatformSchool, src/tenancy calls the session and
+// queue-payload constructors, and src/modules/platform/** may use only fromPlatformSchool. Every
+// SchoolId therefore originates from a row the server itself read or wrote: a session, the pre-auth
+// school lookup, the scheduler fan-out, a queue job's school, a delivery report's matched row, or a
+// school the platform has just created or is issuing a principal login in.
 import type { CreatedSchoolRow, SchoolId } from './school-id';
 
 // The single cast in the codebase. Lint bans `as SchoolId` everywhere except this file.
@@ -26,8 +30,7 @@ export function schoolIdFromLookup(school: { readonly id: bigint }): SchoolId {
 }
 
 /**
- * The fifth constructor (Phase 2 plan §4.1; exception 3 widened to job-payload resolution): the
- * school row SchoolByIdRepository.findById read for a queue job's payload. Called only by
+ * Exception 3 widened to job payloads (Phase 2 plan §4.1): the school row SchoolByIdRepository.findById read for a queue job's payload. Called only by
  * QueueTenancy.fromQueuePayload (./queue.mint.ts), after it has validated the payload and
  * dropped an unknown or terminated school.
  */
@@ -45,7 +48,7 @@ export function schoolIdFromDeliveryReport(row: { readonly school_id: bigint }):
   return brand(row.school_id);
 }
 
-/** Exception 3: the scheduler fan-out, one job per active school. */
+/** Exception 3: the scheduler fan-out, one job per school SchoolFanOutRepository listed. */
 export function schoolIdsForFanOut(schools: readonly { readonly id: bigint }[]): SchoolId[] {
   return schools.map((school) => brand(school.id));
 }

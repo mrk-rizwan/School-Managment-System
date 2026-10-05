@@ -6,7 +6,7 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. `phase-1-foundation.md` (rewritten 2026-10-02 for the TypeScript stack) is the one Opus executes; it is self-contained.
+- `docs/plans/` — build plans per phase. `phase-2-daily-operations.md` is the current one (slice 17, the phase close, remains); `phase-1-foundation.md` is complete, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
@@ -69,7 +69,7 @@ No agent silently overrides another's critical decision. Surface the conflict an
 3. **Academic year** scopes everything academic and financial. A school may run more than one session at once, each class belonging to exactly one (rule 15).
 4. **Never hard-delete.** Students, staff, payments, results and documents keep history. Corrections are new rows referencing the original.
 5. **Surrogate primary keys.** CNIC, admission number and roll number are unique attributes, not keys.
-6. **ENROLMENT is the hub** — student-in-a-class-in-a-year. Academic and financial records hang off enrolment.
+6. **ENROLMENT is the hub** — student-in-a-class-in-a-year. Academic and financial records hang off enrolment. A section change is close-old/open-new like a class change (R174, amending Phase 1's R37): `enrolments.section_id` is never edited, and a closed enrolment keeps its roll number.
 7. **One STAFF record per employed person.** TEACHER extends staff with academic assignments; it does not restate contract, salary or attendance.
 8. **One FEE_HEAD table.** Fee types are rows, not modules.
 9. **Guardians link through STUDENT_GUARDIAN**, with relationship, primary-contact, fee-payer and login flags.
@@ -79,7 +79,7 @@ Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3,
 
 11. **One campus per school.** The school is the tenant and `school_id` is the tenant key. There is no campus dimension on any table. A group of schools under one owner is separate tenants; a nullable `school_group_id` on the school record is the only trace of it.
 12. **Login identity is the CNIC.** Username is the person's CNIC digits with dashes removed, for guardians and staff. The **default password is the same digits**; the user may change the password at any time. The username does not change. The office creates every account at admission or hiring; **nobody self-registers.** A person who is both staff and guardian has one login carrying both capability sets. At admission the office must search existing guardians by CNIC and link, never create a duplicate; `merged_into_id` exists on the guardian table from the first migration. Security conditions that come with this choice and are not optional: the CNIC is stored encrypted and looked up through an indexed hash, and **the username is stored only as that hash, never in clear**; it is never written to a log line or a URL; login is rate-limited and locks after repeated failures; the office can see which accounts still use the default password. **Students** log in with their own national identity number (the 13-digit B-Form / CRC number) with dashes removed, same default-password rule; a student with no number recorded has no login until the office enters one. **First login prompts a password change but does not force it.** **Password reset** is by a code sent to the account's email address; the user must enter an email before they can change their password, so every changed password has a reset path. Users with no email (keypad-phone guardians) are reset by the office to the default, which is the stated fallback. The office can see which accounts have no email and which still use the default password.
-13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can(capability, subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list (51 keys) and the system-role defaults are in `docs/plans/phase-1-foundation.md` §6 and live in code.
+13. **Permission model: role defaults plus per-user grant and revoke, plus school-defined custom roles.** Capabilities apply to staff only; guardian and student roles are fixed and closed. The six roles are Platform admin, Principal, Office staff, Teacher, Parent, Student. **Teacher is one role; class teacher and subject teacher are assignments**, and scope (which rows) always comes from assignment data, never from a checkbox. `role.manage` is not grantable. Nobody grants what they do not hold. Every check is written `can(capability, subject)` from the first call site. Separation of duties (you may not verify your own claim, a collector may not confirm their own handover) is a domain invariant, not a permission. The effective-permissions view ships in Phase 1 with the grant screen. The capability list (51 keys) and the system-role defaults are in `docs/plans/phase-1-foundation.md` §7 and live in code (`packages/shared/src/capabilities.ts`). Since Phase 2 office staff hold `attendance.student.mark` (all scope) by default, so the gate can record a late arrival; a cover teacher holds full class-teacher scope for their dates.
 14. **Attendance is stored per period.** Each class carries a setting for whether staff record it daily or per period; a daily mark is stored as the day's single period. The offline idempotency key is `UNIQUE (school_id, enrolment_id, date, period)`.
 15. **Sessions and money settings.** The principal defines academic years (sessions) and assigns each class to one, so a school may run, for example, an April session and a September session side by side. Fee due day defaults to the 10th of the month and is changeable per school. Currency is PKR. **Amounts are whole rupees**: stored as integers, no paisa, displayed without decimals.
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
@@ -124,12 +124,18 @@ signature but never the query itself:
    `eslint-disable` comments have no effect; `src/tenancy` and `src/repositories` may not
    re-export; `nestjs-cls`, `TransactionHost` and `new PrismaClient` are confined to tenancy and
    repositories; the tenant is written into the request context only through
-   `RequestContextService.establishSession(SchoolId)`. The `school_id` of a row can never change:
+   `RequestContextService.establishSession(SchoolId)`, and into a job's context only through
+   `QueueTenancy.runAsSchool` (exception 3). Since Phase 2 lint also confines `bullmq` to
+   `src/jobs/**` and `src/messaging/outbox-dispatcher.ts`, the messaging drivers to
+   `src/messaging/**` (everything sends through `NotificationService`), and the announcement and
+   inbox repositories to their owning modules. The `school_id` of a row can never change:
    the query guard refuses it and a database trigger rejects it.
 7. **Row scope is a required, branded argument** on every student-linked repository method. Only
    the permission service can construct it; an empty list means no rows, never no filter.
 8. **A schema guard test reads the migrated database** and fails on a table without `school_id`,
-   a foreign key between tenant tables that omits it, a missing index, or a cascade.
+   a foreign key between tenant tables that omits it, a missing index, or a cascade — outside two
+   named allowlists in `test/guardrails/schema-checks.ts`: the non-tenant tables, and the global
+   correlation indexes exception 5 needs.
 
 `schoolId` comes from the session — never from a request body, query string or route parameter.
 The single exception is the pre-auth school-code lookup at login, which rule 2 already names.
@@ -139,20 +145,28 @@ trusted.
 
 ### The named exceptions — code that legitimately runs without a school
 
-Four things must query without a `SchoolId`. They are the whole list; adding a fifth is a
-decision recorded here, not a convenience.
+Six things must query without a `SchoolId`. They are the whole list; adding a seventh is a
+decision recorded here, not a convenience. Every `SchoolId` is minted in one file,
+`src/tenancy/school-id.mint.ts`, by six constructors, one per path below: `fromPlatformSchool`
+(1), `schoolIdFromLookup` (2), `schoolIdsForFanOut` and `schoolIdFromQueuePayload` (3),
+`schoolIdFromSession` (4), `schoolIdFromDeliveryReport` (5). The six sites outside the platform
+module that may each import one platform repository are listed in ESLint `NAMED_EXCEPTION_SITES`
+(`apps/api/eslint.config.mjs`).
 
 1. **The platform module** (platform admins managing schools). Its repositories live in
    `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
-   `platform_users`, `platform_sessions`, `platform_audit_log`), and may be imported only from
-   `src/modules/platform/**`, plus the two sites named under exceptions 2 and 3 (each limited
-   by ESLint `NAMED_EXCEPTION_SITES` to one platform repository). Enforced by the same ESLint rule. **The platform acts inside a
+   `platform_users`, `platform_sessions`, `platform_audit_log`, `platform_settings`,
+   `platform_delivery_health`), and may be imported only from `src/modules/platform/**` and the
+   named exception sites. Enforced by the same ESLint rule. **The platform acts inside a
    school for exactly two operations:** creating the school, which writes its first
    `school_settings` row and its counters in the same transaction (the tenant comes into being),
    and issuing a principal's login, which is refused while the school already has an active
-   principal unless a reason is given. Both go through `SchoolId.fromPlatformSchool`, importable
+   principal unless a reason is given. Both go through `fromPlatformSchool`, importable
    only in the platform module, and both are written to the platform audit log (the principal
-   login to both logs).
+   login to both logs). The per-school messaging knobs (`sms_monthly_cap`, `whatsapp_provider`,
+   `sms_provider`) are columns on `schools`, set through the existing `PATCH /platform/schools/:id`;
+   platform-wide defaults live in the one-row `platform_settings`. They are not new operations
+   inside a school.
    Platform login requires a second factor: one platform password would otherwise open every
    school. Tenant code that reads its own school row uses `OwnSchoolRepository`, whose only
    predicate is `id = schoolId`; school-owned settings and counters live in tenant tables, not on
@@ -162,14 +176,33 @@ decision recorded here, not a convenience.
    (`src/modules/auth/login-spike.recorder.ts`), which may only write a row to
    `platform_audit_log` through `PlatformAuditRepository` (added in wave A, 2026-10-03; awaiting
    the product owner's confirmation as part of this exception).
-3. **The scheduler fan-out**: one method, `SchoolFanOutRepository.listAllForFanOut()`, listing
-   every school's id whatever its status (suspended and terminated schools still need their
-   staged uploads swept, R41/R90). A scheduled job iterates them and works per school with
-   ordinary scoped repositories; a job that serves only live schools filters on status itself.
+3. **The scheduler fan-out and job payloads** (widened in Phase 2). Fan-out:
+   `SchoolFanOutRepository.listAllForFanOut()` lists every school whatever its status (the
+   staged-upload sweep, R41/R90); `listLiveForFanOut()` lists schools that are not terminated (the
+   messaging housekeeping jobs). Sites: `src/jobs/job-runner.ts`,
+   `src/modules/documents/staged-upload.sweep.ts`. Job payloads: a job carries ids, never a
+   tenant; `QueueTenancy.fromQueuePayload` (`src/tenancy/queue.mint.ts`, importable only from
+   `src/jobs/**`) validates the payload with a strict schema, reads the school through
+   `SchoolByIdRepository.findById` (importable only from `queue.mint.ts`), drops an unknown or
+   terminated school without retry, and mints through `schoolIdFromQueuePayload`. The job body
+   runs inside `QueueTenancy.runAsSchool`, a fresh context per job, with ordinary scoped
+   repositories. A suspended school runs exactly like an active one (R80 lifted).
 4. **Session resolution**: one method, `SessionRepository.findActiveByTokenHash(hash)`, because the
    session token is what establishes the tenant. It returns the session with its `schoolId` and
    `userId`; everything after it is scoped. Reset and email-verification links carry the school
    code in the URL and go through exception 2, so they need no exception of their own.
+5. **Delivery-report correlation** (webhooks). A WhatsApp delivery report or inbound event names
+   no school, so `DeliveryWebhookRepository` (`src/repositories/platform/delivery-webhook.repository.ts`,
+   tagged `$queryRaw`, importable only from `src/webhooks/webhooks.service.ts`) matches it by a
+   global key: the hashed provider reference, the WAHA session or the Cloud API phone-number id.
+   Each statement returns only the `school_id` of the row it changed, minted by
+   `schoolIdFromDeliveryReport` and used only to enqueue a job, which resolves the school again
+   through exception 3. Signatures are verified over the raw bytes before any of this runs.
+6. **The platform delivery-health rollup.** `platform_delivery_health` is a non-tenant table with
+   a `school_id` column, like `platform_audit_log`. It is written only by
+   `src/jobs/delivery-health-rollup.ts` and read only by `src/modules/platform/messaging/**`
+   (`GET /platform/messaging/health`): counts, statuses and mapped error codes. The platform never
+   reads `messages`, `message_deliveries` or `whatsapp_numbers` (R114).
 
 ### Transactions
 
@@ -179,6 +212,14 @@ ambient transaction without a `tx` parameter threaded through every call. Never 
 form of `$transaction`. No `Promise.all` inside a transaction — one connection, statements in
 order. Anything that must not happen on rollback (queue dispatch, email, file moves) runs after
 commit.
+
+Since Phase 2: a request transaction times out at **15 s** (`TRANSACTION_TIMEOUT_MS`,
+`src/tenancy/tenancy.module.ts`). **A request never fans out to recipients**: send-now and holiday
+publish set the announcement to `sending` and the `announcement-send` job delivers it under its
+own 120 s limit (`JOB_TRANSACTION_TIMEOUT_MS`), returning the row to `draft` with `send_failed_at`
+after five failed attempts. Jobs are enqueued only after commit, through `OutboxDispatcher`; a
+processor's first statement is a scoped conditional claim (R105). BullMQ job ids use `-`, never
+`:` (BullMQ refuses a custom id with `:` unless it has exactly three parts).
 
 ### Honest statement of the risk
 
@@ -282,10 +323,11 @@ that names Laravel, Filament, Eloquent, Artisan or Flutter is superseded.
 | Backend API | **NestJS** (Node + TypeScript) |
 | Database | **PostgreSQL** with **Prisma** |
 | Web admin | **Next.js** (React + TypeScript) |
-| Mobile app | **React Native** — one role-aware build |
-| Queues, cache | **Redis** |
+| Mobile app | **React Native** with **Expo SDK 57** — one role-aware development build (not Expo Go), Android only in Phase 2; bearer sessions, a SQLite cache and offline outbox |
+| Queues, cache | **Redis**, queues through **BullMQ**; one worker process (`node dist/worker.js`) runs every job |
 | Push | **Firebase Cloud Messaging** |
-| WhatsApp | **WAHA** behind a driver interface |
+| WhatsApp | Two drivers behind one interface: **WAHA** and the **Meta Cloud API**, selectable per school with a platform default; `WHATSAPP_PROVIDERS_ENABLED` per deployment |
+| SMS | **Sendpk**, delivery status by polling; the school name opens every message |
 | Email | Node mailer library of choice (Nodemailer is now valid — the backend is Node) |
 | Files | S3-compatible object storage with signed URLs |
 
@@ -308,7 +350,7 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 
 | Convention | Decision |
 |---|---|
-| Repository layout | One monorepo, pnpm workspaces: `apps/api` (NestJS), `apps/web` (Next.js), later `apps/mobile` (React Native), `packages/shared` (the capability enum, system-role defaults, error codes). Request and response types reach the web app through an OpenAPI-generated client, so a contract is declared once, on the server |
+| Repository layout | One monorepo, pnpm workspaces: `apps/api` (NestJS), `apps/web` (Next.js), `apps/mobile` (Expo / React Native), `packages/shared` (the capability enum, system-role defaults, error codes). Request and response types reach the web and mobile apps through OpenAPI-generated clients, so a contract is declared once, on the server |
 | Primary keys | `bigint` auto-increment (Prisma emits `BIGSERIAL`). Serialised to clients as strings, because a JavaScript number cannot hold a 64-bit integer safely |
 | Login sessions | **Server-side, revocable sessions** stored in Postgres: an opaque random token, stored hashed. The web admin carries it in an `httpOnly`, `Secure`, `SameSite=Lax` cookie; the mobile app sends it as a bearer token. **Not stateless JWT** — disabling a user, an office reset and a staff member leaving must kill access immediately |
 | Roles | The five school roles (principal, office staff, teacher, parent, student) and the capability list are **defined in code**, not rows. Only school-defined custom roles are stored, so every stored row has a `school_id` |
@@ -333,7 +375,7 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 |---|---|---|
 | 30 | **Privileged capabilities on a default password.** A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Open, raised by the security review 2026-10-02. Recommended: yes. Not built; it is a one-line check in the capability guard, so it does not block Phase 1 |
 
-Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
+Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 
 ### Blocks the schema freeze — feature is later, the shape is now
 
@@ -344,14 +386,14 @@ Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi
 | 9 | **Concession scope** — do free and partial students pay exam fees, trip fees, fines? Percentage or fixed? Does it expire at year end? |
 | 10 | **Proration** — student admitted on the 18th or leaving on the 6th: full month, pro-rata, or next month |
 | 11 | **Exit states** — withdrawal, transfer, suspension: dues, refunds, whether arrears block a leaving certificate |
-| 12 | **Staff leave** — types, entitlement, approval, effect on salary, and **who marks the register when the class teacher is on leave**. The architecture doc and presentation propose: on approving leave the principal names a covering teacher with access to that class for those dates only, and unrecorded registers surface on the principal's console the same day. Proposal, not confirmed |
-| 13 | **Grace and retention windows** — days past due before read-only; months of retention after termination |
+| 12 | **Staff leave** — types, entitlement, approval, effect on salary. *Answered 2026-10-03:* who marks the register when the class teacher is away — a cover assignment named by the principal, with full class-teacher scope for its dates; unrecorded registers surface on the principal's Today screen (built in Phase 2). Leave itself is still open |
+| 13 | **Grace and retention windows** — months of retention after termination. *Answered 2026-10-03:* a suspended school is not disturbed until the platform terminates it, so Phase 1's R80 (suspended = read-only) is lifted; only `terminated` is refused. Whether a grace period precedes termination is still open |
 | 21 | **Results approval unit** — does the principal approve a term result per class or per student? Raised in the architecture doc's approvals inbox |
-| 22 | **Which message types may reach SMS at all** — SMS costs per message; the routing rule needs a per-type allow list. Raised in the architecture doc's delivery notes |
-| 23 | **Late arrival** — counts as present, half day, or absent past a cut-off time; affects the attendance percentage. Presentation slide 24 |
+| 22 | **Which message types may reach SMS at all** — SMS costs per message; the routing rule needs a per-type allow list. Raised in the architecture doc's delivery notes. *Built with a default the owner tunes:* a per-school SMS allow list with a platform default |
+| 23 | **Late arrival** — counts as present, half day, or absent past a cut-off time; affects the attendance percentage. Presentation slide 24. *Built with a default the owner tunes:* `late_counts_as` = present |
 | 24 | **Late-payment charge** — automatic after due date or at discretion; amount; who may waive. Presentation slide 24 |
 | 25 | **Banking** — does the school have an account guardians can remit to? Decides whether the deposit-screenshot flow exists on day one. Presentation slide 24 |
-| 26 | **Default remark visibility** — are teacher remarks pushed to guardians or visible on enquiry only. Presentation slide 24 |
+| 26 | **Default remark visibility** — are teacher remarks pushed to guardians or visible on enquiry only. Presentation slide 24. *Built with a default the owner tunes:* visible to guardians, not notified |
 
 ### Deferrable without rework
 
@@ -360,8 +402,7 @@ Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi
 | 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns. Client docs say "before results are built"; that is this condition, not Phase 1 |
 | 15 | Promotion rules at year rollover | Enrolment already close-old/open-new; needed before first year-end |
 | 16 | Cash basis or accrual | **Only if** both charge-due date and payment-verified date are stored on every row from the start |
-| 17 | WhatsApp number per school or per platform | Config column either way |
-| 18 | Message-cost model — bundled allowance or credits | Feeds the subscription plan table. The presentation tells the client "a monthly allowance is agreed in advance"; if accepted, this closes as bundled allowance |
+| 18 | Message-cost model — bundled allowance or credits | *Partly answered 2026-10-03:* the platform admin sets each school's monthly SMS cap (`schools.sms_monthly_cap`). The price model still feeds the subscription plan table. The presentation tells the client "a monthly allowance is agreed in advance"; if accepted, this closes as bundled allowance |
 | 20 | Transport module | Phase 5 |
 
 ### Assumed unless corrected

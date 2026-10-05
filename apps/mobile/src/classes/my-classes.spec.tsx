@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 import type { SectionDto } from '../api/contracts';
 import { queryClient } from '../api/query-client';
 import { composeTabs } from '../auth/tabs';
-import { meFixture, resetDevice } from '../test/fake-api';
-import { assignment, teacherMe, TODAY } from '../test/fixtures';
+import { resetDevice } from '../test/fake-api';
+import { assignment, meFixture, teacherMe, TODAY } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline } from '../test/screen';
 import { actionsFor, groupAssignments } from './my-classes';
 import { MyClassesScreen } from './MyClassesScreen';
@@ -107,7 +107,11 @@ describe('grouping (pure)', () => {
       ...me,
       capabilityScopes: me.capabilityScopes.map((s) => ({ ...s, scope: 'all' as const })),
     };
-    expect(actionsFor(granted, row!).register).toEqual({ shown: true, enabled: true, reason: null });
+    expect(actionsFor(granted, row!).register).toEqual({
+      shown: true,
+      enabled: true,
+      reason: null,
+    });
   });
 
   test('a principal has no assignments and no Classes tab', () => {

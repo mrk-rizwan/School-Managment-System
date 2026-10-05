@@ -1,6 +1,6 @@
 'use client';
 
-import { EXTERNAL_CHANNELS, type ExternalChannel } from '@asms/shared';
+import { ANNOUNCEMENT_CATEGORY_LABELS, EXTERNAL_CHANNELS, type ExternalChannel } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DownloadIcon, ImageIcon, PencilIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -26,7 +26,6 @@ import { useSchoolMe } from '@/lib/school-session';
 import { toastApiError } from '@/lib/api/errors';
 import {
   AnnouncementStatusBadge,
-  CATEGORY_LABELS,
   PriorityBadge,
   SENDING_TOAST,
   SUPPRESSION_LABELS,
@@ -154,7 +153,7 @@ function Detail({ announcement: a }: { announcement: AnnouncementDto }) {
     <>
       <PageHeader
         title={a.title}
-        description={`${CATEGORY_LABELS[a.category]} · written by ${byMe ? 'you' : a.createdByName}, ${formatDateTime(a.createdAt)}`}
+        description={`${ANNOUNCEMENT_CATEGORY_LABELS[a.category]} · written by ${byMe ? 'you' : a.createdByName}, ${formatDateTime(a.createdAt)}`}
         actions={
           editable && (
             <>

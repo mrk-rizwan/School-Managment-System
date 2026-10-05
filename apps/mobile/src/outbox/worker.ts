@@ -1,7 +1,7 @@
 import { log } from '../platform/log';
 import { errorFields } from '../platform/scrub';
 import { MAX_CONCURRENT_LANES } from './lanes';
-import { isDue, transition, type Effect, type OutboxItem } from './machine';
+import { isDue, transition, type OutboxItem } from './machine';
 import { thrownOutcome, type SentOutcome } from './outcome';
 
 // The outbox runner (slice-15 §7.4, §7.5, R157, R158). It picks the oldest due item of every idle
@@ -28,8 +28,6 @@ export type WorkerDeps = {
   now?: () => Date;
   /** After the server's 2xx: the lane's follow-up, with what the server answered (slice-16 §10.3). */
   onSaved?: (item: OutboxItem, outcome: SentOutcome) => Promise<void> | void;
-  /** Queue-level effects: 'pause' on 401, 'block' on 426. */
-  onEffect?: (effect: Effect, item: OutboxItem) => void;
 };
 
 export type QueueStatus = { paused: boolean; blocked: boolean; running: boolean };
@@ -44,7 +42,7 @@ export class OutboxWorker {
   private again = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly listeners = new Set<() => void>();
-  /** How many scans of the queue have run; tests count ticks with it. */
+  /** How many scans of the queue have run. Test-only: worker.spec counts ticks with it. */
   ticks = 0;
 
   constructor(private readonly deps: WorkerDeps) {}
@@ -64,40 +62,36 @@ export class OutboxWorker {
     };
   }
 
-  /** The queue's contents changed outside the worker (a discard): every view of it rereads. */
+  /** The queue changed (a discard, a send, a state flip): every view of it rereads. */
   changed(): void {
     for (const listener of this.listeners) listener();
-  }
-
-  private notify(): void {
-    this.changed();
   }
 
   /** 401: wait for sign-in. */
   pause(): void {
     this.paused = true;
     this.clearTimer();
-    this.notify();
+    this.changed();
   }
 
   /** 426: nothing sends until a request succeeds. */
   block(): void {
     this.blocked = true;
     this.clearTimer();
-    this.notify();
+    this.changed();
   }
 
   /** A request succeeded past the version floor. */
   unblock(): void {
     this.blocked = false;
-    this.notify();
+    this.changed();
   }
 
   /** A signed-in, up-to-date session: the queue may run. */
   resume(): void {
     this.paused = false;
     this.blocked = false;
-    this.notify();
+    this.changed();
   }
 
   /** App to background: no timers; foreground triggers a tick. */
@@ -116,7 +110,7 @@ export class OutboxWorker {
     log('debug', 'outbox.tick', { trigger: reason });
     // A write was stored or every item made due: the views reread now, offline too — a scan
     // offline returns before it notifies anyone (CI emulator, 2026-10-05: no sync chip).
-    if (reason === 'enqueued' || reason === 'retry_now') this.notify();
+    if (reason === 'enqueued' || reason === 'retry_now') this.changed();
     return this.tick();
   }
 
@@ -155,10 +149,9 @@ export class OutboxWorker {
       log('warn', 'outbox.scan_failed', errorFields(error));
       return;
     }
-    const flags = { online: true, paused: this.paused, blocked: this.blocked };
     for (const item of due) {
       if (this.busyLanes.size >= MAX_CONCURRENT_LANES) break;
-      if (!isDue(item, flags, this.busyLanes.has(item.lane), now)) continue;
+      if (!isDue(item, this.busyLanes.has(item.lane), now)) continue;
       this.busyLanes.add(item.lane);
       const job = this.process(item).finally(() => {
         this.inFlight.delete(job);
@@ -173,7 +166,7 @@ export class OutboxWorker {
     try {
       const sending = transition(item, { type: 'send', now: this.now() }).item;
       await this.deps.store.saveItem(sending);
-      this.notify();
+      this.changed();
       let outcome: SentOutcome;
       try {
         outcome = await this.deps.send(sending);
@@ -196,13 +189,12 @@ export class OutboxWorker {
         if (effect === 'pause') this.pause();
         if (effect === 'block') this.block();
         if (effect === 'saved_on_server') await this.deps.onSaved?.(next, outcome);
-        this.deps.onEffect?.(effect, next);
       }
     } catch (error) {
       log('warn', 'outbox.process_failed', errorFields(error));
     } finally {
       this.busyLanes.delete(item.lane);
-      this.notify();
+      this.changed();
     }
     // The lane is free again: a finished item (done or failed) lets the next one go.
     if (finished !== null && !this.paused && !this.blocked) void this.trigger('finished');

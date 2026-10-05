@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { isIsoDate } from '../platform/dates';
 import { RegisterScreen } from './RegisterScreen';
 
 /**
@@ -8,7 +9,9 @@ import { RegisterScreen } from './RegisterScreen';
  */
 export function RegisterRouteScreen({ secure }: { secure: boolean }) {
   const params = useLocalSearchParams<{ sectionId: string; date?: string; period?: string }>();
-  const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : undefined;
+  const date = params.date && isIsoDate(params.date) ? params.date : undefined;
   const period = /^[1-9]\d?$/.test(params.period ?? '') ? Number(params.period) : undefined;
-  return <RegisterScreen sectionId={params.sectionId} date={date} period={period} secure={secure} />;
+  return (
+    <RegisterScreen sectionId={params.sectionId} date={date} period={period} secure={secure} />
+  );
 }

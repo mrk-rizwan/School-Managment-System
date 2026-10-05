@@ -1,6 +1,5 @@
 import { setBearerToken } from '../api/client';
 import { queryClient } from '../api/query-client';
-import type { LoginResultDto, MeDto } from '../api/contracts';
 import { wipeDatabase } from '../db/database';
 import { clearLog } from '../platform/log';
 import { resetFileSystem } from './file-system';
@@ -69,7 +68,8 @@ const BODY_KEYS = new Set(['date', 'period', 'marks', 'reason']);
 /**
  * SubmitRegisterDto as the server's ValidationPipe checks it (whitelist, forbidNonWhitelisted;
  * `@IfPresent() reason` 3–500 — so `reason: null` is a 422, wave-F review): the field at fault,
- * or null when the body would be accepted.
+ * or null when the body would be accepted. Mirrors SubmitRegisterDto and SubmitMarkDto in
+ * apps/api/src/modules/attendance/attendance.dto.ts: change the two together.
  */
 export function submitRegisterProblem(body: unknown): string | null {
   if (typeof body !== 'object' || body === null) return 'body';
@@ -122,7 +122,11 @@ function minimalWhenPreferred(
   const prefers = /\breturn=minimal\b/.test(call.headers.get('Prefer') ?? '');
   if (!prefers || reply.ignorePrefer || reply.status < 200 || reply.status > 299) return reply;
   const body = reply.body as { marks?: Record<string, unknown>[] } | undefined;
-  const marks = body?.marks?.map((m) => ({ id: m.id, enrolmentId: m.enrolmentId, outcome: m.outcome }));
+  const marks = body?.marks?.map((m) => ({
+    id: m.id,
+    enrolmentId: m.enrolmentId,
+    outcome: m.outcome,
+  }));
   return {
     ...reply,
     body: body === undefined ? body : { ...body, ...(marks ? { marks } : {}) },
@@ -242,7 +246,9 @@ export function installFakeApi(routes: Record<string, Handler>): FakeApi {
           ? {
               status: 422,
               body: errorBody('VALIDATION_FAILED', 'Invalid', {
-                fields: [{ path: problem, code: 'INVALID_VALUE', message: `${problem} is invalid` }],
+                fields: [
+                  { path: problem, code: 'INVALID_VALUE', message: `${problem} is invalid` },
+                ],
               }),
             }
           : handler
@@ -282,41 +288,4 @@ export async function resetDevice(): Promise<void> {
   });
   jest.restoreAllMocks();
   jest.clearAllMocks();
-}
-
-export const PRINCIPAL_CNIC = '3520112345671';
-
-export function meFixture(overrides: Partial<MeDto> = {}): MeDto {
-  const capabilities =
-    overrides.capabilities ??
-    (['attendance.student.view_all', 'announcement.send.school'] as MeDto['capabilities']);
-  // As the server reports it (slice-14 §8): a teacher's defaults are scoped to their assignments,
-  // every other source is school-wide.
-  const scope = overrides.roles?.length === 1 && overrides.roles[0] === 'teacher'
-    ? ('assigned_sections' as const)
-    : ('all' as const);
-  return {
-    id: '41',
-    fullName: 'Ayesha Khan',
-    email: 'ayesha@example.com',
-    hasVerifiedEmail: true,
-    passwordIsDefault: false,
-    school: { id: '7', name: 'Demo School', shortCode: 'demo', status: 'active' },
-    roles: ['principal'],
-    capabilities,
-    capabilityScopes: capabilities.map((capability) => ({ capability, scope })),
-    sessionExpiresAt: '2027-01-02T00:00:00.000Z',
-    capacities: ['staff'],
-    assignments: [],
-    children: [],
-    staffId: '5',
-    ...overrides,
-  };
-}
-
-export function loginFixture(
-  token = 'T'.repeat(43),
-  overrides: Partial<MeDto> = {},
-): LoginResultDto {
-  return { ...meFixture(overrides), bearerToken: token };
 }

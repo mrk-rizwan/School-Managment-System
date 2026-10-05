@@ -4,9 +4,6 @@ import type { DailySummaryDto, SectionDayDto, TeacherAssignmentDto } from '../ap
 // Today (slice-16 §7.1), pure: the unrecorded rows' words, the summary lines, and the cover
 // sheet's outcomes. No student name ever appears here — Today is not a secure screen.
 
-export const sectionLabel = (row: { className: string; sectionName: string }) =>
-  `${row.className} ${row.sectionName}`.trim();
-
 export function unrecordedDetail(row: SectionDayDto): string[] {
   return [
     row.classTeacherName ?? 'No class teacher',
@@ -53,9 +50,6 @@ export function coveredAssignment(
 
 /** Thirteen digits typed into the staff search: it searches names only. */
 export const looksLikeIdentity = (text: string) => /\d{13}/.test(text.replace(/[\s-]/g, ''));
-
-export const isIsoDate = (text: string) =>
-  /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(Date.parse(`${text}T00:00:00Z`));
 
 export type CoverOutcome = { done: boolean; message: string };
 

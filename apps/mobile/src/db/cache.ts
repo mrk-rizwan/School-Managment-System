@@ -4,7 +4,7 @@ import { getDb } from './database';
 // Read responses keyed by endpoint and canonical params, stamped with the server's time of the
 // last refresh — the "as of" shown on screen (slice-15 §7.2). Evicted after 30 days.
 
-export const CACHE_MAX_AGE_DAYS = 30;
+const CACHE_MAX_AGE_DAYS = 30;
 
 export type CacheParams = Record<string, string | number | undefined>;
 

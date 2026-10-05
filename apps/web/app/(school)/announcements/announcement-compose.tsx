@@ -3,6 +3,7 @@
 import {
   ANNOUNCEMENT_BODY_MAX,
   ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_CATEGORY_LABELS,
   ANNOUNCEMENT_TITLE_MAX,
   ErrorCode,
   audiencesProblem,
@@ -45,7 +46,6 @@ import { useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
 import { ACCEPTED_TYPES, ACCEPT_ATTRIBUTE, MAX_UPLOAD_BYTES, uploadFile } from '../students/_lib/documents';
 import {
-  CATEGORY_LABELS,
   SENDING_TOAST,
   announcementErrorMessage,
   announcementHref,
@@ -87,7 +87,7 @@ type Values = z.infer<typeof schema>;
 
 type Attachment = { kind: 'saved' } | { kind: 'staged'; upload: StagedUploadDto; name: string } | { kind: 'none' };
 
-const CATEGORY_OPTIONS = ANNOUNCEMENT_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }));
+const CATEGORY_OPTIONS = ANNOUNCEMENT_CATEGORIES.map((c) => ({ value: c, label: ANNOUNCEMENT_CATEGORY_LABELS[c] }));
 const PRIORITY_OPTIONS = [
   { value: 'normal', label: 'Normal: WhatsApp and the app' },
   { value: 'urgent', label: 'Urgent: WhatsApp and SMS together' },

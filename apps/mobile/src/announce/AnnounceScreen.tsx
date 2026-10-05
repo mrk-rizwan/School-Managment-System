@@ -1,23 +1,23 @@
 import { Capability, formatDateTime } from '@asms/shared';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { api, unwrap, unwrapWithDate } from '../api/client';
+import { StyleSheet, Text, View } from 'react-native';
+import { api, unwrapWithDate } from '../api/client';
 import type { AnnouncementDto, MessagingUsageDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { holds } from '../auth/capabilities';
 import { useSession } from '../auth/session';
 import { useCachedQuery } from '../db/use-cached-query';
-import { useOnline, useOnlineOnly } from '../net/connectivity';
+import { useOnline } from '../net/connectivity';
 import { Button } from '../ui/Button';
 import { ListRow } from '../ui/ListRow';
 import { Paging } from '../ui/Paging';
 import { Screen } from '../ui/Screen';
 import { Sheet } from '../ui/Sheet';
-import { AsOf, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
+import { AsOf, cachedOfflineBanner, EmptyState, NoDataState } from '../ui/states';
 import { colors, fontSize, space } from '../ui/theme';
-import { sendFailure, statusWord, usageLine } from './announce-model';
+import { sendFailure, statusWord, usageLine, useSendAnnouncement } from './announce-model';
 
 // Announce — /announce (slice-16 §7.2): the SMS usage card (only with school.settings.manage,
 // the route's capability), "New announcement", and the school's recent announcements. A draft
@@ -28,9 +28,9 @@ type Page<T> = { data: T[]; page: number; limit: number; total: number };
 
 export function AnnounceScreen() {
   const router = useRouter();
-  const client = useQueryClient();
+
   const online = useOnline();
-  const sendGate = useOnlineOnly('send_announcement');
+  const { gate: sendGate, send: sendAnnouncement } = useSendAnnouncement();
   const { me } = useSession();
   const [page, setPage] = useState(1);
   const [sending, setSending] = useState<string | null>(null);
@@ -60,9 +60,7 @@ export function AnnounceScreen() {
     setSending(id);
     setMessage(null);
     try {
-      // Retry-safe by state: already sent answers 200 (slice-14 §5.5).
-      await unwrap(api.POST('/api/v1/announcements/{id}/send', { params: { path: { id } } }));
-      await client.invalidateQueries({ queryKey: ['announcements'] });
+      await sendAnnouncement(id);
     } catch (error) {
       setMessage(sendFailure(error, true).message);
     } finally {
@@ -75,22 +73,11 @@ export function AnnounceScreen() {
     <Screen
       title="Announce"
       testID="announce.screen"
-      banner={
-        cached !== undefined && (!online || list.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          enabled={online}
-          onRefresh={() => {
-            void list.refetch();
-            if (showUsage) void usage.refetch();
-          }}
-          colors={[colors.primary]}
-        />
-      }
+      banner={cachedOfflineBanner(cached, online, list.isError)}
+      onRefresh={() => {
+        void list.refetch();
+        if (showUsage) void usage.refetch();
+      }}
     >
       {showUsage && usage.data !== undefined ? (
         <Sheet testID="announce.usage">

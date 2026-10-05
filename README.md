@@ -1,11 +1,14 @@
 # ASMS — School Management System
 
 Multi-tenant school management platform: one system, many schools, each isolated.
-TypeScript monorepo — NestJS API, Next.js web admin, PostgreSQL, Redis.
+TypeScript monorepo — NestJS API and worker, Next.js web admin, Expo / React Native Android app,
+PostgreSQL, Redis.
 
 **Before contributing, read [`CLAUDE.md`](CLAUDE.md) and [`docs/WORKLOG.md`](docs/WORKLOG.md).**
 They are mandatory for every contributor and every AI session: `CLAUDE.md` holds the settled
 rules and the open-decision register; `WORKLOG.md` says what is done, in progress and next.
+
+**Deploying:** every production requirement is in [`docs/deployment.md`](docs/deployment.md).
 
 ## Prerequisites
 
@@ -98,6 +101,16 @@ docker compose up -d minio
 pnpm dev
 ```
 
+In a second terminal, run the worker:
+
+```sh
+pnpm --filter @asms/api worker
+```
+
+The API only enqueues. Absence alerts, announcement sends, WhatsApp, SMS and push delivery, the
+staged-upload sweep and every scheduled job run in the worker. Production runs exactly one worker
+(`node dist/worker.js`; see [`docs/deployment.md`](docs/deployment.md)).
+
 | What | Where |
 |---|---|
 | Web admin | http://localhost:3460 |
@@ -105,6 +118,7 @@ pnpm dev
 | API | http://127.0.0.1:3461 |
 | Mailpit (captured outgoing mail) | http://127.0.0.1:8025 |
 | MinIO console (object storage) | http://127.0.0.1:9001 |
+| Worker health | http://127.0.0.1:3002 |
 
 The Docker services and the API bind to `127.0.0.1` only. The Next.js dev server listens on all
 interfaces, so run it only on a trusted network.
@@ -120,7 +134,8 @@ No school is seeded by default. The quick way, for development and CI (idempoten
 unless `ALLOW_DEV_SEED=1` is set):
 
 ```sh
-DEV_SCHOOL_PRINCIPAL_CNIC=<13 digits> DEV_SCHOOL_PRINCIPAL_PHONE=<e.g. +923000000000> \n  pnpm --filter @asms/api seed:dev-school   # school code "demo"
+DEV_SCHOOL_PRINCIPAL_CNIC=<13 digits> DEV_SCHOOL_PRINCIPAL_PHONE=<e.g. +923000000000> \
+  pnpm --filter @asms/api seed:dev-school   # school code "demo"
 ```
 
 The principal's password is the same 13 digits, so never point this at a shared database.
@@ -221,7 +236,7 @@ recorded from it with `ASMS_SCHOOL=<code> ASMS_TEACHER_USERNAME=<teacher digits>
 | `apps/web` | Next.js web admin |
 | `apps/mobile` | Expo / React Native Android app |
 | `packages/shared` | Code shared by the API, web and mobile (build it before the apps) |
-| `docs/plans` | Build plans per phase; `phase-1-foundation.md` is the current one |
+| `docs/plans` | Build plans per phase; `phase-2-daily-operations.md` is the current one, contracts in `contracts/` |
 | `docs/WORKLOG.md` | Session handover log — what is done, in progress and next |
 | `CLAUDE.md` | Settled architecture rules, open decisions, working rules |
 | `.githooks` | The pre-commit guard |

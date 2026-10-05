@@ -10,8 +10,8 @@ import type {
 } from '../api/contracts';
 import { queryClient } from '../api/query-client';
 import { getDb } from '../db/database';
-import { errorBody, meFixture, resetDevice, type Handler } from '../test/fake-api';
-import { TODAY } from '../test/fixtures';
+import { errorBody, resetDevice, type Handler } from '../test/fake-api';
+import { meFixture, TODAY } from '../test/fixtures';
 import { eventually, renderSignedIn, setOnline } from '../test/screen';
 import { coverOutcome, summaryLine } from './today-model';
 import { TodayScreen } from './TodayScreen';
@@ -172,12 +172,19 @@ test('a cover name and a section with no class teacher', async () => {
       'GET /api/v1/attendance-registers': () =>
         page([
           sectionDay({ coverStaffName: 'Imran Shah' }),
-          sectionDay({ sectionId: '14', sectionName: 'C', classTeacherName: null, classTeacherStaffId: null }),
+          sectionDay({
+            sectionId: '14',
+            sectionName: 'C',
+            classTeacherName: null,
+            classTeacherStaffId: null,
+          }),
         ]),
     }),
   );
   expect(await screen.findByText('Cover: Imran Shah')).toBeOnTheScreen();
-  expect(within(screen.getByTestId('today.unrecorded.14')).getByText('No class teacher')).toBeOnTheScreen();
+  expect(
+    within(screen.getByTestId('today.unrecorded.14')).getByText('No class teacher'),
+  ).toBeOnTheScreen();
 });
 
 test('actions follow the capabilities and their scope (MeDto.capabilityScopes)', async () => {
@@ -226,9 +233,7 @@ test('every register recorded; not a teaching day', async () => {
 });
 
 test('the summary line, its updating and not-yet-computed forms', async () => {
-  expect(summaryLine(summaryRow())).toBe(
-    'A: 28 P · 2 A · 1 L · 0 O · 1 partly · 0 not recorded',
-  );
+  expect(summaryLine(summaryRow())).toBe('A: 28 P · 2 A · 1 L · 0 O · 1 partly · 0 not recorded');
   expect(summaryLine(summaryRow({ stale: true }))).toMatch(/\(updating…\)$/);
   expect(summaryLine(summaryRow({ registersExpected: 0 }))).toBe('A: not yet computed');
   await renderSignedIn(<TodayScreen />, principal(), routes());
@@ -280,7 +285,9 @@ describe('the cover sheet', () => {
       coversAssignmentId: '70',
     });
     // The list is read again; the row stays until a register exists.
-    expect(fake.calls.filter((c) => c.path === '/api/v1/attendance-registers').length).toBeGreaterThan(1);
+    expect(
+      fake.calls.filter((c) => c.path === '/api/v1/attendance-registers').length,
+    ).toBeGreaterThan(1);
     expect(screen.getByTestId('today.unrecorded.13')).toBeOnTheScreen();
   });
 

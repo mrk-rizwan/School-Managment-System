@@ -10,14 +10,7 @@ import { ListRow } from '../../ui/ListRow';
 import { MonthHeader } from '../../ui/MonthHeader';
 import { Screen } from '../../ui/Screen';
 import { Sheet } from '../../ui/Sheet';
-import {
-  AsOf,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  NoPermissionState,
-  OfflineNotice,
-} from '../../ui/states';
+import { AsOf, cachedOfflineBanner, EmptyState, NoDataState } from '../../ui/states';
 import { SyncChip } from '../../ui/SyncChip';
 import { colors, fontSize, space } from '../../ui/theme';
 import { monthRange } from '../../platform/dates';
@@ -49,15 +42,13 @@ export default function CalendarScreen() {
 
   let content;
   if (cached === undefined) {
-    if (query.isError) {
-      const status = (query.error as { status?: number }).status;
-      content =
-        status === 403 ? (
-          <NoPermissionState />
-        ) : (
-          <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-        );
-    } else content = <LoadingState />;
+    content = (
+      <NoDataState
+        isError={query.isError}
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      />
+    );
   } else {
     const calendar = cached.body;
     const offDays = calendar.weeklyOffDays.map((day) => WEEKDAY_NAMES[day]).join(', ');
@@ -93,11 +84,7 @@ export default function CalendarScreen() {
     <Screen
       title="Calendar"
       accessory={<SyncChip />}
-      banner={
-        cached !== undefined && (!online || query.isError) ? (
-          <OfflineNotice serverTime={cached.serverTime} isDevice={cached.serverTimeIsDevice} />
-        ) : null
-      }
+      banner={cachedOfflineBanner(cached, online, query.isError)}
       testID="calendar.screen"
     >
       <MonthHeader

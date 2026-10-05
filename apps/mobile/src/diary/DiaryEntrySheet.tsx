@@ -2,7 +2,7 @@ import { formatDay } from '@asms/shared';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useOnline } from '../net/connectivity';
-import { Attachment } from '../ui/Attachment';
+import { Attachment, attachmentWord } from '../ui/Attachment';
 import { ListRow } from '../ui/ListRow';
 import { ModalSheet } from '../ui/ModalSheet';
 import { Sheet } from '../ui/Sheet';
@@ -12,7 +12,7 @@ import { colors, fontSize, space } from '../ui/theme';
 // One diary entry, all its fields (slice-16 §4.4, §5.3): the staff list, a child's diary and a
 // student's own diary share it. The attachment loads only on a tap (R160).
 
-export type EntryView = {
+type EntryView = {
   id: string;
   date: string;
   heading: string;
@@ -26,15 +26,10 @@ export type EntryView = {
   attachmentSizeBytes: number | null;
 };
 
-export function attachmentMarker(mime: string | null): string | null {
-  if (mime === null) return null;
-  return mime === 'application/pdf' ? 'PDF' : 'Photo';
-}
-
 export const dueLine = (dueOn: string | null) => (dueOn ? `Due ${formatDay(dueOn)}` : null);
 
 /** The fields every diary entry DTO shares (DiaryEntryDto, MyDiaryEntryDto). */
-export type DiaryEntryLike = {
+type DiaryEntryLike = {
   id: string;
   date: string;
   subjectName: string;
@@ -120,10 +115,14 @@ export function DiaryWindow<E extends DiaryEntryLike>({
           <ListRow
             key={entry.id}
             title={rowTitle(entry)}
-            detail={[entry.topic, dueLine(entry.dueOn), showEdited && isEdited(entry) ? 'edited' : null]
+            detail={[
+              entry.topic,
+              dueLine(entry.dueOn),
+              showEdited && isEdited(entry) ? 'edited' : null,
+            ]
               .filter(Boolean)
               .join(' · ')}
-            value={attachmentMarker(entry.attachmentMime)}
+            value={attachmentWord(entry.attachmentMime)}
             onPress={() => onOpen(entry)}
             testID={entryTestID(entry)}
           />
