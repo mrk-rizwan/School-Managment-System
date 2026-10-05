@@ -16,7 +16,8 @@ writes the production code.** Do not start application code in a planning sessio
   emulator. The real-driver proof is deferred as an owner-blocked hard precondition of the first
   deployment and the Phase 3 gate ("Left to do" item 1). **Next: Phase 3 (Financial)**: it needs
   the owner's answers to register items 7-11 before its schema, then a plan
-  (`docs/plans/phase-3-financial.md`). Project progress = 72 / 157 days = 46 %.
+  (`docs/plans/phase-3-financial.md`, written and revised after four reviews, awaiting owner
+  approval). Project progress = 72 / 160 days = 45 %.
 - **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
   `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
@@ -45,14 +46,14 @@ them when each phase is planned, and say so in the report.
 |---|---|---|
 | 1 Foundation | slices 0–8 (plan §5) | 30 |
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
-| 3 Financial | fee heads, charges, payments, verification, receipts, expenses, payroll | 35 |
+| 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised after four reviews) | 38 |
 | 4 Academic | assessments, results, report cards, certificates, promotion | 30 |
 | 5 Extended | biometric, advanced reporting, transport | 20 |
-| **Total** | | **157** |
+| **Total** | | **160** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
-slice in progress counts half. **Project % = days done ÷ 157.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
+slice in progress counts half. **Project % = days done ÷ 160.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
 11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Planning and reviews done before
 slice 0 are not counted.
 
