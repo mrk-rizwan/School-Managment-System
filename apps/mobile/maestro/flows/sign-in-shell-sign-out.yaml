@@ -31,8 +31,11 @@ appId: pk.asms.app.dev
     id: 'tabs.home'
 - assertVisible:
     id: 'home.defaultPassword'
+# Six tabs for the principal since slice 16: calendar and account sit under More.
 - tapOn:
-    id: 'tabs.calendar'
+    id: 'tabs.more'
+- tapOn:
+    id: 'more.calendar'
 - extendedWaitUntil:
     visible:
       id: 'state.asOf'
@@ -40,7 +43,9 @@ appId: pk.asms.app.dev
 - assertVisible:
     id: 'calendar.month'
 - tapOn:
-    id: 'tabs.account'
+    id: 'tabs.more'
+- tapOn:
+    id: 'more.account'
 - tapOn:
     id: 'account.signOut'
 - extendedWaitUntil:
