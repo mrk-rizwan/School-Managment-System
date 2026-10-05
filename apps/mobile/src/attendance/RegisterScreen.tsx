@@ -183,7 +183,7 @@ export function RegisterScreen({
     setEdits({});
     setReasonOpen(false);
     await local.refetch();
-    if (online) void outboxWorker.trigger('enqueued');
+    void outboxWorker.trigger('enqueued');
   }
 
   function onSave() {
@@ -233,7 +233,7 @@ export function RegisterScreen({
     }
     setRemedyOpen(false);
     await local.refetch();
-    if (online) void outboxWorker.trigger('enqueued');
+    void outboxWorker.trigger('enqueued');
   }
 
   const nameOf = (enrolmentId: string) =>

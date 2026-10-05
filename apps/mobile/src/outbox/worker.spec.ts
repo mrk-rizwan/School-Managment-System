@@ -254,6 +254,20 @@ describe('triggers', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  test('enqueued tells the views offline too; a plain offline tick does not', async () => {
+    const worker = new OutboxWorker({
+      store: memoryStore([item('a')]),
+      isOnline: () => false,
+      send: () => Promise.resolve(ok),
+    });
+    const heard = jest.fn();
+    worker.subscribe(heard);
+    await worker.trigger('online');
+    expect(heard).not.toHaveBeenCalled();
+    await worker.trigger('enqueued');
+    expect(heard).toHaveBeenCalledTimes(1);
+  });
+
   test('401 pauses the queue and 426 blocks it', async () => {
     const effects: string[] = [];
     const store = memoryStore([item('a'), item('b')]);

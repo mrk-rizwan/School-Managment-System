@@ -21,10 +21,23 @@ appId: pk.asms.app.dev
     id: 'announce.body'
 - inputText: 'Parents of 5 A: the class trip is on Friday.'
 - hideKeyboard
+# The form scrolls; on a small emulator screen the audience controls start below the fold.
+- scrollUntilVisible:
+    element:
+      id: 'announce.audience.section'
+    direction: DOWN
 - tapOn:
     id: 'announce.audience.section'
+- scrollUntilVisible:
+    element:
+      id: 'announce.class.${CLASS_ID}'
+    direction: DOWN
 - tapOn:
     id: 'announce.class.${CLASS_ID}'
+- scrollUntilVisible:
+    element:
+      id: 'announce.section.${SECTION_A}'
+    direction: DOWN
 - tapOn:
     id: 'announce.section.${SECTION_A}'
 - extendedWaitUntil:
@@ -32,6 +45,10 @@ appId: pk.asms.app.dev
       id: 'announce.preview'
       text: 'Reaches .* · SMS.*'
     timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'announce.send'
+    direction: DOWN
 - tapOn:
     id: 'announce.send'
 - tapOn:

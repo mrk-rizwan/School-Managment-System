@@ -113,6 +113,9 @@ test('saved offline: one outbox row, the local register, "Saved on device"; a se
   fireEvent.press(chip('102'));
   fireEvent.press(screen.getByTestId('register.save'));
   expect(await screen.findByTestId('register.stateLine')).toHaveTextContent('Saved on device');
+  // The header chip learns of the queued write offline too (CI emulator, 2026-10-05: the state
+  // line said "Saved on device" and the chip never appeared — nothing told useOutbox).
+  expect(await screen.findByTestId('sync.chip')).toHaveTextContent('1 on device');
   fireEvent.press(chip('103'));
   fireEvent.press(screen.getByTestId('register.save'));
   await eventually(async () => {

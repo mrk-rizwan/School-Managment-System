@@ -12,7 +12,6 @@ import { listLocalDiaryEntries, saveDiaryEntry, type LocalPhoto } from '../db/lo
 import { useCachedQuery } from '../db/use-cached-query';
 import { deleteOutboxFile } from '../media/files';
 import { pickPhoto } from '../media/picker';
-import { useOnline } from '../net/connectivity';
 import { sensitiveTextError } from '../outbox/bodies';
 import { outboxWorker } from '../outbox/runtime';
 import { log } from '../platform/log';
@@ -79,7 +78,6 @@ export function DiaryComposeScreen({
 }) {
   const router = useRouter();
   const client = useQueryClient();
-  const online = useOnline();
   const { me } = useSession();
   const today = todayInSchool();
   const [date, setDate] = useState(today);
@@ -160,7 +158,7 @@ export function DiaryComposeScreen({
       log('info', 'diary.saved_on_device', { sectionId, photo: photo !== null });
       // The list below this screen shows the entry at once, offline too.
       void client.invalidateQueries({ queryKey: queryKeys.local });
-      if (online) void outboxWorker.trigger('enqueued');
+      void outboxWorker.trigger('enqueued');
       router.back();
     } catch (error) {
       log('warn', 'diary.save_failed', {

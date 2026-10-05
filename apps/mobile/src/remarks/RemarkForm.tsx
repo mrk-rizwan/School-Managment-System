@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import type { CreateRemarkDto } from '../api/contracts';
 import { saveRemark, type LocalRemark } from '../db/local.repository';
-import { useOnline } from '../net/connectivity';
 import { sensitiveTextError } from '../outbox/bodies';
 import { outboxWorker } from '../outbox/runtime';
 import { log } from '../platform/log';
@@ -53,7 +52,6 @@ export function RemarkForm({ visible, ...rest }: Props) {
 }
 
 function OpenRemarkForm({ studentId, subjects, resend, onClose, onSaved }: Omit<Props, 'visible'>) {
-  const online = useOnline();
   const today = todayInSchool();
   const [date, setDate] = useState(resend?.date ?? today);
   const [category, setCategory] = useState<RemarkCategory>(
@@ -93,7 +91,7 @@ function OpenRemarkForm({ studentId, subjects, resend, onClose, onSaved }: Omit<
         resend?.id ?? null,
       );
       log('info', 'remark.saved_on_device', { studentId });
-      if (online) void outboxWorker.trigger('enqueued');
+      void outboxWorker.trigger('enqueued');
       onSaved();
       onClose();
     } catch {

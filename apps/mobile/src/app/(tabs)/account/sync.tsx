@@ -71,7 +71,7 @@ export default function SyncScreen() {
         text: 'Discard',
         style: 'destructive',
         // The item's local row (and a photo's file) go with it.
-        onPress: () => void discardItem(item.id).then(refresh),
+        onPress: () => void discardItem(item.id).then(() => outboxWorker.changed()),
       },
     ]);
   }

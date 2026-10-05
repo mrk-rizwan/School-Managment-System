@@ -64,8 +64,13 @@ export class OutboxWorker {
     };
   }
 
-  private notify(): void {
+  /** The queue's contents changed outside the worker (a discard): every view of it rereads. */
+  changed(): void {
     for (const listener of this.listeners) listener();
+  }
+
+  private notify(): void {
+    this.changed();
   }
 
   /** 401: wait for sign-in. */
@@ -109,6 +114,9 @@ export class OutboxWorker {
 
   trigger(reason: TickReason): Promise<void> {
     log('debug', 'outbox.tick', { trigger: reason });
+    // A write was stored or every item made due: the views reread now, offline too — a scan
+    // offline returns before it notifies anyone (CI emulator, 2026-10-05: no sync chip).
+    if (reason === 'enqueued' || reason === 'retry_now') this.notify();
     return this.tick();
   }
 
