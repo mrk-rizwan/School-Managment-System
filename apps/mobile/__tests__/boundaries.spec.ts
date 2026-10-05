@@ -176,6 +176,14 @@ test('refetchInterval is refused (no polling, R160)', async () => {
   expect(await rulesAt('src/app/fixture.tsx', code)).toContain('no-restricted-syntax');
 });
 
+test("expo-sqlite's withExclusiveTransactionAsync is refused: its connection lacks our pragmas", async () => {
+  const code =
+    'type Db = { withExclusiveTransactionAsync(t: () => Promise<void>): Promise<void> };\n' +
+    'export async function f(db: Db): Promise<void> {\n' +
+    '  await db.withExclusiveTransactionAsync(async () => {});\n}\n';
+  expect(await rulesAt('src/db/fixture.ts', code)).toContain('no-restricted-syntax');
+});
+
 test('an inline eslint-disable does not switch a boundary off', async () => {
   const code =
     "// eslint-disable-next-line no-console\nexport function f(): void {\n  console.log('x');\n}\n";

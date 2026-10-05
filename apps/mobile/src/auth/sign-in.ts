@@ -79,9 +79,14 @@ export async function signIn(input: SignInInput): Promise<SignInResult> {
 }
 
 export function describeSignInFailure(error: unknown): SignInFailure {
-  if (isNetworkError(error) || !(error instanceof ApiError)) {
+  if (isNetworkError(error)) {
     log('info', 'auth.sign_in_network', errorFields(error));
     return { kind: 'network', message: 'No connection. Sign-in needs a connection.' };
+  }
+  if (!(error instanceof ApiError)) {
+    // Not the network and not the server's answer: a fault on this phone. Never "No connection".
+    log('error', 'auth.sign_in_failed', errorFields(error));
+    return { kind: 'failed', message: 'Sign-in failed. Try again.' };
   }
   log('info', 'auth.sign_in_refused', { status: error.status, code: error.code });
   if (error.status === 401) return { kind: 'auth_failed', message: error.message };

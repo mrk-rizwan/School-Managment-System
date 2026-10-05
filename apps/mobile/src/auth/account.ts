@@ -3,6 +3,7 @@ import { api, isNetworkError, setBearerToken, unwrap, unwrapWithDate } from '../
 import type { MeDto } from '../api/contracts';
 import { writeCache, type Cached } from '../db/cache';
 import { log } from '../platform/log';
+import { errorFields } from '../platform/scrub';
 import { meOf, ME_CACHE_KEY } from './sign-in';
 import { replaceToken } from './session-store';
 
@@ -29,12 +30,16 @@ export async function changePassword(
     log('info', 'auth.password_changed');
     return { ok: true, me };
   } catch (error) {
-    if (!(error instanceof ApiError) || isNetworkError(error)) {
+    if (isNetworkError(error)) {
       return {
         ok: false,
         field: null,
         message: 'No connection. Changing the password needs a connection.',
       };
+    }
+    if (!(error instanceof ApiError)) {
+      log('error', 'auth.change_password_failed', errorFields(error));
+      return { ok: false, field: null, message: 'The password could not be changed. Try again.' };
     }
     if (error.code === ErrorCode.CURRENT_PASSWORD_INCORRECT) {
       return { ok: false, field: 'currentPassword', message: error.message };
@@ -62,11 +67,10 @@ export async function revokeOtherSessions(): Promise<RevokeOthersResult> {
     const { revoked } = await unwrap(api.POST('/api/v1/me/sessions/revoke-others'));
     return { ok: true, revoked };
   } catch (error) {
-    return {
-      ok: false,
-      message:
-        error instanceof ApiError ? error.message : 'No connection. This needs a connection.',
-    };
+    if (error instanceof ApiError) return { ok: false, message: error.message };
+    if (isNetworkError(error)) return { ok: false, message: 'No connection. This needs a connection.' };
+    log('error', 'auth.revoke_others_failed', errorFields(error));
+    return { ok: false, message: 'Something went wrong. Try again.' };
   }
 }
 

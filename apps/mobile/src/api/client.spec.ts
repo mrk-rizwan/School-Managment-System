@@ -1,25 +1,102 @@
-import { ErrorCode } from '@asms/shared';
-import { errorBody, installFakeApi, meFixture, resetDevice } from '../test/fake-api';
+import { ErrorCode, toApiError } from '@asms/shared';
+import createClient from 'openapi-fetch';
+import {
+  errorBody,
+  installFakeApi,
+  loginFixture,
+  meFixture,
+  resetDevice,
+  SERVER_DATE,
+} from '../test/fake-api';
+import { DOCUMENT, File, putFile } from '../test/file-system';
 import { sendItem } from '../outbox/runtime';
 import * as lanes from '../outbox/lanes';
 import type { OutboxItem } from '../outbox/machine';
 import {
   api,
   authHeaders,
+  isNetworkError,
   onSessionLost,
   onUpgradeRequired,
   READ_TIMEOUT_MS,
   sendMultipart,
   sendRaw,
   setBearerToken,
+  timedFetch,
   unwrap,
+  unwrapWithDate,
 } from './client';
+import type { paths } from './school';
 
 // slice-15 §2.5, §6: every request's headers, and the 401 and 426 routing.
 
 beforeEach(resetDevice);
 
 const token = 'A'.repeat(43);
+
+describe("the device's fetch: expo/fetch answers with a FetchResponse, not instanceof Response", () => {
+  const loginBody = {
+    schoolCode: 'demo',
+    username: '3520112345671',
+    password: 'x', // pragma: allowlist secret
+    channel: 'bearer' as const,
+  };
+
+  test('login and a cached read resolve through the typed client, with the Date header', async () => {
+    installFakeApi({
+      'POST /api/v1/auth/login': () => ({ status: 200, body: loginFixture('L'.repeat(43)) }),
+      'GET /api/v1/me': () => ({ status: 200, body: meFixture() }),
+    });
+    const login = await api.POST('/api/v1/auth/login', { body: loginBody });
+    expect(login.response instanceof Response).toBe(false);
+    expect(login.data?.bearerToken).toBe('L'.repeat(43));
+    setBearerToken(token);
+    const { data, date } = await unwrapWithDate(api.GET('/api/v1/me'));
+    expect(data.fullName).toBe('Ayesha Khan');
+    expect(date).toBe(SERVER_DATE);
+  });
+
+  test('the 401 inspection (a clone of the body) still routes, and the caller still reads it', async () => {
+    installFakeApi({
+      'GET /api/v1/me': () => ({ status: 401, body: errorBody(ErrorCode.AUTH_REQUIRED, 'Gone.') }),
+    });
+    const lost = jest.fn();
+    const off = onSessionLost(lost);
+    setBearerToken(token);
+    await expect(unwrap(api.GET('/api/v1/me'))).rejects.toMatchObject({
+      status: 401,
+      code: ErrorCode.AUTH_REQUIRED,
+    });
+    expect(lost).toHaveBeenCalledTimes(1);
+    off();
+  });
+
+  test('the harness catches the defect: a middleware returning the response fails as on a device', async () => {
+    installFakeApi({ 'GET /api/v1/me': () => ({ status: 200, body: meFixture() }) });
+    const broken = createClient<paths>({ baseUrl: 'http://api.test', fetch: timedFetch });
+    broken.use({ onResponse: ({ response }) => response });
+    await expect(broken.GET('/api/v1/me')).rejects.toThrow(/onResponse: must return new Response/);
+  });
+});
+
+describe('isNetworkError: only a request that got no answer', () => {
+  test.each([
+    ['expo/fetch FetchError', new Error('fetch failed: java.net.UnknownHostException'), true],
+    ['expo/fetch abort', new Error('fetch failed: The operation was aborted.'), true],
+    ["React Native's fetch", new TypeError('Network request failed'), true],
+    ["React Native's timeout", new TypeError('Network request timed out'), true],
+    ["Node's fetch", new TypeError('fetch failed'), true],
+    ['an AbortError', Object.assign(new Error('aborted'), { name: 'AbortError' }), true],
+    ['an ApiError', toApiError({ status: 503, headers: new Headers() }, null), false],
+    ['a refused body', new TypeError('Unsupported BodyInit type'), false],
+    ['a refused part', new Error('Unsupported FormDataPart implementation'), false],
+    ['a bug', new TypeError("Cannot read properties of undefined (reading 'id')"), false],
+    ['openapi-fetch', new Error('onResponse: must return new Response() when modifying'), false],
+    ['not an error', 'offline', false],
+  ])('%s', (_label, error, expected) => {
+    expect(isNetworkError(error)).toBe(expected);
+  });
+});
 
 describe('headers', () => {
   test('every request carries X-App-Version and Accept; no bearer when signed out; never Origin or a cookie', async () => {
@@ -240,20 +317,39 @@ describe('slice-16 §11: multipart and the headers for requests the client does 
       'POST /api/v1/uploads': () => ({ status: 201, body: { id: 'u1' } }),
     });
     setBearerToken(token);
-    const response = await sendMultipart('/api/v1/uploads', 'file', {
-      uri: 'file:///x/p1.jpg',
-      name: 'p1.jpg',
-      mime: 'image/jpeg',
-    });
+    putFile(`${DOCUMENT}outbox/p1.jpg`, 1234);
+    const response = await sendMultipart('/api/v1/uploads', 'file', new File(`${DOCUMENT}outbox/p1.jpg`));
     expect(response.status).toBe(201);
     const [call] = fake.calls;
     expect(call!.method).toBe('POST');
+    // The file part as expo/fetch builds it from the File: its name, the type of its extension,
+    // its bytes.
+    expect(call!.parts).toEqual([
+      { field: 'file', filename: 'p1.jpg', type: 'image/jpeg', size: 1234 },
+    ]);
+    expect(call!.headers.get('Content-Type')).toMatch(/^multipart\/form-data; boundary=/);
     expect(call!.headers.get('Authorization')).toBe(`Bearer ${token}`);
     expect(call!.headers.get('X-App-Version')).toBe('0.1.0');
     expect(call!.headers.get('Content-Type') ?? '').not.toContain('application/json');
     expect(call!.headers.has('Origin')).toBe(false);
     expect(call!.headers.has('Cookie')).toBe(false);
     expect(call!.credentials).toBe('omit');
+  });
+
+  test("React Native's { uri, name, type } part is refused as expo/fetch refuses it, before any request", async () => {
+    const fake = installFakeApi({
+      'POST /api/v1/uploads': () => ({ status: 201, body: { id: 'u1' } }),
+    });
+    const rnPart = { uri: 'file:///x/p1.jpg', name: 'p1.jpg', type: 'image/jpeg' };
+    const error: unknown = await sendMultipart(
+      '/api/v1/uploads',
+      'file',
+      rnPart as unknown as Blob,
+    ).catch((thrown: unknown) => thrown);
+    expect(error).toMatchObject({ message: 'Unsupported FormDataPart implementation' });
+    // Not "offline": the outbox must not retry it forever.
+    expect(isNetworkError(error)).toBe(false);
+    expect(fake.calls).toHaveLength(0);
   });
 
   test('authHeaders: the bearer only when signed in, never in a URL', () => {

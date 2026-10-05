@@ -22,9 +22,14 @@ function outboxFile(name: string): File {
   return new File(outboxDirectory(), name);
 }
 
-/** The file:// URI of a waiting photo, for the multipart upload. */
-export function outboxFileUri(name: string): string {
-  return outboxFile(name).uri;
+/**
+ * A waiting photo as the multipart upload's file part. expo/fetch (the app's fetch) reads its
+ * bytes; the part's filename and Content-Type are the file's name and the type its extension
+ * gives (`<id>.jpg` -> image/jpeg). React Native's `{ uri, name, type }` part is refused by
+ * expo/fetch ("Unsupported FormDataPart implementation").
+ */
+export function outboxUploadFile(name: string): Blob {
+  return outboxFile(name);
 }
 
 export function outboxFileExists(name: string): boolean {

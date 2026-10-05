@@ -82,6 +82,12 @@ const NO_POLLING = {
       selector: "Property[key.name='refetchInterval']",
       message: 'No polling (R160): data refreshes on open, on reconnect and on pull.',
     },
+    {
+      selector: "MemberExpression[property.name='withExclusiveTransactionAsync']",
+      message:
+        'Use inExclusiveTransaction (src/db/database.ts): the expo helper opens a connection ' +
+        'without foreign_keys, busy_timeout and secure_delete.',
+    },
   ],
 };
 

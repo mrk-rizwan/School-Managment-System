@@ -12,7 +12,14 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 // sets journal_mode = DELETE — pessimistic (a clean close also removes them on a device), so a
 // wipe that forgets the journal switch fails its test (security review M1).
 
+//
+// Connections share the file's one in-memory engine (node:sqlite cannot share :memory: between
+// connections), so per-connection settings cannot be observed from SQL. Each connection records
+// the statements it ran instead; connectionLog() lets a test prove that a connection opened with
+// useNewConnection (an exclusive transaction's) set foreign_keys and busy_timeout before BEGIN.
+
 const files = new Map<string, DatabaseSync>();
+const connections: { name: string; newConnection: boolean; statements: string[] }[] = [];
 const openConnections = new Map<string, number>();
 const siblings = new Set<string>();
 let failCloses = 0;
@@ -28,14 +35,15 @@ function bind(params: unknown): SQLInputValue[] {
 const plain = (row: unknown) => (row === undefined ? null : { ...(row as object) });
 
 class TestDatabase {
-  private chain: Promise<unknown> = Promise.resolve();
   private closed = false;
   constructor(
     private readonly raw: DatabaseSync,
     private readonly name: string,
+    private readonly statements: string[],
   ) {}
 
   async execAsync(sql: string): Promise<void> {
+    this.statements.push(sql);
     this.raw.exec(sql);
     if (/journal_mode\s*=\s*WAL/i.test(sql)) {
       siblings.add(`${this.name}-wal`);
@@ -66,22 +74,6 @@ class TestDatabase {
       .map((row) => plain(row) as T);
   }
 
-  /** Serialised like the native exclusive transaction: one at a time, rolled back on throw. */
-  withExclusiveTransactionAsync(task: (txn: TestDatabase) => Promise<void>): Promise<void> {
-    const run = this.chain.then(async () => {
-      this.raw.exec('BEGIN EXCLUSIVE');
-      try {
-        await task(this);
-        this.raw.exec('COMMIT');
-      } catch (error) {
-        this.raw.exec('ROLLBACK');
-        throw error;
-      }
-    });
-    this.chain = run.catch(() => undefined);
-    return run;
-  }
-
   closeAsync(): Promise<void> {
     if (failCloses > 0) {
       failCloses -= 1;
@@ -95,15 +87,28 @@ class TestDatabase {
   }
 }
 
-export function openDatabaseAsync(name: string): Promise<TestDatabase> {
+export function openDatabaseAsync(
+  name: string,
+  options: { useNewConnection?: boolean } = {},
+): Promise<TestDatabase> {
   let raw = files.get(name);
   if (raw === undefined) {
     raw = new DatabaseSync(':memory:');
     files.set(name, raw);
   }
   openConnections.set(name, (openConnections.get(name) ?? 0) + 1);
-  return Promise.resolve(new TestDatabase(raw, name));
+  const connection = {
+    name,
+    newConnection: options.useNewConnection === true,
+    statements: [] as string[],
+  };
+  connections.push(connection);
+  return Promise.resolve(new TestDatabase(raw, name, connection.statements));
 }
+
+/** Test-only: every connection opened since the last reset, with the statements it executed. */
+export const connectionLog = () =>
+  connections.map((c) => ({ ...c, statements: [...c.statements] }));
 
 export function deleteDatabaseAsync(name: string): Promise<void> {
   if ((openConnections.get(name) ?? 0) > 0) {
@@ -132,6 +137,7 @@ export function failNextCloses(n = 1): void {
 export function resetDatabases(): void {
   for (const raw of files.values()) raw.close();
   files.clear();
+  connections.length = 0;
   openConnections.clear();
   siblings.clear();
   failCloses = 0;

@@ -7,6 +7,7 @@ import {
   type AudienceInput,
   type AudienceKind,
 } from '@asms/shared';
+import { isNetworkError } from '../api/client';
 import type { AudiencePreviewDto, DeliverySummaryDto, MessagingUsageDto } from '../api/contracts';
 
 // Announce (slice-16 §7.2, aligned with contracts/slice-14.md §2, §4, §12), pure: the reduced
@@ -109,7 +110,10 @@ export function previewFailure(error: unknown): PreviewState {
     };
   }
   if (!(error instanceof ApiError)) {
-    return { kind: 'error', message: 'Cannot count without a connection.' };
+    const message = isNetworkError(error)
+      ? 'Cannot count without a connection.'
+      : 'Cannot count right now. Try again.';
+    return { kind: 'error', message };
   }
   return { kind: 'error', message: describeApiError(error) };
 }
@@ -134,7 +138,9 @@ export function sendFailure(error: unknown, draftSaved: boolean): SendFailure {
       kind: 'other',
       message: draftSaved
         ? 'Saved as a draft but not sent. Send again, or send it from the list.'
-        : 'No connection. Sending needs a connection.',
+        : isNetworkError(error)
+          ? 'No connection. Sending needs a connection.'
+          : 'Not sent. Try again.',
     };
   }
   if (error.status === 429) return { kind: 'other', message: rateLimitMessage(error) };

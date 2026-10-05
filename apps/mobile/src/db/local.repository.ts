@@ -14,7 +14,7 @@ import {
 } from '../outbox/bodies';
 import { LANES } from '../outbox/lanes';
 import type { OutboxState } from '../outbox/machine';
-import { getDb, readOwner, type Db } from './database';
+import { getDb, inExclusiveTransaction, readOwner, type Db } from './database';
 import { enqueueIn, NoOwnerError } from './outbox.repository';
 import { PURGE_ORPHAN_LOCAL_ROWS } from './schema';
 
@@ -68,8 +68,7 @@ function outboxOf(raw: unknown): OutboxView | null {
 /** A write is never stored without its owner (slice-15 §7.6). */
 async function ownedTransaction(task: (txn: Db) => Promise<void>): Promise<void> {
   if ((await readOwner()) === null) throw new NoOwnerError();
-  const db = await getDb();
-  await db.withExclusiveTransactionAsync(task);
+  await inExclusiveTransaction(task);
 }
 
 // --- Registers ------------------------------------------------------------------------------
@@ -458,9 +457,8 @@ export async function markDiarySaved(
   serverId: string | null,
   now: Date = new Date(),
 ): Promise<number> {
-  const db = await getDb();
   let queued = 0;
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     const entry = await txn.getFirstAsync<{ id: string }>(
       'SELECT id FROM local_diary_entries WHERE outbox_id = ?',
       [outboxId],
@@ -487,8 +485,7 @@ export async function supersedeByServerEntry(
   attachPhoto: boolean,
   now: Date = new Date(),
 ): Promise<void> {
-  const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     const stamp = now.toISOString();
     await txn.runAsync(
       `UPDATE local_diary_entries SET state = 'superseded_by_server', server_id = ?, updated_at = ?
@@ -511,9 +508,8 @@ export async function supersedeByServerEntry(
  * is marked failed. Idempotent: a photo with an outbox row is never queued again.
  */
 export async function recoverWaitingAttachments(now: Date = new Date()): Promise<number> {
-  const db = await getDb();
   let queued = 0;
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     const entries = await txn.getAllAsync<{ id: string; server_id: string; state: string }>(
       `SELECT DISTINCT e.id, e.server_id, e.state FROM local_diary_entries e
        JOIN local_attachments a ON a.local_entry_id = e.id
@@ -748,8 +744,7 @@ export async function listLocalRemarks(studentId: string): Promise<LocalRemark[]
  * it, in one transaction; a photo's file is deleted. A discarded diary entry takes its photos.
  */
 export async function discardItem(outboxId: string): Promise<void> {
-  const db = await getDb();
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     // Photos queued behind a discarded entry go with it.
     await txn.runAsync(
       `DELETE FROM outbox WHERE id IN (SELECT a.outbox_id FROM local_attachments a

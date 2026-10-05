@@ -11,7 +11,10 @@ import * as outbox from '../db/outbox.repository';
 import { errorBody, installFakeApi, resetDevice, type Handler } from '../test/fake-api';
 import { DOCUMENT, fileExists, putFile } from '../test/file-system';
 import { TODAY } from '../test/fixtures';
+import * as files from '../media/files';
+import { logText } from '../platform/log';
 import { sendAttachment, STAGED_MARGIN_MS } from './attachment-sender';
+import { SEND_FAILED_ON_PHONE } from './outcome';
 import { transition } from './machine';
 import { onSaved, sendItem } from './runtime';
 import { OutboxWorker } from './worker';
@@ -86,6 +89,10 @@ test('upload, then PATCH with the staged id: multipart with the bearer, no JSON 
   expect(up!.headers.get('Content-Type') ?? '').not.toContain('application/json');
   expect(up!.headers.has('Origin')).toBe(false);
   expect(up!.headers.has('Cookie')).toBe(false);
+  // The stored photo is the file part, as expo/fetch sends it: its name, its type, its bytes.
+  expect(up!.parts).toEqual([
+    { field: 'file', filename: 'p1.jpg', type: 'image/jpeg', size: 300_000 },
+  ]);
   expect(change!.method).toBe('PATCH');
   expect(change!.body).toEqual({ stagedUploadId: 'u1' });
   expect(change!.headers.has('Idempotency-Key')).toBe(false);
@@ -145,6 +152,21 @@ test('a network failure during the upload is a network outcome', async () => {
   await queuedPhoto();
   const { outcome } = await send({ ...upload(() => 'network') });
   expect(outcome).toEqual({ kind: 'network' });
+});
+
+test('a part the runtime refuses is a terminal failure on the phone, never retried as offline', async () => {
+  await queuedPhoto();
+  // React Native's { uri, name, type } part, which expo/fetch refuses before sending anything.
+  jest
+    .spyOn(files, 'outboxUploadFile')
+    .mockReturnValue({ uri: FILE, name: 'p1.jpg', type: 'image/jpeg' } as unknown as Blob);
+  const { outcome, fake } = await send({ ...upload(), ...patch() });
+  expect(fake.calls).toHaveLength(0);
+  expect(outcome).toMatchObject({ kind: 'response', status: 422, code: SEND_FAILED_ON_PHONE });
+  const item = (await listByState('pending')).find((i) => i.lane === 'diary_attachment')!;
+  const sending = transition(item, { type: 'send', now: NOW }).item;
+  expect(transition(sending, { type: 'outcome', outcome, now: NOW }).item.state).toBe('failed');
+  expect(logText()).toMatch(/error outbox\.send_threw/);
 });
 
 test('REFERENCE_NOT_FOUND: the first is a network outcome (re-upload), the second is terminal', async () => {

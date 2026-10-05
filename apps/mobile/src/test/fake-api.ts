@@ -9,6 +9,11 @@ import { resetSecureStore } from './secure-store';
 
 // A fake API behind the global fetch: the real client, middlewares and timeouts run; only the
 // network is replaced. Every request is recorded with its headers and body for assertions.
+//
+// It answers as the device's fetch does, not as Node's: expo/fetch (the global fetch in the app)
+// returns a FetchResponse, which is Response-shaped but NOT `instanceof Response`, and it refuses
+// a multipart part that is neither a string nor a Blob (React Native's `{ uri, name, type }`).
+// Node's Response would hide both defects, so every suite runs against the device's behaviour.
 
 export const SERVER_DATE = 'Sun, 04 Oct 2026 04:32:00 GMT';
 
@@ -20,7 +25,11 @@ export type FakeRequest = {
   credentials: string | undefined;
   body: unknown;
   bodyText: string;
+  /** A multipart request's parts as sent: file parts with their filename, type and size. */
+  parts: FakePart[] | null;
 };
+
+export type FakePart = { field: string; filename: string | null; type: string; size: number };
 
 export type FakeReply =
   | {
@@ -121,6 +130,86 @@ function minimalWhenPreferred(
   };
 }
 
+/**
+ * expo/fetch's FetchResponse as the app sees it: every member the client, openapi-fetch and the
+ * outbox read, clone() included, and `Symbol.toStringTag` 'Response' — but not a Response
+ * subclass, so an `instanceof Response` anywhere fails here as it fails on a device.
+ */
+class DeviceResponse {
+  constructor(private readonly inner: Response) {}
+  get [Symbol.toStringTag]() {
+    return 'Response';
+  }
+  get status() {
+    return this.inner.status;
+  }
+  get statusText() {
+    return this.inner.statusText;
+  }
+  get ok() {
+    return this.inner.ok;
+  }
+  get headers() {
+    return this.inner.headers;
+  }
+  get url() {
+    return this.inner.url;
+  }
+  get redirected() {
+    return this.inner.redirected;
+  }
+  get type() {
+    return 'default' as const;
+  }
+  get body() {
+    return this.inner.body;
+  }
+  get bodyUsed() {
+    return this.inner.bodyUsed;
+  }
+  json(): Promise<unknown> {
+    return this.inner.json();
+  }
+  text() {
+    return this.inner.text();
+  }
+  arrayBuffer() {
+    return this.inner.arrayBuffer();
+  }
+  blob() {
+    return this.inner.blob();
+  }
+  clone() {
+    return new DeviceResponse(this.inner.clone());
+  }
+}
+
+/**
+ * A multipart body's parts, refusing what expo/fetch's convertFormData refuses: a part that is
+ * neither a string nor a Blob. Node's FormData has already turned such a part (React Native's
+ * `{ uri, name, type }` object) into the string "[object Object]", which is how it is seen here.
+ */
+async function multipartParts(request: Request): Promise<FakePart[] | null> {
+  if (!/^multipart\/form-data/.test(request.headers.get('Content-Type') ?? '')) return null;
+  // Node's FormData; the app's typing is React Native's, which has no iteration.
+  const form = (await request.clone().formData()) as unknown as {
+    forEach(each: (value: string | (Blob & { name: string }), field: string) => void): void;
+  };
+  const parts: FakePart[] = [];
+  let refused = false;
+  form.forEach((value, field) => {
+    if (typeof value !== 'string') {
+      parts.push({ field, filename: value.name, type: value.type, size: value.size });
+    } else if (value === '[object Object]') {
+      refused = true;
+    } else {
+      parts.push({ field, filename: null, type: '', size: value.length });
+    }
+  });
+  if (refused) throw new Error('Unsupported FormDataPart implementation');
+  return parts;
+}
+
 export function installFakeApi(routes: Record<string, Handler>): FakeApi {
   const api: FakeApi = { calls: [], traffic: [], routes };
   jest
@@ -128,6 +217,9 @@ export function installFakeApi(routes: Record<string, Handler>): FakeApi {
     .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(String(input), init);
       const url = new URL(request.url);
+      // As expo/fetch: the body is converted before anything is sent, so a refused part throws
+      // a plain Error (not a network error) and no request reaches the server.
+      const parts = request.method === 'GET' ? null : await multipartParts(request);
       const bodyText = request.method === 'GET' ? '' : await request.text();
       const call: FakeRequest = {
         method: request.method,
@@ -137,6 +229,7 @@ export function installFakeApi(routes: Record<string, Handler>): FakeApi {
         credentials: init?.credentials,
         body: bodyText === '' ? null : parsed(bodyText),
         bodyText,
+        parts,
       };
       api.calls.push(call);
       const handler = api.routes[`${call.method} ${call.path}`];
@@ -163,10 +256,11 @@ export function installFakeApi(routes: Record<string, Handler>): FakeApi {
         requestBytes: bodyText.length,
         responseBytes: text.length,
       });
-      return new Response(answer.status === 204 || text === '' ? null : text, {
+      const response = new Response(answer.status === 204 || text === '' ? null : text, {
         status: answer.status,
         headers: { 'Content-Type': 'application/json', Date: SERVER_DATE, ...answer.headers },
       });
+      return new DeviceResponse(response) as unknown as Response;
     });
   return api;
 }

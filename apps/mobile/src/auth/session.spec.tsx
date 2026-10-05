@@ -7,6 +7,7 @@ import { cacheKey, readCache, writeCache } from '../db/cache';
 import * as cache from '../db/cache';
 import { DATABASE_NAME, getDb, META, setMeta, UNSENT_WINDOW_MS } from '../db/database';
 import { enqueue, listByState, listUnfinished, saveItem } from '../db/outbox.repository';
+import * as outboxRepository from '../db/outbox.repository';
 import { transition } from '../outbox/machine';
 import { logText } from '../platform/log';
 import {
@@ -501,4 +502,86 @@ test('L2: after a 401 the same user signing in again registers for push again', 
   meStatus = 200;
   await signInThroughTheScreen();
   expect(registerPush).toHaveBeenCalledTimes(2);
+});
+
+describe('device faults: only a request that got no answer is "No connection"', () => {
+  async function submitOnTheScreen() {
+    await waitFor(() => expect(session().status).toBe('signed-out'));
+    fireEvent.changeText(screen.getByTestId('signIn.schoolCode'), 'demo');
+    fireEvent.changeText(screen.getByTestId('signIn.identity'), CNIC);
+    fireEvent.changeText(screen.getByTestId('signIn.password'), 'secret-pass');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('signIn.submit'));
+    });
+  }
+
+  test('sign-in reaches signed-in through a fetch whose responses are not instanceof Response', async () => {
+    // The fake answers as expo/fetch does (fake-api.ts): this is the CI defect, where every typed
+    // call threw in openapi-fetch's onResponse check and sign-in said "No connection".
+    const fake = installFakeApi(routes());
+    const probe = await fetch('http://api.test/api/v1/me');
+    expect(probe instanceof Response).toBe(false);
+    fake.calls.length = 0;
+    mount();
+    await signInThroughTheScreen();
+    expect(fake.calls.map((c) => c.path)).toContain('/api/v1/auth/login');
+    expect(screen.queryByTestId('signIn.error')).toBeNull();
+  });
+
+  test('a network failure is "No connection"', async () => {
+    installFakeApi(routes({ 'POST /api/v1/auth/login': () => 'network' }));
+    mount();
+    await submitOnTheScreen();
+    expect(await screen.findByTestId('signIn.error')).toHaveTextContent(
+      'No connection. Sign-in needs a connection.',
+    );
+    expect(logText()).toMatch(/info auth\.sign_in_network/);
+  });
+
+  test('a fault on the phone after a 200 is "Sign-in failed", logged as an error, not "No connection"', async () => {
+    installFakeApi(routes());
+    jest.spyOn(sessionStore, 'writeSession').mockRejectedValue(new Error('keystore unavailable'));
+    mount();
+    await submitOnTheScreen();
+    expect(await screen.findByTestId('signIn.error')).toHaveTextContent('Sign-in failed. Try again.');
+    expect(logText()).toMatch(/error auth\.sign_in_failed/);
+    expect(session().status).toBe('signed-out');
+  });
+
+  test('signIn rejecting outright still clears the busy state and says so', async () => {
+    installFakeApi(routes());
+    mount();
+    await waitFor(() => expect(session().status).toBe('signed-out'));
+    // readSession runs before signIn's own try: its failure rejects signIn itself.
+    jest.spyOn(sessionStore, 'readSession').mockRejectedValue(new Error('secure store locked'));
+    await submitOnTheScreen();
+    expect(await screen.findByTestId('signIn.error')).toHaveTextContent('Sign-in failed. Try again.');
+    expect(screen.getByTestId('signIn.submit').props.accessibilityState).toMatchObject({
+      busy: false,
+    });
+    expect(logText()).toMatch(/error auth\.sign_in_threw/);
+  });
+});
+
+test('startup runs its housekeeping writes one after another, never two connections at once', async () => {
+  installFakeApi(routes());
+  const order: string[] = [];
+  const evict = cache.evictCache;
+  const purge = outboxRepository.purgeFinished;
+  jest.spyOn(cache, 'evictCache').mockImplementation(async (now) => {
+    order.push('evict:start');
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const result = await evict(now);
+    order.push('evict:end');
+    return result;
+  });
+  jest.spyOn(outboxRepository, 'purgeFinished').mockImplementation(async (now) => {
+    order.push('purge:start');
+    const result = await purge(now);
+    order.push('purge:end');
+    return result;
+  });
+  mount();
+  await waitFor(() => expect(session().status).toBe('signed-out'));
+  expect(order).toEqual(['evict:start', 'evict:end', 'purge:start', 'purge:end']);
 });

@@ -12,6 +12,7 @@ import {
 import { Alert, AppState } from 'react-native';
 import {
   api,
+  isNetworkError,
   onSessionLost,
   onUpgradeRequired,
   setBearerToken,
@@ -183,7 +184,8 @@ export function SessionProvider({
         enter(await writeCache(ME_CACHE_KEY, data, date));
       } catch (error) {
         if (error instanceof ApiError && (error.status === 401 || error.status === 426)) return;
-        log('info', 'session.me_refresh_failed', errorFields(error));
+        // Not reaching the school is ordinary; any other failure is a fault worth seeing.
+        log(isNetworkError(error) ? 'info' : 'error', 'session.me_refresh_failed', errorFields(error));
         if (hasCache) update({ meStale: true });
         else update({ status: 'unreachable' });
       }
@@ -195,7 +197,11 @@ export function SessionProvider({
     readAppVersion(); // a malformed build version fails here, not with a 426 in the field
     await getDb();
     const now = new Date();
-    await Promise.all([evictCache(now), purgeFinished(now), recoverStaleItems(now)]);
+    // In sequence: purgeFinished writes on its own (exclusive) connection, the others on the main
+    // one, and two writers at once only wait on each other's lock.
+    await evictCache(now);
+    await purgeFinished(now);
+    await recoverStaleItems(now);
     // Slice 16 §4.5, §13.3: photos left waiting by a crash, files no row points at, downloads.
     await recoverWaitingAttachments(now);
     await sweepPhotoFiles();
@@ -305,7 +311,9 @@ export function SessionProvider({
             update({ status: 'signed-out', upgrade: null, unsent: await countUnsent() });
             return null;
           }
-          return 'Cannot reach the school. Check your connection.';
+          if (isNetworkError(error)) return 'Cannot reach the school. Check your connection.';
+          log('error', 'session.check_again_failed', errorFields(error));
+          return 'Something went wrong. Try again.';
         }
       },
       async retryStartup() {

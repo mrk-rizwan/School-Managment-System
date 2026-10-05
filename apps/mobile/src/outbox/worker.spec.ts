@@ -301,6 +301,36 @@ describe('triggers', () => {
     }
   });
 
+  test('a send that throws a network error is retried; any other throw fails the item, once', async () => {
+    const offline = item('offline');
+    const broken = item('broken');
+    const store = memoryStore([offline, broken]);
+    let brokenCalls = 0;
+    const worker = new OutboxWorker({
+      store,
+      isOnline: () => true,
+      send: (i) => {
+        if (i.lane === 'offline') return Promise.reject(new TypeError('Network request failed'));
+        brokenCalls += 1;
+        return Promise.reject(new Error('Unsupported FormDataPart implementation'));
+      },
+    });
+    await worker.trigger('foreground');
+    await worker.idle();
+    const [a, b] = store.items;
+    expect(a).toMatchObject({ state: 'pending', responseStatus: null });
+    expect(a!.nextAttemptAt).not.toBeNull();
+    expect(b).toMatchObject({
+      state: 'failed',
+      responseStatus: 422,
+      responseCode: 'SEND_FAILED_ON_PHONE',
+      nextAttemptAt: null,
+    });
+    await worker.trigger('retry_now');
+    await worker.idle();
+    expect(brokenCalls).toBe(1);
+  });
+
   test('the saved-on-server follow-up runs only after a 2xx', async () => {
     const saved: string[] = [];
     const store = memoryStore([item('device_register')]);

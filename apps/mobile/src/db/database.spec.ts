@@ -3,6 +3,7 @@ import { KEYS } from '../auth/session-store';
 import { resetDevice } from '../test/fake-api';
 import { secureStoreContents } from '../test/secure-store';
 import {
+  connectionLog,
   databaseFileExists,
   dropConnections,
   failNextCloses,
@@ -15,6 +16,7 @@ import {
   discardExpiredUnsent,
   getDb,
   getMeta,
+  inExclusiveTransaction,
   META,
   UNSENT_WINDOW_MS,
   wipeDatabase,
@@ -72,6 +74,53 @@ describe('M1: the wipe leaves nothing on disk', () => {
     expect(fresh).not.toBe(stuck);
     expect(await getMeta('probe')).toBeNull(); // a new file, not the old one
     expect(await listUnfinished()).toEqual([]);
+  });
+});
+
+describe("exclusive transactions: their own connection, with the main connection's settings", () => {
+  const statementsOf = () => connectionLog().filter((c) => c.newConnection);
+
+  test('every transaction connection sets foreign_keys, busy_timeout and secure_delete before BEGIN', async () => {
+    await bindOwner('41', '7');
+    await enqueue({ ...device, body: {} }); // one of the app's transactions
+    await wipeForSessionLoss(); // and another
+    const opened = statementsOf();
+    expect(opened.length).toBeGreaterThanOrEqual(2);
+    for (const { statements } of opened) {
+      const begin = statements.indexOf('BEGIN IMMEDIATE');
+      expect(begin).toBeGreaterThan(0);
+      const before = statements.slice(0, begin).join(' ');
+      expect(before).toMatch(/PRAGMA foreign_keys = ON/);
+      expect(before).toMatch(/PRAGMA busy_timeout = 5000/);
+      expect(before).toMatch(/PRAGMA secure_delete = ON/);
+      expect(statements[statements.length - 1]).toBe('COMMIT');
+    }
+    // Each was closed: the file can be deleted (deleteDatabaseAsync refuses while one is open).
+    expect(await wipeDatabase()).toBe(true);
+  });
+
+  test('a task that throws rolls back and the error reaches the caller', async () => {
+    await bindOwner('41', '7');
+    const failing = inExclusiveTransaction(async (txn) => {
+      await txn.runAsync('INSERT INTO meta (key, value) VALUES (?, ?)', ['probe', '1']);
+      throw new Error('task failed');
+    });
+    await expect(failing).rejects.toThrow('task failed');
+    expect(await getMeta('probe')).toBeNull();
+    expect(statementsOf().at(-1)?.statements.at(-1)).toBe('ROLLBACK');
+  });
+
+  test('two at once run one after the other, never interleaved', async () => {
+    const order: string[] = [];
+    const step = (name: string) =>
+      inExclusiveTransaction(async (txn) => {
+        order.push(`${name}:start`);
+        await txn.runAsync('INSERT INTO meta (key, value) VALUES (?, ?)', [name, '1']);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        order.push(`${name}:end`);
+      });
+    await Promise.all([step('a'), step('b')]);
+    expect(order).toEqual(['a:start', 'a:end', 'b:start', 'b:end']);
   });
 });
 

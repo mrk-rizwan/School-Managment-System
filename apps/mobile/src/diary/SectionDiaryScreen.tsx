@@ -2,7 +2,7 @@ import { Capability, formatDay, todayInSchool } from '@asms/shared';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { api, unwrap, unwrapWithDate } from '../api/client';
+import { api, isNetworkError, unwrap, unwrapWithDate } from '../api/client';
 import type { DiaryEntryDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { useSession } from '../auth/session';
@@ -16,6 +16,8 @@ import { useCachedQuery } from '../db/use-cached-query';
 import { useOnline } from '../net/connectivity';
 import { remedyFor } from '../outbox/lanes';
 import { outboxWorker, useLocalQuery } from '../outbox/runtime';
+import { log } from '../platform/log';
+import { errorFields } from '../platform/scrub';
 import { Button } from '../ui/Button';
 import { ListRow } from '../ui/ListRow';
 import { Screen } from '../ui/Screen';
@@ -128,8 +130,13 @@ export function SectionDiaryScreen({
           { text: 'Attach', onPress: () => void retarget(true) },
         ]);
       } else await retarget(false);
-    } catch {
-      setMessage('No connection. Opening the existing entry needs a connection.');
+    } catch (error) {
+      if (isNetworkError(error)) {
+        setMessage('No connection. Opening the existing entry needs a connection.');
+      } else {
+        log('error', 'diary.open_existing_failed', errorFields(error));
+        setMessage('The existing entry could not be opened. Try again.');
+      }
     }
   }
 

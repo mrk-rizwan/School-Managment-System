@@ -7,8 +7,8 @@ import {
   setStagedUpload,
   type LocalAttachment,
 } from '../db/local.repository';
-import { outboxFileExists, outboxFileUri } from '../media/files';
-import { outcomeOf, type SentOutcome } from './outcome';
+import { outboxFileExists, outboxUploadFile } from '../media/files';
+import { outcomeOf, thrownOutcome, type SentOutcome } from './outcome';
 
 // The diary_attachment lane's sender (slice-16 §4.5, §10.1): upload the photo, then PATCH the
 // entry with the staged id. Two client-side adjustments, table-tested in attachment-sender.spec:
@@ -48,13 +48,9 @@ async function upload(row: LocalAttachment): Promise<string | SentOutcome> {
   const sentWith = currentBearerToken();
   let response: Response;
   try {
-    response = await sendMultipart('/api/v1/uploads', 'file', {
-      uri: outboxFileUri(row.fileName),
-      name: row.fileName,
-      mime: row.mime,
-    });
-  } catch {
-    return { kind: 'network' };
+    response = await sendMultipart('/api/v1/uploads', 'file', outboxUploadFile(row.fileName));
+  } catch (error) {
+    return thrownOutcome(error);
   }
   const outcome = await outcomeOf(response, sentWith);
   if (outcome.kind !== 'response') return outcome;
@@ -93,8 +89,8 @@ export async function sendAttachment(
   let response: Response;
   try {
     response = await sendRaw('PATCH', item.path, JSON.stringify({ stagedUploadId }));
-  } catch {
-    return { kind: 'network' };
+  } catch (error) {
+    return thrownOutcome(error);
   }
   const outcome = await outcomeOf(response, sentWith);
   if (

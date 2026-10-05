@@ -25,7 +25,7 @@ import { onDeviceRegistered } from '../push/registration';
 import { sendAttachment } from './attachment-sender';
 import { laneOf } from './lanes';
 import { transition, type OutboxItem } from './machine';
-import { outcomeOf, type SentOutcome } from './outcome';
+import { outcomeOf, thrownOutcome, type SentOutcome } from './outcome';
 import { OutboxWorker, type QueueStatus } from './worker';
 
 // The app's one outbox worker, wired to the real client, store and connectivity.
@@ -41,8 +41,8 @@ async function sendJson(item: OutboxItem): Promise<SentOutcome> {
   let response: Response;
   try {
     response = await sendRaw(item.method, item.path, item.body, headers);
-  } catch {
-    return { kind: 'network' };
+  } catch (error) {
+    return thrownOutcome(error);
   }
   return outcomeOf(response, sentWith);
 }

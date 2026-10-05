@@ -2,7 +2,7 @@ import { newIdempotencyKey } from '@asms/shared';
 import { z } from 'zod';
 import { mergeBodies } from '../outbox/coalesce';
 import type { OutboxItem } from '../outbox/machine';
-import { getDb, readOwner, type Db } from './database';
+import { getDb, inExclusiveTransaction, readOwner, type Db } from './database';
 import { PURGE_ORPHAN_LOCAL_ROWS } from './schema';
 
 // The only SQL on the outbox table (slice-15 §7.2). Rows are validated at the boundary.
@@ -158,9 +158,8 @@ export class NoOwnerError extends Error {
 
 export async function enqueue(input: EnqueueInput, now: Date = new Date()): Promise<string> {
   if ((await readOwner()) === null) throw new NoOwnerError();
-  const db = await getDb();
   let id = '';
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     id = await enqueueIn(txn, input, now);
   });
   return id;
@@ -255,10 +254,9 @@ export async function countUnsent(): Promise<number> {
 
 /** Done and failed rows older than seven days. */
 export async function purgeFinished(now: Date): Promise<number> {
-  const db = await getDb();
   const cutoff = new Date(now.getTime() - PURGE_AFTER_MS).toISOString();
   let changes = 0;
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     const result = await txn.runAsync(
       "DELETE FROM outbox WHERE state IN ('done', 'failed') AND updated_at < ?",
       [cutoff],

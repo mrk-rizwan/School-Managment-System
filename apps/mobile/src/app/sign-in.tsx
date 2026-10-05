@@ -3,6 +3,8 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../auth/session';
 import { readRemembered } from '../auth/session-store';
 import { maskIdentity } from '../auth/sign-in';
+import { log } from '../platform/log';
+import { errorFields } from '../platform/scrub';
 import { Banner } from '../ui/Banner';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
@@ -35,15 +37,23 @@ export default function SignInScreen() {
   async function submit() {
     setBusy(true);
     setError(null);
-    const result = await session.signIn({
-      schoolCode,
-      identity: rememberedUsername ?? identity,
-      password,
-    });
-    setBusy(false);
-    if (result.ok) return;
-    setPassword('');
-    setError(result.message);
+    try {
+      const result = await session.signIn({
+        schoolCode,
+        identity: rememberedUsername ?? identity,
+        password,
+      });
+      if (result.ok) return;
+      setPassword('');
+      setError(result.message);
+    } catch (thrown) {
+      // signIn reports its own failures; a throw is a fault on this phone (the session layer).
+      log('error', 'auth.sign_in_threw', errorFields(thrown));
+      setPassword('');
+      setError('Sign-in failed. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function notMySchool() {

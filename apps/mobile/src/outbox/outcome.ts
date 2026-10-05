@@ -1,6 +1,8 @@
 import { ATTENDANCE_STATUSES, ErrorCode, toApiError } from '@asms/shared';
 import { z } from 'zod';
-import { currentBearerToken } from '../api/client';
+import { currentBearerToken, isNetworkError } from '../api/client';
+import { log } from '../platform/log';
+import { errorFields } from '../platform/scrub';
 import type { Outcome } from './machine';
 
 /** An outcome with what a lane's follow-up reads on a 2xx (slice-16 §10.3). */
@@ -47,6 +49,26 @@ export async function outcomeOf(response: Response, sentWith: string | null): Pr
     message: error.message,
     retryAfterSeconds: error.retryAfterSeconds,
     details: retainedDetails(error.code, error.details),
+  };
+}
+
+export const SEND_FAILED_ON_PHONE = 'SEND_FAILED_ON_PHONE';
+
+/**
+ * A send that threw instead of answering. A network failure (offline, timeout) is retried with
+ * backoff. Anything else — a body the runtime refused, a bug, a storage error — never heals by
+ * retrying, so it is a terminal refusal (422: the machine fails the item, the sync sheet shows it
+ * and offers discard) and is logged at error level, never retried forever as "offline".
+ */
+export function thrownOutcome(error: unknown): SentOutcome {
+  if (isNetworkError(error)) return { kind: 'network' };
+  log('error', 'outbox.send_threw', errorFields(error));
+  return {
+    kind: 'response',
+    status: 422,
+    code: SEND_FAILED_ON_PHONE,
+    message: 'This phone could not send it',
+    retryAfterSeconds: null,
   };
 }
 

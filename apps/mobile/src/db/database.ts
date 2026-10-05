@@ -37,15 +37,64 @@ export function getDb(): Promise<Db> {
   return opening;
 }
 
+/**
+ * The settings SQLite keeps per connection, so every connection gets them — the exclusive
+ * transactions' own connections too. secure_delete: a deleted row's bytes are overwritten, not
+ * left in free pages (review M1). foreign_keys is a no-op inside a transaction, so it is set
+ * before BEGIN.
+ */
+const CONNECTION_PRAGMAS =
+  'PRAGMA secure_delete = ON; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;';
+
 async function open(): Promise<Db> {
   const db = await openDatabaseAsync(DATABASE_NAME);
-  await db.execAsync(
-    // secure_delete: a deleted row's bytes are overwritten, not left in free pages (review M1).
-    'PRAGMA journal_mode = WAL; PRAGMA secure_delete = ON; PRAGMA foreign_keys = ON; ' +
-      'PRAGMA busy_timeout = 5000;',
-  );
+  // journal_mode is a property of the file: set once here, every later connection shares it.
+  await db.execAsync(`PRAGMA journal_mode = WAL; ${CONNECTION_PRAGMAS}`);
   await db.execAsync(META_DDL);
   return db;
+}
+
+let exclusiveQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * One write transaction on its own connection, committed when `task` resolves and rolled back
+ * when it throws; every query inside must go through `txn`. Used instead of expo-sqlite's
+ * withExclusiveTransactionAsync, which opens a fresh connection without our per-connection
+ * settings (no foreign keys, no busy timeout, no secure delete). Transactions run one at a time
+ * (a JS queue: never two of ours waiting on each other's lock); BEGIN IMMEDIATE takes the write
+ * lock at once, so a main-connection writer waits on the busy timeout rather than failing an
+ * upgrade half way through. A task must not start another exclusive transaction (it would wait
+ * for itself).
+ */
+export function inExclusiveTransaction(task: (txn: Db) => Promise<void>): Promise<void> {
+  const run = exclusiveQueue.then(async () => {
+    await getDb(); // opened and migrated before any transaction
+    await runExclusive(task);
+  });
+  exclusiveQueue = run.catch(() => undefined);
+  return run;
+}
+
+async function runExclusive(task: (txn: Db) => Promise<void>): Promise<void> {
+  const txn = await openDatabaseAsync(DATABASE_NAME, { useNewConnection: true });
+  try {
+    await txn.execAsync(CONNECTION_PRAGMAS);
+    await txn.execAsync('BEGIN IMMEDIATE');
+    try {
+      await task(txn);
+      await txn.execAsync('COMMIT');
+    } catch (error) {
+      await txn.execAsync('ROLLBACK');
+      throw error;
+    }
+  } finally {
+    try {
+      await txn.closeAsync();
+    } catch (error) {
+      // The work is committed or rolled back already; a connection that will not close is noise.
+      log('warn', 'db.txn_close_failed', errorFields(error));
+    }
+  }
 }
 
 async function versionOf(db: Db): Promise<number> {
@@ -78,7 +127,8 @@ async function openAndMigrate(): Promise<Db> {
     version = 0;
   }
   if (version < SCHEMA_VERSION) {
-    await db.withExclusiveTransactionAsync(async (txn) => {
+    // Not through the queue: getDb() is still opening, and a queued task would wait on it.
+    await runExclusive(async (txn) => {
       for (const ddl of MIGRATIONS.slice(version)) await txn.execAsync(ddl);
       await txn.runAsync(
         'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
@@ -170,9 +220,8 @@ async function clearRows(db: Db): Promise<void> {
  * a second 401 does not extend the window). Returns the number of unsent items kept.
  */
 export async function wipeForSessionLoss(now: Date = new Date()): Promise<number> {
-  const db = await getDb();
   let kept = 0;
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     await txn.runAsync('DELETE FROM cache');
     await txn.runAsync("DELETE FROM outbox WHERE state IN ('done', 'failed')");
     // Local rows of the kept writes stay with them (slice-16 §8); the rest go.
@@ -202,9 +251,8 @@ export async function discardExpiredUnsent(
   now: Date = new Date(),
   resuming = false,
 ): Promise<DiscardedItem[]> {
-  const db = await getDb();
   let discarded: DiscardedItem[] = [];
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await inExclusiveTransaction(async (txn) => {
     const stamp = await txn.getFirstAsync<{ value: string }>(
       'SELECT value FROM meta WHERE key = ?',
       [META.sessionLostAt],

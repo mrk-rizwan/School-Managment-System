@@ -1,10 +1,12 @@
 import { ApiError, ATTENDANCE_STATUSES, ErrorCode, type AttendanceStatus } from '@asms/shared';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { api, unwrap } from '../api/client';
+import { api, isNetworkError, unwrap } from '../api/client';
 import type { AttendanceMarkDto } from '../api/contracts';
 import { useOnlineOnly } from '../net/connectivity';
 import { sensitiveTextError } from '../outbox/bodies';
+import { log } from '../platform/log';
+import { errorFields } from '../platform/scrub';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { ModalSheet } from '../ui/ModalSheet';
@@ -30,8 +32,12 @@ export type AmendFailure =
   | { kind: 'network'; message: string };
 
 export function describeAmendError(error: unknown): AmendFailure {
-  if (!(error instanceof ApiError)) {
+  if (isNetworkError(error)) {
     return { kind: 'network', message: 'No connection. Amending needs a connection.' };
+  }
+  if (!(error instanceof ApiError)) {
+    log('error', 'attendance.amend_failed', errorFields(error));
+    return { kind: 'network', message: 'The mark was not amended. Try again.' };
   }
   if (error.code === ErrorCode.STALE_STATUS) {
     const current = (error.details as { currentStatus?: unknown } | null)?.currentStatus;

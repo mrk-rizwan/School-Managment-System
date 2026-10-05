@@ -2,7 +2,7 @@ import { log } from '../platform/log';
 import { errorFields } from '../platform/scrub';
 import { MAX_CONCURRENT_LANES } from './lanes';
 import { isDue, transition, type Effect, type OutboxItem } from './machine';
-import type { SentOutcome } from './outcome';
+import { thrownOutcome, type SentOutcome } from './outcome';
 
 // The outbox runner (slice-15 §7.4, §7.5, R157, R158). It picks the oldest due item of every idle
 // lane, at most three lanes at once, sends it, and applies the pure machine's transition. Lanes
@@ -169,8 +169,8 @@ export class OutboxWorker {
       let outcome: SentOutcome;
       try {
         outcome = await this.deps.send(sending);
-      } catch {
-        outcome = { kind: 'network' };
+      } catch (error) {
+        outcome = thrownOutcome(error);
       }
       const { item: next, effects } = transition(sending, {
         type: 'outcome',

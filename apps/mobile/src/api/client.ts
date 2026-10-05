@@ -118,9 +118,11 @@ const middleware: Middleware = {
     applyHeaders(request.headers);
     return request;
   },
+  // Inspect only, and return nothing: openapi-fetch then keeps the response as it is. Returning it
+  // would make openapi-fetch check `instanceof Response`, which expo/fetch's FetchResponse (the
+  // global fetch on a device) is not, and every typed call would throw.
   async onResponse({ request, response }) {
     await inspect(request, response);
-    return response;
   },
 };
 
@@ -151,19 +153,19 @@ export async function sendRaw(
 }
 
 /**
- * A multipart upload (slice-16 §11): POST with FormData — React Native's file part is
- * `{ uri, name, type }` — through the same headers, write timeout and 401/426 routing. No
- * Content-Type is set: the runtime writes the multipart boundary. Used by the photo lane only.
+ * A multipart upload (slice-16 §11): POST with FormData through the same headers, write timeout
+ * and 401/426 routing. The file part is a Blob — on a device an expo-file-system File, whose bytes
+ * expo/fetch reads (it refuses React Native's `{ uri, name, type }` part). No Content-Type is set:
+ * the runtime writes the multipart boundary. Used by the photo lane only.
  */
 export async function sendMultipart(
   path: string,
   field: string,
-  file: { uri: string; name: string; mime: string },
+  file: Blob,
   extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
   const form = new FormData();
-  // React Native reads a file part from this shape; the DOM typing does not know it.
-  form.append(field, { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
+  form.append(field, file);
   const headers = new Headers(extraHeaders);
   applyHeaders(headers);
   headers.delete('Content-Type');
@@ -203,7 +205,20 @@ export async function unwrapWithDate<T>(call: Call<T>): Promise<{ data: T; date:
   return { data: data as T, date: response.headers.get('Date') };
 }
 
-/** True when a failure never reached the API (offline, timeout, DNS): not an ApiError. */
+/**
+ * True when a request got no answer: offline, DNS, refused, timed out or aborted. What each fetch
+ * throws then: expo/fetch (the app's fetch on a device) a FetchError, a plain Error whose message
+ * starts "fetch failed: " (aborts and timeouts included); React Native's fetch a TypeError
+ * "Network request failed" or "Network request timed out"; Node's (Jest) a TypeError "fetch
+ * failed"; an abort signal, an AbortError. Anything else — an ApiError, a bug, a storage error, a
+ * body the runtime refused — is not "offline" and must not be shown or retried as if it were.
+ */
 export function isNetworkError(error: unknown): boolean {
-  return !(error instanceof ApiError);
+  if (typeof error !== 'object' || error === null || error instanceof ApiError) return false;
+  const { name, message } = error as { name?: unknown; message?: unknown };
+  if (name === 'AbortError' || name === 'TimeoutError') return true;
+  return (
+    typeof message === 'string' &&
+    /^(fetch failed|Network request failed|Network request timed out)/.test(message)
+  );
 }

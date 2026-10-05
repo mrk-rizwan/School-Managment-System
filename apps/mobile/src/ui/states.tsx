@@ -6,6 +6,7 @@ import {
   todayInSchool,
 } from '@asms/shared';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { isNetworkError } from '../api/client';
 import { Button } from './Button';
 import { colors, fontSize, space } from './theme';
 
@@ -41,10 +42,13 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  // Only a request that got no answer is "cannot reach"; anything else is a fault on this phone.
   const message =
     error instanceof ApiError
       ? describeApiError(error)
-      : 'Cannot reach the school. Check your connection and try again.';
+      : isNetworkError(error)
+        ? 'Cannot reach the school. Check your connection and try again.'
+        : 'This could not be shown. Try again.';
   return (
     <View style={styles.frame} testID="state.error">
       <Text style={styles.title}>Something went wrong</Text>

@@ -18,18 +18,45 @@ const join = (...parts: string[]) =>
 type Part = string | File | Directory;
 const uriOf = (parts: Part[]) => join(...parts.map((p) => (typeof p === 'string' ? p : p.uri)));
 
-export class File {
+const TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', pdf: 'application/pdf' };
+const nameOf = (uri: string) => uri.slice(uri.lastIndexOf('/') + 1);
+
+/**
+ * As on the device, a File is a Blob (expo-file-system 57: `class File ... implements Blob`): its
+ * name is the last path segment, its type comes from the extension, and its bytes are read when
+ * it is sent as a multipart part (here: `size` zero bytes). It extends Node's File so the test
+ * runtime's FormData keeps it as a file part with its filename and type.
+ */
+export class File extends globalThis.File {
   readonly uri: string;
   constructor(...parts: Part[]) {
-    this.uri = uriOf(parts);
+    const uri = uriOf(parts);
+    const name = nameOf(uri);
+    super([], name, { type: TYPES[name.slice(name.lastIndexOf('.') + 1).toLowerCase()] ?? '' });
+    this.uri = uri;
   }
-  get name(): string {
-    return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+  override get name(): string {
+    return nameOf(this.uri);
+  }
+  override bytes(): Promise<Uint8Array<ArrayBuffer>> {
+    return Promise.resolve(new Uint8Array(this.size));
+  }
+  override arrayBuffer(): Promise<ArrayBuffer> {
+    return Promise.resolve(new ArrayBuffer(this.size));
+  }
+  override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+    const bytes = new Uint8Array(this.size);
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
   }
   get exists(): boolean {
     return files.has(this.uri);
   }
-  get size(): number {
+  override get size(): number {
     return files.get(this.uri) ?? 0;
   }
   create(): void {
