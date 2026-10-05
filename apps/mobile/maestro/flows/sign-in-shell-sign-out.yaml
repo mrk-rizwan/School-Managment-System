@@ -29,7 +29,9 @@ appId: pk.asms.app.dev
     id: 'home.fullName'
 - assertVisible:
     id: 'tabs.home'
-- assertVisible:
+# No default-password banner: the CI seed records the principal's password as changed (rule 24
+# would otherwise block the seeded principal's user management); the password is still the CNIC.
+- assertNotVisible:
     id: 'home.defaultPassword'
 # Six tabs for the principal since slice 16: calendar and account sit under More.
 - tapOn:

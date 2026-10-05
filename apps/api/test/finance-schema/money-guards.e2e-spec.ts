@@ -5,6 +5,7 @@
 // row even if a guard were missing (an exemption in guardrails/no-truncate.spec.ts). Fixtures are
 // committed through the guarded client first, in a school of their own.
 import { Client, type DatabaseError } from 'pg';
+import { createPlatformUser } from '../support/platform';
 import { createSchoolUser, type TestSchoolUser } from '../support/school-session';
 import { closeTestDb, createSchool, testDb } from '../support/schools';
 import { createClassWithSection, createGuardian, createStudent, enrol, isoDay, linkGuardian } from '../support/students';
@@ -392,7 +393,7 @@ describe('wave I money guards (raw SQL)', () => {
     expect(await refusedBy(`UPDATE platform_invoices SET amount = 1 WHERE id = $1`, [inv])).toBe('platform_invoices_amount_immutable');
     await run(`UPDATE platform_invoices SET status = 'paid', paid_at = now() WHERE id = $1`, [inv]);
     expect(await refusedBy(`UPDATE platform_invoices SET status = 'issued' WHERE id = $1`, [inv])).toBe('platform_invoices_status_transition');
-    await add('platform_payments', { invoice_id: inv, amount: 1000, received_on: today, reference: 'TRX-1', recorded_by: (await run('SELECT min(id) AS id FROM platform_users'))[0]?.id });
+    await add('platform_payments', { invoice_id: inv, amount: 1000, received_on: today, reference: 'TRX-1', recorded_by: (await createPlatformUser()).id }); // its own user: a fresh CI database has none
     await add('platform_school_metrics', { school_id: schoolId, day: today, active_students: 3, computed_at: new Date() });
     expect(await refusedBy(`UPDATE platform_payments SET amount = 1 WHERE invoice_id = $1`, [inv])).toBe('platform_payments_amount_immutable');
     expect(await tryAdd('platform_school_metrics', { school_id: schoolId, day: today, active_students: -1, computed_at: new Date() })).toBe('platform_school_metrics_active_students_check');
