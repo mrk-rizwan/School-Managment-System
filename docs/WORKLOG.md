@@ -11,10 +11,12 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phase 1 complete and closed. **Phase 2 waves D, E and F done** (2026-10-04/05):
-  slices 9-16. **CI fully green on `e4ec096` (run 37292986940), including the first complete
-  Android emulator run: all seven Maestro flows pass.** **Next: wave G** = slice 17 (phase close).
-  Phase 2 = 40.5 / 42 days (96 %); project = 70.5 / 157 days (45 %).
+- **Phase:** Phases 1 and 2 complete and closed. **Phase 2 closed 2026-10-05**: phase gate PASS
+  (second run) on `e4494b2`, CI run 37329811329 green including all seven Maestro flows on the
+  emulator. The real-driver proof is deferred as an owner-blocked hard precondition of the first
+  deployment and the Phase 3 gate ("Left to do" item 1). **Next: Phase 3 (Financial)**: it needs
+  the owner's answers to register items 7-11 before its schema, then a plan
+  (`docs/plans/phase-3-financial.md`). Project progress = 72 / 157 days = 46 %.
 - **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
   `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
@@ -234,7 +236,7 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
 
-## 2026-10-05 — Phase 2 wave G: slice 17, the phase close (Opus 5.5 builds, Fable 5.1 reviews)
+## 2026-10-05 — Phase 2 wave G: slice 17, the phase close (Opus 5.5 builds, Fable 5.1 reviews) — DONE, phase gate PASS on `e4494b2`
 
 **Reviews:** whole-phase security PASS with two conditions, both closed: (1) WAHA's deployment
 requirements now exist as a compose `whatsapp` profile (no published port, private plus
