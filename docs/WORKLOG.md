@@ -70,10 +70,12 @@ slice 0 are not counted.
    only while R112 holds (a missing driver credential fails production boot); if that rule is
    relaxed, the deferral lapses. It becomes a FAIL if the accounts exist, or a school is
    scheduled to go live, before the proof is done.
-2. **Product owner: settle the schema-freeze register items 7-11, 13 (grace), 21, 24, 25**
-   (partial payment, sibling discount, concession scope, proration, exit states, results approval
-   unit, late-payment charge, banking). Phase 3's schema cannot freeze without 7-11. Items 22, 23,
-   26 are built with defaults the owner tunes; 12 (cover) and 13 (suspension) are partly answered.
+2. **Phase 3 (Financial) decisions settled 2026-10-05:** the owner accepted the main-thread
+   recommendations; recorded as CLAUDE.md rules 18-25 (register items 7-13, 16, 18, 24, 25, 30
+   closed). Defaults the main thread chose where it had made no recommendation (late fee off,
+   both payment paths, seeded fee heads, receipts, expense threshold Rs 5,000, salary and leave
+   defaults, platform billing tiers, 15-day grace, 12-month retention) are open to the owner's
+   correction. Next: `docs/plans/phase-3-financial.md`.
 3a. **Owner answered Phase 2 §1.2 on 2026-10-03** (recorded in the plan): the principal pairs
    the school's own WhatsApp number; the platform admin sets each school's SMS cap; **nothing is
    disturbed under suspension until termination** (this lifts Phase 1 R80's read-only rule —

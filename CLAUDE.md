@@ -85,6 +85,51 @@ Confirmed by the product owner on 2026-10-01 (previously open decisions 1, 2, 3,
 16. **English only.** No Urdu interface, no right-to-left layout, all messages to parents in English. If Urdu is ever added it is a new decision, not a toggle.
 17. **Guardian contact capability is a three-value field on the guardian** — WhatsApp, smartphone with data, or keypad phone — asked by the office at admission and editable later. Every notification routing rule reads it. Unknown is not a value; the office must pick one.
 
+Confirmed by the product owner on 2026-10-05, who accepted the main-thread recommendations for
+Phase 3 (previously open decisions 7-11, 12, 13, 16, 18, 24, 25, 30). Values marked *default* are
+per-school settings the school can change; the rest are rules.
+
+18. **Fees and payments.** A partial payment is accepted; the balance stays owing and carries
+    forward. A payment clears the **oldest** charge first (a PAYMENT row and PAYMENT_ALLOCATION rows,
+    so one payment can cover several children). A student who joins after a cut-off day is not
+    charged that month; one who leaves is charged the leaving month in full (cut-off *default* the
+    15th). Late fee: off by *default*; when a school turns it on it is a fixed amount charged
+    automatically after a grace day, and only the principal may waive it. Fee types are FEE_HEAD rows
+    (rule 8) seeded with tuition (monthly), admission (once), annual charges (yearly), exam (per
+    term) and fine (ad hoc); the school edits them. Every receipt carries a number sequential per
+    school per academic year, and is printable and sent by WhatsApp or SMS by the usual routing.
+19. **Concessions** hang off the student's enrolment, not the family: there is no automatic sibling
+    discount, and a sibling reduction is an ordinary concession. A concession is a percentage or a
+    fixed amount, applies to the fee heads it names (*default* tuition only; fines never, per the
+    assumption below), ends with the academic year, and is approved by the principal (the office may
+    request one).
+20. **Leaving and suspension.** Unpaid dues block a leaving certificate unless the principal overrides,
+    with a reason, audited. Fees paid in advance for months not yet started are refundable through a
+    principal-approved refund (a new row referencing the payment, rule 4); the admission fee is never
+    refunded. A suspended student is still enrolled: still charged, and the family still receives
+    announcements.
+21. **How parents pay.** Cash at the office is the main path. A school that records a bank or
+    wallet account (bank, JazzCash, Easypaisa) also gets the deposit-screenshot flow (rule 10: a claim
+    until the office verifies it). Both exist from Phase 3's first release.
+22. **Expenses, salaries and leave.** The office records expenses by category; an expense above a
+    *default* Rs 5,000 needs the principal's approval. A salary is basic pay plus named allowances
+    minus named deductions; an unpaid-absent day deducts basic pay divided by that month's working
+    days; advances are repaid in instalments from later salaries; salary is paid in cash or by bank
+    transfer on a *default* pay day of the 1st. Leave types *default* to casual (10 days a year), sick
+    (10) and unpaid (no limit); the principal approves leave and may name a cover teacher on
+    approval (built in Phase 2).
+23. **Platform billing** (the platform's own money layer, rule 1): a monthly subscription per school,
+    priced by student-count tier, each tier with a bundled monthly SMS allowance (which sets
+    `sms_monthly_cap`); the prices are platform settings, not code. A school past due gets 15 days'
+    grace before the platform may suspend it (suspension disturbs nothing, R80 lifted); after
+    termination its data is kept for 12 months.
+24. **Privileged capabilities on a default password** (was open item 30): `role.manage` and
+    `user.account.manage` are inert while the holder still uses the default password; everything
+    else works.
+25. **Accounting basis** (was deferrable item 16): every money row stores both the date a charge
+    falls due and the date a payment was verified, so reports can show either view; the default
+    report view is decided with the reports.
+
 ## How tenant isolation is implemented — the mechanism behind rule 2
 
 Decided 2026-10-02. **Scoping is enforced in the application, in a repository layer. The database
@@ -373,26 +418,18 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 
 | # | Decision | Status |
 |---|---|---|
-| 30 | **Privileged capabilities on a default password.** A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Open, raised by the security review 2026-10-02. Recommended: yes. Not built; it is a one-line check in the capability guard, so it does not block Phase 1 |
+| ~~30~~ | **Closed 2026-10-05 → rule 24.** ~~Privileged capabilities on a default password.~~ A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Open, raised by the security review 2026-10-02. Recommended: yes. Not built; it is a one-line check in the capability guard, so it does not block Phase 1 |
 
-Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
+Closed 2026-10-05: 7, 8, 9, 10 → rules 18-19 · 11 → rule 20 · 12 (leave) → rule 22 · 13 (grace, retention) → rule 23 · 16 → rule 25 · 18 → rule 23 · 24 → rule 18 · 25 → rule 21 · 30 → rule 24.
+Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 
 ### Blocks the schema freeze — feature is later, the shape is now
 
 | # | Decision |
 |---|---|
-| 7 | **Partial payment** — the architecture says "decide", spec §10 already assumes yes. Settle it. Note: PAYMENT / PAYMENT_ALLOCATION split is needed for sibling payments regardless |
-| 8 | **Sibling discounts** — decides whether concession hangs off student or family |
-| 9 | **Concession scope** — do free and partial students pay exam fees, trip fees, fines? Percentage or fixed? Does it expire at year end? |
-| 10 | **Proration** — student admitted on the 18th or leaving on the 6th: full month, pro-rata, or next month |
-| 11 | **Exit states** — withdrawal, transfer, suspension: dues, refunds, whether arrears block a leaving certificate |
-| 12 | **Staff leave** — types, entitlement, approval, effect on salary. *Answered 2026-10-03:* who marks the register when the class teacher is away — a cover assignment named by the principal, with full class-teacher scope for its dates; unrecorded registers surface on the principal's Today screen (built in Phase 2). Leave itself is still open |
-| 13 | **Grace and retention windows** — months of retention after termination. *Answered 2026-10-03:* a suspended school is not disturbed until the platform terminates it, so Phase 1's R80 (suspended = read-only) is lifted; only `terminated` is refused. Whether a grace period precedes termination is still open |
 | 21 | **Results approval unit** — does the principal approve a term result per class or per student? Raised in the architecture doc's approvals inbox |
 | 22 | **Which message types may reach SMS at all** — SMS costs per message; the routing rule needs a per-type allow list. Raised in the architecture doc's delivery notes. *Built with a default the owner tunes:* a per-school SMS allow list with a platform default |
 | 23 | **Late arrival** — counts as present, half day, or absent past a cut-off time; affects the attendance percentage. Presentation slide 24. *Built with a default the owner tunes:* `late_counts_as` = present |
-| 24 | **Late-payment charge** — automatic after due date or at discretion; amount; who may waive. Presentation slide 24 |
-| 25 | **Banking** — does the school have an account guardians can remit to? Decides whether the deposit-screenshot flow exists on day one. Presentation slide 24 |
 | 26 | **Default remark visibility** — are teacher remarks pushed to guardians or visible on enquiry only. Presentation slide 24. *Built with a default the owner tunes:* visible to guardians, not notified |
 
 ### Deferrable without rework
@@ -401,8 +438,6 @@ Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi
 |---|---|---|
 | 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns. Client docs say "before results are built"; that is this condition, not Phase 1 |
 | 15 | Promotion rules at year rollover | Enrolment already close-old/open-new; needed before first year-end |
-| 16 | Cash basis or accrual | **Only if** both charge-due date and payment-verified date are stored on every row from the start |
-| 18 | Message-cost model — bundled allowance or credits | *Partly answered 2026-10-03:* the platform admin sets each school's monthly SMS cap (`schools.sms_monthly_cap`). The price model still feeds the subscription plan table. The presentation tells the client "a monthly allowance is agreed in advance"; if accepted, this closes as bundled allowance |
 | 20 | Transport module | Phase 5 |
 
 ### Assumed unless corrected
@@ -418,4 +453,4 @@ Closed: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **salary structure** (bonuses, deductions, advances) · **platform support access** (the audit mechanism behind the assumption above).
+These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).
