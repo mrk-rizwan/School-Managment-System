@@ -46,14 +46,14 @@ them when each phase is planned, and say so in the report.
 |---|---|---|
 | 1 Foundation | slices 0–8 (plan §5) | 30 |
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
-| 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised after four reviews) | 38 |
+| 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised twice, approved 2026-10-06) | 38.5 |
 | 4 Academic | assessments, results, report cards, certificates, promotion | 30 |
 | 5 Extended | biometric, advanced reporting, transport | 20 |
-| **Total** | | **160** |
+| **Total** | | **160.5** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
-slice in progress counts half. **Project % = days done ÷ 160.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
+slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
 11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Planning and reviews done before
 slice 0 are not counted.
 
