@@ -22,6 +22,7 @@ type Me = {
   school: { id: string; name: string; shortCode: string; status: string };
   roles: string[];
   capabilities: string[];
+  blockedCapabilities: string[];
   sessionExpiresAt: string;
 };
 
@@ -62,7 +63,9 @@ describe('school login, logout and /me', () => {
       expect(me.id).toBe(user.userId.toString());
       expect(me.passwordIsDefault).toBe(true);
       expect(me.roles).toEqual(['principal']);
-      expect(me.capabilities).toContain('role.manage');
+      // Rule 24 (R225): held, but inert until the default password is changed.
+      expect(me.capabilities).not.toContain('role.manage');
+      expect(me.blockedCapabilities).toEqual(['user.account.manage', 'role.manage']);
       expect(me.school).toMatchObject({ id: school.id.toString(), shortCode: school.shortCode });
       // The token is in the cookie only; no identity number anywhere in the body.
       expect(JSON.stringify(res.body)).not.toMatch(/[0-9]{13}/);
@@ -117,7 +120,7 @@ describe('school login, logout and /me', () => {
       const left = await createSchoolUser(db(), school, { systemRole: 'teacher', password: 'right-password', staffStatus: 'left' }); // pragma: allowlist secret
       const gone = await createSchool();
       const inGone = await createSchoolUser(db(), gone, { systemRole: 'principal', password: 'right-password' }); // pragma: allowlist secret
-      await db().school.update({ where: { id: gone.id }, data: { status: 'terminated' } });
+      await db().school.update({ where: { id: gone.id }, data: { status: 'terminated', terminatedAt: new Date() } });
       const attempts = [
         { schoolCode: school.shortCode, username: ok.cnic, password: 'wrong-password' }, // pragma: allowlist secret
         { schoolCode: school.shortCode, username: '1234567890123', password: 'right-password' }, // pragma: allowlist secret
@@ -337,7 +340,7 @@ describe('school login, logout and /me', () => {
       expect(me.capabilities[0]).toBe('user.account.manage');
       expect(me.capabilities).not.toContain('role.manage');
       expect(Object.keys(me).sort()).toEqual(
-        ['assignments', 'capabilities', 'capabilityScopes', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],
+        ['assignments', 'blockedCapabilities', 'capabilities', 'capabilityScopes', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],
       );
       expect(JSON.stringify(me)).not.toMatch(/[0-9]{13}/);
     });

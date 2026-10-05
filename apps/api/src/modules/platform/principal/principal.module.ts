@@ -3,6 +3,7 @@ import { CryptoModule } from '../../../common/crypto/crypto.module';
 import { AuditLogRepository } from '../../../repositories/audit-log.repository';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository } from '../../../repositories/platform/school.repository';
+import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { StaffRepository } from '../../../repositories/staff.repository';
 import { UserRoleRepository } from '../../../repositories/user-role.repository';
 import { UserTokenRepository } from '../../../repositories/user-token.repository';
@@ -21,6 +22,7 @@ import { PrincipalLoginService } from './principal.service';
     StaffRepository,
     UserRepository,
     UserRoleRepository,
+    SchoolSettingsRepository,
     UserTokenRepository,
     AuditLogRepository,
     PlatformAuditRepository,

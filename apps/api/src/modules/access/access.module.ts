@@ -1,4 +1,7 @@
 import { Global, Module } from '@nestjs/common';
+import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
+import { UserRoleRepository } from '../../repositories/user-role.repository';
 import { CapabilityGrantRepository } from '../../repositories/capability-grant.repository';
 import { CustomRoleRepository } from '../../repositories/custom-role.repository';
 import { OwnSchoolRepository } from '../../repositories/own-school.repository';
@@ -25,6 +28,11 @@ import { SchoolClock } from '../../common/school-clock';
     TeacherAssignmentRepository,
     // The guardian capacity scope (contracts/slice-13.md §1.2).
     StudentGuardianRepository,
+    // Phase 3: the rule-24 refusal's audit row, and the sole-principal read under the settings
+    // lock (phase-3-financial.md §3.1).
+    AuditLogRepository,
+    SchoolSettingsRepository,
+    UserRoleRepository,
   ],
   exports: [
     PermissionsService,

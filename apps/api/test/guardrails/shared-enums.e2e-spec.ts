@@ -1,4 +1,4 @@
-// The Phase 2 value sets are declared twice: as Postgres enums (the migrations) and in
+// The Phase 2 and 3 value sets are declared twice: as Postgres enums (the migrations) and in
 // packages/shared (the API's DTOs and the clients). This reads the migrated catalog and fails on
 // any difference, so a value added on one side only cannot ship.
 import {
@@ -40,6 +40,27 @@ import {
   WHATSAPP_PROVIDER_CHOICES,
   WHATSAPP_PROVIDERS,
   WHATSAPP_STATUSES,
+  FEE_FREQUENCIES,
+  FEE_HEAD_CATEGORIES,
+  FEE_HEAD_STATUSES,
+  FEE_STRUCTURE_STATUSES,
+  PAYMENT_ACCOUNT_KINDS,
+  PAYMENT_ACCOUNT_STATUSES,
+  CONCESSION_KINDS,
+  CONCESSION_STATUSES,
+  CHARGE_KINDS,
+  CHARGE_STATUSES,
+  CHARGE_RUN_KINDS,
+  CHARGE_RUN_STATUSES,
+  CAMPAIGN_STATUSES,
+  PAYMENT_METHODS,
+  EXPENSE_CATEGORIES,
+  EXPENSE_STATUSES,
+  LEAVE_CODES,
+  LEAVE_TYPE_STATUSES,
+  LEAVE_STATUSES,
+  PLAN_STATUSES,
+  INVOICE_STATUSES,
 } from '@asms/shared';
 import { Client } from 'pg';
 
@@ -82,6 +103,29 @@ const PAIRS: [string, readonly string[]][] = [
   ['announcement_status', ANNOUNCEMENT_STATUSES],
   ['audience_kind', AUDIENCE_KINDS],
   ['audience_role', AUDIENCE_ROLES],
+  // Phase 3 slice 18 (phase-3-financial.md §4). Each later slice adds its own.
+  ['fee_head_category', FEE_HEAD_CATEGORIES],
+  ['fee_frequency', FEE_FREQUENCIES],
+  ['fee_head_status', FEE_HEAD_STATUSES],
+  ['fee_structure_status', FEE_STRUCTURE_STATUSES],
+  ['payment_account_kind', PAYMENT_ACCOUNT_KINDS],
+  ['payment_account_status', PAYMENT_ACCOUNT_STATUSES],
+  // Wave I (slices 19, 23, 24, 26).
+  ['concession_kind', CONCESSION_KINDS],
+  ['concession_status', CONCESSION_STATUSES],
+  ['charge_kind', CHARGE_KINDS],
+  ['charge_status', CHARGE_STATUSES],
+  ['charge_run_kind', CHARGE_RUN_KINDS],
+  ['charge_run_status', CHARGE_RUN_STATUSES],
+  ['campaign_status', CAMPAIGN_STATUSES],
+  ['payment_method', PAYMENT_METHODS],
+  ['expense_category', EXPENSE_CATEGORIES],
+  ['expense_status', EXPENSE_STATUSES],
+  ['leave_code', LEAVE_CODES],
+  ['leave_type_status', LEAVE_TYPE_STATUSES],
+  ['leave_status', LEAVE_STATUSES],
+  ['plan_status', PLAN_STATUSES],
+  ['invoice_status', INVOICE_STATUSES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

@@ -169,7 +169,8 @@ export class SchoolRepository {
   async changeStatus(id: bigint, from: SchoolStatus, to: SchoolStatus): Promise<number> {
     const { count } = await this.txHost.tx.school.updateMany({
       where: { id, status: from },
-      data: { status: to },
+      // R224: terminating stamps terminated_at (CHECK schools_terminated_at_check).
+      data: { status: to, ...(to === 'terminated' ? { terminatedAt: new Date() } : {}) },
     });
     return count;
   }

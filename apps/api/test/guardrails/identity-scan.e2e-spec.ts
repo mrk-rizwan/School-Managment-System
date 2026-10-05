@@ -40,7 +40,7 @@ import {
 } from '../messaging/support';
 import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
-import { randomIdentityDigits } from '../support/school-session';
+import { randomIdentityDigits, testIdentityHash } from '../support/school-session';
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
 import { createClassWithSection, randomPhone, type TestSection } from '../support/students';
 import { FakeMailer, nextIp, ORIGIN, sessionCookieOf } from '../school-auth/support';
@@ -114,6 +114,14 @@ describe('R16: identity numbers never reach logs, responses, audit or idempotenc
     const signedIn = await login(dashed(principalCnic), principalCnic);
     expect(signedIn.status).toBe(200);
     const principal = sessionCookieOf(signedIn);
+    // Rule 24 (R225): user.account.manage is inert until the default password is changed (which
+    // first needs a verified email, rule 12); this scan is about identity numbers, so the change is
+    // recorded directly.
+    const changed = await db.user.updateMany({
+      where: { schoolId: school.id, usernameHash: testIdentityHash(principalCnic) },
+      data: { passwordIsDefault: false },
+    });
+    expect(changed.count).toBe(1);
 
     // Staff: create with a dashed CNIC, a duplicate refusal, issue-login, login, office reset.
     const staffCnic = digits();
@@ -298,6 +306,31 @@ describe('R16 (slice 17): every message template, rendered with realistic values
   );
 
   // One entry per type, typed so that a new MessageType fails to compile until it is rendered here.
+  /**
+   * Phase 3 types whose templates their own slices write (phase-3-financial.md §3.6). Each still
+   * refuses to render; once a slice writes its template it leaves this set and is scanned above.
+   */
+  const TEMPLATE_PENDING = new Set<MessageType>([
+    'fee_charged',
+    'fee_due_reminder',
+    'fee_overdue',
+    'receipt_issued',
+    'payment_claim_rejected',
+    'payment_claim_submitted',
+    'handover_shortfall',
+    'reminder_sms_capped',
+    'concession_requested',
+    'concession_decided',
+    'expense_approval_requested',
+    'expense_decided',
+    'leave_requested',
+    'leave_decided',
+    'payslip_ready',
+    'platform_invoice_issued',
+    'platform_invoice_overdue',
+    'billing_tier_missing',
+  ]);
+
   const RENDERED: { [K in MessageType]: () => Rendered[] } = {
     absence_alert: () => [renderMessage('absence_alert', { ...child, date: day('2026-10-05') }, ctx('attendance_alert'))],
     late_advice: () => [
@@ -369,14 +402,39 @@ describe('R16 (slice 17): every message template, rendered with realistic values
         ctx('teacher_assignment'),
       ),
     ],
+    // Phase 3: no template yet (TEMPLATE_PENDING); the slice that writes one renders it here.
+    fee_charged: () => [],
+    fee_due_reminder: () => [],
+    fee_overdue: () => [],
+    receipt_issued: () => [],
+    payment_claim_rejected: () => [],
+    payment_claim_submitted: () => [],
+    handover_shortfall: () => [],
+    reminder_sms_capped: () => [],
+    concession_requested: () => [],
+    concession_decided: () => [],
+    expense_approval_requested: () => [],
+    expense_decided: () => [],
+    leave_requested: () => [],
+    leave_decided: () => [],
+    payslip_ready: () => [],
+    platform_invoice_issued: () => [],
+    platform_invoice_overdue: () => [],
+    billing_tier_missing: () => [],
   };
 
-  it.each(MESSAGE_TYPES.map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {
+  it.each(MESSAGE_TYPES.filter((type) => !TEMPLATE_PENDING.has(type)).map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {
     const rendered = RENDERED[type]();
     expect(rendered.length).toBeGreaterThan(0);
     for (const { title, body } of rendered) {
       expect(body.length).toBeGreaterThan(0);
       expect([title, body, smsTextOf(body, true)].filter(leaks)).toEqual([]);
+    }
+  });
+
+  it('R16: every type still pending a template refuses to render (so none is sent unscanned)', () => {
+    for (const type of TEMPLATE_PENDING) {
+      expect(() => renderMessage(type, {}, ctx('receipt'))).toThrow('written by its own slice');
     }
   });
 

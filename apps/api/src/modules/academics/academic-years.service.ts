@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode, type AcademicYearStatus } from '@asms/shared';
+import { ErrorCode, receiptCounterName, type AcademicYearStatus } from '@asms/shared';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { readLocked } from '../../common/locking';
 import { daysBetween } from '../../common/school-clock';
@@ -12,6 +12,7 @@ import {
 } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { EnrolmentRepository } from '../../repositories/enrolment.repository';
+import { SchoolCounterRepository } from '../../repositories/school-counter.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { type Changes, fromDateString, toDateString, yearClosed } from './academics.shared';
 import type {
@@ -67,6 +68,7 @@ export class AcademicYearsService {
     private readonly years: AcademicYearRepository,
     private readonly audit: AuditLogRepository,
     private readonly enrolments: EnrolmentRepository,
+    private readonly counters: SchoolCounterRepository,
   ) {}
 
   async list(query: ListAcademicYearsQueryDto): Promise<Page<AcademicYearDto>> {
@@ -93,6 +95,8 @@ export class AcademicYearsService {
     const endsOn = fromDateString(dto.endsOn);
     assertSpan(startsOn, endsOn);
     const year = await this.years.create(schoolId, { name: dto.name, startsOn, endsOn });
+    // Rule 18: one receipt sequence per school per year, created with the year (§3.5).
+    await this.counters.create(schoolId, receiptCounterName(year.id));
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'academic_year.created',

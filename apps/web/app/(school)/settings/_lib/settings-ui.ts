@@ -46,6 +46,25 @@ export const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   messaging_test: 'Test messages',
   whatsapp_session_down: 'WhatsApp down alerts',
   cover_assigned: 'Cover assignments',
+  // Phase 3 (fees, payments, expenses, leave, payroll, platform billing).
+  fee_charged: 'New fee charges',
+  fee_due_reminder: 'Fee due reminders',
+  fee_overdue: 'Overdue fee reminders',
+  receipt_issued: 'Payment receipts',
+  payment_claim_rejected: 'Rejected deposit slips',
+  payment_claim_submitted: 'Deposit slips to verify',
+  handover_shortfall: 'Cash handover shortfalls',
+  reminder_sms_capped: 'Fee reminders held by the SMS limit',
+  concession_requested: 'Concession requests',
+  concession_decided: 'Concession decisions',
+  expense_approval_requested: 'Expenses awaiting approval',
+  expense_decided: 'Expense decisions',
+  leave_requested: 'Leave requests',
+  leave_decided: 'Leave decisions',
+  payslip_ready: 'Payslips',
+  platform_invoice_issued: 'Subscription invoices',
+  platform_invoice_overdue: 'Overdue subscription invoices',
+  billing_tier_missing: 'Billing tier missing',
 };
 
 /** `HH:MM`, 00:00–23:59 (the API's pattern). */

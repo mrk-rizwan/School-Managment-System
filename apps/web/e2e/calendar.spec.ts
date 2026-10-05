@@ -16,6 +16,7 @@ const PRINCIPAL_ME: MeDto = {
   email: 'amina@example.test',
   hasVerifiedEmail: true,
   passwordIsDefault: false,
+  blockedCapabilities: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),

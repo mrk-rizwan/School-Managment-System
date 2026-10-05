@@ -251,6 +251,30 @@ export class StudentGuardianRepository {
     return rows.map(({ student, ...row }) => ({ ...row, ...student }));
   }
 
+  /**
+   * R232's own-child predicate: some guardian record in the merge family of the user's guardian
+   * (asms_guardian_merge_family: merged_into_id followed both ways, at most five steps, defined
+   * once in migration 20261006080000_slice18_review_fixes) has a live link to the student.
+   * `can_login` does not matter: a parent is a parent whether or not they sign in. Every table
+   * read is filtered on school_id (test/fees/isolation.e2e-spec.ts).
+   */
+  async userIsLiveGuardianOf(schoolId: SchoolId, userId: bigint, studentId: bigint): Promise<boolean> {
+    const rows = await this.txHost.tx.$queryRaw<{ linked: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM users u
+        CROSS JOIN LATERAL asms_guardian_merge_family(${schoolId}::bigint, u.guardian_id) AS fam(id)
+        JOIN student_guardians sg
+          ON sg.school_id = ${schoolId}::bigint AND sg.guardian_id = fam.id
+        WHERE u.school_id = ${schoolId}::bigint
+          AND u.id = ${userId}::bigint
+          AND u.guardian_id IS NOT NULL
+          AND sg.student_id = ${studentId}::bigint
+          AND sg.ended_at IS NULL
+      ) AS linked`;
+    return rows[0]?.linked === true;
+  }
+
   /** The guardian is the primary contact on some live link (R30: the phone must stay). */
   async isLivePrimaryContact(schoolId: SchoolId, guardianId: bigint): Promise<boolean> {
     const row = await this.txHost.tx.studentGuardian.findFirst({

@@ -1,7 +1,7 @@
 import { Capability } from '@asms/shared';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import { randomBytes, randomInt } from 'node:crypto';
-import { seedPlatformAdmin } from './support/seed';
+import { recordPrincipalPasswordChanged, seedPlatformAdmin } from './support/seed';
 import { totp } from './support/totp';
 
 // The slice-7 scenario against the REAL API (started by playwright.config.ts on the TEST
@@ -101,6 +101,8 @@ test('principal grants payment.verify to an office user; /me shows it; ending it
   // ---- Principal: an office staff member with a login.
   const principalContext = await browser.newContext();
   const page = await principalContext.newPage();
+  // Rule 24: the principal manages logins only once the default password is changed.
+  recordPrincipalPasswordChanged(shortCode);
   await schoolSignIn(page, principalCnic);
   await page.goto('/staff/new');
   await page.getByLabel('Full name').fill(officeName);

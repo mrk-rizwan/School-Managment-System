@@ -2,7 +2,12 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { AddressInfo } from 'node:net';
 import { PrincipalLoginService } from '../../src/modules/platform/principal/principal.service';
 import { SchoolsService } from '../../src/modules/platform/schools/schools.service';
-import { apiClient, seedClassroom, SeedHttpError } from '../../scripts/seed-dev-school';
+import {
+  apiClient,
+  recordDevPrincipalPasswordChanged,
+  seedClassroom,
+  SeedHttpError,
+} from '../../scripts/seed-dev-school';
 import { createTestApp } from '../core/app';
 import { createPlatformUser } from '../support/platform';
 import { randomIdentityDigits } from '../support/school-session';
@@ -43,6 +48,7 @@ test('seeds the classroom once, finds it the second time, and prints no identity
     cnic: principal,
     phone: '+923000000000',
   });
+  await recordDevPrincipalPasswordChanged(app, BigInt(school.id));
   const printed = jest.spyOn(console, 'log').mockImplementation(() => undefined);
 
   const sizes = { A: 3, B: 1 };

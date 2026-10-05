@@ -105,7 +105,7 @@ describe('school session resolution and the access guard', () => {
       const gone = await createSchool();
       const user = await createSchoolUser(db(), gone, { systemRole: 'principal' });
       const s = await createSchoolSession(db(), gone, user);
-      await db().school.update({ where: { id: gone.id }, data: { status: 'terminated' } });
+      await db().school.update({ where: { id: gone.id }, data: { status: 'terminated', terminatedAt: new Date() } });
       await http().get('/api/v1/test-access/authenticated').set('Cookie', s.cookie).expect(401);
     });
   });

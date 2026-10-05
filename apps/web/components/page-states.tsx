@@ -59,6 +59,21 @@ export function EmptyState({
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const apiError = error instanceof ApiError ? error : null;
+  // Rule 24: not a failure but a prompt; retrying cannot help until the password is changed.
+  if (apiError?.code === ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION) {
+    return (
+      <StateFrame icon={<LockIcon className="size-5" />} title="Change your password first">
+        <p className="text-sm text-muted-foreground">
+          Managing user accounts and roles is off while you use the default password.
+        </p>
+        <div className="pt-2">
+          <Link href="/account" className="text-sm font-medium underline underline-offset-4">
+            Change your password
+          </Link>
+        </div>
+      </StateFrame>
+    );
+  }
   return (
     <StateFrame icon={<AlertCircleIcon className="size-5" />} title="Something went wrong">
       <p className="text-sm text-muted-foreground">

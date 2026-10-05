@@ -1432,6 +1432,46 @@
         ],
         "type": "string"
       },
+      "CopyFeeStructuresDto": {
+        "properties": {
+          "effectiveFrom": {
+            "example": "2026-04",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "fromAcademicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "toAcademicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromAcademicYearId",
+          "toAcademicYearId",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
+      "CopyFeeStructuresResultDto": {
+        "properties": {
+          "created": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "skipped": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ],
+        "type": "object"
+      },
       "CopySectionsDto": {
         "properties": {
           "fromClassId": {
@@ -1725,6 +1765,81 @@
         ],
         "type": "object"
       },
+      "CreateFeeHeadDto": {
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeHeadCategory"
+              }
+            ]
+          },
+          "concessionEligible": {
+            "type": "boolean"
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeFrequency"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "refundable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "frequency"
+        ],
+        "type": "object"
+      },
+      "CreateFeeStructureDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-04",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "feeHeadId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "classId",
+          "feeHeadId",
+          "amount",
+          "effectiveFrom"
+        ],
+        "type": "object"
+      },
       "CreateGrantDto": {
         "properties": {
           "capability": {
@@ -1869,6 +1984,39 @@
           "startsOn",
           "name",
           "kind"
+        ],
+        "type": "object"
+      },
+      "CreatePaymentAccountDto": {
+        "properties": {
+          "accountNo": {
+            "description": "Spaces removed and letters upper-cased; never shaped like an identity number",
+            "pattern": "^[0-9A-Za-z-]{4,34}$",
+            "type": "string"
+          },
+          "bankName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentAccountKind"
+              }
+            ]
+          },
+          "title": {
+            "description": "The account holder's name",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "accountNo"
         ],
         "type": "object"
       },
@@ -2696,6 +2844,60 @@
           "ANNOUNCEMENT_NO_RECIPIENTS",
           "CAPABILITY_NOT_HELD",
           "ATTENDANCE_RECORDED_AFTER",
+          "FEE_HEAD_NAME_TAKEN",
+          "FEE_HEAD_CATEGORY_TAKEN",
+          "FEE_HEAD_ARCHIVED",
+          "FEE_STRUCTURE_EXISTS",
+          "FEE_STRUCTURE_NOT_LATER",
+          "FEE_STRUCTURE_MISSING",
+          "CONCESSION_EXISTS",
+          "CONCESSION_NOT_PENDING",
+          "CONCESSION_HEAD_NOT_ELIGIBLE",
+          "CHARGE_NOT_OPEN",
+          "CHARGE_HAS_ALLOCATIONS",
+          "CHARGE_NOT_LATE_FEE",
+          "CHARGE_RUN_IN_PROGRESS",
+          "MONTH_NOT_GENERATABLE",
+          "CAMPAIGN_NOT_DRAFT",
+          "CAMPAIGN_NO_TARGETS",
+          "PAYMENT_SPANS_YEARS",
+          "PAYMENT_NOTHING_DUE",
+          "PAYMENT_VOIDED",
+          "PAYMENT_IN_CUSTODY",
+          "PAYMENT_HAS_REFUND",
+          "REFUND_EXCEEDS_UNALLOCATED",
+          "NOTHING_TO_CARRY_FORWARD",
+          "HANDOVER_OPEN",
+          "HANDOVER_NOTHING_TO_HAND_OVER",
+          "HANDOVER_NOT_OPEN",
+          "HANDOVER_NOT_CONFIRMED",
+          "HANDOVER_NO_SHORTFALL",
+          "CLAIMS_NOT_ACCEPTED",
+          "CLAIM_NOT_PENDING",
+          "CLAIM_LIMIT_REACHED",
+          "CLAIM_IMAGE_MISSING",
+          "CLAIM_IMAGE_EXISTS",
+          "EXPENSE_NOT_PENDING",
+          "EXPENSE_NOT_OPEN",
+          "EXPENSE_RECEIPT_EXISTS",
+          "LEAVE_OVERLAPS",
+          "LEAVE_BALANCE_EXCEEDED",
+          "LEAVE_NOT_PENDING",
+          "LEAVE_STARTED",
+          "LEAVE_TYPE_ARCHIVED",
+          "LEAVE_TYPE_NAME_TAKEN",
+          "SALARY_STRUCTURE_MISSING",
+          "SALARY_STRUCTURE_IN_USE",
+          "ADVANCE_NOT_OPEN",
+          "PAYROLL_RUN_EXISTS",
+          "PAYROLL_RUN_FINALISED",
+          "PAYROLL_RUN_NOT_DRAFT",
+          "PAYSLIP_PAID",
+          "PLAN_BAND_OVERLAPS",
+          "PLAN_ARCHIVED",
+          "PLAN_IN_USE",
+          "INVOICE_NOT_ISSUED",
+          "DEFAULT_PASSWORD_BLOCKS_ACTION",
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
@@ -2706,6 +2908,262 @@
           "whatsapp",
           "sms",
           "email"
+        ],
+        "type": "string"
+      },
+      "FeeFrequency": {
+        "enum": [
+          "monthly",
+          "once",
+          "yearly",
+          "per_term",
+          "ad_hoc"
+        ],
+        "type": "string"
+      },
+      "FeeHeadCategory": {
+        "enum": [
+          "tuition",
+          "admission",
+          "annual",
+          "exam",
+          "fine",
+          "other"
+        ],
+        "type": "string"
+      },
+      "FeeHeadDto": {
+        "properties": {
+          "archiveReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeHeadCategory"
+              }
+            ]
+          },
+          "concessionEligible": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeFrequency"
+              }
+            ]
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "refundable": {
+            "type": "boolean"
+          },
+          "seeded": {
+            "type": "boolean"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeHeadStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "frequency",
+          "concessionEligible",
+          "refundable",
+          "status",
+          "archivedAt",
+          "archiveReason",
+          "seeded",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "FeeHeadSort": {
+        "enum": [
+          "name",
+          "-name"
+        ],
+        "type": "string"
+      },
+      "FeeHeadStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "type": "string"
+      },
+      "FeeStructureClassDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "heads": {
+            "items": {
+              "$ref": "#/components/schemas/FeeStructureHeadDto"
+            },
+            "type": "array"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/FeeStructureDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "classId",
+          "className",
+          "heads",
+          "history"
+        ],
+        "type": "object"
+      },
+      "FeeStructureDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-04",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "feeHeadId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "feeHeadName": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeStructureStatus"
+              }
+            ]
+          },
+          "supersededAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "supersededBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "classId",
+          "feeHeadId",
+          "feeHeadName",
+          "amount",
+          "effectiveFrom",
+          "status",
+          "supersededBy",
+          "supersededAt",
+          "reason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "FeeStructureHeadDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "effectiveFrom": {
+            "example": "2026-04",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "feeHeadId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeeFrequency"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "structureId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feeHeadId",
+          "name",
+          "frequency",
+          "amount",
+          "effectiveFrom",
+          "structureId"
+        ],
+        "type": "object"
+      },
+      "FeeStructureStatus": {
+        "enum": [
+          "active",
+          "superseded"
         ],
         "type": "string"
       },
@@ -3586,6 +4044,12 @@
             "nullable": true,
             "type": "string"
           },
+          "blockedCapabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
           "capabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
@@ -3654,6 +4118,7 @@
           "roles",
           "capabilities",
           "capabilityScopes",
+          "blockedCapabilities",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -3849,6 +4314,12 @@
             },
             "type": "array"
           },
+          "blockedCapabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
           "capabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
@@ -3917,6 +4388,7 @@
           "roles",
           "capabilities",
           "capabilityScopes",
+          "blockedCapabilities",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -4014,7 +4486,17 @@
           "remark",
           "holiday",
           "holiday_cancellation",
-          "teacher_assignment"
+          "teacher_assignment",
+          "charge_run",
+          "fee_reminder",
+          "receipt",
+          "payment_claim",
+          "cash_handover",
+          "concession",
+          "expense",
+          "leave_request",
+          "payslip",
+          "platform_invoice"
         ],
         "type": "string"
       },
@@ -4032,7 +4514,25 @@
           "sms_cap_reached",
           "messaging_test",
           "whatsapp_session_down",
-          "cover_assigned"
+          "cover_assigned",
+          "fee_charged",
+          "fee_due_reminder",
+          "fee_overdue",
+          "receipt_issued",
+          "payment_claim_rejected",
+          "payment_claim_submitted",
+          "handover_shortfall",
+          "reminder_sms_capped",
+          "concession_requested",
+          "concession_decided",
+          "expense_approval_requested",
+          "expense_decided",
+          "leave_requested",
+          "leave_decided",
+          "payslip_ready",
+          "platform_invoice_issued",
+          "platform_invoice_overdue",
+          "billing_tier_missing"
         ],
         "type": "string"
       },
@@ -4324,6 +4824,39 @@
         ],
         "type": "object"
       },
+      "MyPaymentAccountDto": {
+        "properties": {
+          "accountNo": {
+            "type": "string"
+          },
+          "bankName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentAccountKind"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "accountNo",
+          "bankName"
+        ],
+        "type": "object"
+      },
       "MyRemarkDto": {
         "properties": {
           "authorName": {
@@ -4506,6 +5039,78 @@
           "clearEmail"
         ],
         "type": "object"
+      },
+      "PaymentAccountDto": {
+        "properties": {
+          "accountNo": {
+            "type": "string"
+          },
+          "bankName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "disableReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "disabledAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentAccountKind"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentAccountStatus"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "accountNo",
+          "bankName",
+          "status",
+          "disabledAt",
+          "disableReason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "PaymentAccountKind": {
+        "enum": [
+          "bank",
+          "jazzcash",
+          "easypaisa"
+        ],
+        "type": "string"
+      },
+      "PaymentAccountStatus": {
+        "enum": [
+          "active",
+          "disabled"
+        ],
+        "type": "string"
       },
       "PercentageRowDto": {
         "properties": {
@@ -5375,9 +5980,25 @@
             "minimum": 0,
             "type": "number"
           },
+          "expenseApprovalThreshold": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "feeCutoffDay": {
+            "maximum": 28,
+            "minimum": 1,
+            "type": "number"
+          },
           "feeDueDay": {
             "maximum": 28,
             "minimum": 1,
+            "type": "number"
+          },
+          "feeReminderDaysBefore": {
+            "maximum": 10,
+            "minimum": 0,
             "type": "number"
           },
           "lateAdviceEnabled": {
@@ -5396,12 +6017,43 @@
             "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
             "type": "string"
           },
+          "lateFeeAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "lateFeeEnabled": {
+            "type": "boolean"
+          },
+          "lateFeeEnabledAt": {
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "lateFeeGraceDays": {
+            "maximum": 30,
+            "minimum": 0,
+            "type": "number"
+          },
           "leaveCountsAs": {
             "allOf": [
               {
                 "$ref": "#/components/schemas/LeaveCountsAs"
               }
             ]
+          },
+          "overdueReminderEveryDays": {
+            "maximum": 30,
+            "minimum": 7,
+            "type": "number"
+          },
+          "payDay": {
+            "maximum": 28,
+            "minimum": 1,
+            "type": "number"
           },
           "periodsPerDay": {
             "maximum": 12,
@@ -5468,6 +6120,15 @@
           "smsAllowedTypes",
           "remarkDefaultVisibility",
           "remarkNotifyGuardians",
+          "feeCutoffDay",
+          "lateFeeEnabled",
+          "lateFeeAmount",
+          "lateFeeGraceDays",
+          "lateFeeEnabledAt",
+          "expenseApprovalThreshold",
+          "payDay",
+          "feeReminderDaysBefore",
+          "overdueReminderEveryDays",
           "updatedAt"
         ],
         "type": "object"
@@ -7445,6 +8106,22 @@
         ],
         "type": "object"
       },
+      "UpdateFeeHeadDto": {
+        "properties": {
+          "concessionEligible": {
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "refundable": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "UpdateGuardianDto": {
         "properties": {
           "address": {
@@ -7550,9 +8227,25 @@
             "minimum": 0,
             "type": "number"
           },
+          "expenseApprovalThreshold": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "feeCutoffDay": {
+            "maximum": 28,
+            "minimum": 1,
+            "type": "number"
+          },
           "feeDueDay": {
             "maximum": 28,
             "minimum": 1,
+            "type": "number"
+          },
+          "feeReminderDaysBefore": {
+            "maximum": 10,
+            "minimum": 0,
             "type": "number"
           },
           "lateAdviceEnabled": {
@@ -7571,12 +8264,37 @@
             "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
             "type": "string"
           },
+          "lateFeeAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "lateFeeEnabled": {
+            "type": "boolean"
+          },
+          "lateFeeGraceDays": {
+            "maximum": 30,
+            "minimum": 0,
+            "type": "number"
+          },
           "leaveCountsAs": {
             "allOf": [
               {
                 "$ref": "#/components/schemas/LeaveCountsAs"
               }
             ]
+          },
+          "overdueReminderEveryDays": {
+            "maximum": 30,
+            "minimum": 7,
+            "type": "number"
+          },
+          "payDay": {
+            "maximum": 28,
+            "minimum": 1,
+            "type": "number"
           },
           "periodsPerDay": {
             "maximum": 12,
@@ -14001,6 +14719,872 @@
         ]
       }
     },
+    "/api/v1/fee-heads": {
+      "get": {
+        "operationId": "FeeHeadsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FeeHeadStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FeeHeadSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/FeeHeadDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      },
+      "post": {
+        "operationId": "FeeHeadsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeeHeadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeHeadDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/fee-heads/{id}": {
+      "get": {
+        "operationId": "FeeHeadsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeHeadDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      },
+      "patch": {
+        "operationId": "FeeHeadsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeeHeadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeHeadDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/fee-heads/{id}/archive": {
+      "post": {
+        "operationId": "FeeHeadsController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeHeadDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/fee-structures": {
+      "get": {
+        "operationId": "FeeStructuresController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academicYearId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/FeeStructureClassDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      },
+      "post": {
+        "operationId": "FeeStructuresController_create",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeeStructureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeStructureDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeStructureDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      }
+    },
+    "/api/v1/fee-structures/copy": {
+      "post": {
+        "operationId": "FeeStructuresController_copy",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyFeeStructuresDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyFeeStructuresResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "fees"
+        ]
+      }
+    },
     "/api/v1/grants/{id}/end": {
       "post": {
         "operationId": "GrantsController_end",
@@ -17413,6 +18997,127 @@
         ]
       }
     },
+    "/api/v1/me/payment-accounts": {
+      "get": {
+        "operationId": "MyPaymentAccountsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyPaymentAccountDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/sessions/revoke-others": {
       "post": {
         "operationId": "MeSessionsController_revokeOthers",
@@ -18659,6 +20364,406 @@
         },
         "tags": [
           "messaging"
+        ]
+      }
+    },
+    "/api/v1/payment-accounts": {
+      "get": {
+        "operationId": "PaymentAccountsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PaymentAccountStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PaymentAccountDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "operationId": "PaymentAccountsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentAccountDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payment-accounts/{id}": {
+      "get": {
+        "operationId": "PaymentAccountsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payment-accounts/{id}/disable": {
+      "post": {
+        "operationId": "PaymentAccountsController_disable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
         ]
       }
     },

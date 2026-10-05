@@ -99,6 +99,19 @@ const IMPORTS = {
     message:
       'Announcement and inbox repositories are imported only from src/modules/announcements/**, src/modules/me/**, src/modules/calendar/** and src/jobs/**.',
   },
+  // Phase 3 (phase-3-financial.md §5.1, R222): the five platform-billing repositories, importable
+  // only from src/modules/platform/billing/** and the two billing jobs below.
+  billingRepositories: {
+    regex: `(^|/)repositories/platform/(plan|subscription|invoice|platform-payment|school-metrics)\\.repository${EXT}$`,
+    message:
+      'Billing repositories are imported only from src/modules/platform/billing/**, src/jobs/platform-billing.ts and src/jobs/school-metrics-rollup.ts.',
+  },
+  // A18: a school reads its own platform invoices only through these two sites.
+  ownInvoicesRepository: {
+    regex: `(^|/)repositories/own-invoices\\.repository${EXT}$`,
+    message:
+      'OwnInvoicesRepository is imported only from src/jobs/billing-notices.ts and the GET /school/billing-status controller.',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -112,6 +125,8 @@ const REPOSITORY_IMPORTS = [
   'repositoryInternals',
   'platformRepositories',
   'announcementRepositories',
+  'billingRepositories',
+  'ownInvoicesRepository',
   'transactionHost',
   'transactionalAdapter',
 ];
@@ -135,16 +150,41 @@ const TENANCY_IMPORTS = [
   'sessionEstablisher',
 ];
 
-/** The full no-restricted-imports rule minus the named exemptions (or with narrowed entries). */
-function restrictImports({ exempt = [], narrowed = [] } = {}) {
+/**
+ * The full no-restricted-imports rule minus the named exemptions (or with narrowed entries), plus
+ * any `extra` patterns only that block refuses.
+ */
+function restrictImports({ exempt = [], narrowed = [], extra = [] } = {}) {
   const patterns = Object.entries(IMPORTS)
     .filter(([key]) => !exempt.includes(key) && !narrowed.some((n) => n.key === key))
     .map(([, pattern]) => pattern);
   for (const { key, ...narrowing } of narrowed) {
     patterns.push({ ...IMPORTS[key], ...narrowing });
   }
+  patterns.push(...extra);
   return { 'no-restricted-imports': ['error', { patterns }] };
 }
+
+// Phase 3 billing (§5.1, R222): the platform's billing module reads no tenant table, so it may
+// import no tenant repository (every src/repositories file outside platform/).
+const TENANT_REPOSITORY_IMPORT = {
+  regex: `(^|/)repositories/(?!platform/)[^/]+\\.repository${EXT}$`,
+  message: 'src/modules/platform/billing/** reads no tenant table: it imports only the billing repositories (R222).',
+};
+
+/** The platform-repositories pattern with several repository files let through. */
+const platformRepositoriesExceptAll = (files) => ({
+  ...IMPORTS.platformRepositories,
+  regex: `(^|/)repositories/platform(/(?!(${files.map((f) => f.replaceAll('.', '\\.')).join('|')})${EXT}$)|$)`,
+});
+
+const BILLING_REPOSITORY_FILES = [
+  'plan.repository',
+  'subscription.repository',
+  'invoice.repository',
+  'platform-payment.repository',
+  'school-metrics.repository',
+];
 
 // Files that legitimately call the pre-auth school lookup, session resolution or the scheduler
 // fan-out (CLAUDE.md named exceptions 2-4), each with the one platform repository it may import;
@@ -221,6 +261,13 @@ const RAW_SQL_FILES = [
   // Slice 12: the two staff_attendance row locks (SELECT ... FOR UPDATE in staff_id order), each
   // filtering school_id (test/staff-attendance/isolation.e2e-spec.ts).
   'src/repositories/staff-attendance.repository.ts',
+  // Phase 3 slice 18: FeeHeadRepository.seedForSchool calls asms_seed_school_finance(school_id),
+  // the one definition of a school's finance seeds; it writes only that school's rows
+  // (test/fees/seeds.e2e-spec.ts).
+  'src/repositories/fee-head.repository.ts',
+  // R232: StudentGuardianRepository.userIsLiveGuardianOf reads asms_guardian_merge_family; every
+  // table filtered on school_id (test/fees/isolation.e2e-spec.ts).
+  'src/repositories/student-guardian.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -547,6 +594,15 @@ export default tseslint.config(
     }),
   },
   {
+    // Phase 3 billing (§5.1, R222): billing repositories yes, tenant repositories no.
+    files: ['src/modules/platform/billing/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['platformRepositories', 'billingRepositories'],
+      narrowed: [{ key: 'schoolIdMint', allowImportNames: ['fromPlatformSchool'] }],
+      extra: [TENANT_REPOSITORY_IMPORT],
+    }),
+  },
+  {
     files: ['src/modules/access/**/*.ts'],
     rules: restrictImports({ exempt: ['scopeMint'] }),
   },
@@ -568,6 +624,39 @@ export default tseslint.config(
   {
     files: ANNOUNCEMENT_SITES,
     rules: restrictImports({ exempt: ['announcementRepositories'] }),
+  },
+  {
+    // §5.1: the monthly platform billing run (non-tenant), the only job reading the billing tables.
+    files: ['src/jobs/platform-billing.ts'],
+    rules: restrictImports({
+      exempt: ['bullmq', 'queueMint', 'announcementRepositories', 'billingRepositories'],
+      narrowed: [{ key: 'platformRepositories', ...platformRepositoriesExceptAll(BILLING_REPOSITORY_FILES) }],
+    }),
+  },
+  {
+    // §3.7: the per-school rollup writes platform_school_metrics, and nothing else of billing.
+    files: ['src/jobs/school-metrics-rollup.ts'],
+    rules: restrictImports({
+      exempt: ['bullmq', 'queueMint', 'announcementRepositories'],
+      narrowed: [
+        { key: 'platformRepositories', ...platformRepositoriesExceptAll(['school-metrics.repository']) },
+        {
+          key: 'billingRepositories',
+          ...IMPORTS.billingRepositories,
+          regex: `(^|/)repositories/platform/(plan|subscription|invoice|platform-payment)\\.repository${EXT}$`,
+        },
+      ],
+    }),
+  },
+  {
+    // A18: the school's read of its own invoices, from the notices job.
+    files: ['src/jobs/billing-notices.ts'],
+    rules: restrictImports({ exempt: ['bullmq', 'queueMint', 'announcementRepositories', 'ownInvoicesRepository'] }),
+  },
+  {
+    // A18: and from the GET /school/billing-status controller (slice 26).
+    files: ['src/modules/school-settings/billing-status.controller.ts'],
+    rules: restrictImports({ exempt: ['ownInvoicesRepository'] }),
   },
   {
     // The slice-14 suites seed and probe the announcement tables through their repositories.

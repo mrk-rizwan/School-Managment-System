@@ -13,6 +13,7 @@ import { toPage, type Page } from '../../../common/pagination';
 import { ENV, type Env } from '../../../config/env';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository, type SchoolRecord } from '../../../repositories/platform/school.repository';
+import { FeeHeadRepository } from '../../../repositories/fee-head.repository';
 import { SchoolCounterRepository } from '../../../repositories/school-counter.repository';
 import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { fromPlatformSchool } from '../../../tenancy/school-id.mint';
@@ -59,6 +60,7 @@ export class SchoolsService {
     private readonly schools: SchoolRepository,
     private readonly settings: SchoolSettingsRepository,
     private readonly counters: SchoolCounterRepository,
+    private readonly feeHeads: FeeHeadRepository,
     private readonly audit: PlatformAuditRepository,
   ) {}
 
@@ -94,6 +96,8 @@ export class SchoolsService {
     const schoolId = fromPlatformSchool(school);
     await this.settings.create(schoolId, { feeDueDay });
     await this.counters.create(schoolId, 'admission_no');
+    // Phase 3 (§3.5, R176): the five fee heads and the expense_no counter.
+    await this.feeHeads.seedForSchool(schoolId);
     await this.audit.record({
       actorPlatformUserId: actorId,
       schoolId: school.id,

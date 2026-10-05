@@ -172,7 +172,10 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });
         rows.push({ school, ...(await staged(school, user, { expiresInMs: -2 * HOUR })) });
         if (status !== 'active') {
-          await db.school.update({ where: { id: school.id }, data: { status } });
+          await db.school.update({
+            where: { id: school.id },
+            data: { status, ...(status === 'terminated' ? { terminatedAt: new Date() } : {}) },
+          });
         }
       }
       // The shared test database holds every school any suite ever made, so sweeping them all

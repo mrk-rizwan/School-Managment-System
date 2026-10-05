@@ -1,6 +1,7 @@
 import type { Capability } from '@asms/shared';
 import {
   ActivityIcon,
+  BanknoteIcon,
   BookOpenIcon,
   BookOpenCheckIcon,
   CalendarCheckIcon,
@@ -68,6 +69,14 @@ export const schoolNav: NavItem[] = [
   // Every staff member may read the published calendar (@RequireStaff); drafts and writes need
   // holiday.manage (contracts/slice-10.md §1).
   { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, capability: null },
+  // Fee heads and the fee structure are read with any finance key; writes need fee_head.manage
+  // (phase-3-financial.md slice 18). Teachers hold none of these.
+  {
+    href: '/fees',
+    label: 'Fees',
+    icon: BanknoteIcon,
+    capability: ['fee_head.manage', 'charge.create', 'fee.statement.view', 'payment.record'],
+  },
   {
     href: '/users',
     label: 'User accounts',

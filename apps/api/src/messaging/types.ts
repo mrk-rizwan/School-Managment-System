@@ -85,6 +85,26 @@ export interface TemplateVarsMap {
     readonly startsOn: Date;
     readonly endsOn: Date;
   };
+  // Phase 3 (phase-3-financial.md §3.6): each type's variables are declared by the slice that
+  // writes its template and sends it; until then nothing can send one (its renderer throws).
+  fee_charged: Record<string, never>;
+  fee_due_reminder: Record<string, never>;
+  fee_overdue: Record<string, never>;
+  receipt_issued: Record<string, never>;
+  payment_claim_rejected: Record<string, never>;
+  payment_claim_submitted: Record<string, never>;
+  handover_shortfall: Record<string, never>;
+  reminder_sms_capped: Record<string, never>;
+  concession_requested: Record<string, never>;
+  concession_decided: Record<string, never>;
+  expense_approval_requested: Record<string, never>;
+  expense_decided: Record<string, never>;
+  leave_requested: Record<string, never>;
+  leave_decided: Record<string, never>;
+  payslip_ready: Record<string, never>;
+  platform_invoice_issued: Record<string, never>;
+  platform_invoice_overdue: Record<string, never>;
+  billing_tier_missing: Record<string, never>;
 }
 
 export type TemplateVars<T extends MessageType> = TemplateVarsMap[T];

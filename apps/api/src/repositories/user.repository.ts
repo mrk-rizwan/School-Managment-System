@@ -16,6 +16,8 @@ export interface UserAccessRow {
   guardianId: bigint | null;
   staffStatus: StaffStatus | null;
   studentId: bigint | null;
+  /** Rule 24 (R225): read on every request, never cached. */
+  passwordIsDefault: boolean;
   /** The linked student's status; null without a student link. */
   studentStatus: StudentStatusValue | null;
   /** school_settings.student_login_enabled, read only for a student login (else false). */
@@ -167,7 +169,14 @@ export class UserRepository {
   async findAccess(schoolId: SchoolId, id: bigint): Promise<UserAccessRow | null> {
     const row = await this.txHost.tx.user.findFirst({
       where: { schoolId, id },
-      select: { id: true, status: true, staffId: true, guardianId: true, studentId: true },
+      select: {
+        id: true,
+        status: true,
+        staffId: true,
+        guardianId: true,
+        studentId: true,
+        passwordIsDefault: true,
+      },
     });
     if (!row) return null;
     // Sequential statements, each only when its link is set (§3.3).

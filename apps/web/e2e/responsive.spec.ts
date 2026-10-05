@@ -2,6 +2,7 @@ import { Capability } from '@asms/shared';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import type { components as PlatformSchemas } from '../lib/api/platform';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
+import { FINANCE_SETTINGS } from './support/settings';
 import type { AcademicYearDto, ClassDto, SectionDto, SubjectDto } from '../lib/api/school-academics-contract';
 import type {
   PlatformDeliveryHealthDto,
@@ -54,6 +55,7 @@ const PRINCIPAL_ME: MeDto = {
   email: 'amina@example.test',
   hasVerifiedEmail: true,
   passwordIsDefault: false,
+  blockedCapabilities: [],
   school: { id: 's1', name: 'Green Valley Higher Secondary School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
@@ -293,6 +295,7 @@ const CUSTOM_ROLES = [
 ];
 
 const SETTINGS: SchoolSettingsDto = {
+  ...FINANCE_SETTINGS,
   feeDueDay: 10,
   studentLoginEnabled: true,
   periodsPerDay: 8,
@@ -661,6 +664,10 @@ async function mockApi(page: Page, session: Session) {
       '/sections/sec-a/diary-entries': DIARY,
       '/announcements': ANNOUNCEMENTS,
       '/me/inbox': INBOX,
+      // Slice 18: fee setup and the settings page's payment accounts.
+      '/fee-heads': [],
+      '/fee-structures': [],
+      '/payment-accounts': [],
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -712,6 +719,8 @@ const SCREENS: Screen[] = [
   { path: '/users', heading: 'User accounts', session: 'school' },
   { path: '/settings', heading: 'School settings', session: 'school' },
   { path: '/settings/messaging', heading: 'Messaging', session: 'school' },
+  { path: '/fees/heads', heading: 'Fees', session: 'school' },
+  { path: '/fees/structures', heading: 'Fees', session: 'school' },
   { path: '/calendar', heading: 'Calendar', session: 'school' },
   { path: '/staff', heading: 'Staff', session: 'school' },
   { path: '/staff/new', heading: 'New staff member', session: 'school' },

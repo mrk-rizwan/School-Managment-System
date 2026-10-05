@@ -77,7 +77,9 @@ describe('no overlapping statements in a transaction', () => {
     const login = await post('/auth/login', { schoolCode: school.shortCode, username: cnic, password: cnic }).expect(200);
     let cookie = sessionCookieOf(login);
     await http().get('/api/v1/me').set('Cookie', cookie).expect(200);
-    await http().get('/api/v1/users?limit=50').set('Cookie', cookie).expect(200);
+    // Rule 24 (R225): user.account.manage is inert on the default password (the refusal and its
+    // once-a-day audit row run here too); the users list is read again once it is changed.
+    await http().get('/api/v1/users?limit=50').set('Cookie', cookie).expect(403);
 
     const email = uniqueEmail();
     await post('/me/change-email', { currentPassword: cnic, email }, cookie).expect(200);
@@ -91,6 +93,7 @@ describe('no overlapping statements in a transaction', () => {
     await post('/auth/reset-password', { schoolCode: school.shortCode, token: tokenFrom(reset), newPassword: 'overlap-reset-pass' }).expect(204); // pragma: allowlist secret
     cookie = sessionCookieOf(await post('/auth/login', { schoolCode: school.shortCode, username: cnic, password: 'overlap-reset-pass' }).expect(200)); // pragma: allowlist secret
 
+    await http().get('/api/v1/users?limit=50').set('Cookie', cookie).expect(200);
     const teacher = await createSchoolUser(db(), school, { systemRole: 'teacher' });
     await http().get(`/api/v1/users/${teacher.userId}`).set('Cookie', cookie).expect(200);
     await post(`/users/${teacher.userId}/reset-password`, { reason: 'Overlap check', clearEmail: false }, cookie).expect(200);

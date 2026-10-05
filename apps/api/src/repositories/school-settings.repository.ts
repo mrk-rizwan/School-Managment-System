@@ -22,6 +22,16 @@ export interface SchoolSettingsRecord {
   smsAllowedTypes: MessageType[];
   remarkDefaultVisibility: RemarkVisibility;
   remarkNotifyGuardians: boolean;
+  // Phase 3 (phase-3-financial.md §3.8).
+  feeCutoffDay: number;
+  lateFeeEnabled: boolean;
+  lateFeeAmount: number | null;
+  lateFeeGraceDays: number;
+  lateFeeEnabledAt: Date | null;
+  expenseApprovalThreshold: number;
+  payDay: number;
+  feeReminderDaysBefore: number;
+  overdueReminderEveryDays: number;
   updatedAt: Date;
 }
 
@@ -46,6 +56,15 @@ const SELECT = {
   smsAllowedTypes: true,
   remarkDefaultVisibility: true,
   remarkNotifyGuardians: true,
+  feeCutoffDay: true,
+  lateFeeEnabled: true,
+  lateFeeAmount: true,
+  lateFeeGraceDays: true,
+  lateFeeEnabledAt: true,
+  expenseApprovalThreshold: true,
+  payDay: true,
+  feeReminderDaysBefore: true,
+  overdueReminderEveryDays: true,
   updatedAt: true,
 } as const;
 

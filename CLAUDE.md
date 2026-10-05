@@ -204,7 +204,9 @@ module that may each import one platform repository are listed in ESLint `NAMED_
    `platform_delivery_health`), and may be imported only from `src/modules/platform/**` and the
    named exception sites. Enforced by the same ESLint rule. **The platform acts inside a
    school for exactly two operations:** creating the school, which writes its first
-   `school_settings` row and its counters in the same transaction (the tenant comes into being),
+   `school_settings` row, its counters (`admission_no`, `expense_no`) and its five seeded fee heads
+   (`asms_seed_school_finance`; slice 24 adds the leave types) in the same transaction (the tenant
+   comes into being),
    and issuing a principal's login, which is refused while the school already has an active
    principal unless a reason is given. Both go through `fromPlatformSchool`, importable
    only in the platform module, and both are written to the platform audit log (the principal

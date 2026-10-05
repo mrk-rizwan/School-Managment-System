@@ -31,6 +31,20 @@ export class AuditLogRepository {
     await this.recordReturningId(schoolId, entry);
   }
 
+  /** Whether the user has an `action` row at or after `since` (R225's once-per-day refusal row). */
+  async existsForActorSince(
+    schoolId: SchoolId,
+    actorUserId: bigint,
+    action: string,
+    since: Date,
+  ): Promise<boolean> {
+    const row = await this.txHost.tx.auditLog.findFirst({
+      where: { schoolId, actorUserId, action, createdAt: { gte: since } },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
   /** As record, returning the new row's id (a messaging test's subject id, slice-9 §5.1). */
   async recordReturningId(schoolId: SchoolId, entry: AuditEntry): Promise<bigint> {
     const { id } = await this.txHost.tx.auditLog.create({

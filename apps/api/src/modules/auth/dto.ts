@@ -158,6 +158,13 @@ export class MeDto {
   @ApiProperty({ type: () => MeCapabilityScopeDto, isArray: true })
   capabilityScopes: MeCapabilityScopeDto[];
 
+  /**
+   * Rule 24 (R225): capabilities the user holds but cannot use while signing in with the default
+   * password (role.manage, user.account.manage); not in `capabilities`. Empty once it is changed.
+   */
+  @ApiProperty({ enum: Object.values(Capability), enumName: 'Capability', isArray: true })
+  blockedCapabilities: Capability[];
+
   @ApiProperty({ type: String, format: 'date-time' })
   sessionExpiresAt: Date;
 

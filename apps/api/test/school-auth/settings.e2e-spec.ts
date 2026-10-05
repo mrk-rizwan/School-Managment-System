@@ -142,7 +142,18 @@ describe('school settings', () => {
       lateCutoffTime: null,
       leaveCountsAs: 'excused',
       smsMonthlyCap: 750,
-      smsAllowedTypes: ['absence_alert', 'late_advice', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'],
+      // Phase 3 (phase-3-financial.md §1.1) adds the four SMS-allowed fee types to the default.
+      smsAllowedTypes: [
+        'absence_alert',
+        'late_advice',
+        'attendance_corrected',
+        'announcement_urgent',
+        'holiday_notice',
+        'fee_due_reminder',
+        'fee_overdue',
+        'receipt_issued',
+        'payment_claim_rejected',
+      ],
       remarkDefaultVisibility: 'guardian',
       remarkNotifyGuardians: false,
     });

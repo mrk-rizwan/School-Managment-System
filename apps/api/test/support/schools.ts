@@ -46,6 +46,8 @@ export async function createSchool(
       name: overrides.name ?? 'Test School',
       shortCode: uniqueShortCode(),
       status: overrides.status ?? 'active',
+      // CHECK schools_terminated_at_check: terminated iff stamped (phase-3-financial.md R224).
+      ...(overrides.status === 'terminated' ? { terminatedAt: new Date() } : {}),
     },
   });
   return { id: fromPlatformSchool(createdSchoolRow(row)), shortCode: row.shortCode };

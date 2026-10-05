@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FeeHeadRepository } from '../../../repositories/fee-head.repository';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository } from '../../../repositories/platform/school.repository';
 import { SchoolCounterRepository } from '../../../repositories/school-counter.repository';
@@ -14,6 +15,7 @@ import { SchoolsService } from './schools.service';
     SchoolRepository,
     SchoolSettingsRepository,
     SchoolCounterRepository,
+    FeeHeadRepository,
     PlatformAuditRepository,
   ],
 })

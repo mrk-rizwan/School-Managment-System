@@ -126,6 +126,36 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Phase 3 (phase-3-financial.md §5.1, R222): the billing repositories, the school's own-invoice
+  // read and the billing module's ban on tenant repositories. The targets arrive with slice 26;
+  // the boundaries match the import specifier, so they hold before the files exist.
+  it.each([
+    ['billing-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['billing-repository-import.ts', 'src/modules/fees/fee-heads.service.ts'],
+    ['billing-repository-import.ts', 'src/jobs/charge-generate.ts'],
+    ['billing-repository-import.ts', 'src/jobs/school-metrics-rollup.ts'],
+    ['metrics-repository-import.ts', 'src/jobs/billing-notices.ts'],
+    ['tenant-repository-import.ts', 'src/modules/platform/billing/plans.service.ts'],
+    ['own-invoices-import.ts', 'src/modules/fees/fee-heads.service.ts'],
+    ['own-invoices-import.ts', 'src/modules/platform/billing/plans.service.ts'],
+    ['own-invoices-import.ts', 'src/jobs/platform-billing.ts'],
+  ])('refuses %s at %s (Phase 3 billing)', async (fixture, virtualPath) => {
+    // A billing path also matches the platform-repositories pattern: one report per pattern.
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['billing-repository-import.ts', 'src/modules/platform/billing/plans.service.ts'],
+    ['billing-repository-import.ts', 'src/jobs/platform-billing.ts'],
+    ['metrics-repository-import.ts', 'src/jobs/school-metrics-rollup.ts'],
+    ['metrics-repository-import.ts', 'src/modules/platform/billing/plans.service.ts'],
+    ['own-invoices-import.ts', 'src/jobs/billing-notices.ts'],
+    ['own-invoices-import.ts', 'src/modules/school-settings/billing-status.controller.ts'],
+    ['tenant-repository-import.ts', 'src/modules/fees/fee-heads.service.ts'],
+  ])('allows %s at %s (Phase 3 billing)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

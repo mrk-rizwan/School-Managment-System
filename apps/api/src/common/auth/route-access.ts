@@ -156,7 +156,13 @@ export class RouteAccessGuard implements CanActivate {
     const capabilities = read<readonly Capability[]>(CAPABILITY);
     if (capabilities !== undefined) {
       const scope = await this.permissions.canAny(session.schoolId, session.access, capabilities);
-      if (scope === null) throw permissionDenied();
+      if (scope === null) {
+        // Rule 24 (R225): held, but inert on the default password.
+        throw (
+          (await this.permissions.defaultPasswordRefusal(session.schoolId, session.access, capabilities)) ??
+          permissionDenied()
+        );
+      }
       // The row scope travels with the session: services read it with scopeOf(session) and pass
       // it to the repository, so a teacher admitted with no sections reads no rows (R79).
       bindRequestScope(req, scope);

@@ -112,7 +112,18 @@ export class StaffHarness {
       channel: 'cookie',
       expiresAt: new Date(Date.now() + 60_000),
       school: { id: school.id, name: 'Test School', shortCode: school.shortCode, status: 'active' },
-      access: { ...access, capabilities: new Set([...access.capabilities, ...extra]) },
+      // Effective and nominal alike (a grant adds both): rule 24's in-service overrides read the
+      // nominal lines (PermissionsService.holdsNominally).
+      access: {
+        ...access,
+        capabilities: new Set([...access.capabilities, ...extra]),
+        lines: [
+          ...access.lines,
+          ...extra
+            .filter((capability) => !access.lines.some((line) => line.capability === capability))
+            .map((capability) => ({ capability, sources: [], scope: 'all' as const })),
+        ],
+      },
     };
   }
 

@@ -15,6 +15,7 @@ import {
   LATE_COUNTS_AS,
   LEAVE_COUNTS_AS,
   MAX_FEE_DUE_DAY,
+  MAX_RUPEES,
   MESSAGE_TYPES,
   MIN_FEE_DUE_DAY,
   REMARK_VISIBILITIES,
@@ -24,7 +25,7 @@ import {
   type MessageType,
   type RemarkVisibility,
 } from '@asms/shared';
-import { IfPresent, IfPresentNotNull } from '../../common/fields';
+import { IfPresent, IfPresentNotNull, Rupees } from '../../common/fields';
 
 // contracts/slice-2.md §6 and contracts/slice-9.md §4.
 
@@ -33,6 +34,15 @@ export const LOCAL_TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 
 export const PERIODS_PER_DAY = { min: 1, max: 12 } as const;
 export const AMEND_WINDOW_DAYS = { min: 0, max: 30 } as const;
+// phase-3-financial.md §3.8; each mirrors a school_settings_*_check.
+export const FEE_CUTOFF_DAY = { min: 1, max: 28 } as const;
+export const LATE_FEE_GRACE_DAYS = { min: 0, max: 30 } as const;
+export const PAY_DAY = { min: 1, max: 28 } as const;
+export const FEE_REMINDER_DAYS_BEFORE = { min: 0, max: 10 } as const;
+export const OVERDUE_REMINDER_EVERY_DAYS = { min: 7, max: 30 } as const;
+
+const range = (r: { min: number; max: number }) => ({ type: Number, minimum: r.min, maximum: r.max }) as const;
+const RUPEES = { type: Number, minimum: 0, maximum: MAX_RUPEES, description: 'Whole rupees' } as const;
 
 const TIME = { type: String, pattern: LOCAL_TIME_PATTERN.source, example: '09:30' } as const;
 const LATE = { enum: LATE_COUNTS_AS, enumName: 'LateCountsAs' } as const;
@@ -95,6 +105,37 @@ export class SchoolSettingsDto {
 
   @ApiProperty()
   remarkNotifyGuardians: boolean;
+
+  /** A student who starts after this day of a month is not charged that month (R180). */
+  @ApiProperty(range(FEE_CUTOFF_DAY))
+  feeCutoffDay: number;
+
+  @ApiProperty()
+  lateFeeEnabled: boolean;
+
+  /** Whole rupees; required while late fees are enabled. */
+  @ApiProperty({ ...RUPEES, minimum: 1, nullable: true })
+  lateFeeAmount: number | null;
+
+  @ApiProperty(range(LATE_FEE_GRACE_DAYS))
+  lateFeeGraceDays: number;
+
+  /** When late fees were last switched on; only charges due from then attract one. */
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, readOnly: true })
+  lateFeeEnabledAt: Date | null;
+
+  /** An expense above it needs the principal's approval. */
+  @ApiProperty(RUPEES)
+  expenseApprovalThreshold: number;
+
+  @ApiProperty(range(PAY_DAY))
+  payDay: number;
+
+  @ApiProperty(range(FEE_REMINDER_DAYS_BEFORE))
+  feeReminderDaysBefore: number;
+
+  @ApiProperty(range(OVERDUE_REMINDER_EVERY_DAYS))
+  overdueReminderEveryDays: number;
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
@@ -194,4 +235,56 @@ export class UpdateSchoolSettingsDto {
   @IfPresent()
   @IsBoolean()
   remarkNotifyGuardians?: boolean;
+
+  @ApiPropertyOptional(range(FEE_CUTOFF_DAY))
+  @IfPresent()
+  @IsInt()
+  @Min(FEE_CUTOFF_DAY.min)
+  @Max(FEE_CUTOFF_DAY.max)
+  feeCutoffDay?: number;
+
+  /** Switching on stamps lateFeeEnabledAt and needs lateFeeAmount (sent or already set). */
+  @ApiPropertyOptional()
+  @IfPresent()
+  @IsBoolean()
+  lateFeeEnabled?: boolean;
+
+  /** Null clears it, which is refused while late fees are enabled. */
+  @ApiPropertyOptional({ ...RUPEES, minimum: 1, nullable: true })
+  @IfPresentNotNull()
+  @Rupees(1)
+  lateFeeAmount?: number | null;
+
+  @ApiPropertyOptional(range(LATE_FEE_GRACE_DAYS))
+  @IfPresent()
+  @IsInt()
+  @Min(LATE_FEE_GRACE_DAYS.min)
+  @Max(LATE_FEE_GRACE_DAYS.max)
+  lateFeeGraceDays?: number;
+
+  @ApiPropertyOptional(RUPEES)
+  @IfPresent()
+  @Rupees()
+  expenseApprovalThreshold?: number;
+
+  @ApiPropertyOptional(range(PAY_DAY))
+  @IfPresent()
+  @IsInt()
+  @Min(PAY_DAY.min)
+  @Max(PAY_DAY.max)
+  payDay?: number;
+
+  @ApiPropertyOptional(range(FEE_REMINDER_DAYS_BEFORE))
+  @IfPresent()
+  @IsInt()
+  @Min(FEE_REMINDER_DAYS_BEFORE.min)
+  @Max(FEE_REMINDER_DAYS_BEFORE.max)
+  feeReminderDaysBefore?: number;
+
+  @ApiPropertyOptional(range(OVERDUE_REMINDER_EVERY_DAYS))
+  @IfPresent()
+  @IsInt()
+  @Min(OVERDUE_REMINDER_EVERY_DAYS.min)
+  @Max(OVERDUE_REMINDER_EVERY_DAYS.max)
+  overdueReminderEveryDays?: number;
 }

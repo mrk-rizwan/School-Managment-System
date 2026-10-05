@@ -1,6 +1,7 @@
-import { Capability, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
+import { Capability, SMS_ELIGIBLE_TYPES, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import { expect as baseExpect, test, type Page, type Request } from '@playwright/test';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
+import { FINANCE_SETTINGS } from './support/settings';
 import type { MeDto } from '../lib/api/school-contract';
 import type {
   MessagingUsageDto,
@@ -21,6 +22,7 @@ const PRINCIPAL_ME: MeDto = {
   email: 'amina@example.test',
   hasVerifiedEmail: true,
   passwordIsDefault: false,
+  blockedCapabilities: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
@@ -39,6 +41,7 @@ const TEACHER_ME: MeDto = {
 };
 
 const settings = (extra: Partial<SchoolSettingsDto> = {}): SchoolSettingsDto => ({
+  ...FINANCE_SETTINGS,
   feeDueDay: 10,
   studentLoginEnabled: false,
   periodsPerDay: 8,
@@ -293,11 +296,14 @@ test('whatsapp: a provider mismatch is explained; disabling asks for a reason', 
 
 // ---- Allow list, usage, test (§4, §5.1, §5.2) ----
 
-test('allow list: six eligible types, the never types disabled, internal types absent; saved in table order', async ({ page }) => {
+test('allow list: the eligible types, the never types disabled, internal types absent; saved in table order', async ({ page }) => {
   const requests = await mockApi(page, { me: PRINCIPAL_ME, whatsapp: { effectiveProvider: 'waha', number: number() } });
   await open(page, '/settings/messaging');
   const card = page.locator('[data-slot="card"]').filter({ hasText: 'What may go by SMS' });
-  await expect(card.getByRole('checkbox')).toHaveCount(8);
+  // Every SMS-eligible type (six from Phase 2, five fee types since slice 18) and the two never types.
+  await expect(card.getByRole('checkbox')).toHaveCount(SMS_ELIGIBLE_TYPES.length + 2);
+  await expect(card.getByLabel(/Fee due reminders/)).toBeEnabled();
+  await expect(card.getByText('Deposit slips to verify')).toHaveCount(0);
   await expect(card.getByLabel(/Diary entries/)).toBeDisabled();
   await expect(card.getByLabel(/Teacher remarks/)).toBeDisabled();
   await expect(card.getByText('Unrecorded register reminders')).toHaveCount(0);

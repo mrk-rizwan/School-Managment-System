@@ -1,6 +1,7 @@
 import { Capability, SYSTEM_ROLE_DEFAULTS } from '@asms/shared';
 import { expect as baseExpect, test, type Page, type Request } from '@playwright/test';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
+import { FINANCE_SETTINGS } from './support/settings';
 import type { MeDto, UserDto } from '../lib/api/school-contract';
 import type { SchoolSettingsDto } from '../lib/api/school-messaging-contract';
 
@@ -22,6 +23,7 @@ const OFFICE_ME: MeDto = {
   email: null,
   hasVerifiedEmail: false,
   passwordIsDefault: true,
+  blockedCapabilities: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
@@ -550,6 +552,7 @@ test.describe('user accounts', () => {
 
 /** contracts/slice-9.md §4: the slice-2 fields plus the plan §4.5 additions, at their defaults. */
 const settingsFixture = (extra: Partial<SchoolSettingsDto> = {}): SchoolSettingsDto => ({
+  ...FINANCE_SETTINGS,
   feeDueDay: 10,
   studentLoginEnabled: false,
   periodsPerDay: 8,

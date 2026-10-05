@@ -93,8 +93,13 @@ export class SchoolClock {
   }
 
   async today(schoolId: SchoolId): Promise<Date> {
+    return todayIn(await this.timezone(schoolId), this.now());
+  }
+
+  /** The school's time zone (Asia/Karachi unless the platform set another). */
+  async timezone(schoolId: SchoolId): Promise<string> {
     const row = await this.school.find(schoolId);
     if (!row) throw new Error('school row missing for a resolved tenant');
-    return todayIn(row.timezone, this.now());
+    return row.timezone;
   }
 }

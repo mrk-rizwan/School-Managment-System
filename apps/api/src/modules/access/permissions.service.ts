@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Capability, type SystemRole } from '@asms/shared';
+import { Capability, DEFAULT_PASSWORD_INERT_CAPABILITIES, type SystemRole } from '@asms/shared';
 import { CapabilityGrantRepository } from '../../repositories/capability-grant.repository';
 import {
   CustomRoleRepository,
@@ -10,7 +10,10 @@ import {
   type GuardianChildLink,
 } from '../../repositories/student-guardian.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
+import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { UserRepository, type UserStatusValue } from '../../repositories/user.repository';
+import { UserRoleRepository } from '../../repositories/user-role.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import type { DatedScope, Scope } from '../../tenancy/scope';
@@ -21,15 +24,15 @@ import {
   scopeSections,
   scopeStudents,
 } from '../../tenancy/scope.mint';
-import { notFound } from '../../common/errors/api-exception';
-import { SchoolClock } from '../../common/school-clock';
+import { notFound, type ApiException } from '../../common/errors/api-exception';
+import { dayStart, SchoolClock } from '../../common/school-clock';
 import {
   capabilityOrder,
   effectivePermissions,
   type EffectiveLine,
   type GrantInput,
 } from './effective-permissions';
-import { notAssignedOnDate } from './access.errors';
+import { defaultPasswordBlocks, notAssignedOnDate } from './access.errors';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -67,9 +70,22 @@ export interface UserAccess {
   grants: readonly GrantInput[];
   /** effectivePermissions() for this user, in registry order: empty without staff capacity (R59). */
   lines: readonly EffectiveLine[];
-  /** Effective capabilities: exactly the keys of `lines`. */
+  /**
+   * Effective capabilities: the keys of `lines`, less `blockedCapabilities`. Every check reads
+   * this set, so a blocked key is simply not held.
+   */
   capabilities: ReadonlySet<Capability>;
+  /** users.password_is_default, read for this request (rule 24). */
+  passwordIsDefault: boolean;
+  /**
+   * Rule 24 (R225): keys of `lines` that are inert while the password is the default one
+   * (DEFAULT_PASSWORD_INERT_CAPABILITIES), in registry order; empty once it is changed.
+   */
+  blockedCapabilities: readonly Capability[];
 }
+
+/** The audit action of a rule-24 refusal, written at most once per user per school day (R225). */
+export const DEFAULT_PASSWORD_BLOCKED_ACTION = 'user.default_password_blocked';
 
 /**
  * The ordinary row scope of a dated scope (contracts/slice-10.md §7.2), for a student-linked
@@ -92,6 +108,9 @@ export class PermissionsService {
     private readonly assignments: TeacherAssignmentRepository,
     private readonly studentGuardians: StudentGuardianRepository,
     private readonly clock: SchoolClock,
+    private readonly audit: AuditLogRepository,
+    private readonly settings: SchoolSettingsRepository,
+    private readonly userRoles: UserRoleRepository,
   ) {}
 
   /** The user's access, or null if the user does not exist in this school. */
@@ -120,6 +139,11 @@ export class PermissionsService {
       customRoles,
       grants,
     });
+    const blocked = row.passwordIsDefault
+      ? lines
+          .map((line) => line.capability)
+          .filter((key) => DEFAULT_PASSWORD_INERT_CAPABILITIES.includes(key))
+      : [];
     return {
       userId: row.id,
       status: row.status,
@@ -138,8 +162,57 @@ export class PermissionsService {
       customRoles,
       grants,
       lines,
-      capabilities: new Set(lines.map((line) => line.capability)),
+      capabilities: new Set(
+        lines.map((line) => line.capability).filter((key) => !blocked.includes(key)),
+      ),
+      passwordIsDefault: row.passwordIsDefault,
+      blockedCapabilities: blocked,
     };
+  }
+
+  /**
+   * Rule 24's refusal (R225) for a route none of whose capabilities the caller holds: when the
+   * caller holds one of them only inertly (default password), 403 DEFAULT_PASSWORD_BLOCKS_ACTION,
+   * audited at most once per user per school day; otherwise null and the caller refuses as usual.
+   */
+  async defaultPasswordRefusal(
+    schoolId: SchoolId,
+    access: UserAccess,
+    required: readonly Capability[],
+  ): Promise<ApiException | null> {
+    const blocked = required.filter((key) => access.blockedCapabilities.includes(key));
+    if (blocked.length === 0) return null;
+    const today = await this.clock.today(schoolId);
+    const since = dayStart(await this.clock.timezone(schoolId), today);
+    if (!(await this.audit.existsForActorSince(schoolId, access.userId, DEFAULT_PASSWORD_BLOCKED_ACTION, since))) {
+      await this.audit.record(schoolId, {
+        actorUserId: access.userId,
+        action: DEFAULT_PASSWORD_BLOCKED_ACTION,
+        subjectType: 'user',
+        subjectId: access.userId,
+        metadata: { capabilities: blocked.join(',') },
+      });
+    }
+    return defaultPasswordBlocks();
+  }
+
+  /**
+   * R232: the actor's user is a guardian (merge-resolved) with a live link to the student. Every
+   * money verb on a student refuses it with ownChild() (money-gates.ts), the sole principal
+   * excepted where §3.1 says so.
+   */
+  actorIsGuardianOf(schoolId: SchoolId, actorUserId: bigint, studentId: bigint): Promise<boolean> {
+    return this.studentGuardians.userIsLiveGuardianOf(schoolId, actorUserId, studentId);
+  }
+
+  /**
+   * R253: the actor is the school's only active principal. Read under the lock on the school's
+   * settings row (§3.1), so a second principal appointed concurrently waits; call it inside the
+   * transaction that writes the decision.
+   */
+  async isSolePrincipal(schoolId: SchoolId, userId: bigint): Promise<boolean> {
+    await this.settings.lock(schoolId);
+    return this.userRoles.isLastActivePrincipal(schoolId, userId);
   }
 
   /** Any active capacity at all: without one, login fails and sessions are refused (R71). */
@@ -166,6 +239,16 @@ export class PermissionsService {
   }
 
   /**
+   * Rule 24 (R225): whether the user holds `capability` through a role or grant, whether or not
+   * it is inert on the default password (`access.lines`, not `access.capabilities`). Only the
+   * routes of the two blocked keys may refuse a default-password principal; an in-service
+   * override ("a role.manage holder may") reads this, so everything else keeps working.
+   */
+  holdsNominally(access: UserAccess, capability: Capability): boolean {
+    return access.lines.some((line) => line.capability === capability);
+  }
+
+  /**
    * R14: every capability `target` holds or would hold is held by `actor`. The target side reads
    * its live role rows whatever its staff status: a suspended teacher has no effective
    * capability (R59), but reinstating it restores them, so an office clerk must not be able to
@@ -178,7 +261,8 @@ export class PermissionsService {
       customRoles: target.customRoles,
       grants: target.grants,
     }).map((line) => line.capability);
-    return [...target.capabilities, ...dormant].every((key) => actor.capabilities.has(key));
+    // The actor side is nominal (rule 24): a principal on the default password still outranks.
+    return [...target.capabilities, ...dormant].every((key) => this.holdsNominally(actor, key));
   }
 
   /**

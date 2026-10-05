@@ -43,6 +43,15 @@ const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettings
   smsAllowedTypes: inTableOrder(row.smsAllowedTypes),
   remarkDefaultVisibility: row.remarkDefaultVisibility,
   remarkNotifyGuardians: row.remarkNotifyGuardians,
+  feeCutoffDay: row.feeCutoffDay,
+  lateFeeEnabled: row.lateFeeEnabled,
+  lateFeeAmount: row.lateFeeAmount,
+  lateFeeGraceDays: row.lateFeeGraceDays,
+  lateFeeEnabledAt: row.lateFeeEnabledAt,
+  expenseApprovalThreshold: row.expenseApprovalThreshold,
+  payDay: row.payDay,
+  feeReminderDaysBefore: row.feeReminderDaysBefore,
+  overdueReminderEveryDays: row.overdueReminderEveryDays,
   updatedAt: row.updatedAt,
 });
 
@@ -68,7 +77,27 @@ const WRITABLE = [
   'smsAllowedTypes',
   'remarkDefaultVisibility',
   'remarkNotifyGuardians',
+  // phase-3-financial.md §3.8 (lateFeeEnabledAt is stamped, never written by a client).
+  'feeCutoffDay',
+  'lateFeeEnabled',
+  'lateFeeAmount',
+  'lateFeeGraceDays',
+  'expenseApprovalThreshold',
+  'payDay',
+  'feeReminderDaysBefore',
+  'overdueReminderEveryDays',
 ] as const satisfies readonly (keyof UpdateSchoolSettingsDto & keyof SchoolSettingsDto)[];
+
+const lateFeeAmountRequired = () =>
+  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
+    fields: [
+      {
+        path: 'lateFeeAmount',
+        code: ErrorCode.INVALID_VALUE,
+        message: 'lateFeeAmount is required while late fees are enabled',
+      },
+    ],
+  });
 
 const lateCutoffRequired = () =>
   new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
@@ -119,6 +148,10 @@ export class SchoolSettingsService {
     const lateCountsAs = dto.lateCountsAs ?? before.lateCountsAs;
     const lateCutoffTime = dto.lateCutoffTime === undefined ? before.lateCutoffTime : dto.lateCutoffTime;
     if (lateCountsAs === 'absent_after_cutoff' && lateCutoffTime === null) throw lateCutoffRequired();
+    // §3.8, R178: late fees need an amount while on; switching them on stamps the time.
+    const lateFeeEnabled = dto.lateFeeEnabled ?? before.lateFeeEnabled;
+    const lateFeeAmount = dto.lateFeeAmount === undefined ? before.lateFeeAmount : dto.lateFeeAmount;
+    if (lateFeeEnabled && lateFeeAmount === null) throw lateFeeAmountRequired();
 
     const { data: diff, changes } = diffFields(before, wanted, WRITABLE, flat);
     const data: SchoolSettingsChanges = {};
@@ -128,6 +161,7 @@ export class SchoolSettingsService {
     if (Object.keys(changes).length === 0) {
       return toDto(current, await this.smsMonthlyCap(schoolId));
     }
+    if (lateFeeEnabled && !before.lateFeeEnabled) data.lateFeeEnabledAt = new Date();
     const updated = await this.settings.update(schoolId, data);
     await this.audit.record(schoolId, {
       actorUserId: session.access.userId,

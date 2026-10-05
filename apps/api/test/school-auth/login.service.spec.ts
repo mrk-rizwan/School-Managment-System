@@ -106,6 +106,8 @@ describe('LoginService: what runs on each path (F5, R81 / R2)', () => {
     grants: [],
     lines: [],
     capabilities: new Set(),
+    passwordIsDefault: false,
+    blockedCapabilities: [],
   };
 
   beforeEach(() => {

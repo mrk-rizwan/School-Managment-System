@@ -212,7 +212,8 @@ export class TeacherAssignmentsService {
     // R74 (§4.3): a teacher's row scope comes from their own assignments and class.manage is
     // delegable, so assigning yourself would widen your own scope. Only a role.manage holder
     // (a principal) may. Ending your own row only narrows it, so §4.4 does not refuse it.
-    if (staff.userId === userId && !session.access.capabilities.has(Capability.ROLE_MANAGE)) {
+    // Nominal (rule 24, R225): a principal on the default password may still assign themselves.
+    if (staff.userId === userId && !this.permissions.holdsNominally(session.access, Capability.ROLE_MANAGE)) {
       throw selfForbidden();
     }
 

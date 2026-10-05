@@ -18,6 +18,14 @@ export const NON_TENANT_MODELS: Readonly<Record<string, string>> = {
   // carries a school_id like platform_audit_log (CLAUDE.md named exception 6, plan §4.1).
   PlatformSettings: 'platform_settings',
   PlatformDeliveryHealth: 'platform_delivery_health',
+  // Phase 3 platform billing (phase-3-financial.md §4, slice 26): plans, each school's
+  // subscriptions, the per-school daily metrics rollup (a school_id like platform_delivery_health,
+  // written inside runAsSchool, read only by billing), invoices and their payments.
+  PlatformPlan: 'platform_plans',
+  PlatformSubscription: 'platform_subscriptions',
+  PlatformSchoolMetric: 'platform_school_metrics',
+  PlatformInvoice: 'platform_invoices',
+  PlatformPayment: 'platform_payments',
 };
 
 const SCALAR_FIELD_ENUM = 'ScalarFieldEnum';

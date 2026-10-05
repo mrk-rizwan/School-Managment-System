@@ -113,6 +113,10 @@ export class UserRolesService {
     reason: string,
   ): Promise<UserRoleRecord> {
     const { schoolId, access: actor } = session;
+    // A new principal changes the principal count: take the school_settings lock first, as the
+    // remove path does and as isSolePrincipal reads under (phase-3-financial.md §3.1, R253), so
+    // a decision taken as the sole principal cannot interleave with a second one appearing.
+    if (role.kind === 'system' && role.systemRole === 'principal') await this.settings.lock(schoolId);
     const user = await this.users.lock(schoolId, userId);
     if (!user) throw notFound();
     // R74: nobody changes their own roles.

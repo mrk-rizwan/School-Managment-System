@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
+import type { SchoolCounterName } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import type { PrismaTxAdapter } from './prisma';
-
-/** Per-school sequences, e.g. `admission_no` (tenant table school_counters). */
-export type SchoolCounterName = 'admission_no';
 
 export interface SchoolCounterRecord {
   id: bigint;
@@ -14,6 +12,7 @@ export interface SchoolCounterRecord {
 
 const SELECT = { id: true, name: true, value: true } as const;
 
+/** Per-school sequences (tenant table school_counters); the names are packages/shared's. */
 @Injectable()
 export class SchoolCounterRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}

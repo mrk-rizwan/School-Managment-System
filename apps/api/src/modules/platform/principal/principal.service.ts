@@ -11,6 +11,7 @@ import { CapabilityGrantRepository } from '../../../repositories/capability-gran
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository } from '../../../repositories/platform/school.repository';
 import { StaffRepository } from '../../../repositories/staff.repository';
+import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { UserRoleRepository } from '../../../repositories/user-role.repository';
 import { SessionRepository } from '../../../repositories/session.repository';
 import { UserTokenRepository } from '../../../repositories/user-token.repository';
@@ -38,6 +39,7 @@ export class PrincipalLoginService {
     private readonly staff: StaffRepository,
     private readonly users: UserRepository,
     private readonly roles: UserRoleRepository,
+    private readonly settings: SchoolSettingsRepository,
     private readonly grants: CapabilityGrantRepository,
     private readonly sessions: SessionRepository,
     private readonly tokens: UserTokenRepository,
@@ -73,6 +75,8 @@ export class PrincipalLoginService {
       throw conflict(ErrorCode.SCHOOL_TERMINATED, 'A terminated school cannot be changed.');
     }
     const schoolId = fromPlatformSchool(school);
+    // A new principal changes the count isSolePrincipal reads under this lock (R253, §3.1).
+    await this.settings.lock(schoolId);
 
     // R103: a second principal needs a stated reason; the existing ones are told.
     const existing = await this.roles.activePrincipalUserIds(schoolId);

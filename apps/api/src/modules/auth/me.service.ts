@@ -94,8 +94,11 @@ export class MeService {
       capabilities: this.permissions.sortedCapabilities(access),
       // §8: from the lines already computed for this request (no new query), in the same order.
       capabilityScopes: [...access.lines]
+        .filter((line) => access.capabilities.has(line.capability))
         .sort((a, b) => capabilityOrder(a.capability, b.capability))
         .map((line) => ({ capability: line.capability, scope: line.scope })),
+      // Rule 24 (R225): held through a role or grant, inert until the password is changed.
+      blockedCapabilities: [...access.blockedCapabilities],
       sessionExpiresAt,
       capacities: CAPACITIES.filter((capacity: Capacity) => access.capacities[capacity]),
       assignments: await this.assignmentsOf(schoolId, access),

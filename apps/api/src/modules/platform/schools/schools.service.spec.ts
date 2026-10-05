@@ -5,6 +5,7 @@ import { EnvModule } from '../../../config/env';
 import { ApiException } from '../../../common/errors/api-exception';
 import { PlatformAuditRepository } from '../../../repositories/platform/platform-audit.repository';
 import { SchoolRepository } from '../../../repositories/platform/school.repository';
+import { FeeHeadRepository } from '../../../repositories/fee-head.repository';
 import { SchoolCounterRepository } from '../../../repositories/school-counter.repository';
 import { SchoolSettingsRepository } from '../../../repositories/school-settings.repository';
 import { TenancyModule } from '../../../tenancy/tenancy.module';
@@ -25,6 +26,7 @@ describe('SchoolsService when the row keeps changing', () => {
         SchoolRepository,
         SchoolSettingsRepository,
         SchoolCounterRepository,
+        FeeHeadRepository,
         PlatformAuditRepository,
       ],
     }).compile();

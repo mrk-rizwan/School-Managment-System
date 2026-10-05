@@ -19,8 +19,9 @@
 // routes, as the principal and then the teacher would write them — the real guards, validation
 // and services, never SQL. No register, remark or announcement: 5 A and 5 B start unrecorded.
 // It also clears the school's weekly off days, so "today" is a teaching day whatever day CI runs.
-// It needs Redis and object storage reachable (the upload), and the principal still on the
-// default password. Prints `classroom created` or `classroom exists`.
+// It needs Redis and object storage reachable (the upload). The principal keeps the CNIC as the
+// password, recorded as changed so rule 24 lets it issue the logins
+// (recordDevPrincipalPasswordChanged). Prints `classroom created` or `classroom exists`.
 //
 // Needs the platform admin (seed:platform-admin) as the acting platform user. Idempotent: an
 // existing school is reused and an existing principal is left as it is. Prints `created` or
@@ -31,7 +32,7 @@
 // Runs under ts-node (not tsx): Nest's constructor injection needs the decorator metadata that
 // tsc emits and esbuild does not.
 import 'reflect-metadata';
-import { Logger, Module } from '@nestjs/common';
+import { Logger, Module, type INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
@@ -58,6 +59,7 @@ import { PlatformSchoolsModule } from '../src/modules/platform/schools/platform-
 import { SchoolsService } from '../src/modules/platform/schools/schools.service';
 import { PlatformUserRepository } from '../src/repositories/platform/platform-user.repository';
 import { SchoolRepository } from '../src/repositories/platform/school.repository';
+import { PRISMA_CLIENT, type GuardedPrismaClient } from '../src/repositories/prisma';
 import { TenancyModule } from '../src/tenancy/tenancy.module';
 import {
   assertSeedAllowed,
@@ -236,8 +238,9 @@ async function tinyPng(): Promise<Buffer> {
 }
 
 /**
- * Seeds the classroom through the API at `baseUrl`, as the school's principal (who must still
- * have the default password) and then as the teacher. Idempotent: finds what exists, creates
+ * Seeds the classroom through the API at `baseUrl`, as the school's principal (signing in with the
+ * CNIC digits, recorded as a changed password: recordDevPrincipalPasswordChanged) and then as the
+ * teacher. Idempotent: finds what exists, creates
  * what does not. Returns whether anything was created.
  */
 export async function seedClassroom(
@@ -526,6 +529,30 @@ export async function startApi(): Promise<{ app: NestExpressApplication; baseUrl
   return { app, baseUrl: `http://127.0.0.1:${port}` };
 }
 
+/**
+ * Rule 24 (R225): a principal on the default password cannot issue logins, and the classroom seed
+ * issues the teacher's and the guardian's. A developer would add and verify an email and change the
+ * password; the dev seed records the change while keeping the digits as the password, so the
+ * mobile flows still sign in with the CNIC. Development and CI only (seed-dev-guard refuses
+ * production and non-loopback hosts).
+ */
+export async function recordDevPrincipalPasswordChanged(
+  app: INestApplicationContext,
+  schoolId: bigint,
+): Promise<void> {
+  const db = app.get<GuardedPrismaClient>(PRISMA_CLIENT, { strict: false });
+  const principals = await db.userRole.findMany({
+    where: { schoolId, systemRole: 'principal', endedAt: null },
+    select: { userId: true },
+  });
+  for (const { userId } of principals) {
+    await db.user.updateMany({
+      where: { schoolId, id: userId, passwordIsDefault: true },
+      data: { passwordIsDefault: false, passwordChangedAt: new Date() },
+    });
+  }
+}
+
 // --- The school and its principal ---------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -579,6 +606,7 @@ async function main(): Promise<void> {
           error.code === ErrorCode.ACTIVE_PRINCIPAL_EXISTS);
       if (!exists) throw error;
     }
+    if (classroom !== null) await recordDevPrincipalPasswordChanged(app, schoolRowId);
     console.log(created ? 'created' : 'exists');
   } finally {
     await app.close();

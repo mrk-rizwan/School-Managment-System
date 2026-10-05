@@ -167,8 +167,12 @@ describe('platform schools', () => {
       expect(settings).toEqual([
         expect.objectContaining({ feeDueDay: 10, studentLoginEnabled: false }),
       ]);
-      const counters = await testDb().schoolCounter.findMany({ where: { schoolId } });
-      expect(counters).toEqual([expect.objectContaining({ name: 'admission_no', value: 0n })]);
+      const counters = await testDb().schoolCounter.findMany({ where: { schoolId }, orderBy: { name: 'asc' } });
+      // Phase 3 (§3.5, R176): expense_no is seeded with the school, beside the five fee heads.
+      expect(counters).toEqual([
+        expect.objectContaining({ name: 'admission_no', value: 0n }),
+        expect.objectContaining({ name: 'expense_no', value: 0n }),
+      ]);
 
       const audit = await auditRows(schoolId);
       expect(audit).toEqual([

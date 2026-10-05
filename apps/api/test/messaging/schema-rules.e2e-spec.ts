@@ -206,7 +206,18 @@ describe('messaging schema rules (raw SQL)', () => {
       alert: '09:30:00',
       late_counts_as: 'present',
       leave_counts_as: 'excused',
-      sms: ['absence_alert', 'late_advice', 'attendance_corrected', 'announcement_urgent', 'holiday_notice'],
+      // With Phase 3's four SMS-allowed fee types (20261005181500_phase3_groundwork).
+      sms: [
+        'absence_alert',
+        'late_advice',
+        'attendance_corrected',
+        'announcement_urgent',
+        'holiday_notice',
+        'fee_due_reminder',
+        'fee_overdue',
+        'receipt_issued',
+        'payment_claim_rejected',
+      ],
       remark_default_visibility: 'guardian',
       remark_notify_guardians: false,
     });

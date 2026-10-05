@@ -218,6 +218,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/inbox/:id', 'authenticated-only'],
   ['GET', '/api/v1/me/inbox/:id/attachment', 'authenticated-only'],
   ['GET', '/api/v1/me/inbox/:id/thumbnail', 'authenticated-only'],
+  // Phase 3 slice 18: where a guardian can pay.
+  ['GET', '/api/v1/me/payment-accounts', 'capacity'],
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
@@ -315,6 +317,14 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
     'school.principal_login_issued',
   ],
   'PATCH /api/v1/school/settings': ['school_settings.updated'],
+  // Phase 3 slice 18 (phase-3-financial.md R230). A repeated archive or disable writes no row.
+  'POST /api/v1/fee-heads': ['fee_head.created'],
+  'PATCH /api/v1/fee-heads/:id': ['fee_head.updated'],
+  'POST /api/v1/fee-heads/:id/archive': ['fee_head.archived'],
+  'POST /api/v1/fee-structures': ['fee_structure.created'],
+  'POST /api/v1/fee-structures/copy': ['fee_structure.copied'],
+  'POST /api/v1/payment-accounts': ['payment_account.created'],
+  'POST /api/v1/payment-accounts/:id/disable': ['payment_account.disabled'],
   'PATCH /api/v1/sections/:id': ['section.updated'],
   'POST /api/v1/sections/:id/archive': ['section.archived'],
   'POST /api/v1/staff': ['staff.created'],

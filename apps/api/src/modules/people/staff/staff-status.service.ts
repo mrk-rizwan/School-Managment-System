@@ -149,7 +149,8 @@ export class StaffStatusService {
     user: UserCredentialRow,
   ): Promise<void> {
     const actor = session.access;
-    if (this.permissions.holds(actor, Capability.ROLE_MANAGE)) return;
+    // Nominal, not effective: rule 24 makes only the role.manage routes refuse (R225).
+    if (this.permissions.holdsNominally(actor, Capability.ROLE_MANAGE)) return;
     if (await this.roles.hasLivePrincipalRole(schoolId, user.id)) throw denied('target_is_principal');
     const target = await this.permissions.load(schoolId, user.id);
     if (target && !this.permissions.isSubset(target, actor)) throw denied('target_exceeds_actor');

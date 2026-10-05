@@ -65,3 +65,15 @@ export const notAuthor = (): ApiException =>
   new ApiException(403, ErrorCode.PERMISSION_DENIED, 'Only the author can change this.', {
     reason: 'not_author',
   });
+
+/**
+ * Rule 24 (R225): the route needs role.manage or user.account.manage, which the caller holds only
+ * inertly while still signing in with the default password. 403, so the client offers the
+ * password change rather than hiding the screen.
+ */
+export const defaultPasswordBlocks = (): ApiException =>
+  new ApiException(
+    403,
+    ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION,
+    'Change your password first. Managing user accounts and roles is off while you use the default password.',
+  );

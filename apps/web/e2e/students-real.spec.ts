@@ -1,7 +1,7 @@
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import { randomBytes, randomInt } from 'node:crypto';
 import { crc32, deflateSync } from 'node:zlib';
-import { seedPlatformAdmin } from './support/seed';
+import { recordPrincipalPasswordChanged, seedPlatformAdmin } from './support/seed';
 import { totp } from './support/totp';
 
 // Staff, teacher scope and admission against the REAL API (started by playwright.config.ts on
@@ -161,6 +161,8 @@ test('staff, a class teacher, two admissions; the teacher sees only their sectio
   // ---- Principal: a year, a class, sections A and B.
   const schoolContext = await browser.newContext();
   const page = await schoolContext.newPage();
+  // Rule 24: the principal manages logins only once the default password is changed.
+  recordPrincipalPasswordChanged(shortCode);
   await schoolSignIn(page, principalCnic);
 
   await page.goto('/academics/years');

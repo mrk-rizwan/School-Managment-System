@@ -4,6 +4,7 @@ import { AcademicYearRepository } from '../../repositories/academic-year.reposit
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassRepository } from '../../repositories/class.repository';
 import { EnrolmentRepository } from '../../repositories/enrolment.repository';
+import { SchoolCounterRepository } from '../../repositories/school-counter.repository';
 import { SectionRepository } from '../../repositories/section.repository';
 import { SubjectRepository } from '../../repositories/subject.repository';
 import { AcademicYearsController } from './academic-years.controller';
@@ -30,6 +31,7 @@ import { SubjectsService } from './subjects.service';
     SubjectRepository,
     AuditLogRepository,
     EnrolmentRepository,
+    SchoolCounterRepository,
   ],
 })
 export class AcademicsModule {}

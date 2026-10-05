@@ -13,7 +13,13 @@ const FORBIDDEN =
  * Files that state DELETE / TRUNCATE on purpose: they prove the database refuses them, inside one
  * transaction that is rolled back. Adding a file here is a review decision, not a convenience.
  */
-const EXEMPT = new Set([join(apiRoot, 'test', 'access', 'history-guards.e2e-spec.ts')]);
+const EXEMPT = new Set([
+  join(apiRoot, 'test', 'access', 'history-guards.e2e-spec.ts'),
+  // Phase 3 slice 18: the money tables' no-delete, frozen-column and CHECK guards.
+  join(apiRoot, 'test', 'fees', 'money-guards.e2e-spec.ts'),
+  // Phase 3 wave I: the guards of the slice 19, 23, 24 and 26 tables.
+  join(apiRoot, 'test', 'finance-schema', 'money-guards.e2e-spec.ts'),
+]);
 
 function testFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

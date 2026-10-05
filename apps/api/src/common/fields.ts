@@ -6,10 +6,13 @@ import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
+  IsInt,
   IsOptional,
   IsString,
   Length,
   Matches,
+  Max,
+  Min,
   ValidateBy,
   ValidateIf,
   type ValidationArguments,
@@ -18,8 +21,10 @@ import {
   containsIdentityNumber,
   E164_PATTERN,
   IDENTITY_INPUT_PATTERN,
+  MAX_RUPEES,
   normaliseIdentityDigits,
   normalisePhone,
+  YEAR_MONTH_PATTERN,
 } from '@asms/shared';
 
 type Raw = { value: unknown };
@@ -229,3 +234,32 @@ export const DiffersFrom = (property: string): PropertyDecorator =>
       defaultMessage: () => `$property must differ from ${property}`,
     },
   });
+
+// ---------------------------------------------------------------------------------- money
+
+/**
+ * A whole-rupee amount (rule 15, phase-3-financial.md rule 0.18): an integer from `min` to
+ * MAX_RUPEES. One bound for every amount a request carries (R229); no paisa.
+ */
+export const Rupees = (min = 0): PropertyDecorator =>
+  applyDecorators(IsInt(), Min(min), Max(MAX_RUPEES));
+
+/** `YYYY-MM`, a calendar month (`effectiveFrom`, a period, a payroll month). */
+export const IsYearMonth = (): PropertyDecorator =>
+  applyDecorators(
+    IsString(),
+    Matches(YEAR_MONTH_PATTERN, { message: '$property must be a month in the form YYYY-MM' }),
+  );
+
+/**
+ * The one reason validator of Phase 3 (§3.2): 3-500 characters, trimmed, no control characters,
+ * no identity number (every reason column carries a `_no_id_check`).
+ */
+export const Reason = (): PropertyDecorator =>
+  applyDecorators(
+    Transform(trim),
+    IsString(),
+    Length(3, 500),
+    Matches(NO_CONTROL, { message: '$property must not contain control characters' }),
+    NoIdentityNumber(),
+  );

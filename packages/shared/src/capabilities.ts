@@ -73,6 +73,15 @@ export type Capability = (typeof Capability)[keyof typeof Capability];
 
 const C = Capability;
 
+/**
+ * Rule 24 (R225): inert while the holder still signs in with the default password, which
+ * colleagues may know. Everything else works; changing the password restores them.
+ */
+export const DEFAULT_PASSWORD_INERT_CAPABILITIES: readonly Capability[] = [
+  Capability.USER_ACCOUNT_MANAGE,
+  Capability.ROLE_MANAGE,
+];
+
 /** The groups of §7, in display order (the custom-role checklist and the permissions screen). */
 export const CAPABILITY_GROUPS = {
   setup: [

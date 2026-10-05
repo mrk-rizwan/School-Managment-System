@@ -190,6 +190,29 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     ),
   remarks_supersedes_id_key: () =>
     new ApiException(409, ErrorCode.REMARK_SUPERSEDED, 'This remark has already been corrected.'),
+  // Phase 3 slice 18. The services refuse each with the holder's id first; these are the
+  // fallback for a concurrent write.
+  fee_heads_live_name_key: () =>
+    new ApiException(409, ErrorCode.FEE_HEAD_NAME_TAKEN, 'A fee head of that name already exists.'),
+  fee_heads_one_tuition_key: () =>
+    new ApiException(409, ErrorCode.FEE_HEAD_CATEGORY_TAKEN, 'The school already has a tuition head.'),
+  fee_heads_one_fine_key: () =>
+    new ApiException(409, ErrorCode.FEE_HEAD_CATEGORY_TAKEN, 'The school already has a fine head.'),
+  fee_structures_active_key: () =>
+    new ApiException(
+      409,
+      ErrorCode.FEE_STRUCTURE_EXISTS,
+      'This class already has an amount for that head from that month.',
+    ),
+  // ON UPDATE RESTRICT: a class's year cannot change once fee amounts name the class.
+  fee_structures_class_id_fkey: () =>
+    taken(
+      ErrorCode.CLASS_YEAR_IMMUTABLE,
+      'academicYearId',
+      'The academic year of a class cannot change once fees are set for it.',
+    ),
+  school_settings_late_fee_enabled_check: () =>
+    fieldInvalid('lateFeeAmount', 'lateFeeAmount is required while late fees are enabled'),
 };
 
 /**

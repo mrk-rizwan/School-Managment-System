@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { KeyRoundIcon, LogOutIcon, PauseCircleIcon } from 'lucide-react';
+import { KeyRoundIcon, LockIcon, LogOutIcon, PauseCircleIcon } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { ErrorState, LoadingState } from '@/components/page-states';
 import { SessionRedirects } from '@/components/session-redirects';
@@ -76,7 +76,9 @@ export function SchoolConsole({ children }: { children: React.ReactNode }) {
 function SessionNotices({ me }: { me: MeDto }) {
   const pathname = usePathname();
   const onAccount = pathname === SCHOOL_PATHS.account;
-  if (!me.passwordIsDefault && me.school.status !== 'suspended') return null;
+  // Rule 24: role.manage and user.account.manage stay inert until the password is changed.
+  const blocked = me.blockedCapabilities.length > 0;
+  if (!me.passwordIsDefault && !blocked && me.school.status !== 'suspended') return null;
 
   return (
     <div className="mb-6 grid gap-3">
@@ -98,6 +100,15 @@ function SessionNotices({ me }: { me: MeDto }) {
               ? 'Anyone who knows your identity number can sign in as you. Choose your own password.'
               : 'Anyone who knows your identity number can sign in as you. Add and verify an email address, then choose your own password.'}{' '}
             {!onAccount && <Link href={SCHOOL_PATHS.account}>Go to your account</Link>}
+          </AlertDescription>
+        </Alert>
+      )}
+      {blocked && (
+        <Alert role="status" data-testid="blocked-capabilities-banner">
+          <LockIcon />
+          <AlertDescription>
+            Change your password to manage user accounts and roles.{' '}
+            {!onAccount && <Link href={SCHOOL_PATHS.account}>Change your password</Link>}
           </AlertDescription>
         </Alert>
       )}

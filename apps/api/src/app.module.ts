@@ -20,6 +20,8 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { MeModule } from './modules/me/me.module';
 import { StaffAttendanceModule } from './modules/staff-attendance/staff-attendance.module';
 import { DiaryModule } from './modules/diary/diary.module';
+import { FeesModule } from './modules/fees/fees.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -61,6 +63,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
     DiaryModule,
     AttendanceModule,
     AnnouncementsModule,
+    // Phase 3 (phase-3-financial.md §2).
+    FeesModule,
+    PaymentsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
