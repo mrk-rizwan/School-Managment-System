@@ -44,8 +44,15 @@ stop() { # pid file. Waits for the process to exit: Nest's graceful shutdown out
 start_api() {
   stop "$API_PID_FILE"
   stop "$WORKER_PID_FILE"
-  (cd "$root" && set -a && . ./.env && set +a && MOBILE_MIN_APP_VERSION="$1" nohup node apps/api/dist/main.js >>"$root/api.log" 2>&1 & echo $! >"$API_PID_FILE")
-  (cd "$root" && set -a && . ./.env && set +a && MOBILE_MIN_APP_VERSION="$1" WORKER_HEALTH_PORT=3002 nohup node apps/api/dist/worker.js >>"$root/worker.log" 2>&1 & echo $! >"$WORKER_PID_FILE")
+  # The old processes must be gone, or the new API's listen fails while the old one answers. `exec`
+  # below makes $! the node pid itself (without it, $! was the subshell, and stop missed node).
+  for _ in $(seq 1 30); do
+    curl -fs -o /dev/null "$api/health" || curl -fs -o /dev/null "http://127.0.0.1:3002/health" || break
+    sleep 1
+  done
+  if curl -fs -o /dev/null "$api/health"; then echo "the previous API is still answering"; return 1; fi
+  (cd "$root" && set -a && . ./.env && set +a && MOBILE_MIN_APP_VERSION="$1" exec nohup node apps/api/dist/main.js >>"$root/api.log" 2>&1 & echo $! >"$API_PID_FILE")
+  (cd "$root" && set -a && . ./.env && set +a && MOBILE_MIN_APP_VERSION="$1" WORKER_HEALTH_PORT=3002 exec nohup node apps/api/dist/worker.js >>"$root/worker.log" 2>&1 & echo $! >"$WORKER_PID_FILE")
   wait_for "$api/health" "API"
   wait_for "http://127.0.0.1:3002/health" "worker"
 }
