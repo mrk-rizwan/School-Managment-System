@@ -36,6 +36,7 @@ import {
   toDocumentDto,
 } from '../../documents/documents.service';
 import { isImageMime } from '../../documents/upload-processing';
+import { AdmissionFees } from '../../fees/admission-fees';
 import { guardianMerged, GuardiansService } from '../guardians/guardians.service';
 import { EnrolmentsService } from '../students/enrolments.service';
 import { GuardianLinksService } from '../students/guardian-links.service';
@@ -123,6 +124,7 @@ export class AdmissionsService {
     private readonly audit: AuditLogRepository,
     private readonly encryption: FieldEncryption,
     private readonly clock: SchoolClock,
+    private readonly admissionFees: AdmissionFees,
     @Inject(ENV) env: Env,
   ) {
     this.hashKey = env.IDENTITY_HASH_KEY;
@@ -142,6 +144,7 @@ export class AdmissionsService {
     const key = this.parseKey(rawKey);
     const today = await this.clock.today(actor.schoolId);
     this.assertShape(dto, today);
+    this.admissionFees.assertDecision(session, dto.admissionFee, 'admissionFee');
     const requestHash = this.requestHash(dto);
 
     const stored = await this.keys.find(actor.schoolId, actor.userId, ENDPOINT, key);
@@ -150,7 +153,7 @@ export class AdmissionsService {
     const bFormHash = dto.student.bForm ? identityHash(dto.student.bForm, this.hashKey) : null;
     let studentId: bigint;
     try {
-      studentId = await this.admitInTransaction(actor, scopeOf(session), dto, key, requestHash, today);
+      studentId = await this.admitInTransaction(session, actor, scopeOf(session), dto, key, requestHash, today);
     } catch (error) {
       // Rolled back. R89: a racing same-key submit committed first; replay it (step 6).
       const constraint = summariseDatabaseError(error)?.constraint;
@@ -199,6 +202,7 @@ export class AdmissionsService {
       enrolment: toEnrolmentDto(view),
       guardianLinks: links.map((link) => this.linksService.toDto(schoolId, held, link)),
       documents: documents.map(toDocumentDto),
+      charges: await this.admissionFees.chargesOf(session, schoolId, enrolment.id),
       loginOffers: {
         student:
           (settings?.studentLoginEnabled ?? false) &&
@@ -377,6 +381,7 @@ export class AdmissionsService {
 
   @Transactional()
   private async admitInTransaction(
+    session: SchoolSessionContext,
     actor: Actor,
     scope: Scope,
     dto: CreateAdmissionDto,
@@ -496,6 +501,14 @@ export class AdmissionsService {
         uploadedBy: userId,
       });
     }
+    // R239: the class's once heads, after the guardian links (the own-child check reads them).
+    await this.admissionFees.charge(
+      session,
+      schoolId,
+      { studentId: student.id, enrolmentId: enrolment.id, academicYearId, classId },
+      dto.admissionFee,
+      'admissionFee',
+    );
     await this.statusChanges.record(schoolId, {
       studentId: student.id,
       fromStatus: null,

@@ -22,6 +22,8 @@ import { StaffAttendanceModule } from './modules/staff-attendance/staff-attendan
 import { DiaryModule } from './modules/diary/diary.module';
 import { FeesModule } from './modules/fees/fees.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -66,6 +68,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
     // Phase 3 (phase-3-financial.md §2).
     FeesModule,
     PaymentsModule,
+    LeaveModule,
+    ExpensesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

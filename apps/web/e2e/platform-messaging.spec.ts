@@ -32,6 +32,9 @@ const SCHOOL: SchoolDto = {
   smsMonthlyCap: 500,
   whatsappProvider: 'platform_default',
   smsProvider: 'platform_default',
+  smsCapOverridden: false,
+  terminatedAt: null,
+  retentionEndsOn: null,
 };
 
 const counts = (channel: 'push' | 'whatsapp' | 'sms' | 'email', accepted = 0, failed = 0, suppressed = 0) => ({
@@ -100,7 +103,7 @@ async function mockApi(page: Page, state: MockState) {
 
 const state = (extra: Partial<MockState> = {}): MockState => ({
   school: { ...SCHOOL },
-  settings: { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], updatedAt: STAMP },
+  settings: { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], invoiceDueDay: 10, graceDays: 15, updatedAt: STAMP },
   health: [HEALTH],
   ...extra,
 });
@@ -250,7 +253,7 @@ test('suspend: a refused allowance change leaves the suspension and says so', as
     page.getByText('Green Valley School is now suspended. The SMS allowance was not changed: Try again shortly.'),
   ).toBeVisible();
   expect(calls(requests, 'PATCH', '/schools/s1')).toHaveLength(1);
-  await expect(page.locator('dl')).toContainText('Suspended');
+  await expect(page.locator('dl').first()).toContainText('Suspended');
 });
 
 test('platform settings: the defaults change for every school on platform default', async ({ page }) => {
@@ -272,6 +275,8 @@ test('platform settings and school knobs: a WhatsApp provider switched off on th
         defaultWhatsappProvider: 'waha',
         defaultSmsProvider: 'sendpk',
         enabledWhatsappProviders: ['waha'],
+        invoiceDueDay: 10,
+        graceDays: 15,
         updatedAt: STAMP,
       },
     }),

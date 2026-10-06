@@ -5,6 +5,8 @@ import {
   BookOpenIcon,
   BookOpenCheckIcon,
   CalendarCheckIcon,
+  CalendarOffIcon,
+  PlaneIcon,
   ClipboardCheckIcon,
   UserCheckIcon,
   CalendarDaysIcon,
@@ -15,6 +17,9 @@ import {
   UserRoundIcon,
   IdCardIcon,
   KeyRoundIcon,
+  LayersIcon,
+  ReceiptTextIcon,
+  ReceiptIcon,
   MegaphoneIcon,
   MessageSquareIcon,
   InboxIcon,
@@ -64,6 +69,15 @@ export const schoolNav: NavItem[] = [
   },
   // Every staff member reads their own record (@RequireStaff, contracts/slice-12.md §4.4).
   { href: '/my-attendance', label: 'My attendance', icon: CalendarCheckIcon, capability: null },
+  // Phase 3 slice 24: every staff member's own leave (@RequireStaff); the approvers' queue and the
+  // leave types (staff.leave.approve, school.settings.manage).
+  { href: '/my-leave', label: 'My leave', icon: PlaneIcon, capability: null },
+  {
+    href: '/leave',
+    label: 'Staff leave',
+    icon: CalendarOffIcon,
+    capability: ['staff.leave.approve', 'school.settings.manage'],
+  },
   // Every staff member may read the academic structure (@RequireStaff); writes are per capability.
   { href: '/academics', label: 'Academic structure', icon: BookOpenIcon, capability: null },
   // Every staff member may read the published calendar (@RequireStaff); drafts and writes need
@@ -76,6 +90,13 @@ export const schoolNav: NavItem[] = [
     label: 'Fees',
     icon: BanknoteIcon,
     capability: ['fee_head.manage', 'charge.create', 'fee.statement.view', 'payment.record'],
+  },
+  // Recorders, approvers and report readers (phase-3-financial.md slice 23).
+  {
+    href: '/expenses',
+    label: 'Expenses',
+    icon: ReceiptIcon,
+    capability: ['expense.record', 'expense.approve', 'finance.report.view'],
   },
   {
     href: '/users',
@@ -114,6 +135,9 @@ export const schoolNav: NavItem[] = [
 export const platformNav: NavItem[] = [
   { href: '/platform/schools', label: 'Schools', icon: SchoolIcon, capability: null },
   { href: '/platform/messaging', label: 'Delivery health', icon: ActivityIcon, capability: null },
+  // Slice 26: platform billing.
+  { href: '/platform/plans', label: 'Plans', icon: LayersIcon, capability: null },
+  { href: '/platform/invoices', label: 'Invoices', icon: ReceiptTextIcon, capability: null },
   { href: '/platform/settings', label: 'Platform settings', icon: SlidersHorizontalIcon, capability: null },
 ];
 

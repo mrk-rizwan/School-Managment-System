@@ -68,7 +68,7 @@ test('first sign-in through to activating a new school', async ({ page }) => {
   await page.getByRole('button', { name: 'Create school' }).click();
   await expect(page).toHaveURL(/\/platform\/schools\/(?!new$)[^/]+$/);
   await expect(page.getByRole('heading', { name: schoolName })).toBeVisible();
-  const record = page.locator('dl');
+  const record = page.locator('dl').filter({ hasNotText: 'SMS limit' }); // the school record, not the billing section's dl
   await expect(record).toContainText('Trial');
 
   // Activate it with a reason.

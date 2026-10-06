@@ -23,6 +23,7 @@ import {
   holidayCancellationText,
   holidayNoticeText,
   renderMessage,
+  renderBillingTierMissing,
   renderWhatsAppSessionDown,
   smsTextOf,
   type RenderContext,
@@ -311,7 +312,6 @@ describe('R16 (slice 17): every message template, rendered with realistic values
    * refuses to render; once a slice writes its template it leaves this set and is scanned above.
    */
   const TEMPLATE_PENDING = new Set<MessageType>([
-    'fee_charged',
     'fee_due_reminder',
     'fee_overdue',
     'receipt_issued',
@@ -319,16 +319,7 @@ describe('R16 (slice 17): every message template, rendered with realistic values
     'payment_claim_submitted',
     'handover_shortfall',
     'reminder_sms_capped',
-    'concession_requested',
-    'concession_decided',
-    'expense_approval_requested',
-    'expense_decided',
-    'leave_requested',
-    'leave_decided',
     'payslip_ready',
-    'platform_invoice_issued',
-    'platform_invoice_overdue',
-    'billing_tier_missing',
   ]);
 
   const RENDERED: { [K in MessageType]: () => Rendered[] } = {
@@ -403,7 +394,19 @@ describe('R16 (slice 17): every message template, rendered with realistic values
       ),
     ],
     // Phase 3: no template yet (TEMPLATE_PENDING); the slice that writes one renders it here.
-    fee_charged: () => [],
+    // Slice 19 (contracts/slice-19.md §6): the family's total and children's names; never an id.
+    fee_charged: () => [
+      renderMessage(
+        'fee_charged',
+        {
+          label: 'October 2026 fees',
+          total: 12_500,
+          children: ['Muhammad Abdul Rehman Siddiqui', 'Ayesha Siddiqa Rehman'],
+          dueOn: day('2026-10-10'),
+        },
+        ctx('charge_run'),
+      ),
+    ],
     fee_due_reminder: () => [],
     fee_overdue: () => [],
     receipt_issued: () => [],
@@ -411,16 +414,68 @@ describe('R16 (slice 17): every message template, rendered with realistic values
     payment_claim_submitted: () => [],
     handover_shortfall: () => [],
     reminder_sms_capped: () => [],
-    concession_requested: () => [],
-    concession_decided: () => [],
-    expense_approval_requested: () => [],
-    expense_decided: () => [],
-    leave_requested: () => [],
-    leave_decided: () => [],
+    concession_requested: () => [
+      renderMessage(
+        'concession_requested',
+        { studentName: 'Muhammad Abdul Rehman Siddiqui', requesterName: 'Office Clerk' },
+        ctx('concession'),
+      ),
+    ],
+    concession_decided: () =>
+      (['approved', 'rejected', 'ended'] as const).map((decision) =>
+        renderMessage('concession_decided', { studentName: 'Muhammad Abdul Rehman Siddiqui', decision }, ctx('concession')),
+      ),
+    // Slice 23: the recorder's name is a staff name, the category a code; never an amount.
+    expense_approval_requested: () => [
+      renderMessage(
+        'expense_approval_requested',
+        { expenseNo: 1234, category: 'daily_purchases', recorderName: 'Muhammad Abdul Rehman Siddiqui' },
+        ctx('expense'),
+      ),
+    ],
+    expense_decided: () =>
+      (['approved', 'rejected'] as const).map((decision) =>
+        renderMessage('expense_decided', { expenseNo: 1234, decision }, ctx('expense')),
+      ),
+    // Slice 24 (contracts/slice-24.md §5).
+    leave_requested: () => [
+      renderMessage(
+        'leave_requested',
+        { staffName: 'Muhammad Abdul Rehman Siddiqui', typeName: 'Casual leave', startsOn: day('2026-10-12'), endsOn: day('2026-10-14'), workingDays: 3 },
+        ctx('leave_request'),
+      ),
+    ],
+    leave_decided: () =>
+      (['approved', 'rejected'] as const).map((decision) =>
+        renderMessage(
+          'leave_decided',
+          { typeName: 'Sick leave', startsOn: day('2026-10-12'), endsOn: day('2026-10-12'), decision },
+          ctx('leave_request'),
+        ),
+      ),
     payslip_ready: () => [],
-    platform_invoice_issued: () => [],
-    platform_invoice_overdue: () => [],
-    billing_tier_missing: () => [],
+    // Slice 26 (contracts/slice-26.md §5).
+    platform_invoice_issued: () => [
+      renderMessage('platform_invoice_issued', { invoiceNo: 'INV-2026-00042', yearMonth: '2026-10', dueOn: day('2026-10-10') }, ctx('platform_invoice')),
+    ],
+    platform_invoice_overdue: () =>
+      [false, true].map((suspensionEligible) =>
+        renderMessage(
+          'platform_invoice_overdue',
+          { invoiceNo: 'INV-2026-00042', yearMonth: '2026-10', dueOn: day('2026-10-10'), suspensionEligible },
+          ctx('platform_invoice'),
+        ),
+      ),
+    // Not sent through renderMessage (no messages row): the platform alert.
+    billing_tier_missing: () => [
+      renderBillingTierMissing({
+        yearMonth: '2026-10',
+        skipped: [
+          { schoolId: 4821n, schoolName: SCHOOL, reason: 'no_metrics' },
+          { schoolId: 4822n, schoolName: 'Iqra Model School', reason: 'no_band' },
+        ],
+      }),
+    ],
   };
 
   it.each(MESSAGE_TYPES.filter((type) => !TEMPLATE_PENDING.has(type)).map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {

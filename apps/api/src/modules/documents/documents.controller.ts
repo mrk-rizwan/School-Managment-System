@@ -85,6 +85,8 @@ export class DocumentsController {
     Capability.DIARY_WRITE,
     Capability.ANNOUNCEMENT_SEND_SCOPE,
     Capability.ANNOUNCEMENT_SEND_SCHOOL,
+    // Phase 3 slice 23: an expense's receipt.
+    Capability.EXPENSE_RECORD,
   )
   @UseGuards(UploadThrottleGuard)
   @UseInterceptors(SingleFileInterceptor)

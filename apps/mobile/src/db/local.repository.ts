@@ -6,9 +6,11 @@ import { registerNaturalKey } from '../outbox/coalesce';
 import {
   buildAttachmentBody,
   buildDiaryBody,
+  buildExpenseBody,
   buildRegisterBody,
   buildRemarkBody,
   type DiaryInput,
+  type ExpenseInput,
   type RegisterMarkInput,
   type RemarkInput,
 } from '../outbox/bodies';
@@ -524,6 +526,8 @@ export async function recoverWaitingAttachments(now: Date = new Date()): Promise
          (SELECT id FROM local_diary_entries WHERE state = 'discarded')`,
       [now.toISOString()],
     );
+    // The same for the files of the staged_upload_patch lanes (an expense's receipt).
+    queued += await recoverWaitingFiles(txn, now);
   });
   return queued;
 }
@@ -584,43 +588,87 @@ export async function listWaitingAttachments(): Promise<LocalAttachment[]> {
   return rows.map(attachmentOf);
 }
 
+// --- Files of the staged_upload_patch lanes ---------------------------------------------------
+//
+// A lane whose sender is `staged_upload_patch` keeps its file row in the lane's domainTable: the
+// diary photo in local_attachments (slice 16), every later file — an expense's receipt (slice 23),
+// a deposit slip (slice 21) — in local_files. Both tables carry the same file columns, so the
+// sender reads and updates either through these functions.
+
+export type UploadTable = 'local_attachments' | 'local_files';
+
+export const UPLOAD_TABLES: readonly UploadTable[] = ['local_attachments', 'local_files'];
+
+export function uploadTableOf(table: string | null): UploadTable | null {
+  return UPLOAD_TABLES.find((t) => t === table) ?? null;
+}
+
+/** A file row as the sender needs it, from either upload table. */
+export type UploadFile = Omit<LocalAttachment, 'localEntryId'>;
+
+const UploadFileRow = AttachmentRow.omit({ local_entry_id: true });
+
+export async function getUploadFile(table: UploadTable, id: string): Promise<UploadFile | null> {
+  const db = await getDb();
+  const raw = await db.getFirstAsync<unknown>(
+    `SELECT a.id, a.file_path, a.mime, a.size_bytes, a.state, a.staged_upload_id,
+       a.staged_expires_at, a.reference_retries, a.outbox_id FROM ${table} a WHERE a.id = ?`,
+    [id],
+  );
+  if (raw === null) return null;
+  const a = UploadFileRow.parse(raw);
+  return {
+    id: a.id,
+    fileName: a.file_path,
+    mime: a.mime,
+    sizeBytes: a.size_bytes,
+    state: a.state,
+    stagedUploadId: a.staged_upload_id,
+    stagedExpiresAt: a.staged_expires_at,
+    referenceRetries: a.reference_retries,
+    outboxId: a.outbox_id,
+  };
+}
+
 export async function setStagedUpload(
   id: string,
   stagedUploadId: string,
   expiresAt: string,
+  table: UploadTable = 'local_attachments',
 ): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE local_attachments SET staged_upload_id = ?, staged_expires_at = ?, updated_at = ? WHERE id = ?',
+    `UPDATE ${table} SET staged_upload_id = ?, staged_expires_at = ?, updated_at = ? WHERE id = ?`,
     [stagedUploadId, expiresAt, new Date().toISOString(), id],
   );
 }
 
 /** The staged upload was refused as gone: the next attempt uploads again; the refusal is counted. */
-export async function clearStagedUpload(id: string): Promise<void> {
+export async function clearStagedUpload(
+  id: string,
+  table: UploadTable = 'local_attachments',
+): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `UPDATE local_attachments SET staged_upload_id = NULL, staged_expires_at = NULL,
+    `UPDATE ${table} SET staged_upload_id = NULL, staged_expires_at = NULL,
        reference_retries = reference_retries + 1, updated_at = ? WHERE id = ?`,
     [new Date().toISOString(), id],
   );
 }
 
-/** The photo is on the server: its row says so and its file is deleted. */
-export async function markAttachmentDone(id: string): Promise<void> {
+/** The file is on the server: its row says so and the file is deleted from the phone. */
+export async function markUploadDone(table: UploadTable, id: string): Promise<void> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ file_path: string }>(
-    'SELECT file_path FROM local_attachments WHERE id = ?',
+    `SELECT file_path FROM ${table} WHERE id = ?`,
     [id],
   );
   await db.runAsync(
-    `UPDATE local_attachments SET state = 'done', staged_upload_id = NULL, updated_at = ?
-     WHERE id = ?`,
+    `UPDATE ${table} SET state = 'done', staged_upload_id = NULL, updated_at = ? WHERE id = ?`,
     [new Date().toISOString(), id],
   );
   if (row !== null) deleteOutboxFile(row.file_path);
 }
-
 // --- Remarks --------------------------------------------------------------------------------
 
 export type LocalRemark = {
@@ -737,6 +785,238 @@ export async function listLocalRemarks(studentId: string): Promise<LocalRemark[]
   });
 }
 
+// --- Expenses and their receipts (Phase 3 slice 23, §3.9) -----------------------------------
+
+/** Each owner table of local_files: the lane that sends its file, and the PATCH path. */
+const FILE_LANES = {
+  local_expenses: {
+    lane: 'expense_receipt',
+    path: (serverId: string) => `/api/v1/expenses/${serverId}/receipt`,
+  },
+} as const satisfies Record<string, { lane: keyof typeof LANES; path: (id: string) => string }>;
+
+type FileOwnerTable = keyof typeof FILE_LANES;
+
+export type LocalExpense = {
+  id: string;
+  category: string;
+  amount: number;
+  spentOn: string;
+  description: string;
+  payee: string | null;
+  method: string;
+  reference: string | null;
+  serverId: string | null;
+  expenseNo: number | null;
+  /** The status the server answered with (recorded, pending_approval or approved). */
+  serverStatus: string | null;
+  savedOnServerAt: string | null;
+  state: 'queued' | 'done' | 'failed' | 'discarded';
+  outbox: OutboxView | null;
+  receipt: (UploadFile & { outbox: OutboxView | null }) | null;
+};
+
+const ExpenseRow = z.object({
+  id: z.string(),
+  category: z.string(),
+  amount: z.number(),
+  spent_on: z.string(),
+  description: z.string(),
+  payee: z.string().nullable(),
+  method: z.string(),
+  reference: z.string().nullable(),
+  server_id: z.string().nullable(),
+  expense_no: z.number().nullable(),
+  server_status: z.string().nullable(),
+  saved_on_server_at: z.string().nullable(),
+  state: z.enum(['queued', 'done', 'failed', 'discarded']),
+});
+
+/**
+ * Saves an expense on the device: the local row, the outbox row (its id is the Idempotency-Key)
+ * and — when a receipt was photographed — the file row in state `waiting`, all in one
+ * transaction. The receipt is queued once the expense has a server id.
+ */
+export async function saveExpense(
+  input: ExpenseInput,
+  receipt: LocalPhoto | null,
+  now: Date = new Date(),
+  /** "Edit and resend": the failed local expense this one replaces; its waiting receipt moves over. */
+  replaces: string | null = null,
+): Promise<{ localExpenseId: string; outboxId: string }> {
+  const body = buildExpenseBody(input);
+  const stamp = now.toISOString();
+  const localExpenseId = newIdempotencyKey();
+  let outboxId = '';
+  await ownedTransaction(async (txn) => {
+    outboxId = await enqueueIn(
+      txn,
+      {
+        lane: 'expense',
+        method: LANES.expense.method,
+        path: LANES.expense.path,
+        body,
+        domainTable: LANES.expense.domainTable,
+        domainId: localExpenseId,
+      },
+      now,
+    );
+    await txn.runAsync(
+      `INSERT INTO local_expenses (id, category, amount, spent_on, description, payee, method,
+         reference, outbox_id, state, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?)`,
+      [
+        localExpenseId,
+        body.category,
+        body.amount,
+        body.spentOn,
+        body.description,
+        body.payee ?? null,
+        body.method,
+        body.reference ?? null,
+        outboxId,
+        stamp,
+        stamp,
+      ],
+    );
+    if (receipt !== null) {
+      await txn.runAsync(
+        `INSERT INTO local_files (id, owner_table, owner_id, file_path, mime, size_bytes, state,
+           created_at, updated_at) VALUES (?, 'local_expenses', ?, ?, ?, ?, 'waiting', ?, ?)`,
+        [receipt.id, localExpenseId, receipt.fileName, receipt.mime, receipt.sizeBytes, stamp, stamp],
+      );
+    }
+    if (replaces !== null) await replaceLocalRow(txn, 'local_expenses', replaces, localExpenseId);
+  });
+  return { localExpenseId, outboxId };
+}
+
+/** Queues the owner's waiting files for its server row `serverId`; never one queued twice. */
+async function queueWaitingFiles(
+  txn: Db,
+  ownerTable: FileOwnerTable,
+  ownerId: string,
+  serverId: string,
+  now: Date,
+): Promise<number> {
+  const { lane, path } = FILE_LANES[ownerTable];
+  const waiting = await txn.getAllAsync<{ id: string }>(
+    `SELECT id FROM local_files
+      WHERE owner_table = ? AND owner_id = ? AND state = 'waiting' AND outbox_id IS NULL`,
+    [ownerTable, ownerId],
+  );
+  for (const { id } of waiting) {
+    const outboxId = await enqueueIn(
+      txn,
+      {
+        lane,
+        method: LANES[lane].method,
+        path: path(serverId),
+        body: buildAttachmentBody(id),
+        domainTable: LANES[lane].domainTable,
+        domainId: id,
+      },
+      now,
+    );
+    await txn.runAsync(
+      "UPDATE local_files SET state = 'queued', outbox_id = ?, updated_at = ? WHERE id = ?",
+      [outboxId, now.toISOString(), id],
+    );
+  }
+  return waiting.length;
+}
+
+/**
+ * The follow-up of an expense's 2xx: the server's id, number and status are written, and a
+ * receipt waiting for it is queued in the same transaction. Returns how many files were queued.
+ */
+export async function markExpenseSaved(
+  outboxId: string,
+  server: { id: string; expenseNo: number | null; status: string | null } | null,
+  now: Date = new Date(),
+): Promise<number> {
+  let queued = 0;
+  await inExclusiveTransaction(async (txn) => {
+    const expense = await txn.getFirstAsync<{ id: string }>(
+      'SELECT id FROM local_expenses WHERE outbox_id = ?',
+      [outboxId],
+    );
+    if (expense === null) return;
+    const stamp = now.toISOString();
+    await txn.runAsync(
+      `UPDATE local_expenses SET server_id = COALESCE(?, server_id),
+         expense_no = COALESCE(?, expense_no), server_status = COALESCE(?, server_status),
+         saved_on_server_at = ?, state = 'done', updated_at = ? WHERE id = ?`,
+      [server?.id ?? null, server?.expenseNo ?? null, server?.status ?? null, stamp, stamp, expense.id],
+    );
+    if (server !== null) {
+      queued = await queueWaitingFiles(txn, 'local_expenses', expense.id, server.id, now);
+    }
+  });
+  return queued;
+}
+
+/** Startup: a receipt still waiting whose expense already has a server id is queued. */
+async function recoverWaitingFiles(txn: Db, now: Date): Promise<number> {
+  let queued = 0;
+  const owners = await txn.getAllAsync<{ id: string; server_id: string }>(
+    `SELECT DISTINCT e.id, e.server_id FROM local_expenses e
+       JOIN local_files f ON f.owner_table = 'local_expenses' AND f.owner_id = e.id
+      WHERE f.state = 'waiting' AND f.outbox_id IS NULL AND e.server_id IS NOT NULL`,
+  );
+  for (const owner of owners) {
+    queued += await queueWaitingFiles(txn, 'local_expenses', owner.id, owner.server_id, now);
+  }
+  return queued;
+}
+
+/** The expenses on this phone, newest first, with their receipt's state. */
+export async function listLocalExpenses(): Promise<LocalExpense[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<unknown>(
+    `SELECT e.id, e.category, e.amount, e.spent_on, e.description, e.payee, e.method, e.reference,
+       e.server_id, e.expense_no, e.server_status, e.saved_on_server_at, e.state, ${OUTBOX_COLUMNS}
+     FROM local_expenses e LEFT JOIN outbox o ON o.id = e.outbox_id
+     WHERE e.state != 'discarded' ORDER BY e.created_at DESC`,
+  );
+  const expenses: LocalExpense[] = [];
+  for (const raw of rows) {
+    const e = ExpenseRow.parse(raw);
+    const fileRaw = await db.getFirstAsync<{ id: string }>(
+      `SELECT f.id FROM local_files f
+        WHERE f.owner_table = 'local_expenses' AND f.owner_id = ? AND f.state != 'discarded'
+        ORDER BY f.created_at DESC LIMIT 1`,
+      [e.id],
+    );
+    const file = fileRaw === null ? null : await getUploadFile('local_files', fileRaw.id);
+    const fileOutboxRaw =
+      file?.outboxId == null
+        ? null
+        : await db.getFirstAsync<unknown>(`SELECT ${OUTBOX_COLUMNS} FROM outbox o WHERE o.id = ?`, [
+            file.outboxId,
+          ]);
+    const fileOutbox = fileOutboxRaw === null ? null : outboxOf(fileOutboxRaw);
+    expenses.push({
+      id: e.id,
+      category: e.category,
+      amount: e.amount,
+      spentOn: e.spent_on,
+      description: e.description,
+      payee: e.payee,
+      method: e.method,
+      reference: e.reference,
+      serverId: e.server_id,
+      expenseNo: e.expense_no,
+      serverStatus: e.server_status,
+      savedOnServerAt: e.saved_on_server_at,
+      state: e.state,
+      outbox: outboxOf(raw),
+      receipt: file === null ? null : { ...file, outbox: fileOutbox },
+    });
+  }
+  return expenses;
+}
+
 // --- Discard, remedies and residue ----------------------------------------------------------
 
 /**
@@ -751,10 +1031,25 @@ export async function discardItem(outboxId: string): Promise<void> {
          JOIN local_diary_entries e ON e.id = a.local_entry_id WHERE e.outbox_id = ?)`,
       [outboxId],
     );
+    // Receipts queued behind a discarded expense go with it.
+    await txn.runAsync(
+      `DELETE FROM outbox WHERE id IN (SELECT f.outbox_id FROM local_files f
+         JOIN local_expenses e ON f.owner_table = 'local_expenses' AND e.id = f.owner_id
+        WHERE e.outbox_id = ?)`,
+      [outboxId],
+    );
     await txn.runAsync('DELETE FROM outbox WHERE id = ?', [outboxId]);
     await txn.runAsync('DELETE FROM local_diary_entries WHERE outbox_id = ?', [outboxId]);
     // A discarded photo's row (and, by the foreign key, an entry's photos) go too.
     await txn.runAsync('DELETE FROM local_attachments WHERE outbox_id = ?', [outboxId]);
+    // A discarded expense takes its receipt; a discarded receipt goes alone.
+    await txn.runAsync(
+      `DELETE FROM local_files WHERE owner_table = 'local_expenses'
+         AND owner_id IN (SELECT id FROM local_expenses WHERE outbox_id = ?)`,
+      [outboxId],
+    );
+    await txn.runAsync('DELETE FROM local_expenses WHERE outbox_id = ?', [outboxId]);
+    await txn.runAsync('DELETE FROM local_files WHERE outbox_id = ?', [outboxId]);
     await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
   });
   await sweepPhotoFiles();
@@ -826,7 +1121,7 @@ export async function resendWithRemedy(
  */
 async function replaceLocalRow(
   txn: Db,
-  table: 'local_diary_entries' | 'local_remarks',
+  table: 'local_diary_entries' | 'local_remarks' | 'local_expenses',
   oldId: string,
   newId: string,
 ): Promise<void> {
@@ -841,6 +1136,13 @@ async function replaceLocalRow(
       [newId, oldId],
     );
   }
+  if (table === 'local_expenses') {
+    await txn.runAsync(
+      `UPDATE local_files SET owner_id = ?
+        WHERE owner_table = 'local_expenses' AND owner_id = ? AND state = 'waiting'`,
+      [newId, oldId],
+    );
+  }
   if (old.outbox_id !== null)
     await txn.runAsync('DELETE FROM outbox WHERE id = ?', [old.outbox_id]);
   await txn.runAsync(`DELETE FROM ${table} WHERE id = ?`, [oldId]);
@@ -851,6 +1153,8 @@ const LOCAL_TABLES = new Set([
   'local_diary_entries',
   'local_attachments',
   'local_remarks',
+  'local_expenses',
+  'local_files',
 ]);
 
 /**
@@ -860,7 +1164,8 @@ const LOCAL_TABLES = new Set([
 export async function sweepPhotoFiles(): Promise<void> {
   const db = await getDb();
   const kept = await db.getAllAsync<{ file_path: string }>(
-    "SELECT file_path FROM local_attachments WHERE state IN ('waiting', 'queued')",
+    `SELECT file_path FROM local_attachments WHERE state IN ('waiting', 'queued')
+     UNION ALL SELECT file_path FROM local_files WHERE state IN ('waiting', 'queued')`,
   );
   deleteOutboxFilesExcept(kept.map((row) => row.file_path));
 }

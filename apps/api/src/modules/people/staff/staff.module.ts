@@ -47,5 +47,7 @@ import { UserRolesService } from './user-roles.service';
     SectionRepository,
     SubjectRepository,
   ],
+  // Slice 24: leave approval creates and ends the slice-10 cover assignment through it.
+  exports: [TeacherAssignmentsService],
 })
 export class StaffModule {}

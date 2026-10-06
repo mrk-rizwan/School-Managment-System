@@ -143,6 +143,56 @@ export class NotificationService {
   }
 
   /**
+   * send() for many people at once, each with their own variables (contracts/slice-19.md §6: one
+   * fee_charged per family, with that family's total). One resolution, one channel plan and one
+   * insert for the whole set, so a run that tells 2,000 families stays inside its budget (§7.2).
+   * A recipient listed twice keeps its first variables. Not for announcement-carried messages.
+   */
+  async sendEach<T extends MessageType>(
+    schoolId: SchoolId,
+    input: {
+      readonly type: T;
+      readonly subject: SendInput<T>['subject'];
+      readonly items: readonly { readonly recipient: Recipient; readonly vars: TemplateVarsMap[T] }[];
+    },
+  ): Promise<SendResult> {
+    this.outbox.requireTransaction();
+    const spec = MESSAGE_TYPE_TABLE[input.type];
+    if (spec.priority === 'platform') {
+      throw new Error(`${input.type} has no messages row; it is not sent through send()`);
+    }
+    if (!spec.subjectTypes.includes(input.subject.type) || input.subject.type === 'announcement') {
+      throw new Error(`${input.type} cannot carry subject type ${input.subject.type} in sendEach`);
+    }
+    if (input.items.length === 0) return { created: 0, existing: 0, dedupedByPhone: 0, messages: [] };
+    const settings = await this.school.find(schoolId);
+    if (!settings) throw new Error('school row missing for a resolved tenant');
+    const varsOf = new Map<string, TemplateVarsMap[T]>();
+    for (const item of input.items) {
+      const key = keyOf(item.recipient);
+      if (!varsOf.has(key)) varsOf.set(key, item.vars);
+    }
+    const plan = await this.planFor(schoolId, settings, { type: input.type, recipients: input.items.map((i) => i.recipient) });
+    const bodies = plan.people.map((person) => {
+      const vars = varsOf.get(keyOf(person.recipient));
+      if (vars === undefined) throw new Error('a planned person has no variables');
+      return this.render(input.type, vars, settings, input.subject.type);
+    });
+    const written = await this.write(schoolId, {
+      type: input.type,
+      priority: plan.priority,
+      subject: input.subject,
+      body: bodies,
+      title: null,
+      mediaObjectKey: null,
+      firstChannel: spec.channels[0] ?? 'push',
+      people: plan.people,
+      plans: plan.plans,
+    });
+    return { ...written, dedupedByPhone: 0 };
+  }
+
+  /**
    * The channel plan send() would write for these recipients now, writing nothing: the
    * announcement preview and send-time SMS count use the real predicates per person
    * (contracts/slice-14.md §4.5). Usable outside a transaction.
@@ -270,7 +320,8 @@ export class NotificationService {
       type: MessageType;
       priority: NewMessage['priority'];
       subject: SendInput<MessageType>['subject'];
-      body: string;
+      /** One body for everyone, or one per person (parallel to `people`, sendEach). */
+      body: string | readonly string[];
       title: string | null;
       mediaObjectKey: string | null;
       firstChannel: MessageChannel;
@@ -292,7 +343,7 @@ export class NotificationService {
         guardianId: 'guardianId' in p.recipient ? p.recipient.guardianId : null,
         staffId: 'staffId' in p.recipient ? p.recipient.staffId : null,
         studentId: 'studentId' in p.recipient ? p.recipient.studentId : null,
-        body: input.body,
+        body: typeof input.body === 'string' ? input.body : (input.body[i] ?? ''),
         title: input.title,
         mediaObjectKey: input.mediaObjectKey,
         channelPlan: plan.legs,

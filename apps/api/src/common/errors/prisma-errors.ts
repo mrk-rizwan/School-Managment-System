@@ -8,6 +8,10 @@
 // the constraint name leave this file.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
+import { SLICE_19_CONSTRAINTS } from './constraints-charges';
+import { SLICE_23_CONSTRAINTS } from './constraints-expenses';
+import { SLICE_24_CONSTRAINTS } from './constraints-leave';
+import { SLICE_26_CONSTRAINTS } from './constraints-billing';
 
 /** What may be logged about a database error. */
 export interface DatabaseErrorSummary {
@@ -213,6 +217,10 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
     ),
   school_settings_late_fee_enabled_check: () =>
     fieldInvalid('lateFeeAmount', 'lateFeeAmount is required while late fees are enabled'),
+  ...SLICE_19_CONSTRAINTS,
+  ...SLICE_23_CONSTRAINTS,
+  ...SLICE_24_CONSTRAINTS,
+  ...SLICE_26_CONSTRAINTS,
 };
 
 /**

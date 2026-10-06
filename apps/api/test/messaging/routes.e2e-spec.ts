@@ -229,7 +229,14 @@ describe('slice 9 messaging routes (e2e)', () => {
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({ smsMonthlyCap: 900, whatsappProvider: 'cloud_api', smsProvider: 'platform_default' });
       const audit = await db.platformAuditLog.findFirst({ where: { schoolId: school.id, action: 'school.updated' } });
-      expect(audit?.metadata).toEqual({ changes: { smsMonthlyCap: { from: 500, to: 900 }, whatsappProvider: { from: 'platform_default', to: 'cloud_api' } } });
+      // Phase 3 slice 26 (A12, R223): a manual cap is an override the monthly billing run leaves alone.
+      expect(audit?.metadata).toEqual({
+        changes: {
+          smsMonthlyCap: { from: 500, to: 900 },
+          smsCapOverridden: { from: false, to: true },
+          whatsappProvider: { from: 'platform_default', to: 'cloud_api' },
+        },
+      });
       expect((await platformPatch(`/schools/${school.id}`, admin.cookie, { smsMonthlyCap: null })).status).toBe(422);
       expect((await platformPatch(`/schools/${school.id}`, admin.cookie, { smsMonthlyCap: 100001 })).status).toBe(422);
     });

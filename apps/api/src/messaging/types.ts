@@ -3,7 +3,7 @@
 // for it does not compile until its slice adds the template (plan rule 0.12). Vars never carry a
 // phone number, an identity number or a token (R111); the school's name is supplied by the
 // service from `schools.name`, never by the sender.
-import type { DayStatus, MessageSubjectType, MessageType, RemarkCategory } from '@asms/shared';
+import type { DayStatus, ExpenseCategory, MessageSubjectType, MessageType, RemarkCategory } from '@asms/shared';
 
 /** One person a message is addressed to. Exactly one key. */
 export type Recipient =
@@ -87,7 +87,19 @@ export interface TemplateVarsMap {
   };
   // Phase 3 (phase-3-financial.md §3.6): each type's variables are declared by the slice that
   // writes its template and sends it; until then nothing can send one (its renderer throws).
-  fee_charged: Record<string, never>;
+  /**
+   * Slice 19 (contracts/slice-19.md §6): the family's new charges of one run, to each fee-payer
+   * guardian with a positive total. WhatsApp keeps the amount; the push body is the title only
+   * (R238, the processor's TITLE_ONLY_PUSH).
+   */
+  fee_charged: {
+    /** `October 2026 fees`, or a campaign's name. */
+    readonly label: string;
+    readonly total: number;
+    /** The children's first names or full names, in the family's order. */
+    readonly children: readonly string[];
+    readonly dueOn: Date;
+  };
   fee_due_reminder: Record<string, never>;
   fee_overdue: Record<string, never>;
   receipt_issued: Record<string, never>;
@@ -95,15 +107,49 @@ export interface TemplateVarsMap {
   payment_claim_submitted: Record<string, never>;
   handover_shortfall: Record<string, never>;
   reminder_sms_capped: Record<string, never>;
-  concession_requested: Record<string, never>;
-  concession_decided: Record<string, never>;
-  expense_approval_requested: Record<string, never>;
-  expense_decided: Record<string, never>;
-  leave_requested: Record<string, never>;
-  leave_decided: Record<string, never>;
+  /** Slice 19: to the principals, push and email only; no amount (R238), read on the queue. */
+  concession_requested: { readonly studentName: string; readonly requesterName: string };
+  /** Slice 19: to the requester; the decision only. */
+  concession_decided: {
+    readonly studentName: string;
+    readonly decision: 'approved' | 'rejected' | 'ended';
+  };
+  /** Slice 23 (§3.6): push and email to approvers; no amount (R238). */
+  expense_approval_requested: {
+    readonly expenseNo: number;
+    readonly category: ExpenseCategory;
+    readonly recorderName: string;
+  };
+  /** Slice 23: to the recorder; no amount, no reason (read in the app). */
+  expense_decided: { readonly expenseNo: number; readonly decision: 'approved' | 'rejected' };
+  /** Slice 24 (contracts/slice-24.md §5): to the approvers, push and email only. */
+  leave_requested: {
+    readonly staffName: string;
+    readonly typeName: string;
+    readonly startsOn: Date;
+    readonly endsOn: Date;
+    readonly workingDays: number;
+  };
+  /** Slice 24: to the staff member. */
+  leave_decided: {
+    readonly typeName: string;
+    readonly startsOn: Date;
+    readonly endsOn: Date;
+    readonly decision: 'approved' | 'rejected';
+  };
   payslip_ready: Record<string, never>;
-  platform_invoice_issued: Record<string, never>;
-  platform_invoice_overdue: Record<string, never>;
+  /**
+   * Slice 26 (contracts/slice-26.md §5): the platform's invoice to the school, to its principals,
+   * push and email only; no amount (R238), read on the settings page.
+   */
+  platform_invoice_issued: { readonly invoiceNo: string; readonly yearMonth: string; readonly dueOn: Date };
+  /** Slice 26: at overdue_at, and once more (`suspensionEligible`) at eligibility. */
+  platform_invoice_overdue: {
+    readonly invoiceNo: string;
+    readonly yearMonth: string;
+    readonly dueOn: Date;
+    readonly suspensionEligible: boolean;
+  };
   billing_tier_missing: Record<string, never>;
 }
 

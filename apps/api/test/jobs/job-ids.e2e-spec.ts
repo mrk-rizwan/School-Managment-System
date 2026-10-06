@@ -8,6 +8,7 @@ import { loadEnv } from '../../src/config/env';
 import {
   alertJobId,
   announcementSendJobId,
+  chargeRunJobId,
   healthJobId,
   messageJobId,
   rollupJobId,
@@ -25,6 +26,8 @@ const shapes: [string, string][] = [
   ['attendance rollup', rollupSectionDayJobId(11n, '2026-10-04', 3n)],
   ['announcement send', announcementSendJobId(12n, new Date('2026-10-05T03:00:00Z'))],
   ['announcement send, sweep recovery', announcementSendJobId(12n, new Date('2026-10-05T03:00:00Z'), 29_000_003)],
+  // contracts/slice-19.md §5.
+  ['charge run', chargeRunJobId(77n)],
 ];
 
 describe('job ids are accepted by a real queue', () => {

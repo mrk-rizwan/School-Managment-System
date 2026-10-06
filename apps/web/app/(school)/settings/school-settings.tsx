@@ -31,6 +31,7 @@ import {
   WEEKDAY_ORDER,
   isTime,
 } from './_lib/settings-ui';
+import { BillingStatusCard } from './billing-status';
 import { PaymentAccountsCard } from './payment-accounts';
 
 // contracts/slice-2.md §6 (fee due day 1–28, student sign-in) and contracts/slice-9.md §4 (the
@@ -122,6 +123,8 @@ export function SchoolSettings() {
         </QueryStates>
         {/* Its own resource and its own actions, outside the settings form's Save. */}
         <PaymentAccountsCard />
+        {/* Slice 26 (A18): the school's own ASMS subscription and invoice. */}
+        <BillingStatusCard />
       </div>
     </>
   );

@@ -1,9 +1,14 @@
 import { setBearerToken } from '../api/client';
 import { bindOwner, getDb } from '../db/database';
 import {
+  discardItem,
   getAttachment,
+  getUploadFile,
+  listLocalExpenses,
   markDiarySaved,
+  markExpenseSaved,
   saveDiaryEntry,
+  saveExpense,
   setStagedUpload,
 } from '../db/local.repository';
 import { findItem, listByState, saveItem } from '../db/outbox.repository';
@@ -13,13 +18,14 @@ import { DOCUMENT, fileExists, putFile } from '../test/file-system';
 import { TODAY } from '../test/fixtures';
 import * as files from '../media/files';
 import { logText } from '../platform/log';
-import { sendAttachment, STAGED_MARGIN_MS } from './attachment-sender';
+import { sendStagedUploadPatch, STAGED_MARGIN_MS } from './staged-upload-sender';
 import { SEND_FAILED_ON_PHONE } from './outcome';
+import { remedyFor } from './lanes';
 import { transition } from './machine';
-import { onSaved, sendItem } from './runtime';
+import { onSaved, outboxWorker, sendItem } from './runtime';
 import { OutboxWorker } from './worker';
 
-// slice-16 §4.5, §10.1 (outbox/attachment-sender.spec.ts): upload then PATCH, through the real
+// slice-16 §4.5, §10.1 (outbox/staged-upload-sender.spec.ts): upload then PATCH, through the real
 // client and SQLite; every outcome of the photo lane.
 
 const TOKEN = 'A'.repeat(43);
@@ -50,7 +56,7 @@ async function send(routes: Record<string, Handler>, now = NOW) {
   const fake = installFakeApi(routes);
   const id = (await listByState('pending')).find((i) => i.lane === 'diary_attachment')!.id;
   const item = (await findItem(id))!;
-  return { fake, outcome: await sendAttachment(item, now) };
+  return { fake, outcome: await sendStagedUploadPatch(item, now) };
 }
 
 const upload = (reply: Handler = () => ({ status: 201, body: staged() })) => ({
@@ -231,4 +237,109 @@ test('through the worker: done deletes the file and marks the photo done', async
   expect(await listByState('done')).toEqual(
     expect.arrayContaining([expect.objectContaining({ lane: 'diary_attachment' })]),
   );
+});
+
+// --- Phase 3 slice 23 (§3.9, R207): the expense lane and its receipt through the same sender ----
+
+const RECEIPT = `${DOCUMENT}outbox/r1.jpg`;
+const expenseInput = {
+  category: 'stationery',
+  amount: 450,
+  spentOn: TODAY,
+  description: 'Chalk and dusters',
+  method: 'cash',
+} as const;
+const savedExpense = { id: '900', expenseNo: 12, status: 'pending_approval', hasReceipt: false };
+
+function drain() {
+  const worker = new OutboxWorker({ store: outbox, send: sendItem, isOnline: () => true, onSaved });
+  return worker.trigger('enqueued').then(() => worker.idle());
+}
+
+/** An expense with a photographed receipt, saved on the phone. */
+async function expenseWithReceipt(): Promise<string> {
+  putFile(RECEIPT, 200_000);
+  const { outboxId } = await saveExpense(
+    expenseInput,
+    { id: 'r1', fileName: 'r1.jpg', mime: 'image/jpeg', sizeBytes: 200_000 },
+    NOW,
+  );
+  return outboxId;
+}
+
+test('an expense is sent under its outbox id; its receipt waits for the server id, then is uploaded and PATCHed', async () => {
+  // One worker here: the app's own, which the follow-up nudges, stays still.
+  jest.spyOn(outboxWorker, 'trigger').mockResolvedValue();
+  const outboxId = await expenseWithReceipt();
+  // The receipt has no outbox row until the expense is on the server.
+  expect((await listByState('pending')).map((i) => i.lane)).toEqual(['expense']);
+  expect(await getUploadFile('local_files', 'r1')).toMatchObject({ state: 'waiting', outboxId: null });
+
+  const fake = installFakeApi({
+    'POST /api/v1/expenses': () => ({ status: 201, body: savedExpense }),
+    ...upload(),
+    'PATCH /api/v1/expenses/900/receipt': () => ({ status: 200, body: { ...savedExpense, hasReceipt: true } }),
+  });
+  await drain();
+  const [create] = fake.calls;
+  expect(create!.headers.get('Idempotency-Key')).toBe(outboxId);
+  expect(create!.body).toEqual({ ...expenseInput });
+  // The follow-up queued the receipt behind the expense; a second pass sends anything left.
+  await drain();
+  expect(fake.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+    'POST /api/v1/expenses',
+    'POST /api/v1/uploads',
+    'PATCH /api/v1/expenses/900/receipt',
+  ]);
+  expect(fake.calls[2]!.body).toEqual({ stagedUploadId: 'u1' });
+  expect(fake.calls[2]!.headers.has('Idempotency-Key')).toBe(false);
+  // The phone deletes the slip once the server has it.
+  expect(fileExists(RECEIPT)).toBe(false);
+  expect(await getUploadFile('local_files', 'r1')).toMatchObject({ state: 'done' });
+  const receipt = (await listByState('done')).find((i) => i.lane === 'expense_receipt')!;
+  expect([receipt.path, receipt.domainTable]).toEqual(['/api/v1/expenses/900/receipt', 'local_files']);
+  const [local] = await listLocalExpenses();
+  expect(local).toMatchObject({ serverId: '900', expenseNo: 12, serverStatus: 'pending_approval', state: 'done' });
+});
+
+test('EXPENSE_RECEIPT_EXISTS is terminal: shown, and discarded with its file', async () => {
+  await expenseWithReceipt();
+  installFakeApi({
+    'POST /api/v1/expenses': () => ({ status: 201, body: savedExpense }),
+    ...upload(),
+    'PATCH /api/v1/expenses/900/receipt': () => ({
+      status: 409,
+      body: errorBody('EXPENSE_RECEIPT_EXISTS', 'This expense already has a receipt.'),
+    }),
+  });
+  await drain();
+  await drain();
+  const [failed] = await listByState('failed');
+  expect(failed).toMatchObject({ lane: 'expense_receipt', responseCode: 'EXPENSE_RECEIPT_EXISTS' });
+  expect(remedyFor(failed!.lane, failed!.responseCode)).toBe('discard');
+  await discardItem(failed!.id);
+  expect(await getUploadFile('local_files', 'r1')).toBeNull();
+  expect(fileExists(RECEIPT)).toBe(false);
+});
+
+test('a receipt whose staged upload is gone is uploaded again once', async () => {
+  const outboxId = await expenseWithReceipt();
+  const item = (await findItem(outboxId))!;
+  await saveItem({ ...item, state: 'done' });
+  await markExpenseSaved(outboxId, savedExpense, NOW);
+  await setStagedUpload('r1', 'u9', LATER, 'local_files');
+  const gone = () => ({ status: 422, body: errorBody('REFERENCE_NOT_FOUND', 'The upload is gone') });
+  const fake = installFakeApi({ ...upload(), 'PATCH /api/v1/expenses/900/receipt': gone });
+  const queued = (await listByState('pending')).find((i) => i.lane === 'expense_receipt')!;
+  expect(await sendStagedUploadPatch(queued, NOW)).toEqual({ kind: 'network' });
+  expect(await getUploadFile('local_files', 'r1')).toMatchObject({ stagedUploadId: null, referenceRetries: 1 });
+  expect(fake.calls.map((c) => c.path)).toEqual(['/api/v1/expenses/900/receipt']);
+});
+
+test('a discarded expense takes its waiting receipt and the file', async () => {
+  const outboxId = await expenseWithReceipt();
+  await discardItem(outboxId);
+  expect(await listLocalExpenses()).toEqual([]);
+  expect(await getUploadFile('local_files', 'r1')).toBeNull();
+  expect(fileExists(RECEIPT)).toBe(false);
 });

@@ -111,7 +111,8 @@ export function MessagingKnobsForm({ school }: { school: SchoolDto }) {
         <CardTitle>Messaging</CardTitle>
         <CardDescription>
           The school sees its SMS limit but cannot change it. A new limit applies to the next SMS; one below this
-          month’s use holds back further SMS until next month.
+          month’s use holds back further SMS until next month. A limit set here replaces the plan’s allowance until
+          “Use the plan’s allowance” under Billing.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -24,6 +24,8 @@ import {
 import { CnicField, IfPresent, IsCalendarDate } from '../../../common/fields';
 import { ID_PATTERN, isIdString, IsIdString } from '../../../common/ids';
 import { StudentDocumentDto } from '../../documents/documents.dto';
+import { AdmissionFeeDto } from '../../fees/admission-fees';
+import { ChargeDto } from '../../fees/charges.dto';
 import { CreateGuardianDto } from '../guardians/guardians.dto';
 import {
   EnrolmentDto,
@@ -190,6 +192,17 @@ export class CreateAdmissionDto {
   @ArrayMaxSize(20)
   @EachIdString()
   acknowledgedDuplicateStudentIds?: string[];
+
+  @ApiPropertyOptional({
+    type: AdmissionFeeDto,
+    description:
+      'The admission fee (R239): full (default), partial (the family pays amount) or free. A reduction is a fixed concession on the admission head, approved when the caller is a principal holding concession.grant, else requested; it needs charge.create.',
+  })
+  @IfPresent()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AdmissionFeeDto)
+  admissionFee?: AdmissionFeeDto;
 }
 
 export class GuardianLoginOfferDto {
@@ -226,6 +239,10 @@ export class AdmissionResultDto {
 
   @ApiProperty({ type: LoginOffersDto })
   loginOffers: LoginOffersDto;
+
+  /** The once-head charges admission wrote (R239); empty for a caller who reads no money (R234). */
+  @ApiProperty({ type: [ChargeDto] })
+  charges: ChargeDto[];
 }
 
 /** One possible duplicate in ADMISSION_POSSIBLE_DUPLICATE `details.matches`. */
@@ -262,4 +279,20 @@ export class ReadmitDto {
   @ApiProperty({ minLength: 3, maxLength: 500 })
   @Reason()
   reason: string;
+
+  @ApiPropertyOptional({
+    type: AdmissionFeeDto,
+    description: 'Readmission charges the admission fee again (R239) unless set partial or free.',
+  })
+  @IfPresent()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AdmissionFeeDto)
+  admissionFee?: AdmissionFeeDto;
+}
+
+/** The readmitted student, with the once-head charges readmission wrote (R239). */
+export class ReadmissionResultDto extends StudentDetailDto {
+  @ApiProperty({ type: [ChargeDto] })
+  charges: ChargeDto[];
 }

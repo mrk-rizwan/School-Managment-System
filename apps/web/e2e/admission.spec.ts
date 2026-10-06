@@ -117,6 +117,7 @@ const studentDetail = (extra: Partial<StudentDetailDto> = {}): StudentDetailDto 
 });
 
 const ADMITTED: AdmissionResultDto = {
+  charges: [],
   student: studentDetail(),
   enrolment: {
     id: 'e1',

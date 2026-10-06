@@ -47,6 +47,13 @@ describe('the worker (e2e)', () => {
       // contracts/slice-11.md §8.3, §8.4.
       { job: 'register-deadline-sweep', every: 300_000 },
       { job: 'attendance-nightly-recompute', pattern: '0 30 0 * * *' },
+      // Phase 3 slice 26 (phase-3-financial.md §3.7).
+      { job: 'school-metrics-rollup', pattern: '0 30 0 * * *' },
+      { job: 'platform-billing', pattern: '0 0 4 * * *' },
+      { job: 'billing-notices', pattern: '0 30 9 * * *' },
+      // Phase 3 slice 19 (§3.7): the month's charges and the nightly catch-up, then late fees.
+      { job: 'charge-generate', pattern: '0 0 1 * * *' },
+      { job: 'late-fee-sweep', pattern: '0 0 2 * * *' },
     ]);
   });
 

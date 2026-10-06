@@ -285,6 +285,15 @@ export class StudentRepository {
     return row.value.toString();
   }
 
+  /**
+   * The school's students on the roll, active or suspended (a suspended student is still charged,
+   * rule 20): the one figure the platform's billing sees (school-metrics-rollup, slice 26). A
+   * count with no row scope: it is a system job's read, never a person's.
+   */
+  countOnRoll(schoolId: SchoolId): Promise<number> {
+    return this.txHost.tx.student.count({ where: { schoolId, status: { in: ['active', 'suspended'] } } });
+  }
+
   /** The latest `photo` document of the student, if any. */
   async latestPhotoDocumentId(schoolId: SchoolId, studentId: bigint): Promise<bigint | null> {
     const row = await this.txHost.tx.studentDocument.findFirst({

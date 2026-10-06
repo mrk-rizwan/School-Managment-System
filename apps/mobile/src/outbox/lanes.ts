@@ -30,8 +30,11 @@ export type Lane = {
   headers?: Readonly<Record<string, string>>;
   /** True when writes to one natural key coalesce into one pending row (registers). */
   coalesces: boolean;
-  /** How the item is sent: the stored JSON body, or the photo's upload-then-PATCH. */
-  sender: 'json' | 'diary_attachment';
+  /**
+   * How the item is sent: the stored JSON body, or a file's upload-then-PATCH
+   * (`staged_upload_patch`, staged-upload-sender.ts): the file row lives in `domainTable`.
+   */
+  sender: 'json' | 'staged_upload_patch';
   /** The local table written in the item's transaction (slice-16 §8); null when none. */
   domainTable: string | null;
   /** What the sync sheet calls the lane. */
@@ -112,9 +115,35 @@ export const LANES = {
     // Retry-safe by state (slice-13 §3): the same staged upload attached twice is one attachment.
     idempotencyHeader: false,
     coalesces: false,
-    sender: 'diary_attachment',
+    sender: 'staged_upload_patch',
     domainTable: 'local_attachments',
     label: 'Diary photo',
+    remedies: { [ErrorCode.REFERENCE_NOT_FOUND]: 'retry' },
+  },
+  // Phase 3 slice 23 (§3.9, R207): an expense captured offline, then its receipt.
+  expense: {
+    method: 'POST',
+    path: '/api/v1/expenses',
+    idempotencyHeader: true,
+    coalesces: false,
+    sender: 'json',
+    domainTable: 'local_expenses',
+    label: 'Expense',
+    remedies: {
+      [ErrorCode.VALIDATION_FAILED]: 'edit_resend',
+      [ErrorCode.INVALID_VALUE]: 'edit_resend',
+    },
+  },
+  expense_receipt: {
+    method: 'PATCH',
+    path: '/api/v1/expenses/:id/receipt',
+    // Retry-safe by state: the same staged upload sent again answers 200; another one is
+    // EXPENSE_RECEIPT_EXISTS, shown and discarded.
+    idempotencyHeader: false,
+    coalesces: false,
+    sender: 'staged_upload_patch',
+    domainTable: 'local_files',
+    label: 'Expense receipt',
     remedies: { [ErrorCode.REFERENCE_NOT_FOUND]: 'retry' },
   },
 } as const satisfies Record<string, Lane>;
@@ -145,6 +174,19 @@ export const ONLINE_ONLY_ACTIONS = [
   'create_announcement',
   'preview_audience',
   'send_announcement',
+  // Phase 3 (§3.9, R226): money writes are online-only, except a deposit claim and an expense.
+  'record_payment',
+  'verify_claim',
+  'reject_claim',
+  'withdraw_claim',
+  'confirm_handover',
+  'approve_expense',
+  'reject_expense',
+  'void_expense',
+  'request_leave',
+  'cancel_leave',
+  'approve_leave',
+  'reject_leave',
 ] as const;
 
 export type OnlineOnlyAction = (typeof ONLINE_ONLY_ACTIONS)[number];

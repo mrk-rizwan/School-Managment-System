@@ -13,16 +13,17 @@ import { invalidationKeys, queryKeys } from '../api/query-keys';
 import { applySubmitResult, marksFromMinimal } from '../attendance/register-model';
 import { cacheKey, readCache, writeCache, type Cached } from '../db/cache';
 import {
-  markAttachmentDone,
   markDiarySaved,
+  markExpenseSaved,
   markRegisterSaved,
   markRemarkSaved,
+  markUploadDone,
 } from '../db/local.repository';
 import * as outbox from '../db/outbox.repository';
 import { isOnline } from '../net/connectivity';
 import { log } from '../platform/log';
 import { onDeviceRegistered } from '../push/registration';
-import { sendAttachment } from './attachment-sender';
+import { sendStagedUploadPatch } from './staged-upload-sender';
 import { laneOf } from './lanes';
 import { transition, type OutboxItem } from './machine';
 import { outcomeOf, thrownOutcome, type SentOutcome } from './outcome';
@@ -49,7 +50,9 @@ async function sendJson(item: OutboxItem): Promise<SentOutcome> {
 
 /** One send, dispatched on the lane's sender (slice-16 §10.1); the machine sees only Outcomes. */
 export function sendItem(item: OutboxItem): Promise<SentOutcome> {
-  return laneOf(item.lane)?.sender === 'diary_attachment' ? sendAttachment(item) : sendJson(item);
+  return laneOf(item.lane)?.sender === 'staged_upload_patch'
+    ? sendStagedUploadPatch(item)
+    : sendJson(item);
 }
 
 function invalidate(keys: readonly (readonly unknown[])[]): void {
@@ -119,6 +122,8 @@ const MinimalSubmitResult = registerResult(
 );
 const WithId = z.object({ id: z.string() });
 const WithSection = z.object({ id: z.string(), sectionId: z.string() });
+/** ExpenseDto: enough of it to show the number and the status on the phone. */
+const SavedExpense = z.object({ id: z.string(), expenseNo: z.number(), status: z.string() });
 
 /** The id between two path segments: /api/v1/sections/<id>/submit-register → <id>. */
 const idAfter = (path: string, segment: string) =>
@@ -166,9 +171,21 @@ export const ON_SAVED: Record<string, (item: OutboxItem, outcome: SentOutcome) =
     invalidate(invalidationKeys.studentRemarks(idAfter(item.path, 'students')));
   },
   async diary_attachment(item, outcome) {
-    if (item.domainId !== null) await markAttachmentDone(item.domainId);
+    if (item.domainId !== null) await markUploadDone('local_attachments', item.domainId);
     const result = WithSection.safeParse(outcome.body);
     invalidate(result.success ? invalidationKeys.sectionDiary(result.data.sectionId) : []);
+  },
+  // Phase 3 slice 23 (§3.9): the expense's number and status; its receipt is queued behind it.
+  async expense(item, outcome) {
+    const result = SavedExpense.safeParse(outcome.body);
+    const queued = await markExpenseSaved(item.id, result.success ? result.data : null);
+    invalidate([]);
+    if (queued > 0) void outboxWorker.trigger('enqueued');
+  },
+  async expense_receipt(item) {
+    // The phone deletes the receipt photo once the server has it.
+    if (item.domainId !== null) await markUploadDone('local_files', item.domainId);
+    invalidate([]);
   },
 };
 

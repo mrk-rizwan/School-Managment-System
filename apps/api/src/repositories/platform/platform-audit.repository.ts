@@ -46,4 +46,23 @@ export class PlatformAuditRepository {
       },
     });
   }
+
+  /**
+   * R220 (phase-3-financial.md §1.1): whether the school left trial at or after `since`. Nothing
+   * returns to trial (contracts/slice-1.md §4.5), so its one `school.status_changed` row from
+   * `trial` is when it became billable; a school turning active mid-month is free until the next
+   * 1st. A school created active (never in trial) has no such row and is billable.
+   */
+  async leftTrialSince(schoolId: bigint, since: Date): Promise<boolean> {
+    const row = await this.txHost.tx.platformAuditLog.findFirst({
+      where: {
+        schoolId,
+        action: 'school.status_changed',
+        metadata: { path: ['from'], equals: 'trial' },
+        createdAt: { gte: since },
+      },
+      select: { id: true },
+    });
+    return row !== null;
+  }
 }

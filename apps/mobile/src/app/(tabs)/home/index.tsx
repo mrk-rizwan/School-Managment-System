@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../../../auth/session';
+import { ExpensesCard } from '../../../expenses/ExpensesCard';
 import { MyAttendanceCard } from '../../../family/MyAttendance';
+import { MyLeaveCard } from '../../../leave/MyLeave';
 import { useOnline } from '../../../net/connectivity';
 import { Banner } from '../../../ui/Banner';
 import { Screen } from '../../../ui/Screen';
@@ -56,6 +58,8 @@ export default function HomeScreen() {
         <AsOf serverTime={me.serverTime} isDevice={me.serverTimeIsDevice} />
       </View>
       {me.body.capacities.includes('staff') ? <MyAttendanceCard /> : null}
+      {me.body.capacities.includes('staff') ? <MyLeaveCard /> : null}
+      <ExpensesCard />
     </Screen>
   );
 }

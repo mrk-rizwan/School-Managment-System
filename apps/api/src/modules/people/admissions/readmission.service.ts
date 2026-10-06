@@ -12,7 +12,7 @@ import { StudentRepository } from '../../../repositories/student.repository';
 import { SchoolClock } from '../../../common/school-clock';
 import { EnrolmentsService } from '../students/enrolments.service';
 import { StudentsService } from '../students/students.service';
-import type { StudentDetailDto } from '../students/students.dto';
+import { AdmissionFees } from '../../fees/admission-fees';
 import {
   assertNotFuture,
   feePayerRequired,
@@ -21,7 +21,7 @@ import {
   ROLL_NO_UNIQUE,
   rollNoTaken,
 } from '../students/students.shared';
-import type { ReadmitDto } from './admissions.dto';
+import type { ReadmissionResultDto, ReadmitDto } from './admissions.dto';
 import { fieldRefused } from '../../../common/errors/api-exception';
 import { fromDateString } from '../../academics/academics.shared';
 
@@ -43,13 +43,15 @@ export class ReadmissionService {
     private readonly statusChanges: StudentStatusChangeRepository,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly admissionFees: AdmissionFees,
   ) {}
 
   async readmit(
     session: SchoolSessionContext,
     id: bigint,
     dto: ReadmitDto,
-  ): Promise<StudentDetailDto> {
+  ): Promise<ReadmissionResultDto> {
+    this.admissionFees.assertDecision(session, dto.admissionFee, 'admissionFee');
     try {
       return await this.readmitInTransaction(session, id, dto);
     } catch (error) {
@@ -77,7 +79,7 @@ export class ReadmissionService {
     session: SchoolSessionContext,
     id: bigint,
     dto: ReadmitDto,
-  ): Promise<StudentDetailDto> {
+  ): Promise<ReadmissionResultDto> {
     const { schoolId, userId } = this.context.actor();
     const student = await this.studentsService.lock(schoolId, scopeOf(session), id);
     if (!READMISSIBLE_STATUSES.includes(student.status)) {
@@ -146,6 +148,17 @@ export class ReadmissionService {
         fromStatus: student.status,
       },
     });
-    return this.studentsService.toDetailDto(schoolId, session, updated);
+    // R239: readmission charges the admission fee again unless set to 0 (partial or free).
+    await this.admissionFees.charge(
+      session,
+      schoolId,
+      { studentId: id, enrolmentId: enrolment.id, academicYearId: klass.academicYearId, classId },
+      dto.admissionFee,
+      'admissionFee',
+    );
+    return {
+      ...(await this.studentsService.toDetailDto(schoolId, session, updated)),
+      charges: await this.admissionFees.chargesOf(session, schoolId, enrolment.id),
+    };
   }
 }

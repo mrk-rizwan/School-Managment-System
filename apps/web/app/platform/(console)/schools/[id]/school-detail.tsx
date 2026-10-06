@@ -18,12 +18,13 @@ import {
   type SchoolDto,
   type UpdateSchoolBody,
 } from '@/lib/api/platform-messaging-contract';
-import { formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { platformKeys } from '@/lib/platform-session';
 import { nameSchema } from '@/lib/validation';
 import { SchoolStatusBadge, useTimezoneOptions } from '../school-ui';
 import { IssuePrincipalLogin } from './issue-principal-login';
 import { MessagingKnobsForm } from './messaging-knobs';
+import { SchoolBilling } from './school-billing';
 import { StatusChange } from './status-change';
 
 export function SchoolDetail({ id }: { id: string }) {
@@ -66,6 +67,8 @@ export function SchoolDetail({ id }: { id: string }) {
                 <div className="grid gap-6">
                   <EditSchoolForm key={data.updatedAt} school={data} />
                   <MessagingKnobsForm key={`messaging-${data.updatedAt}`} school={data} />
+                  {/* Slice 26: plan, student count, SMS limit and invoices. */}
+                  <SchoolBilling school={data} />
                 </div>
                 <Card>
                   <CardHeader>
@@ -80,6 +83,13 @@ export function SchoolDetail({ id }: { id: string }) {
                         <span className="font-mono">{data.shortCode}</span>
                       </Detail>
                       <Detail label="Created">{formatDateTime(data.createdAt)}</Detail>
+                      {data.terminatedAt && (
+                        <>
+                          <Detail label="Terminated">{formatDateTime(data.terminatedAt)}</Detail>
+                          {/* R224: retention ends 12 months on; no purge exists. */}
+                          <Detail label="Retention ends">{data.retentionEndsOn ? formatDate(data.retentionEndsOn) : '—'}</Detail>
+                        </>
+                      )}
                       <Detail label="Last updated">{formatDateTime(data.updatedAt)}</Detail>
                     </dl>
                   </CardContent>

@@ -16,6 +16,8 @@ import {
 } from '../../repositories/fee-structure.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { classArchived, yearClosed } from '../academics/academics.shared';
+import { ChargeRunRepository } from '../../repositories/charge-run.repository';
+import { runInProgress } from './charges.shared';
 import { feeHeadArchived } from './fee-heads.service';
 import type {
   CopyFeeStructuresDto,
@@ -80,6 +82,7 @@ export class FeeStructuresService {
     private readonly classes: ClassRepository,
     private readonly audit: AuditLogRepository,
     private readonly idempotency: IdempotentRequests,
+    private readonly runs: ChargeRunRepository,
   ) {}
 
   /** One page of the year's classes, each with its current amounts and its whole history. */
@@ -166,6 +169,9 @@ export class FeeStructuresService {
     // Every write for a head runs under the head's lock: the latest-month rule sees a stable set.
     const head = await this.lockHead(schoolId, BigInt(dto.feeHeadId));
     if (head.status === 'archived') throw feeHeadArchived(head.id);
+    // Slice 19: no structure write while the year's charges are being generated (§5.1).
+    const busy = await this.runs.findInProgress(schoolId, year.id);
+    if (busy) throw runInProgress(busy.id);
 
     const active = await this.structures.activeFor(schoolId, cls.id, head.id);
     const sameMonth = active.find((row) => row.effectiveFrom === dto.effectiveFrom);

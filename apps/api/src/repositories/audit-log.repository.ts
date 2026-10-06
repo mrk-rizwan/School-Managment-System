@@ -31,6 +31,33 @@ export class AuditLogRepository {
     await this.recordReturningId(schoolId, entry);
   }
 
+  /**
+   * A job's row (phase-3-financial.md A19): no actor, the job named in `metadata.job`
+   * (audit_log_actor_check admits an actorless row only then). Written in the job's transaction,
+   * so it commits or rolls back with the work it records.
+   */
+  async recordSystem(
+    schoolId: SchoolId,
+    entry: {
+      action: string;
+      subjectType: string;
+      subjectId: bigint | null;
+      metadata: { job: string } & Record<string, AuditMetadataValue>;
+    },
+  ): Promise<void> {
+    await this.txHost.tx.auditLog.create({
+      select: { id: true },
+      data: {
+        schoolId,
+        actorUserId: null,
+        action: entry.action,
+        subjectType: entry.subjectType,
+        subjectId: entry.subjectId,
+        metadata: entry.metadata,
+      },
+    });
+  }
+
   /** Whether the user has an `action` row at or after `since` (R225's once-per-day refusal row). */
   async existsForActorSince(
     schoolId: SchoolId,

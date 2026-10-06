@@ -47,6 +47,7 @@ const day = (staffId: string, fullName: string, mark: StaffMarkDto | null = null
   designation: 'Teacher',
   staffStatus: 'active',
   mark,
+  approvedLeave: null,
 });
 const DAY = [
   day('st-p', 'Amina Principal'),

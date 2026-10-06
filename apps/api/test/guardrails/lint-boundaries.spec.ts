@@ -136,6 +136,8 @@ describe('lint boundaries (R61)', () => {
     ['billing-repository-import.ts', 'src/jobs/school-metrics-rollup.ts'],
     ['metrics-repository-import.ts', 'src/jobs/billing-notices.ts'],
     ['tenant-repository-import.ts', 'src/modules/platform/billing/plans.service.ts'],
+    // A tenant repository in a subfolder of src/repositories is refused as well.
+    ['tenant-repository-nested-import.ts', 'src/modules/platform/billing/plans.service.ts'],
     ['own-invoices-import.ts', 'src/modules/fees/fee-heads.service.ts'],
     ['own-invoices-import.ts', 'src/modules/platform/billing/plans.service.ts'],
     ['own-invoices-import.ts', 'src/jobs/platform-billing.ts'],

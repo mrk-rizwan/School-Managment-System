@@ -250,6 +250,12 @@ function StaffDaySheet({ date }: { date: string }) {
                         {row.designation ?? 'Staff'}
                         {row.staffStatus !== 'active' && ` · ${STAFF_STATUS_LABELS[row.staffStatus]}`}
                       </div>
+                      {/* Phase 3 slice 24: approved leave writes no mark; it is shown beside it (R245). */}
+                      {row.approvedLeave && (
+                        <p className="text-xs text-muted-foreground" data-testid="approved-leave">
+                          On approved leave: {row.approvedLeave.typeName}
+                        </p>
+                      )}
                       {own && (
                         <p className="text-xs text-muted-foreground" data-testid="own-row-hint">
                           You cannot mark your own attendance. Another member of staff records it.

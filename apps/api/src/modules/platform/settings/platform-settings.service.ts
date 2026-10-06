@@ -10,7 +10,7 @@ import {
 } from '../../../repositories/platform/platform-settings.repository';
 import type { PlatformSettingsDto, UpdatePlatformSettingsDto } from './platform-settings.dto';
 
-const EDITABLE = ['defaultWhatsappProvider', 'defaultSmsProvider'] as const;
+const EDITABLE = ['defaultWhatsappProvider', 'defaultSmsProvider', 'invoiceDueDay', 'graceDays'] as const;
 
 @Injectable()
 export class PlatformSettingsService {

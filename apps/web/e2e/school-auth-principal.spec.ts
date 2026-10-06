@@ -29,6 +29,9 @@ const SCHOOL: School = {
   smsMonthlyCap: 500,
   whatsappProvider: 'platform_default',
   smsProvider: 'platform_default',
+  smsCapOverridden: false,
+  terminatedAt: null,
+  retentionEndsOn: null,
   createdAt: '2026-09-01T05:00:00.000Z',
   updatedAt: '2026-09-01T05:00:00.000Z',
 };

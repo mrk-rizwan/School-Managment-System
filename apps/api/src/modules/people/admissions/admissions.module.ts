@@ -8,6 +8,7 @@ import { SchoolSettingsRepository } from '../../../repositories/school-settings.
 import { StagedUploadRepository } from '../../../repositories/staged-upload.repository';
 import { StudentDocumentRepository } from '../../../repositories/student-document.repository';
 import { GuardiansService } from '../guardians/guardians.service';
+import { FeesModule } from '../../fees/fees.module';
 import { StudentsModule } from '../students/students.module';
 import { AdmissionProbeThrottleGuard, AdmissionsController } from './admissions.controller';
 import { AdmissionsService } from './admissions.service';
@@ -19,7 +20,7 @@ import { ReadmissionService } from './readmission.service';
  * AccessModule. GuardiansService is provided here for its lock and survivor-resolving lookup.
  */
 @Module({
-  imports: [CryptoModule, StudentsModule],
+  imports: [CryptoModule, StudentsModule, FeesModule],
   controllers: [AdmissionsController],
   providers: [
     SchoolContext,

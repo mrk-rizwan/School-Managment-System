@@ -47,9 +47,25 @@ export function toSchoolDto(school: SchoolRecord): SchoolDto {
     smsMonthlyCap: school.smsMonthlyCap,
     whatsappProvider: school.whatsappProvider,
     smsProvider: school.smsProvider,
+    smsCapOverridden: school.smsCapOverridden,
+    terminatedAt: school.terminatedAt,
+    retentionEndsOn: school.terminatedAt === null ? null : retentionEndsOn(school.terminatedAt),
     createdAt: school.createdAt,
     updatedAt: school.updatedAt,
   };
+}
+
+/** Rule 23: retention ends 12 months after termination (the date in Asia/Karachi). */
+export function retentionEndsOn(terminatedAt: Date): string {
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: DEFAULT_TIMEZONE })
+    .format(terminatedAt)
+    .split('-')
+    .map(Number);
+  // Day clamped to the month's length (29 Feb -> 28 Feb).
+  const target = new Date(Date.UTC((year ?? 1970) + 1, (month ?? 1) - 1, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day ?? 1, last));
+  return target.toISOString().slice(0, 10);
 }
 
 /** Platform management of the school record (contracts/slice-1.md section 4). */
@@ -137,14 +153,19 @@ export class SchoolsService {
       // Nothing actually changes: no write, no audit row.
       if (Object.keys(changes).length === 0) return toSchoolDto(school);
 
-      await this.schools.update(id, data);
+      // A12 / R223: a manual cap is an override the monthly billing run then leaves alone, until
+      // a plan assignment or "use the plan's allowance" clears it.
+      const overrides = data.smsMonthlyCap !== undefined && !school.smsCapOverridden;
+      await this.schools.update(id, { ...data, ...(overrides ? { smsCapOverridden: true } : {}) });
       await this.audit.record({
         actorPlatformUserId: actorId,
         schoolId: id,
         action: 'school.updated',
         subjectType: SUBJECT,
         subjectId: id,
-        metadata: { changes },
+        metadata: {
+          changes: { ...changes, ...(overrides ? { smsCapOverridden: { from: false, to: true } } : {}) },
+        },
       });
       return toSchoolDto(await this.require(id));
     }

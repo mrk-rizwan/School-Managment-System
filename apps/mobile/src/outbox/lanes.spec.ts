@@ -14,7 +14,7 @@ test('no online-only action is an outbox lane', () => {
   }
 });
 
-test('the online-only list after slice 16', () => {
+test('the online-only list after Phase 3 (§3.9, R226)', () => {
   expect([...ONLINE_ONLY_ACTIONS].sort()).toEqual(
     [
       'change_password',
@@ -27,13 +27,34 @@ test('the online-only list after slice 16', () => {
       'create_announcement',
       'preview_audience',
       'send_announcement',
+      // Phase 3: every money write but a claim and an expense, and every leave action.
+      'record_payment',
+      'verify_claim',
+      'reject_claim',
+      'withdraw_claim',
+      'confirm_handover',
+      'approve_expense',
+      'reject_expense',
+      'void_expense',
+      'request_leave',
+      'cancel_leave',
+      'approve_leave',
+      'reject_leave',
     ].sort(),
   );
 });
 
-test('five lanes, with the §9 paths, methods, senders and local tables', () => {
+test('seven lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and local tables', () => {
   expect(Object.keys(LANES).sort()).toEqual(
-    ['device_register', 'diary_attachment', 'diary_entry', 'remark', 'submit_register'].sort(),
+    [
+      'device_register',
+      'diary_attachment',
+      'diary_entry',
+      'remark',
+      'submit_register',
+      'expense',
+      'expense_receipt',
+    ].sort(),
   );
   expect(LANES.device_register).toMatchObject({
     method: 'POST',
@@ -66,17 +87,50 @@ test('five lanes, with the §9 paths, methods, senders and local tables', () => 
   expect(LANES.diary_attachment).toMatchObject({
     method: 'PATCH',
     path: '/api/v1/diary-entries/:id',
-    sender: 'diary_attachment',
+    sender: 'staged_upload_patch',
     domainTable: 'local_attachments',
     label: 'Diary photo',
   });
+  expect(LANES.expense).toMatchObject({
+    method: 'POST',
+    path: '/api/v1/expenses',
+    sender: 'json',
+    domainTable: 'local_expenses',
+    label: 'Expense',
+  });
+  expect(LANES.expense_receipt).toMatchObject({
+    method: 'PATCH',
+    path: '/api/v1/expenses/:id/receipt',
+    sender: 'staged_upload_patch',
+    domainTable: 'local_files',
+    label: 'Expense receipt',
+  });
 });
 
-test('submit_register is the only coalescing lane; diary_entry and remark the only header lanes', () => {
+// A deposit claim and its image (slice 21) are the other money lanes §3.9 allows.
+test('no money write but an expense (and its receipt) is a lane (R207, R226)', () => {
+  const paths = Object.values(LANES).map((lane) => lane.path);
+  for (const path of paths) {
+    expect(path).not.toMatch(/\/payments|cash-handovers|approve|reject|void|verify|withdraw|leave/);
+  }
+  expect(paths.filter((path) => path.includes('/expenses'))).toEqual([
+    '/api/v1/expenses',
+    '/api/v1/expenses/:id/receipt',
+  ]);
+});
+
+test('submit_register is the only coalescing lane; diary_entry, remark and expense the header lanes', () => {
   const ids = Object.keys(LANES) as (keyof typeof LANES)[];
   expect(ids.filter((id) => LANES[id].coalesces)).toEqual(['submit_register']);
-  expect(ids.filter((id) => LANES[id].idempotencyHeader).sort()).toEqual(['diary_entry', 'remark']);
-  expect(ids.filter((id) => LANES[id].sender !== 'json')).toEqual(['diary_attachment']);
+  expect(ids.filter((id) => LANES[id].idempotencyHeader).sort()).toEqual([
+    'diary_entry',
+    'expense',
+    'remark',
+  ]);
+  expect(ids.filter((id) => LANES[id].sender !== 'json').sort()).toEqual([
+    'diary_attachment',
+    'expense_receipt',
+  ]);
 });
 
 test.each([
@@ -98,6 +152,13 @@ test.each([
   ['diary_attachment', 'DIARY_ENTRY_LOCKED', 'discard'],
   ['diary_attachment', 'REFERENCE_NOT_FOUND', 'retry'],
   ['device_register', 'VALIDATION_FAILED', 'discard'],
+  ['expense', 'VALIDATION_FAILED', 'edit_resend'],
+  ['expense', 'INVALID_VALUE', 'edit_resend'],
+  ['expense', 'PERMISSION_DENIED', 'discard'],
+  ['expense', 'IDEMPOTENCY_KEY_REUSED', 'discard'],
+  ['expense_receipt', 'EXPENSE_RECEIPT_EXISTS', 'discard'],
+  ['expense_receipt', 'REFERENCE_NOT_FOUND', 'retry'],
+  ['expense_receipt', 'ATTACHMENT_FILE_MISSING', 'discard'],
 ])('%s, %s → %s', (lane, code, remedy) => {
   expect(remedyFor(lane, code)).toBe(remedy);
 });

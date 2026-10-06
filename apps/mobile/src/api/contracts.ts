@@ -53,3 +53,15 @@ export type AudienceInputDto = Schemas['AudienceInputDto'];
 export type AudiencePreviewDto = Schemas['AudiencePreviewDto'];
 export type DeliverySummaryDto = Schemas['DeliverySummaryDto'];
 export type InboxItemDto = Schemas['InboxItemDto'];
+
+// Phase 3 slice 23: expense capture (§3.9).
+export type CreateExpenseDto = Schemas['CreateExpenseDto'];
+export type ExpenseDto = Schemas['ExpenseDto'];
+export type RecordableExpenseCategory = Schemas['RecordableExpenseCategory'];
+export type CounterPaymentMethod = Schemas['CounterPaymentMethod'];
+
+// Phase 3 slice 24: My leave (online only, R226).
+export type LeaveTypeDto = Schemas['LeaveTypeDto'];
+export type LeaveBalanceDto = Schemas['LeaveBalanceDto'];
+export type LeaveRequestDto = Schemas['LeaveRequestDto'];
+export type CreateMyLeaveRequestDto = Schemas['CreateMyLeaveRequestDto'];

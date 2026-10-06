@@ -16,6 +16,8 @@ import { addDays, daysBetween, SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
+import { LeaveRequestRepository } from '../../repositories/leave-request.repository';
+import { LeaveTypeRepository } from '../../repositories/leave-type.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import {
   StaffAttendanceRepository,
@@ -73,6 +75,8 @@ export class StaffAttendanceService {
     private readonly settings: SchoolSettingsRepository,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly leave: LeaveRequestRepository,
+    private readonly leaveTypes: LeaveTypeRepository,
   ) {}
 
   /** §4.1: the day's sheet. */
@@ -90,6 +94,7 @@ export class StaffAttendanceService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
+    const leave = await this.approvedLeaveOn(schoolId, date, rows.map((row) => row.staffId));
     return toPage(
       rows.map((row) => ({
         staffId: row.staffId.toString(),
@@ -97,6 +102,7 @@ export class StaffAttendanceService {
         designation: row.designation,
         staffStatus: row.staffStatus,
         mark: row.mark && toStaffMarkDto(row.mark),
+        approvedLeave: leave.get(row.staffId) ?? null,
       })),
       query,
       total,
@@ -301,6 +307,21 @@ export class StaffAttendanceService {
       }),
       summary: await this.marks.daySummary(schoolId, date),
     };
+  }
+
+  /** Slice 24: each member's approved (or ended-early, as taken) leave covering `date`. */
+  private async approvedLeaveOn(
+    schoolId: SchoolId,
+    date: Date,
+    staffIds: bigint[],
+  ): Promise<Map<bigint, { leaveRequestId: string; typeName: string }>> {
+    const rows = await this.leave.takenOn(schoolId, date, staffIds);
+    const types = new Map(
+      (await this.leaveTypes.findByIds(schoolId, rows.map((r) => r.leaveTypeId))).map((t) => [t.id, t.name]),
+    );
+    return new Map(
+      rows.map((r) => [r.staffId, { leaveRequestId: r.id.toString(), typeName: types.get(r.leaveTypeId) ?? '' }]),
+    );
   }
 
   /** §3: not in the future, within the typo guard, and a staff working day (R136). */

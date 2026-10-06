@@ -98,6 +98,21 @@ export class StaffDayDto {
 
   @ApiProperty({ type: StaffMarkDto, nullable: true })
   mark: StaffMarkDto | null;
+
+  /**
+   * Phase 3 slice 24: the approved leave covering the date (approved leave writes no mark; payroll
+   * reads both, R245), or null.
+   */
+  @ApiProperty({ type: () => StaffDayLeaveDto, nullable: true })
+  approvedLeave: StaffDayLeaveDto | null;
+}
+
+export class StaffDayLeaveDto {
+  @ApiProperty(ID)
+  leaveRequestId: string;
+
+  @ApiProperty()
+  typeName: string;
 }
 
 export class StaffDaySummaryDto {

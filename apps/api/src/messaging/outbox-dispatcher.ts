@@ -7,6 +7,7 @@ import type { SchoolId } from '../tenancy/school-id';
 import {
   alertJobId,
   announcementSendJobId,
+  chargeRunJobId,
   healthJobId,
   JOB,
   messageJobId,
@@ -15,6 +16,7 @@ import {
   rollupSectionDayJobId,
   type AlertJobPayload,
   type AnnouncementSendPayload,
+  type ChargeRunPayload,
   type HealthJobPayload,
   type MessageJobPayload,
   type RollupJobPayload,
@@ -26,7 +28,8 @@ type Payload =
   | HealthJobPayload
   | AlertJobPayload
   | RollupJobPayload
-  | AnnouncementSendPayload;
+  | AnnouncementSendPayload
+  | ChargeRunPayload;
 
 /** A scheduled announcement's send at its time (contracts/slice-14.md §5.6). */
 export interface AnnouncementSendJob {
@@ -200,6 +203,19 @@ export class OutboxDispatcher implements OnModuleDestroy {
           delay: Math.max(0, job.scheduledAt.getTime() - now.getTime()),
         },
       })),
+    );
+  }
+
+  /** After the ambient transaction commits: a requested charge run's job (contracts/slice-19.md §5). */
+  chargeRunAfterCommit(schoolId: SchoolId, runId: bigint): void {
+    this.afterCommit.register(() =>
+      this.add([
+        {
+          name: JOB.chargeRun,
+          data: { schoolId: schoolId.toString(), runId: runId.toString() } satisfies ChargeRunPayload,
+          opts: { jobId: chargeRunJobId(runId) },
+        },
+      ]),
     );
   }
 

@@ -116,6 +116,46 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE outbox ADD COLUMN response_details TEXT NULL;
   `,
+  // 4 — Phase 3 slice 23 (§3.9): an expense captured offline, and the generic file row of the
+  // staged_upload_patch lanes (an expense's receipt; slice 21's claim image). A file row waits
+  // for its owner's server id, then is queued as a PATCH of that row. Typed text and ids only.
+  `
+  CREATE TABLE local_expenses (
+    id TEXT PRIMARY KEY NOT NULL,
+    category TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    spent_on TEXT NOT NULL,
+    description TEXT NOT NULL,
+    payee TEXT NULL,
+    method TEXT NOT NULL,
+    reference TEXT NULL,
+    outbox_id TEXT NULL,
+    server_id TEXT NULL,
+    expense_no INTEGER NULL,
+    server_status TEXT NULL,
+    saved_on_server_at TEXT NULL,
+    state TEXT NOT NULL CHECK (state IN ('queued', 'done', 'failed', 'discarded')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE local_files (
+    id TEXT PRIMARY KEY NOT NULL,
+    owner_table TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('waiting', 'queued', 'done', 'failed', 'discarded')),
+    staged_upload_id TEXT NULL,
+    staged_expires_at TEXT NULL,
+    reference_retries INTEGER NOT NULL DEFAULT 0,
+    outbox_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX local_expenses_created ON local_expenses (created_at);
+  CREATE INDEX local_files_owner ON local_files (owner_table, owner_id);
+  `,
 ];
 
 /**
@@ -139,6 +179,16 @@ export const PURGE_ORPHAN_LOCAL_ROWS = `
   DELETE FROM local_diary_entries
    WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
      AND NOT EXISTS (SELECT 1 FROM local_attachments a WHERE a.local_entry_id = local_diary_entries.id);
+  DELETE FROM local_files
+   WHERE (outbox_id IS NOT NULL AND outbox_id NOT IN (SELECT id FROM outbox))
+      OR (outbox_id IS NULL AND owner_table = 'local_expenses' AND owner_id IN (
+            SELECT e.id FROM local_expenses e
+             WHERE e.server_id IS NULL
+               AND (e.outbox_id IS NULL OR e.outbox_id NOT IN (SELECT id FROM outbox))));
+  DELETE FROM local_expenses
+   WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
+     AND NOT EXISTS (SELECT 1 FROM local_files f
+                      WHERE f.owner_table = 'local_expenses' AND f.owner_id = local_expenses.id);
 `;
 
 /** Created before any migration runs, so the version can be read. */

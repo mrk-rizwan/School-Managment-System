@@ -515,7 +515,9 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     kind: 'constraint',
     table: 'audit_log',
     name: 'audit_log_actor_check',
-    definition: 'CHECK ((num_nonnulls(actor_user_id, actor_platform_user_id) = 1))',
+    // Migration 20261006130000_slice19_system_actor_audit (A19): a job's row has no actor and
+    // names the job in its metadata.
+    definition: "CHECK (((num_nonnulls(actor_user_id, actor_platform_user_id) = 1) OR ((num_nonnulls(actor_user_id, actor_platform_user_id) = 0) AND (metadata ? 'job'::text))))",
   },
   {
     kind: 'constraint',

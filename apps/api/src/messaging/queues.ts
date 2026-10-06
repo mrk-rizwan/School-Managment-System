@@ -25,6 +25,17 @@ export const JOB = {
   attendanceNightlyRecompute: 'attendance-nightly-recompute',
   // contracts/slice-14.md §5.6: a scheduled announcement's send, on the messaging queue.
   announcementSend: 'announcement-send',
+  // Phase 3 slice 26 (phase-3-financial.md §3.7): the platform's daily billing run (non-tenant),
+  // the per-school student-count rollup and the per-school invoice notices.
+  platformBilling: 'platform-billing',
+  schoolMetricsRollup: 'school-metrics-rollup',
+  billingNotices: 'billing-notices',
+  // Phase 3 slice 19 (phase-3-financial.md §3.7): the daily monthly generation (the 1st, then the
+  // catch-up) and the late-fee sweep on the scheduled queue; a requested monthly or campaign run
+  // (`charge_runs` row) on the messaging queue.
+  chargeGenerate: 'charge-generate',
+  lateFeeSweep: 'late-fee-sweep',
+  chargeRun: 'charge-run',
 } as const;
 
 /*
@@ -85,6 +96,18 @@ export const rollupSectionDayJobId = (sectionId: bigint, date: string, version: 
  */
 export const announcementSendJobId = (announcementId: bigint, scheduledAt: Date, sweepMinute?: number): string =>
   `ann-send-${announcementId}-${Math.floor(scheduledAt.getTime() / 1000)}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
+
+/**
+ * `charge-run-<runId>` (contracts/slice-19.md §5): a requested monthly or campaign run. A lost job
+ * is not re-enqueued: the stale sweep fails the run after 10 minutes queued (R252) and the office
+ * runs it again.
+ */
+export const chargeRunJobId = (runId: bigint): string => `charge-run-${runId}`;
+
+export interface ChargeRunPayload {
+  schoolId: string;
+  runId: string;
+}
 
 export interface AnnouncementSendPayload {
   schoolId: string;

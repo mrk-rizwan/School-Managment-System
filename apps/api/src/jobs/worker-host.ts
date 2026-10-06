@@ -34,6 +34,16 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   // nightly attendance recompute at 00:30 school time.
   { job: JOB.registerDeadlineSweep, every: 5 * MINUTE },
   { job: JOB.attendanceNightlyRecompute, pattern: '0 30 0 * * *' },
+  // Phase 3 slice 26 (phase-3-financial.md §3.7): each school's student count at 00:30, the
+  // platform billing run at 04:00 (the month on the 1st, the overdue and eligibility stamps every
+  // day), and the schools' invoice notices at 09:30.
+  { job: JOB.schoolMetricsRollup, pattern: '0 30 0 * * *' },
+  { job: JOB.platformBilling, pattern: '0 0 4 * * *' },
+  { job: JOB.billingNotices, pattern: '0 30 9 * * *' },
+  // Phase 3 slice 19 (§3.7): the month's charges at 01:00 (the 1st, then the nightly catch-up for
+  // new admissions) and the late-fee sweep at 02:00, school time.
+  { job: JOB.chargeGenerate, pattern: '0 0 1 * * *' },
+  { job: JOB.lateFeeSweep, pattern: '0 0 2 * * *' },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */

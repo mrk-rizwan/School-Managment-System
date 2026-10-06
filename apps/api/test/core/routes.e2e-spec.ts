@@ -201,6 +201,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/health', 'public'],
   ['GET', '/api/v1/holidays', 'staff'],
   ['GET', '/api/v1/holidays/:id', 'staff'],
+  // Phase 3 slice 24: any active staff member reads the leave types.
+  ['GET', '/api/v1/leave-types', 'staff'],
   ['GET', '/api/v1/me', 'authenticated-only'],
   ['GET', '/api/v1/me/calendar', 'authenticated-only'],
   ['POST', '/api/v1/me/change-email', 'authenticated-only'],
@@ -223,6 +225,12 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
+  // Phase 3 slice 24: any active staff member's own leave and the leave types.
+  ['GET', '/api/v1/me/staff/leave-balance', 'staff'],
+  ['GET', '/api/v1/me/staff/leave-requests', 'staff'],
+  ['POST', '/api/v1/me/staff/leave-requests', 'staff'],
+  ['GET', '/api/v1/me/staff/leave-requests/:id', 'staff'],
+  ['POST', '/api/v1/me/staff/leave-requests/:id/cancel', 'staff'],
   // contracts/slice-11.md §1.1: the student's own attendance.
   ['GET', '/api/v1/me/student/attendance', 'capacity'],
   // contracts/slice-13.md §1.1, §1.2: the student's own diary and remarks.
@@ -264,7 +272,7 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'PATCH /api/v1/academic-years/:id': ['academic_year.updated'],
   'POST /api/v1/academic-years/:id/activate': ['academic_year.activated'],
   'POST /api/v1/academic-years/:id/close': ['academic_year.closed'],
-  'POST /api/v1/admissions': ['guardian.created', 'student.admitted'],
+  'POST /api/v1/admissions': ['guardian.created', 'student.admitted', 'charge.admission_fee', 'concession.created'],
   'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
   'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],
   'POST /api/v1/auth/logout': 'none: ends the caller own session only',
@@ -311,6 +319,16 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'PATCH /api/v1/platform/schools/:id': ['school.updated'],
   'POST /api/v1/platform/schools/:id/change-status': ['school.status_changed'],
   'PATCH /api/v1/platform/settings': ['platform_settings.updated'],
+  // Phase 3 slice 26 (contracts/slice-26.md §4).
+  'POST /api/v1/platform/plans': ['platform_plan.created'],
+  'PATCH /api/v1/platform/plans/:id': ['platform_plan.updated'],
+  'POST /api/v1/platform/plans/:id/archive': ['platform_plan.archived'],
+  'POST /api/v1/platform/invoices/issue-month': ['platform_invoice.issued'],
+  'POST /api/v1/platform/invoices/:id/record-payment': ['platform_invoice.paid'],
+  'POST /api/v1/platform/invoices/:id/void': ['platform_invoice.voided'],
+  'POST /api/v1/platform/schools/:id/assign-plan': ['platform_subscription.assigned'],
+  'POST /api/v1/platform/schools/:id/unpin-plan': ['platform_subscription.unpinned'],
+  'POST /api/v1/platform/schools/:id/use-plan-allowance': ['school.sms_cap_override_cleared'],
   'POST /api/v1/platform/schools/:id/issue-principal-login': [
     'staff.created',
     'user.principal_login_issued',
@@ -325,6 +343,41 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/fee-structures/copy': ['fee_structure.copied'],
   'POST /api/v1/payment-accounts': ['payment_account.created'],
   'POST /api/v1/payment-accounts/:id/disable': ['payment_account.disabled'],
+  // Phase 3 slice 19 (contracts/slice-19.md §2). A replayed create writes no row; a requested run
+  // is audited again by its job (charge_run.completed, against the requester); scheduled runs and
+  // late fees have no actor and are recorded by their charge_runs and charges rows.
+  'POST /api/v1/charges': ['charge.created'],
+  'POST /api/v1/charges/generate-month': ['charge_run.requested'],
+  'POST /api/v1/charges/:id/void': ['charge.voided'],
+  'POST /api/v1/charges/:id/waive': ['charge.waived'],
+  'POST /api/v1/charges/:id/adjust': ['charge.adjusted'],
+  'POST /api/v1/concessions': ['concession.created'],
+  'POST /api/v1/concessions/:id/approve': ['concession.approved'],
+  'POST /api/v1/concessions/:id/reject': ['concession.rejected'],
+  'POST /api/v1/concessions/:id/end': ['concession.ended'],
+  'POST /api/v1/charge-campaigns': ['charge_campaign.created'],
+  'PATCH /api/v1/charge-campaigns/:id': ['charge_campaign.updated'],
+  'POST /api/v1/charge-campaigns/preview-targets': 'none: a read carried in a body; it writes nothing',
+  'POST /api/v1/charge-campaigns/:id/generate': ['charge_campaign.generate_requested'],
+  'POST /api/v1/charge-campaigns/:id/cancel': ['charge_campaign.cancelled'],
+  // Phase 3 slice 23 (contracts/slice-23.md §3). A replayed create, a no-op patch and the same
+  // receipt sent again write no row.
+  'POST /api/v1/expenses': ['expense.recorded'],
+  'PATCH /api/v1/expenses/:id': ['expense.updated'],
+  'PATCH /api/v1/expenses/:id/receipt': ['expense.receipt_attached'],
+  'POST /api/v1/expenses/:id/approve': ['expense.approved'],
+  'POST /api/v1/expenses/:id/reject': ['expense.rejected'],
+  'POST /api/v1/expenses/:id/void': ['expense.voided'],
+  // Phase 3 slice 24 (contracts/slice-24.md §4). A repeated archive writes no row; a replayed
+  // create writes none.
+  'POST /api/v1/leave-types': ['leave_type.created'],
+  'POST /api/v1/leave-types/:id/archive': ['leave_type.archived'],
+  'POST /api/v1/me/staff/leave-requests': ['leave_request.created'],
+  'POST /api/v1/me/staff/leave-requests/:id/cancel': ['leave_request.cancelled', 'teacher_assignment.ended'],
+  'POST /api/v1/leave-requests': ['leave_request.created'],
+  'POST /api/v1/leave-requests/:id/approve': ['leave_request.approved', 'teacher_assignment.created'],
+  'POST /api/v1/leave-requests/:id/reject': ['leave_request.rejected'],
+  'POST /api/v1/leave-requests/:id/end-early': ['leave_request.ended_early', 'teacher_assignment.ended'],
   'PATCH /api/v1/sections/:id': ['section.updated'],
   'POST /api/v1/sections/:id/archive': ['section.archived'],
   'POST /api/v1/staff': ['staff.created'],
@@ -339,7 +392,7 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/students/:id/documents': ['document.added'],
   'POST /api/v1/students/:id/guardian-links': ['guardian_link.created'],
   'POST /api/v1/students/:id/issue-login': ['user.login_issued'],
-  'POST /api/v1/students/:id/readmit': ['student.readmitted'],
+  'POST /api/v1/students/:id/readmit': ['student.readmitted', 'charge.admission_fee', 'concession.created', 'concession.ended', 'concession.rejected'],
   // contracts/slice-13.md §9. A replayed create and a no-op patch write no row.
   'POST /api/v1/sections/:id/diary-entries': ['diary_entry.created'],
   'PATCH /api/v1/diary-entries/:id': ['diary_entry.updated'],

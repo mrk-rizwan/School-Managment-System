@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { buffer } from 'node:stream/consumers';
 import { Transactional } from '@nestjs-cls/transactional';
-import type { DeliveryErrorCode, MessageChannel, SuppressionReason } from '@asms/shared';
+import type { DeliveryErrorCode, MessageChannel, MessageType, SuppressionReason } from '@asms/shared';
 import { FieldEncryption } from '../common/crypto/field-encryption';
 import { failureLog } from '../common/errors/failure-log';
 import { recoverConstraint } from '../common/errors/prisma-errors';
@@ -49,6 +49,19 @@ const MEDIA_MIMES: Readonly<Record<string, string>> = {
 /** The push title and email subject: the message's own (announcements), else the type's. */
 const titleFor = (message: MessageRecord, schoolName: string): string =>
   message.title ?? titleOf(message.type, message.subjectType, schoolName);
+
+/**
+ * R238 (phase-3-financial.md §3.6): a money message to a family is pushed with its title as the
+ * body ("Fees charged"), so an amount never shows on a lock screen; WhatsApp and SMS keep it and
+ * the app reads it.
+ */
+const TITLE_ONLY_PUSH: ReadonlySet<MessageType> = new Set<MessageType>([
+  'fee_charged',
+  'fee_due_reminder',
+  'fee_overdue',
+  'receipt_issued',
+  'payment_claim_rejected',
+]);
 
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */
 type AttemptContact = Pick<Contact, 'userId' | 'userHasStaff' | 'phone' | 'email'>;
@@ -222,7 +235,7 @@ export class MessageProcessor {
       devices.map((d) => d.pushToken),
       {
         title: titleFor(message, settings.name),
-        body: message.body,
+        body: TITLE_ONLY_PUSH.has(message.type) ? titleFor(message, settings.name) : message.body,
         // R173: ids only.
         data: {
           type: message.type,

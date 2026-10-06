@@ -11,8 +11,7 @@ import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { identityProbeThrottle, type RequestCost } from '../../../common/rate-limit';
 import { NoQueryDto } from '../../../common/validation';
-import { StudentDetailDto } from '../students/students.dto';
-import { AdmissionResultDto, CreateAdmissionDto, ReadmitDto } from './admissions.dto';
+import { AdmissionResultDto, CreateAdmissionDto, ReadmissionResultDto, ReadmitDto } from './admissions.dto';
 import { AdmissionsService } from './admissions.service';
 import { ReadmissionService } from './readmission.service';
 
@@ -89,14 +88,14 @@ export class AdmissionsController {
   @HttpCode(200)
   @RequireCapability(Capability.STUDENT_CREATE)
   @ApiIdParam()
-  @ApiOkResponse({ type: StudentDetailDto })
+  @ApiOkResponse({ type: ReadmissionResultDto })
   @ApiErrors(...COMMON, 404, 409, 422)
   readmit(
     @IdParam() id: bigint,
     @Body() body: ReadmitDto,
     @Query() _query: NoQueryDto,
     @CurrentSchoolSession() session: SchoolSessionContext,
-  ): Promise<StudentDetailDto> {
+  ): Promise<ReadmissionResultDto> {
     return this.readmissions.readmit(session, id, body);
   }
 }

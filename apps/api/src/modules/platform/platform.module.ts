@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlatformAuthModule } from './auth/platform-auth.module';
+import { PlatformBillingModule } from './billing/platform-billing.module';
 import { PrincipalLoginModule } from './principal/principal.module';
 import { PlatformMessagingModule } from './messaging/platform-messaging.module';
 import { PlatformSchoolsModule } from './schools/platform-schools.module';
@@ -16,6 +17,7 @@ import { PlatformSettingsModule } from './settings/platform-settings.module';
     PrincipalLoginModule,
     PlatformSettingsModule,
     PlatformMessagingModule,
+    PlatformBillingModule,
   ],
 })
 export class PlatformModule {}

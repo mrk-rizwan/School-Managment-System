@@ -40,6 +40,11 @@ const SECURE: Record<string, boolean> = {
   // Not secure: the user's own data, no child's name
   'home/index.tsx': false,
   'home/my-attendance.tsx': false,
+  // Phase 3 slice 24: the staff member's own leave, no child's name
+  'home/my-leave.tsx': false,
+  // Phase 3 slice 23: expense capture, no child's name
+  'home/expenses/index.tsx': false,
+  'home/expenses/new.tsx': false,
   'calendar.tsx': false,
   'more.tsx': false,
   'account/index.tsx': false,

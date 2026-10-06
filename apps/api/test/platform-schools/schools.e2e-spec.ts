@@ -158,6 +158,10 @@ describe('platform schools', () => {
         smsMonthlyCap: 500,
         whatsappProvider: 'platform_default',
         smsProvider: 'platform_default',
+        // Phase 3 slice 26 (A12, R224): no cap override, not terminated.
+        smsCapOverridden: false,
+        terminatedAt: null,
+        retentionEndsOn: null,
         createdAt: expect.stringMatching(ISO),
         updatedAt: expect.stringMatching(ISO),
       });

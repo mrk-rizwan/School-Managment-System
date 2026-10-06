@@ -146,6 +146,30 @@ export const EXPENSE_CATEGORIES = [
 ] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
+/** The categories a person records; `salary_advance_cash` and `cash_shortfall` the system writes (A17). */
+export type RecordableExpenseCategory = Exclude<ExpenseCategory, 'salary_advance_cash' | 'cash_shortfall'>;
+export const RECORDABLE_EXPENSE_CATEGORIES: readonly RecordableExpenseCategory[] = EXPENSE_CATEGORIES.filter(
+  (category): category is RecordableExpenseCategory =>
+    category !== 'salary_advance_cash' && category !== 'cash_shortfall',
+);
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  electricity: 'Electricity',
+  water: 'Water',
+  internet: 'Internet',
+  cleaning: 'Cleaning',
+  stationery: 'Stationery',
+  repairs: 'Repairs',
+  maintenance: 'Maintenance',
+  fuel: 'Fuel',
+  transport: 'Transport',
+  building: 'Building',
+  daily_purchases: 'Daily purchases',
+  salary_advance_cash: 'Salary advance (cash)',
+  cash_shortfall: 'Cash shortfall',
+  other: 'Other',
+};
+
 export const EXPENSE_STATUSES = ['recorded', 'pending_approval', 'approved', 'rejected', 'voided'] as const;
 export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number];
 

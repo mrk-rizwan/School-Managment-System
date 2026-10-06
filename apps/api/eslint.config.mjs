@@ -168,7 +168,9 @@ function restrictImports({ exempt = [], narrowed = [], extra = [] } = {}) {
 // Phase 3 billing (§5.1, R222): the platform's billing module reads no tenant table, so it may
 // import no tenant repository (every src/repositories file outside platform/).
 const TENANT_REPOSITORY_IMPORT = {
-  regex: `(^|/)repositories/(?!platform/)[^/]+\\.repository${EXT}$`,
+  // Any depth below src/repositories except platform/, so a tenant repository in a future
+  // subfolder is caught too (fixture tenant-repository-nested-import.ts).
+  regex: `(^|/)repositories/(?!platform/).+\\.repository${EXT}$`,
   message: 'src/modules/platform/billing/** reads no tenant table: it imports only the billing repositories (R222).',
 };
 
@@ -268,6 +270,13 @@ const RAW_SQL_FILES = [
   // R232: StudentGuardianRepository.userIsLiveGuardianOf reads asms_guardian_merge_family; every
   // table filtered on school_id (test/fees/isolation.e2e-spec.ts).
   'src/repositories/student-guardian.repository.ts',
+  // Phase 3 slice 19: the charge and student row locks (FOR UPDATE in id order, §3.2), and
+  // generation's INSERT … SELECT per class, campaign insert and late-fee writes with their
+  // column-and-predicate ON CONFLICT keys. Every statement filters school_id on every table it
+  // reads (test/charges/isolation.e2e-spec.ts).
+  'src/repositories/charge.repository.ts',
+  'src/repositories/charge-generation.repository.ts',
+  'src/repositories/concession.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -662,6 +671,16 @@ export default tseslint.config(
     // The slice-14 suites seed and probe the announcement tables through their repositories.
     files: ['test/announcements/**/*.ts'],
     rules: restrictImports({ exempt: ['announcementRepositories', 'messagingDrivers', 'queueMint'] }),
+  },
+  {
+    // The slice-26 suites seed and probe the billing tables and read a school's own invoices
+    // through the repository, as the billing-status controller and the notices job do.
+    files: ['test/platform-billing/**/*.ts'],
+    // repositoryInternals: the isolation suite checks the five tables against the query guard's
+    // NON_TENANT_MODELS, as test/guardrails does.
+    rules: restrictImports({
+      exempt: ['billingRepositories', 'ownInvoicesRepository', 'platformRepositories', 'repositoryInternals'],
+    }),
   },
   {
     // Plan rule 0.11: the drivers are internal to messaging.

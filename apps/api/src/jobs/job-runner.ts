@@ -13,12 +13,16 @@ import {
 } from '../modules/attendance/attendance-jobs';
 import { StagedUploadSweep } from '../modules/documents/staged-upload.sweep';
 import { AnnouncementSendJob } from '../modules/announcements/announcement-send.job';
+import { ChargeGeneration } from '../modules/fees/charge-generation';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
 import type { SchoolId } from '../tenancy/school-id';
 import { DeliveryHealthRollup } from './delivery-health-rollup';
 import { SessionPurge } from './session-purge';
+import { BillingNotices } from './billing-notices';
+import { PlatformBillingJob } from './platform-billing';
+import { SchoolMetricsRollup } from './school-metrics-rollup';
 
 export type JobOutcome = 'done' | 'dropped' | 'unknown';
 
@@ -48,6 +52,12 @@ export class JobRunner {
     private readonly attendanceSweeps: AttendanceSweeps,
     private readonly registerDeadline: RegisterDeadlineSweep,
     private readonly announcementSend: AnnouncementSendJob,
+    // Slice 19 (phase-3-financial.md §3.7).
+    private readonly charges: ChargeGeneration,
+    // Slice 26 (phase-3-financial.md §3.7).
+    private readonly platformBilling: PlatformBillingJob,
+    private readonly schoolMetrics: SchoolMetricsRollup,
+    private readonly billingNotices: BillingNotices,
   ) {}
 
   /**
@@ -83,6 +93,13 @@ export class JobRunner {
         await this.tenancy.runAsSchool(job.schoolId, () =>
           this.announcementSend.fire(job.schoolId, job.ids.announcementId, now, dueAt),
         );
+        return 'done';
+      }
+      // contracts/slice-19.md §5: a requested monthly or campaign run (its charge_runs row).
+      case JOB.chargeRun: {
+        const job = await this.tenancy.fromQueuePayload(payload, ['runId']);
+        if (!job) return this.dropped(name);
+        await this.tenancy.runAsSchool(job.schoolId, () => this.charges.run(job.schoolId, job.ids.runId, now));
         return 'done';
       }
       default:
@@ -125,6 +142,8 @@ export class JobRunner {
           await this.sweeps.outboxSweep(schoolId, plannedAt);
           await this.attendanceSweeps.outboxSweep(schoolId, plannedAt);
           await this.announcementSend.sweep(schoolId, plannedAt);
+          // R252: a charge run queued 10 minutes or running 15 is failed `stale`.
+          await this.charges.staleSweep(schoolId, plannedAt);
         });
         return 'done';
       case JOB.registerDeadlineSweep:
@@ -146,9 +165,27 @@ export class JobRunner {
         // Its own fan-out over every school, terminated included (R41, R90).
         await this.stagedUploads.runDaily();
         return 'done';
+      // Slice 19 (§3.7): the daily generation (the 1st, then the catch-up) and the late-fee sweep.
+      case JOB.chargeGenerate:
+        await this.eachSchool(name, (schoolId) => this.charges.daily(schoolId, plannedAt));
+        return 'done';
+      case JOB.lateFeeSweep:
+        await this.eachSchool(name, (schoolId) => this.charges.lateFees(schoolId, plannedAt));
+        return 'done';
       case JOB.sessionPurge:
         // Every school, terminated included: a dead sign-in is not history anywhere.
         await this.eachSchool(name, (schoolId) => this.sessionPurge.run(schoolId, plannedAt), 'all');
+        return 'done';
+      // Slice 26: the per-school count (every live school, trial and suspended included), the
+      // non-tenant billing run (no school context), and the per-school invoice notices.
+      case JOB.schoolMetricsRollup:
+        await this.eachSchool(name, (schoolId) => this.schoolMetrics.run(schoolId, plannedAt));
+        return 'done';
+      case JOB.platformBilling:
+        await this.platformBilling.run(plannedAt);
+        return 'done';
+      case JOB.billingNotices:
+        await this.eachSchool(name, (schoolId) => this.billingNotices.run(schoolId));
         return 'done';
       default:
         return this.dropped(name);

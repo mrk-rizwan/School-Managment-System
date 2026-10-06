@@ -129,6 +129,12 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         // Slice 11: neither touches idempotency_keys (reviewed 2026-10-04).
         'register-deadline-sweep',
         'attendance-nightly-recompute',
+        // Phase 3 wave I: none touches idempotency_keys (reviewed 2026-10-06).
+        'school-metrics-rollup',
+        'platform-billing',
+        'billing-notices',
+        'charge-generate',
+        'late-fee-sweep',
       ]);
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });

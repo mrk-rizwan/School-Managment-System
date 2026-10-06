@@ -191,7 +191,7 @@ describe('migration 3 (slice 16b): an outbox row written at v2 survives the upgr
     await v2.closeAsync();
 
     expect(await getMeta(META.schemaVersion)).toBe(String(SCHEMA_VERSION));
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
     const rows = await listUnfinished();
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: 'row-v2', state: 'pending', responseDetails: null });

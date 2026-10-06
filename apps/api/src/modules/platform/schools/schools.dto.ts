@@ -69,6 +69,21 @@ export class SchoolDto {
   @ApiProperty({ enum: SMS_PROVIDER_CHOICES, enumName: 'SmsProviderChoice' })
   smsProvider: SmsProviderChoice;
 
+  /**
+   * Set by a manual cap patch; while set the monthly billing run leaves `smsMonthlyCap` alone.
+   * Plan assignment and "use the plan's allowance" clear it (phase-3-financial.md A12, R223).
+   */
+  @ApiProperty()
+  smsCapOverridden: boolean;
+
+  /** When the school was terminated (R224); null unless terminated. */
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  terminatedAt: Date | null;
+
+  /** Retention ends 12 months after termination (rule 23); no purge exists. Null unless terminated. */
+  @ApiProperty({ type: String, format: 'date', nullable: true })
+  retentionEndsOn: string | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 

@@ -1,5 +1,12 @@
 import { containsIdentityNumber, type AttendanceStatus, type RemarkCategory } from '@asms/shared';
-import type { CreateDiaryEntryDto, CreateRemarkDto, SubmitRegisterDto } from '../api/contracts';
+import type {
+  CounterPaymentMethod,
+  CreateDiaryEntryDto,
+  CreateExpenseDto,
+  CreateRemarkDto,
+  RecordableExpenseCategory,
+  SubmitRegisterDto,
+} from '../api/contracts';
 import { containsPhone } from '../platform/scrub';
 
 // The only builders of outbox bodies (slice-16 §3.4, slice-15 §7.6): each copies exactly the
@@ -106,7 +113,37 @@ export function buildRemarkBody(input: RemarkInput): CreateRemarkDto {
   };
 }
 
-/** The photo lane's row: a pointer to the local file row; the sender builds the requests. */
+export type ExpenseInput = {
+  category: RecordableExpenseCategory;
+  /** Whole rupees. */
+  amount: number;
+  spentOn: string;
+  description: string;
+  payee?: string | null;
+  method: CounterPaymentMethod;
+  reference?: string | null;
+};
+
+/** Never a stagedUploadId: the receipt travels in its own lane (expense_receipt, §3.9). */
+export function buildExpenseBody(input: ExpenseInput): CreateExpenseDto {
+  checked('description', input.description);
+  checked('payee', input.payee);
+  checked('reference', input.reference);
+  return {
+    category: input.category,
+    amount: input.amount,
+    spentOn: input.spentOn,
+    description: input.description.trim(),
+    ...(given(input.payee) ? { payee: input.payee.trim() } : {}),
+    method: input.method,
+    ...(given(input.reference) ? { reference: input.reference.trim() } : {}),
+  };
+}
+
+/**
+ * A staged_upload_patch lane's row (the diary photo, an expense's receipt): a pointer to the
+ * local file row in the lane's domainTable; the sender builds the requests.
+ */
 export function buildAttachmentBody(localAttachmentId: string): { localAttachmentId: string } {
   return { localAttachmentId };
 }

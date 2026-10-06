@@ -5,6 +5,7 @@
 // paisa (R111); SMS text is normalised to GSM-7 and each templated body fits one segment with the
 // longest fixture values (R110, templates.spec.ts).
 import type { DayStatus, MessageSubjectType, MessageType, WhatsAppErrorCode } from '@asms/shared';
+import { formatRupees } from '@asms/shared';
 import type { TemplateVarsMap } from './types';
 
 export interface Rendered {
@@ -98,6 +99,10 @@ const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC'
 export const formatDay = (date: Date): string =>
   `${DAY.format(date)} ${date.getUTCDate()} ${MONTH.format(date)}`;
 
+/** A `YYYY-MM` month as `Oct 2026` (slice 26). */
+export const formatMonth = (yearMonth: string): string =>
+  `${MONTH.format(new Date(`${yearMonth}-01T00:00:00.000Z`))} ${yearMonth.slice(0, 4)}`;
+
 /** An instant as `HH:MM` in the school's time zone. */
 export const formatTime = (instant: Date, timezone: string): string =>
   new Intl.DateTimeFormat('en-GB', {
@@ -127,6 +132,8 @@ function fitOneSegment(text: string, build: (fitted: string) => string): string 
 const STUDENT_NAME_MAX = 40;
 const CLASS_SECTION_MAX = 16;
 const UNRECORDED_NAMED = 5;
+/** contracts/slice-19.md §6: a fee_charged label (`October 2026 fees`, a campaign's name). */
+const FEE_LABEL_MAX = 40;
 
 /** `text` cut to `max` characters at a word boundary, marked with `...`. */
 export function cutWords(text: string, max: number): string {
@@ -179,7 +186,13 @@ const RENDERERS: Renderers = {
   announcement_normal: senderBody,
   whatsapp_session_down: notWritten('whatsapp_session_down'),
   // Phase 3 (§3.6): written by the slice that sends each type.
-  fee_charged: notWritten('fee_charged'),
+  // contracts/slice-19.md §6 (R241): SMS-eligible (off by default), so one segment with the
+  // longest fixtures; the children's names are cut to fit. The push body is the title (R238).
+  fee_charged: (vars, ctx) => {
+    const head = `${schoolLabel(ctx.schoolName)}: ${cutWords(vars.label, FEE_LABEL_MAX)}: ${formatRupees(vars.total)} for`;
+    const due = `Due ${formatDay(vars.dueOn)}.`;
+    return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names}. ${due}`);
+  },
   fee_due_reminder: notWritten('fee_due_reminder'),
   fee_overdue: notWritten('fee_overdue'),
   receipt_issued: notWritten('receipt_issued'),
@@ -187,15 +200,33 @@ const RENDERERS: Renderers = {
   payment_claim_submitted: notWritten('payment_claim_submitted'),
   handover_shortfall: notWritten('handover_shortfall'),
   reminder_sms_capped: notWritten('reminder_sms_capped'),
-  concession_requested: notWritten('concession_requested'),
-  concession_decided: notWritten('concession_decided'),
-  expense_approval_requested: notWritten('expense_approval_requested'),
-  expense_decided: notWritten('expense_decided'),
-  leave_requested: notWritten('leave_requested'),
-  leave_decided: notWritten('leave_decided'),
+  // contracts/slice-19.md §6: push and email to principals and the requester; no amount (R238).
+  concession_requested: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: A fee concession for ${cutWords(vars.studentName, STUDENT_NAME_MAX)} was requested by ${vars.requesterName}. Open ASMS to decide.`,
+  concession_decided: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: The fee concession you requested for ${cutWords(vars.studentName, STUDENT_NAME_MAX)} was ${vars.decision}.`,
+  // Slice 23 (contracts/slice-23.md §4): push and email only; no amount and no reason (R238), so
+  // nothing about money travels in a push body; the app and the web console show the expense.
+  expense_approval_requested: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: Expense ${vars.expenseNo} (${vars.category.replaceAll('_', ' ')}) recorded by ${vars.recorderName} needs your approval. Open ASMS to review it.`,
+  expense_decided: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: Your expense ${vars.expenseNo} was ${vars.decision}. Open ASMS for the details.`,
+  // contracts/slice-24.md §5: internal (push and email), so no segment limit; the staff member's
+  // name is in the body, never the title (R111).
+  leave_requested: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ${vars.staffName} asks for ${vars.typeName}, ${range(vars.startsOn, vars.endsOn)} (${vars.workingDays} working ${vars.workingDays === 1 ? 'day' : 'days'}). Open the app to decide.`,
+  leave_decided: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: Your ${vars.typeName}, ${range(vars.startsOn, vars.endsOn)}, was ${vars.decision}.`,
   payslip_ready: notWritten('payslip_ready'),
-  platform_invoice_issued: notWritten('platform_invoice_issued'),
-  platform_invoice_overdue: notWritten('platform_invoice_overdue'),
+  // Slice 26 (contracts/slice-26.md §5): to the school's principals, push and email only; no
+  // amount (R238), which the settings page's billing status shows.
+  platform_invoice_issued: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ASMS subscription invoice ${vars.invoiceNo} for ${formatMonth(vars.yearMonth)} is issued, due ${formatDay(vars.dueOn)}. See Settings for the amount.`,
+  platform_invoice_overdue: (vars, ctx) =>
+    vars.suspensionEligible
+      ? `${schoolLabel(ctx.schoolName)}: ASMS subscription invoice ${vars.invoiceNo} for ${formatMonth(vars.yearMonth)}, due ${formatDay(vars.dueOn)}, is still unpaid and the grace period has ended. Please pay to avoid suspension.`
+      : `${schoolLabel(ctx.schoolName)}: ASMS subscription invoice ${vars.invoiceNo} for ${formatMonth(vars.yearMonth)} was due ${formatDay(vars.dueOn)} and is unpaid. See Settings for the amount.`,
+  // A platform alert (no messages row): renderBillingTierMissing, sent by PlatformAlerts.
   billing_tier_missing: notWritten('billing_tier_missing'),
 
   messaging_test: (vars, ctx) =>
@@ -301,6 +332,35 @@ export function renderWhatsAppSessionDown(input: {
   };
 }
 
+export interface BillingTierMissingInput {
+  yearMonth: string;
+  skipped: readonly { schoolId: bigint; schoolName: string; reason: 'no_metrics' | 'no_band' }[];
+}
+
+/** Schools named in one alert; the rest are counted (the console lists every one). */
+const BILLING_ALERT_NAMED = 20;
+
+/**
+ * The platform alert billing_tier_missing (slice 26, R220): the scheduled monthly run skipped
+ * schools with no student count at most 7 days old (no_metrics) or no plan whose band holds it
+ * (no_band). School names and ids only (R112); never a count of anything else.
+ */
+export function renderBillingTierMissing(input: BillingTierMissingInput): Rendered {
+  const named = input.skipped
+    .slice(0, BILLING_ALERT_NAMED)
+    .map((s) => `- ${s.schoolName} (${s.schoolId}): ${s.reason === 'no_metrics' ? 'no recent student count' : 'no plan band holds its student count'}`);
+  const more = input.skipped.length - named.length;
+  return {
+    title: `Billing: ${input.skipped.length} ${input.skipped.length === 1 ? 'school' : 'schools'} not invoiced for ${formatMonth(input.yearMonth)}`,
+    body: [
+      `The monthly billing run did not invoice these schools for ${formatMonth(input.yearMonth)}:`,
+      ...named,
+      ...(more > 0 ? [`... and ${more} more.`] : []),
+      'Add a plan for the band, or check the school-metrics rollup, then run "Issue month" on the platform console.',
+    ].join('\n'),
+  };
+}
+
 // ------------------------------------------------------------------------------ masking
 
 /** `+923001234567` -> `+9230*****67`: never seven digits in a row (R111). */
@@ -337,6 +397,24 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'Diary posted';
     case 'remark_posted':
       return 'New remark';
+    case 'fee_charged':
+      return 'Fees charged';
+    case 'concession_requested':
+      return 'Concession to decide';
+    case 'concession_decided':
+      return 'Concession decided';
+    case 'expense_approval_requested':
+      return 'Expense to approve';
+    case 'expense_decided':
+      return 'Expense decided';
+    case 'leave_requested':
+      return 'Leave request';
+    case 'leave_decided':
+      return 'Leave decided';
+    case 'platform_invoice_issued':
+      return 'Subscription invoice';
+    case 'platform_invoice_overdue':
+      return 'Subscription invoice overdue';
     default:
       return schoolLabel(schoolName);
   }

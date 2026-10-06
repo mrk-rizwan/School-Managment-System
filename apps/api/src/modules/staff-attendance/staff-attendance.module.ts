@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { SchoolContext } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
+import { LeaveRequestRepository } from '../../repositories/leave-request.repository';
+import { LeaveTypeRepository } from '../../repositories/leave-type.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { StaffAttendanceRepository } from '../../repositories/staff-attendance.repository';
 import { StaffRepository } from '../../repositories/staff.repository';
@@ -36,6 +38,9 @@ import { StaffAttendanceService } from './staff-attendance.service';
     ChangeContextRepository,
     SchoolSettingsRepository,
     AuditLogRepository,
+    // Slice 24: the day sheet's approvedLeave.
+    LeaveRequestRepository,
+    LeaveTypeRepository,
   ],
 })
 export class StaffAttendanceModule {}

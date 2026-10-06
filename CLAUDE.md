@@ -6,7 +6,7 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. `phase-2-daily-operations.md` is the current one (slice 17, the phase close, remains); `phase-1-foundation.md` is complete, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
+- `docs/plans/` — build plans per phase. `phase-3-financial.md` is the current one; `phase-1-foundation.md` and `phase-2-daily-operations.md` are complete, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
@@ -201,12 +201,15 @@ module that may each import one platform repository are listed in ESLint `NAMED_
 1. **The platform module** (platform admins managing schools). Its repositories live in
    `src/repositories/platform/**`, touch only the non-tenant tables (`schools`, `school_groups`,
    `platform_users`, `platform_sessions`, `platform_audit_log`, `platform_settings`,
-   `platform_delivery_health`), and may be imported only from `src/modules/platform/**` and the
-   named exception sites. Enforced by the same ESLint rule. **The platform acts inside a
+   `platform_delivery_health`, and since Phase 3 `platform_plans`, `platform_subscriptions`,
+   `platform_invoices`, `platform_payments`, `platform_school_metrics`), and may be imported only
+   from `src/modules/platform/**` and the named exception sites; the billing repositories only from
+   `src/modules/platform/billing/**`, `src/jobs/platform-billing.ts` and (metrics, write)
+   `src/jobs/school-metrics-rollup.ts`. Enforced by the same ESLint rule. **The platform acts inside a
    school for exactly two operations:** creating the school, which writes its first
-   `school_settings` row, its counters (`admission_no`, `expense_no`) and its five seeded fee heads
-   (`asms_seed_school_finance`; slice 24 adds the leave types) in the same transaction (the tenant
-   comes into being),
+   `school_settings` row, its counters (`admission_no`, `expense_no`), its five seeded fee heads
+   and three leave types (`asms_seed_school_finance`) in the same transaction (the tenant comes
+   into being),
    and issuing a principal's login, which is refused while the school already has an active
    principal unless a reason is given. Both go through `fromPlatformSchool`, importable
    only in the platform module, and both are written to the platform audit log (the principal
@@ -216,8 +219,12 @@ module that may each import one platform repository are listed in ESLint `NAMED_
    inside a school.
    Platform login requires a second factor: one platform password would otherwise open every
    school. Tenant code that reads its own school row uses `OwnSchoolRepository`, whose only
-   predicate is `id = schoolId`; school-owned settings and counters live in tenant tables, not on
-   `schools`.
+   predicate is `id = schoolId`, and a school reads its own platform bill (its live plan and its
+   invoices) through `OwnInvoicesRepository`, whose every tenant-keyed predicate is
+   `school_id = schoolId` (the plan row, which carries no school, is read by the id from the
+   school's own subscription), importable only from `src/jobs/billing-notices.ts` and
+   `src/modules/school-settings/billing-status.controller.ts`; school-owned settings and counters
+   live in tenant tables, not on `schools`.
 2. **The pre-auth school lookup** at login and forgot-password: one method,
    `SchoolLookupRepository.findByCode(code)`, returning `id`, `shortCode`, `status` and nothing else. Its companion is the login-spray alarm
    (`src/modules/auth/login-spike.recorder.ts`), which may only write a row to
@@ -245,11 +252,16 @@ module that may each import one platform repository are listed in ESLint `NAMED_
    Each statement returns only the `school_id` of the row it changed, minted by
    `schoolIdFromDeliveryReport` and used only to enqueue a job, which resolves the school again
    through exception 3. Signatures are verified over the raw bytes before any of this runs.
-6. **The platform delivery-health rollup.** `platform_delivery_health` is a non-tenant table with
-   a `school_id` column, like `platform_audit_log`. It is written only by
-   `src/jobs/delivery-health-rollup.ts` and read only by `src/modules/platform/messaging/**`
-   (`GET /platform/messaging/health`): counts, statuses and mapped error codes. The platform never
-   reads `messages`, `message_deliveries` or `whatsapp_numbers` (R114).
+6. **The platform rollups.** `platform_delivery_health` and `platform_school_metrics` are
+   non-tenant tables with a `school_id` column, like `platform_audit_log`.
+   `platform_delivery_health` is written only by `src/jobs/delivery-health-rollup.ts` and read only
+   by `src/modules/platform/messaging/**` (`GET /platform/messaging/health`): counts, statuses and
+   mapped error codes. `platform_school_metrics` (one integer per school per day: the students on
+   the roll) is written only by `src/jobs/school-metrics-rollup.ts`, inside `runAsSchool` with the
+   school's own `SchoolId`, and read only by `src/modules/platform/billing/**` and
+   `src/jobs/platform-billing.ts`. The platform never reads `messages`, `message_deliveries` or
+   `whatsapp_numbers` (R114), nor any charge, payment or other ledger row (R222): a later
+   platform-side figure is another column on these rollups, not a new exception.
 
 ### Transactions
 

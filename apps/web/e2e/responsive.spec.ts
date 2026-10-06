@@ -2,6 +2,7 @@ import { Capability } from '@asms/shared';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import type { components as PlatformSchemas } from '../lib/api/platform';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
+import { BILLING_STATUS, INVOICES, PLANS, SCHOOL_BILLING } from './support/billing';
 import { FINANCE_SETTINGS } from './support/settings';
 import type { AcademicYearDto, ClassDto, SectionDto, SubjectDto } from '../lib/api/school-academics-contract';
 import type {
@@ -418,6 +419,7 @@ const STAFF_DAY: StaffDayDto[] = STAFF.map((s) => ({
   designation: s.designation,
   staffStatus: s.status,
   mark: null,
+  approvedLeave: null,
 }));
 const MY_ATTENDANCE: MyStaffAttendanceDto = {
   staffId: 'st1',
@@ -538,7 +540,7 @@ const INBOX: InboxItemDto[] = [
     ],
   },
 ];
-const PLATFORM_SETTINGS: PlatformSettingsDto = { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], updatedAt: STAMP };
+const PLATFORM_SETTINGS: PlatformSettingsDto = { defaultWhatsappProvider: 'waha', defaultSmsProvider: 'sendpk', enabledWhatsappProviders: ['waha', 'cloud_api'], invoiceDueDay: 10, graceDays: 15, updatedAt: STAMP };
 const healthRow = (schoolId: string, name: string, shortCode: string): PlatformDeliveryHealthDto => ({
   schoolId,
   name,
@@ -585,6 +587,10 @@ const school = (id: string, name: string, shortCode: string, status: School['sta
   smsMonthlyCap: 500,
   whatsappProvider: 'platform_default',
   smsProvider: 'platform_default',
+  // Phase 3 slice 26: the cap override and termination fields.
+  smsCapOverridden: false,
+  terminatedAt: null,
+  retentionEndsOn: null,
 });
 const SCHOOLS = [
   school('s1', 'Green Valley Higher Secondary School', 'greenvalley', 'active'),
@@ -622,6 +628,10 @@ async function mockApi(page: Page, session: Session) {
       if (method === 'GET' && p === '/schools') return json(200, page1(SCHOOLS));
       if (method === 'GET' && p === '/settings') return json(200, PLATFORM_SETTINGS);
       if (method === 'GET' && p === '/messaging/health') return json(200, page1(HEALTH));
+      // Slice 26: platform billing.
+      if (method === 'GET' && p === '/plans') return json(200, page1(PLANS));
+      if (method === 'GET' && p === '/invoices') return json(200, page1(INVOICES));
+      if (method === 'GET' && /^\/schools\/[^/]+\/billing$/.test(p)) return json(200, SCHOOL_BILLING);
       const detail = p.match(/^\/schools\/([^/]+)$/);
       const found = detail && SCHOOLS.find((s) => s.id === detail[1]);
       if (method === 'GET' && found) return json(200, found);
@@ -671,6 +681,8 @@ async function mockApi(page: Page, session: Session) {
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
+    // Slice 26 (A18): the settings page's subscription card.
+    if (path === '/school/billing-status') return json(200, BILLING_STATUS);
     if (path === '/messaging/whatsapp') return json(200, WHATSAPP);
     if (path === '/messaging/usage') return json(200, USAGE);
     if (path === '/calendar/teaching-days') return json(200, TEACHING_DAYS);
@@ -758,6 +770,9 @@ const SCREENS: Screen[] = [
   { path: '/platform/schools/s1', heading: 'Green Valley Higher Secondary School', session: 'platform' },
   { path: '/platform/messaging', heading: 'Delivery health', session: 'platform' },
   { path: '/platform/settings', heading: 'Platform settings', session: 'platform' },
+  // Slice 26: platform billing.
+  { path: '/platform/plans', heading: 'Plans', session: 'platform' },
+  { path: '/platform/invoices', heading: 'Invoices', session: 'platform' },
 ];
 
 function sessionFor(kind: Screen['session']): Session {

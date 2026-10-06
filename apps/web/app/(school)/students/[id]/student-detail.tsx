@@ -56,9 +56,10 @@ import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
 import { RemarksTab } from './remarks-tab';
+import { FeeStatementTab } from '../../fees/_lib/fee-statement';
 import { NotesField } from '../_lib/notes-field';
 
-type Tab = 'details' | 'guardians' | 'enrolments' | 'attendance' | 'remarks' | 'documents' | 'history';
+type Tab = 'details' | 'guardians' | 'enrolments' | 'attendance' | 'remarks' | 'documents' | 'fees' | 'history';
 
 /** contracts/slice-6.md §3, §10. Write controls follow GET /me; the API checks every request. */
 export function StudentDetail({ id }: { id: string }) {
@@ -89,6 +90,8 @@ export function StudentDetail({ id }: { id: string }) {
             { value: 'attendance', label: 'Attendance' },
             { value: 'remarks', label: 'Remarks' },
             ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
+            // The fee statement (phase-3-financial.md slice 19, R205); teachers see no money (R234).
+            ...(can(Capability.FEE_STATEMENT_VIEW) ? [{ value: 'fees' as const, label: 'Fees' }] : []),
             { value: 'history', label: 'Status history' },
           ];
           const place = placeLabel(data.current);
@@ -142,6 +145,7 @@ export function StudentDetail({ id }: { id: string }) {
                 {tab === 'attendance' && <StudentAttendanceTab student={data} />}
                 {tab === 'remarks' && <RemarksTab student={data} />}
                 {tab === 'documents' && <DocumentsTab student={data} />}
+                {tab === 'fees' && <FeeStatementTab student={data} />}
                 {tab === 'history' && <StatusHistory studentId={data.id} />}
               </div>
             </>

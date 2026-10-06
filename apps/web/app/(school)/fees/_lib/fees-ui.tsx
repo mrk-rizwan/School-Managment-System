@@ -1,29 +1,43 @@
 'use client';
 
-import { MAX_RUPEES, YEAR_MONTH_PATTERN } from '@asms/shared';
+import { Capability, MAX_RUPEES, YEAR_MONTH_PATTERN } from '@asms/shared';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { z } from 'zod';
+import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
 
-// Pieces shared by the fee-head and fee-structure screens (phase-3-financial.md slice 18).
+// Pieces shared by the fee screens (phase-3-financial.md slices 18 and 19).
 
 export const feesKeys = {
   all: ['school', 'fees'] as const,
   heads: ['school', 'fees', 'heads'] as const,
   structures: ['school', 'fees', 'structures'] as const,
+  // Slice 19.
+  charges: ['school', 'fees', 'charges'] as const,
+  runs: ['school', 'fees', 'runs'] as const,
+  concessions: ['school', 'fees', 'concessions'] as const,
+  campaigns: ['school', 'fees', 'campaigns'] as const,
+  statement: (studentId: string) => ['school', 'fees', 'statement', studentId] as const,
 };
 
-const TABS = [
-  { href: '/fees/heads', label: 'Fee heads' },
-  { href: '/fees/structures', label: 'Fee structure' },
-] as const;
+/** Each tab shows to the holders of any of its keys (the API checks every request). */
+const TABS: readonly { href: string; label: string; keys: readonly Capability[] }[] = [
+  { href: '/fees/heads', label: 'Fee heads', keys: [] },
+  { href: '/fees/structures', label: 'Fee structure', keys: [] },
+  { href: '/fees/charges', label: 'Charges', keys: [Capability.FEE_STATEMENT_VIEW, Capability.CHARGE_CREATE] },
+  { href: '/fees/runs', label: 'Generation runs', keys: [Capability.CHARGE_CREATE, Capability.FINANCE_REPORT_VIEW] },
+  { href: '/fees/concessions', label: 'Concessions', keys: [Capability.CONCESSION_GRANT, Capability.CHARGE_CREATE] },
+  { href: '/fees/campaigns', label: 'Campaigns', keys: [Capability.CHARGE_CAMPAIGN_SEND] },
+];
 
 export function FeesTabs() {
   const pathname = usePathname();
+  const { can } = useCapabilities();
+  const tabs = TABS.filter((t) => t.keys.length === 0 || t.keys.some((key) => can(key)));
   return (
-    <nav aria-label="Fees" className="mb-6 flex gap-1 border-b">
-      {TABS.map(({ href, label }) => {
+    <nav aria-label="Fees" className="mb-6 flex flex-wrap gap-1 border-b">
+      {tabs.map(({ href, label }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -63,3 +77,20 @@ export const yearMonthSchema = z.string().refine((v) => YEAR_MONTH_PATTERN.test(
 
 /** Digits only, as an amount is typed: no decimals, separators or signs. */
 export const digitsOnly = (raw: string) => raw.replace(/\D/g, '').slice(0, 8);
+
+/** The principal role (R233): a grant of a key never stands in for it; the API decides. */
+export function useIsPrincipal(): boolean {
+  return useSchoolMe().data?.roles.includes('principal') ?? false;
+}
+
+export const CHARGE_STATUS_LABELS = { open: 'Open', settled: 'Settled', voided: 'Voided', waived: 'Waived' } as const;
+export const CHARGE_KIND_LABELS = {
+  generated: 'Generated',
+  campaign: 'Campaign',
+  manual: 'Manual',
+  late_fee: 'Late fee',
+  adjustment: 'Credit',
+} as const;
+export const CONCESSION_STATUS_LABELS = { requested: 'Requested', approved: 'Approved', rejected: 'Rejected', ended: 'Ended' } as const;
+export const RUN_STATUS_LABELS = { queued: 'Queued', running: 'Running', done: 'Done', failed: 'Failed' } as const;
+export const CAMPAIGN_STATUS_LABELS = { draft: 'Draft', generating: 'Generating', generated: 'Generated', cancelled: 'Cancelled' } as const;

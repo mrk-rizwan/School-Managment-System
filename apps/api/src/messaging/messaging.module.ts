@@ -21,6 +21,7 @@ import { MessagingAdminService } from './messaging-admin.service';
 import { MessageRollup } from './message-rollup';
 import { NotificationService } from './notification.service';
 import { OutboxDispatcher } from './outbox-dispatcher';
+import { PlatformAlerts } from './platform-alerts';
 import { WhatsAppHealth } from './whatsapp-health';
 
 const REPOSITORIES = [
@@ -60,6 +61,7 @@ const REPOSITORIES = [
     MessageProcessor,
     MessageRollup,
     WhatsAppHealth,
+    PlatformAlerts,
     DeliverySweeps,
     MessagingAdminService,
   ],
@@ -72,6 +74,7 @@ const REPOSITORIES = [
     MessageProcessor,
     MessageRollup,
     WhatsAppHealth,
+    PlatformAlerts,
     DeliverySweeps,
     MessagingAdminService,
   ],

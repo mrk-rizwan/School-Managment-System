@@ -21,8 +21,21 @@ export interface SchoolRecord {
   smsMonthlyCap: number;
   whatsappProvider: WhatsAppProviderChoice;
   smsProvider: SmsProviderChoice;
+  /** A manual cap patch sets it; the monthly billing run leaves the cap alone while set (A12). */
+  smsCapOverridden: boolean;
+  /** Set iff terminated (R224). */
+  terminatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** A school the monthly billing run invoices (rule 23: suspended schools included). */
+export interface BillableSchool {
+  id: bigint;
+  name: string;
+  status: SchoolStatus;
+  smsMonthlyCap: number;
+  smsCapOverridden: boolean;
 }
 
 export type SchoolSortField = 'name' | 'shortCode' | 'status' | 'createdAt';
@@ -47,6 +60,8 @@ const SELECT = {
   smsMonthlyCap: true,
   whatsappProvider: true,
   smsProvider: true,
+  smsCapOverridden: true,
+  terminatedAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.SchoolSelect;
@@ -126,6 +141,7 @@ export class SchoolRepository {
         smsMonthlyCap: school.smsMonthlyCap,
         whatsappProvider: school.whatsappProvider,
         smsProvider: school.smsProvider,
+        smsCapOverridden: school.smsCapOverridden,
         updatedAt: school.updatedAt,
       },
       data: { updatedAt: school.updatedAt },
@@ -160,6 +176,7 @@ export class SchoolRepository {
       smsMonthlyCap?: number;
       whatsappProvider?: WhatsAppProviderChoice;
       smsProvider?: SmsProviderChoice;
+      smsCapOverridden?: boolean;
     },
   ): Promise<void> {
     await this.txHost.tx.school.update({ where: { id }, data, select: { id: true } });
@@ -173,5 +190,43 @@ export class SchoolRepository {
       data: { status: to, ...(to === 'terminated' ? { terminatedAt: new Date() } : {}) },
     });
     return count;
+  }
+
+  // ---- Phase 3 platform billing (phase-3-financial.md slice 26) ------------------------------
+
+  /** Every school the monthly run invoices: active and suspended (trial and terminated are not). */
+  listBillable(): Promise<BillableSchool[]> {
+    return this.txHost.tx.school.findMany({
+      where: { status: { in: ['active', 'suspended'] } },
+      select: { id: true, name: true, status: true, smsMonthlyCap: true, smsCapOverridden: true },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  /**
+   * Locks the school row for the rest of the transaction (touching updated_at, as
+   * lockForPrincipalIssue) and returns it as read under the lock; null when absent. Plan
+   * assignment, unpinning and the monthly run take it first (lock order: school, plan,
+   * subscription, invoice counter).
+   */
+  async lock(id: bigint): Promise<SchoolRecord | null> {
+    const { count } = await this.txHost.tx.school.updateMany({
+      where: { id },
+      data: { updatedAt: new Date() },
+    });
+    return count === 0 ? null : this.findById(id);
+  }
+
+  /**
+   * A12/R223: the cap a plan gives. `clearOverride` is plan assignment and the explicit "use the
+   * plan's allowance"; the monthly run passes false and calls this only while not overridden.
+   * The caller holds the row lock.
+   */
+  async setSmsCap(id: bigint, cap: number, clearOverride: boolean): Promise<void> {
+    await this.txHost.tx.school.update({
+      where: { id },
+      data: { smsMonthlyCap: cap, ...(clearOverride ? { smsCapOverridden: false } : {}) },
+      select: { id: true },
+    });
   }
 }

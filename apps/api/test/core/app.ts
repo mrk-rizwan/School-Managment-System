@@ -130,3 +130,23 @@ export function queuePrefixOf(app: NestExpressApplication): string | undefined {
 
 /** The refused adds so far in this test file, cleared (for the guard's own test). */
 export const takeRefusedProductionEnqueues = (): string[] => productionEnqueues.splice(0);
+
+/**
+ * A job this app enqueued, read back from its test-prefixed queue (a suite proving an enqueue
+ * path end to end, then running the job body with what was queued): its name and payload, or null.
+ */
+export async function queuedJob(
+  app: NestExpressApplication,
+  queueName: string,
+  jobId: string,
+): Promise<{ name: string; data: unknown } | null> {
+  const prefix = queuePrefixOf(app);
+  if (!prefix?.startsWith('asms-test-')) throw new Error('queuedJob reads only a test-prefixed queue');
+  const queue = new Queue(queueName, { connection: { url: loadEnv().REDIS_URL, maxRetriesPerRequest: 1 }, prefix });
+  try {
+    const job = await queue.getJob(jobId);
+    return job ? { name: job.name, data: job.data as unknown } : null;
+  } finally {
+    await queue.close();
+  }
+}
