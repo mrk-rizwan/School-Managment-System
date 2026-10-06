@@ -172,6 +172,7 @@ model School {
   payslips                      Payslip[]                      @ignore
   payslipLines                  PayslipLine[]                  @ignore
   salaryAdvanceRecoveries       SalaryAdvanceRecovery[]        @ignore
+  paymentClaims                 PaymentClaim[]                 @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -532,6 +533,7 @@ model Guardian {
   announcementAudiences  AnnouncementAudience[]
   announcementRecipients AnnouncementRecipient[]
   paymentsPaid           Payment[]
+  paymentClaims          PaymentClaim[]
 
   @@unique([schoolId, id], map: "guardians_school_id_id_key")
   @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
@@ -796,6 +798,7 @@ model User {
   payrollRunsFinalised      PayrollRun[]            @relation("PayrollRunFinalisedBy")
   payslipsPaid              Payslip[]
   payslipLinesCreated       PayslipLine[]
+  paymentClaimsDecided      PaymentClaim[]          @relation("PaymentClaimDecidedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1022,6 +1025,7 @@ model Student {
   chargeCampaignAudiences       ChargeCampaignAudience[]
   advancePayments               Payment[]
   receiptLines                  ReceiptLine[]
+  paymentClaims                 PaymentClaim[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -3323,6 +3327,10 @@ model Payment {
   handoverId            BigInt?       @map("handover_id")
   /// The child an unallocated remainder belongs to (R189); set once.
   advanceForStudentId   BigInt?       @map("advance_for_student_id")
+  /// The deposit claim whose verification recorded this payment (slice 21); set at insert, never
+  /// changed (trigger payments_claim_id_immutable), kept after a void (rule 4). Deposit methods
+  /// only (CHECK payments_claim_method_check).
+  claimId               BigInt?       @map("claim_id")
   status                PaymentStatus @default(verified)
   voidedAt              DateTime?     @map("voided_at") @db.Timestamptz(3)
   updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -3336,11 +3344,14 @@ model Payment {
   /// A handover of the payment's own recorder (cash_handovers (school_id, id, collector_user_id)).
   handover            CashHandover?       @relation(fields: [schoolId, handoverId, recordedBy], references: [schoolId, id, collectorUserId], map: "payments_handover_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   advanceForStudent   Student?            @relation(fields: [schoolId, advanceForStudentId], references: [schoolId, id], map: "payments_advance_for_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  claim               PaymentClaim?       @relation("PaymentOriginClaim", fields: [schoolId, claimId], references: [schoolId, id], map: "payments_claim_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   allocations         PaymentAllocation[]
   receipt             Receipt?
   reversals           PaymentReversal[]   @relation("ReversalPayment")
   /// The carry-forward reversals that created this payment's target (at most one, R251).
   carriedToReversals  PaymentReversal[]   @relation("ReversalCarriedTo")
+  /// The claim this payment currently verifies (payment_claims.payment_id; cleared by a void).
+  verifiedClaims      PaymentClaim[]      @relation("PaymentClaimPayment")
 
   @@unique([schoolId, id], map: "payments_school_id_id_key")
   /// The target of payment-linked rows (allocations, receipts, reversals): same year.
@@ -3354,6 +3365,9 @@ model Payment {
   @@index([schoolId, verifiedBy], map: "payments_school_id_verified_by_idx")
   @@index([schoolId, academicYearId, receivedOn], map: "payments_school_id_academic_year_id_received_on_idx")
   @@index([schoolId, carriedFromReversalId], map: "payments_school_id_carried_from_reversal_id_idx")
+  @@index([schoolId, claimId], map: "payments_school_id_claim_id_idx")
+  /// Slice 22: the collections report's default basis (rule 25, R205) ranges over verified_at.
+  @@index([schoolId, verifiedAt], map: "payments_school_id_verified_at_idx")
   @@map("payments")
 }
 
@@ -3860,6 +3874,94 @@ model SalaryAdvanceRecovery {
   @@index([schoolId, advanceId, staffId], map: "salary_advance_recoveries_school_id_advance_id_idx")
   @@index([schoolId, payslipId, staffId], map: "salary_advance_recoveries_school_id_payslip_id_idx")
   @@map("salary_advance_recoveries")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 wave K schema groundwork (phase-3-financial.md §3.2, §4 "Claims"): slice 21 deposit
+// claims. Money discipline in migration SQL (20261006170000_slice21_payment_claims), every named
+// object in test/guardrails/schema-checks.ts (WAVE_K_OBJECTS). Slice 22 needs no table: reminders
+// are messages (subject_type fee_reminder, R107's keys are the cadence caps), the dues-clearance
+// override is an audit row.
+// ---------------------------------------------------------------------------------------------
+
+/// `pending -> verified | rejected | withdrawn | expired`; `verified -> pending` only while
+/// asms.reversing_payment is 'on' (a void of the claim's payment, trigger
+/// payment_claims_status_transition).
+enum ClaimStatus {
+  pending
+  verified
+  rejected
+  withdrawn
+  expired
+
+  @@map("claim_status")
+}
+
+/// Tenant: a guardian's statement that they paid at a bank or by wallet (rule 10, rule 21, R196).
+/// Never a payment: only verification creates one, and the claim then names it (payment_id, set
+/// iff verified; one claim per payment, partial unique payment_claims_payment_key). A void of that
+/// payment returns the claim to pending with reopened_at and clears the decision
+/// (asms_payment_reversal_apply). The image (key, mime and size together) is set once, while
+/// pending (R243). The verifier is never the submitting guardian's user nor a guardian of the
+/// student (trigger payment_claims_not_self, R197). The claim keeps the guardian's paid_on; a
+/// verifier's correction is verified_paid_on (decision item 21).
+model PaymentClaim {
+  id             BigInt        @id(map: "payment_claims_pkey") @default(autoincrement())
+  schoolId       BigInt        @map("school_id")
+  studentId      BigInt        @map("student_id")
+  /// The submitter: a live can_login link of the student at insert (payment_claims_guardian_link).
+  guardianId     BigInt        @map("guardian_id")
+  /// bank_transfer, jazzcash or easypaisa (CHECK payment_claims_method_check).
+  method         PaymentMethod
+  /// Whole rupees > 0.
+  claimedAmount  Int           @map("claimed_amount")
+  /// The guardian's date, never changed; on or before the claim's day.
+  paidOn         DateTime      @map("paid_on") @db.Date
+  reference      String?       @db.VarChar(60)
+  note           String?       @db.VarChar(300)
+  /// `{school_id}/{ULID}.{jpg|png|pdf}`; key, mime and size together, set once, while pending.
+  imageObjectKey String?       @map("image_object_key") @db.VarChar(64)
+  imageMime      String?       @map("image_mime") @db.VarChar(32)
+  imageSizeBytes Int?          @map("image_size_bytes")
+  status         ClaimStatus   @default(pending)
+  /// Null while pending and when expired (the system); the withdrawing submitter's user on withdraw.
+  decidedBy      BigInt?       @map("decided_by")
+  decidedAt      DateTime?     @map("decided_at") @db.Timestamptz(3)
+  /// Required on a rejection, and on a verification that lowers the amount or corrects the date.
+  decisionReason String?       @map("decision_reason") @db.VarChar(500)
+  /// Set iff verified; 1..claimed_amount (CHECK payment_claims_verified_amount_check).
+  verifiedAmount Int?          @map("verified_amount")
+  /// The verifier's corrected paid date; null = the guardian's. Becomes the payment's received_on.
+  verifiedPaidOn DateTime?     @map("verified_paid_on") @db.Date
+  /// Set iff verified (CHECK payment_claims_verified_check); cleared only by a void of it. The
+  /// payment keeps the link the other way (payments.claim_id).
+  paymentId      BigInt?       @map("payment_id")
+  /// The latest return to pending by a void.
+  reopenedAt     DateTime?     @map("reopened_at") @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School   @relation(fields: [schoolId], references: [id], map: "payment_claims_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student       Student  @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "payment_claims_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian      Guardian @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "payment_claims_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser User?    @relation("PaymentClaimDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "payment_claims_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  payment       Payment? @relation("PaymentClaimPayment", fields: [schoolId, paymentId], references: [schoolId, id], map: "payment_claims_payment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  /// Every payment a verification of this claim recorded, voided ones included.
+  payments Payment[] @relation("PaymentOriginClaim")
+
+  @@unique([schoolId, id], map: "payment_claims_school_id_id_key")
+  /// The verifiers' queue (R200, slice 27's Approvals tab).
+  @@index([schoolId, status, createdAt], map: "payment_claims_school_id_status_created_at_idx")
+  /// The guardian's list per child; the reminder job's "pending claim covers the dues" (R201).
+  @@index([schoolId, studentId, createdAt], map: "payment_claims_school_id_student_id_created_at_idx")
+  /// 10 claims per guardian per day (R199).
+  @@index([schoolId, guardianId, createdAt], map: "payment_claims_school_id_guardian_id_created_at_idx")
+  /// possibleDuplicate (R249).
+  @@index([schoolId, method, reference, paidOn], map: "payment_claims_school_id_method_reference_paid_on_idx")
+  @@index([schoolId, decidedBy], map: "payment_claims_school_id_decided_by_idx")
+  @@index([schoolId, paymentId], map: "payment_claims_school_id_payment_id_idx")
+  @@map("payment_claims")
 }
 
 /// Non-tenant: a platform price tier (R219). Active bands never overlap (exclusion constraint

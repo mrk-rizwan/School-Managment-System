@@ -1046,6 +1046,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...SLICE_18_OBJECTS(),
   ...WAVE_I_OBJECTS(),
   ...WAVE_J_OBJECTS(),
+  ...WAVE_K_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -2640,7 +2641,6 @@ function WAVE_J_OBJECTS(): ExpectedObject[] {
     { kind: 'function', name: 'asms_payment_allocations_apply', definition: "NULLIF(current_setting('asms.actor_user_id', true), '')" },
     { kind: 'function', name: 'asms_payment_own_child', definition: "NULLIF(current_setting('asms.actor_user_id', true), '')" },
     { kind: 'function', name: 'asms_payment_reversal_apply', definition: "set_config('asms.reversing_payment', 'on', true)" },
-    { kind: 'function', name: 'asms_payment_reversal_apply', definition: 'WAVE K HOOK' },
     { kind: 'function', name: 'asms_payment_reversal_carry_forward_linked', definition: "DETAIL = 'constraint: payment_reversals_carry_forward_linked'" },
     { kind: 'function', name: 'asms_cash_handover_shortfall', definition: "v_refusal := 'cash_handovers_shortfall_reversal'" },
     { kind: 'function', name: 'asms_cash_handover_expected_matches', definition: "DETAIL = 'constraint: cash_handovers_expected_matches'" },
@@ -2837,5 +2837,61 @@ function WAVE_J_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'salary_structures', name: 'salary_structures_status_transition', definition: "BEFORE UPDATE ON public.salary_structures FOR EACH ROW EXECUTE FUNCTION asms_status_transition('active:superseded')" },
     { kind: 'trigger', table: 'salary_structures', name: 'salary_structures_superseded_by_frozen', definition: "BEFORE UPDATE ON public.salary_structures FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('superseded_by')" },
     { kind: 'trigger', table: 'salary_structures', name: 'salary_structures_superseded_frozen', definition: "BEFORE UPDATE ON public.salary_structures FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('superseded_at', 'status')" },
+  ];
+}
+
+/**
+ * Wave K (migration 20261006170000_slice21_payment_claims): payment claims, the claim reopen in
+ * asms_payment_reversal_apply, and slice 22's verified_at index on payments (declared in
+ * schema.prisma, so the schema guard covers it). Definitions copied from the migrated catalog.
+ */
+function WAVE_K_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_payment_claim_init', definition: "v_refusal := 'payment_claims_born_pending'" },
+    { kind: 'function', name: 'asms_payment_claim_init', definition: "v_refusal := 'payment_claims_guardian_link'" },
+    { kind: 'function', name: 'asms_payment_claim_frozen', definition: "v_refusal := 'payment_claims_image_not_pending'" },
+    { kind: 'function', name: 'asms_payment_claim_frozen', definition: "v_refusal := 'payment_claims_reopened_at_required'" },
+    { kind: 'function', name: 'asms_payment_claim_frozen', definition: "v_refusal := 'payment_claims_reopened_at_frozen'" },
+    { kind: 'function', name: 'asms_payment_claim_frozen', definition: "v_refusal := 'payment_claims_decision_frozen'" },
+    { kind: 'function', name: 'asms_payment_claim_not_self', definition: "DETAIL = 'constraint: payment_claims_not_self'" },
+    { kind: 'function', name: 'asms_payment_claim_not_self', definition: 'asms_user_is_guardian(NEW.school_id, NEW.decided_by, NEW.guardian_id)' },
+    { kind: 'function', name: 'asms_payment_claim_payment_matches', definition: "DETAIL = 'constraint: payment_claims_payment_matches'" },
+    { kind: 'function', name: 'asms_payment_reversal_apply', definition: 'UPDATE payment_claims c' },
+    { kind: 'function', name: 'asms_payment_reversal_apply', definition: 'reopened_at = now()' },
+    { kind: 'function', name: 'asms_payment_claim_payment_matches', definition: 'p.claim_id = NEW.id' },
+    // ---- payments (claim_id)
+    { kind: 'constraint', table: 'payments', name: 'payments_claim_method_check', definition: "CHECK (((claim_id IS NULL) OR (method = ANY (ARRAY['bank_transfer'::payment_method, 'jazzcash'::payment_method, 'easypaisa'::payment_method]))))" },
+    { kind: 'trigger', table: 'payments', name: 'payments_claim_id_immutable', definition: "BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('claim_id')" },
+    // ---- payment_claims: constraints
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_claimed_amount_check', definition: "CHECK ((claimed_amount > 0))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_dates_check', definition: "CHECK (((paid_on <= ((created_at AT TIME ZONE 'Asia/Karachi'::text))::date) AND ((verified_paid_on IS NULL) OR ((verified_paid_on <= ((created_at AT TIME ZONE 'Asia/Karachi'::text))::date) AND (verified_paid_on <> paid_on)))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_decided_check', definition: "CHECK ((((status = 'pending'::claim_status) = (decided_at IS NULL)) AND ((status = ANY (ARRAY['pending'::claim_status, 'expired'::claim_status])) = (decided_by IS NULL)) AND ((status <> 'rejected'::claim_status) OR (decision_reason IS NOT NULL)) AND ((status <> ALL (ARRAY['pending'::claim_status, 'expired'::claim_status])) OR (decision_reason IS NULL))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_decision_reason_check', definition: "CHECK (((decision_reason IS NULL) OR (((decision_reason)::text = btrim((decision_reason)::text)) AND ((decision_reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_decision_reason_no_id_check', definition: "CHECK ((((decision_reason)::text !~ '[0-9]{13}'::text) AND ((decision_reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_image_check', definition: "CHECK ((((image_object_key IS NULL) = (image_mime IS NULL)) AND ((image_object_key IS NULL) = (image_size_bytes IS NULL)) AND ((image_object_key IS NULL) OR (((image_object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)) AND ((image_mime)::text = ANY ((ARRAY['image/jpeg'::character varying, 'image/png'::character varying, 'application/pdf'::character varying])::text[])) AND ((image_size_bytes >= 1) AND (image_size_bytes <= 5242880))))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_image_status_check', definition: "CHECK ((((status <> 'verified'::claim_status) OR (image_object_key IS NOT NULL)) AND ((status <> 'expired'::claim_status) OR (image_object_key IS NULL))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_method_check', definition: "CHECK ((method = ANY (ARRAY['bank_transfer'::payment_method, 'jazzcash'::payment_method, 'easypaisa'::payment_method])))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_note_check', definition: "CHECK (((note IS NULL) OR (((note)::text = btrim((note)::text)) AND ((note)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_note_no_id_check', definition: "CHECK ((((note)::text !~ '[0-9]{13}'::text) AND ((note)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_reference_check', definition: "CHECK (((reference IS NULL) OR (((reference)::text = btrim((reference)::text)) AND ((reference)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_reference_no_id_check', definition: "CHECK ((((reference)::text !~ '[0-9]{13}'::text) AND ((reference)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_verified_amount_check', definition: "CHECK (((verified_amount > 0) AND (verified_amount <= claimed_amount)))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_verified_check', definition: "CHECK ((((status = 'verified'::claim_status) = (payment_id IS NOT NULL)) AND ((status = 'verified'::claim_status) = (verified_amount IS NOT NULL)) AND ((status = 'verified'::claim_status) OR (verified_paid_on IS NULL))))" },
+    { kind: 'constraint', table: 'payment_claims', name: 'payment_claims_verified_reason_check', definition: "CHECK (((status <> 'verified'::claim_status) OR (decision_reason IS NOT NULL) OR ((verified_amount = claimed_amount) AND (verified_paid_on IS NULL))))" },
+    // ---- payment_claims: indexes
+    { kind: 'index', table: 'payment_claims', name: 'payment_claims_image_object_key_key', definition: 'ON public.payment_claims USING btree (school_id, image_object_key) WHERE (image_object_key IS NOT NULL)' },
+    { kind: 'index', table: 'payment_claims', name: 'payment_claims_payment_key', definition: 'ON public.payment_claims USING btree (school_id, payment_id) WHERE (payment_id IS NOT NULL)' },
+    // ---- payment_claims: triggers
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_born_pending', definition: 'BEFORE INSERT ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_payment_claim_init()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_columns_immutable', definition: "BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'guardian_id', 'method', 'claimed_amount', 'paid_on', 'reference', 'note', 'created_at')" },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_decision_frozen', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_payment_claim_frozen()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_image_frozen', definition: "BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('image_object_key', 'image_mime', 'image_size_bytes')" },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_no_delete', definition: 'BEFORE DELETE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_forbid_delete()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_no_truncate', definition: 'BEFORE TRUNCATE ON public.payment_claims FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_not_self', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_payment_claim_not_self()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_payment_matches', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_payment_claim_payment_matches()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_school_id_immutable', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()' },
+    { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_status_transition', definition: "BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_status_transition('pending:verified', 'pending:rejected', 'pending:withdrawn', 'pending:expired', 'verified:pending:asms.reversing_payment')" },
   ];
 }

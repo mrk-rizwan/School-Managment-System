@@ -21,6 +21,8 @@ const EXEMPT = new Set([
   join(apiRoot, 'test', 'finance-schema', 'money-guards.e2e-spec.ts'),
   // Phase 3 wave J: the guards of the slice 20 and 25 tables.
   join(apiRoot, 'test', 'finance-schema', 'payments-payroll-guards.e2e-spec.ts'),
+  // Phase 3 wave K: the guards of the slice 21 table.
+  join(apiRoot, 'test', 'finance-schema', 'claims-guards.e2e-spec.ts'),
 ]);
 
 function testFiles(dir: string): string[] {
