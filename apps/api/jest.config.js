@@ -7,4 +7,5 @@ module.exports = {
   transform: { '^.+\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
   setupFiles: ['<rootDir>/test/setup-env.ts'],
   testTimeout: 30000,
+  testSequencer: '<rootDir>/test/sequencer.js',
 };
