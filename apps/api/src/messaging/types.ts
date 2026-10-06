@@ -102,10 +102,23 @@ export interface TemplateVarsMap {
   };
   fee_due_reminder: Record<string, never>;
   fee_overdue: Record<string, never>;
-  receipt_issued: Record<string, never>;
+  /**
+   * Slice 20 (contracts/slice-20.md §6): to the paid children's fee-payer guardians. WhatsApp and
+   * SMS keep the amounts; the push body is the title only (R238, TITLE_ONLY_PUSH). Never a link.
+   */
+  receipt_issued: {
+    /** `<n>/<year name>`. */
+    readonly receiptLabel: string;
+    readonly amount: number;
+    readonly children: readonly string[];
+    readonly yearName: string;
+    /** What the named children still owe in the year after this payment. */
+    readonly balance: number;
+  };
   payment_claim_rejected: Record<string, never>;
   payment_claim_submitted: Record<string, never>;
-  handover_shortfall: Record<string, never>;
+  /** Slice 20: push and email to the principals; no amount (read on the handovers page). */
+  handover_shortfall: { readonly collectorName: string };
   reminder_sms_capped: Record<string, never>;
   /** Slice 19: to the principals, push and email only; no amount (R238), read on the queue. */
   concession_requested: { readonly studentName: string; readonly requesterName: string };
@@ -137,7 +150,11 @@ export interface TemplateVarsMap {
     readonly endsOn: Date;
     readonly decision: 'approved' | 'rejected';
   };
-  payslip_ready: Record<string, never>;
+  /**
+   * Slice 25 (contracts/slice-25.md §7): to each staff member of a finalised run, push and email;
+   * no amount (R238), read in the app.
+   */
+  payslip_ready: { readonly yearMonth: string };
   /**
    * Slice 26 (contracts/slice-26.md §5): the platform's invoice to the school, to its principals,
    * push and email only; no amount (R238), read on the settings page.

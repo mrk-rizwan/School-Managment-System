@@ -4,6 +4,7 @@ import { AnnouncementsModule } from '../modules/announcements/announcements.modu
 import { AttendanceModule } from '../modules/attendance/attendance.module';
 import { DocumentsModule } from '../modules/documents/documents.module';
 import { FeesModule } from '../modules/fees/fees.module';
+import { PayrollModule } from '../modules/payroll/payroll.module';
 import { PlatformBillingModule } from '../modules/platform/billing/platform-billing.module';
 import { QueueTenancyModule } from '../tenancy/queue.mint';
 import { BILLING_NOTICES_PROVIDERS } from './billing-notices';
@@ -21,7 +22,7 @@ import { WorkerHost } from './worker-host';
  * no job.
  */
 @Module({
-  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule, AnnouncementsModule, PlatformBillingModule, FeesModule],
+  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule, AnnouncementsModule, PlatformBillingModule, FeesModule, PayrollModule],
   providers: [
     ...JOB_RUNNER_PROVIDERS,
     ...DELIVERY_HEALTH_ROLLUP_PROVIDERS,

@@ -1492,7 +1492,7 @@ principal verifies a claim and confirms a handover from the Approvals tab.
 - R244 Nobody approves, rejects or voids-after-approval their own expense except a principal's
   self-approval on record (trigger reads the role).
 - R245 The unpaid-day matrix: `absent` without approved paid leave → unpaid; `on_leave` without
-  approved leave → unpaid and listed; approved unpaid leave → unpaid even if marked present;
+  approved leave → unpaid and listed; approved unpaid leave → unpaid unless the day is marked present or late (attendance wins, as §3.3);
   approved paid leave → not deducted even if marked absent; unmarked → not deducted, counted;
   a request spanning months counts only this month's working days.
 - R246 Mid-month join or leave pro-rates basic and allowances by `proRate` over employed working

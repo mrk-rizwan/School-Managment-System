@@ -36,6 +36,8 @@ export const JOB = {
   chargeGenerate: 'charge-generate',
   lateFeeSweep: 'late-fee-sweep',
   chargeRun: 'charge-run',
+  // Phase 3 slice 25 (§3.7): on each school's pay day, the previous month's draft payroll run.
+  payrollPrepare: 'payroll-prepare',
 } as const;
 
 /*

@@ -57,7 +57,7 @@ export function FeeStatementTab({ student }: { student: StudentDetailDto }) {
     <QueryStates query={statement}>
       {(data) => (
         <div className="grid gap-6">
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-6">
             {(
               [
                 ['Charged', data.totals.charged],
@@ -65,6 +65,7 @@ export function FeeStatementTab({ student }: { student: StudentDetailDto }) {
                 ['Credits', data.totals.adjustments],
                 ['Paid', data.totals.paid],
                 ['Owed', data.totals.outstanding],
+                ['Advance', data.totals.advance],
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="rounded-md border p-3">
@@ -120,6 +121,19 @@ export function FeeStatementTab({ student }: { student: StudentDetailDto }) {
             </TableBody>
           </Table>
           <TablePagination page={page} limit={LIMIT} total={data.charges.total} loading={statement.isFetching} onPageChange={setPage} />
+          {data.payments.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-medium">Payments</h3>
+              <ul className="grid gap-1 text-sm">
+                {data.payments.map((p) => (
+                  <li key={p.paymentId}>
+                    {formatDate(p.receivedOn)}: {formatRupees(p.allocated)} of {formatRupees(p.amount)}
+                    {p.receiptLabel === null ? ' (carried forward)' : `, receipt ${p.receiptLabel}`}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {data.adjustments.length > 0 && (
             <section>
               <h3 className="mb-2 text-sm font-medium">Credits</h3>

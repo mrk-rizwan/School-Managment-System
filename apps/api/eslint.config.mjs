@@ -277,6 +277,11 @@ const RAW_SQL_FILES = [
   'src/repositories/charge.repository.ts',
   'src/repositories/charge-generation.repository.ts',
   'src/repositories/concession.repository.ts',
+  // Phase 3 slice 20: the payment row locks (FOR UPDATE in id order, R236: the payments, the
+  // advances, a collector's custody) and the receipt counter's upsert. Every statement filters
+  // school_id (test/payments/isolation.e2e-spec.ts).
+  'src/repositories/payment.repository.ts',
+  'src/repositories/receipt.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans

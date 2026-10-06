@@ -2634,6 +2634,11 @@ function WAVE_J_OBJECTS(): ExpectedObject[] {
     { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_not_self'" },
     { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_own_child'" },
     { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_payment_in_handover'" },
+    // Slice 20 review fixes (migration 20261006150500_slice20_review_fixes): the acting user, not
+    // the recorder, on allocations and a later advance binding; no void of a carried payment.
+    { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_carried_forward_void'" },
+    { kind: 'function', name: 'asms_payment_allocations_apply', definition: "NULLIF(current_setting('asms.actor_user_id', true), '')" },
+    { kind: 'function', name: 'asms_payment_own_child', definition: "NULLIF(current_setting('asms.actor_user_id', true), '')" },
     { kind: 'function', name: 'asms_payment_reversal_apply', definition: "set_config('asms.reversing_payment', 'on', true)" },
     { kind: 'function', name: 'asms_payment_reversal_apply', definition: 'WAVE K HOOK' },
     { kind: 'function', name: 'asms_payment_reversal_carry_forward_linked', definition: "DETAIL = 'constraint: payment_reversals_carry_forward_linked'" },

@@ -29,6 +29,10 @@ const TABS: readonly { href: string; label: string; keys: readonly Capability[] 
   { href: '/fees/runs', label: 'Generation runs', keys: [Capability.CHARGE_CREATE, Capability.FINANCE_REPORT_VIEW] },
   { href: '/fees/concessions', label: 'Concessions', keys: [Capability.CONCESSION_GRANT, Capability.CHARGE_CREATE] },
   { href: '/fees/campaigns', label: 'Campaigns', keys: [Capability.CHARGE_CAMPAIGN_SEND] },
+  // Slice 20: the counter, payments and receipts, cash custody and handovers.
+  { href: '/fees/counter', label: 'Counter', keys: [Capability.PAYMENT_RECORD] },
+  { href: '/fees/payments', label: 'Payments', keys: [Capability.PAYMENT_RECORD, Capability.FEE_STATEMENT_VIEW] },
+  { href: '/fees/handovers', label: 'Cash handovers', keys: [Capability.PAYMENT_RECORD, Capability.COLLECTION_HANDOVER_CONFIRM] },
 ];
 
 export function FeesTabs() {

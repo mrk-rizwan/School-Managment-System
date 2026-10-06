@@ -50,7 +50,8 @@ export type CampaignAudience = Schemas['CampaignAudienceDto'];
 // ---- `details` of this slice's refusals; error details are not in the OpenAPI document ----
 
 /** 409 CHARGE_NOT_OPEN on an adjustment above what is owed (until slice 20). */
-export type ChargeNotOpen = { chargeId: string; reason?: 'exceeds_outstanding'; outstanding?: number };
+/** `creditable` (slice 20): what is owed plus the paid money that can return to the family as an advance. */
+export type ChargeNotOpen = { chargeId: string; reason?: 'exceeds_outstanding' | 'admission_head'; outstanding?: number; creditable?: number };
 /** 409 MONTH_NOT_GENERATABLE. */
 export type MonthNotGeneratable = { reason: 'future' | 'outside_year' | 'year_closed' };
 /** 409 CHARGE_RUN_IN_PROGRESS. */

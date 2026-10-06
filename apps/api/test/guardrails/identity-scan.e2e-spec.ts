@@ -314,12 +314,9 @@ describe('R16 (slice 17): every message template, rendered with realistic values
   const TEMPLATE_PENDING = new Set<MessageType>([
     'fee_due_reminder',
     'fee_overdue',
-    'receipt_issued',
     'payment_claim_rejected',
     'payment_claim_submitted',
-    'handover_shortfall',
     'reminder_sms_capped',
-    'payslip_ready',
   ]);
 
   const RENDERED: { [K in MessageType]: () => Rendered[] } = {
@@ -409,10 +406,25 @@ describe('R16 (slice 17): every message template, rendered with realistic values
     ],
     fee_due_reminder: () => [],
     fee_overdue: () => [],
-    receipt_issued: () => [],
+    // Slice 20 (contracts/slice-20.md §6): the receipt's label, amounts and children's names.
+    receipt_issued: () => [
+      renderMessage(
+        'receipt_issued',
+        {
+          receiptLabel: '1234/Session 2026-27 April intake',
+          amount: 12_500,
+          children: ['Muhammad Abdul Rehman Siddiqui', 'Ayesha Siddiqa Rehman'],
+          yearName: 'Session 2026-27 April intake',
+          balance: 3_000,
+        },
+        ctx('receipt'),
+      ),
+    ],
     payment_claim_rejected: () => [],
     payment_claim_submitted: () => [],
-    handover_shortfall: () => [],
+    handover_shortfall: () => [
+      renderMessage('handover_shortfall', { collectorName: 'Muhammad Abdul Rehman Siddiqui' }, ctx('cash_handover')),
+    ],
     reminder_sms_capped: () => [],
     concession_requested: () => [
       renderMessage(
@@ -453,7 +465,8 @@ describe('R16 (slice 17): every message template, rendered with realistic values
           ctx('leave_request'),
         ),
       ),
-    payslip_ready: () => [],
+    // Slice 25 (contracts/slice-25.md §7): no amount (R238).
+    payslip_ready: () => [renderMessage('payslip_ready', { yearMonth: '2026-09' }, ctx('payslip'))],
     // Slice 26 (contracts/slice-26.md §5).
     platform_invoice_issued: () => [
       renderMessage('platform_invoice_issued', { invoiceNo: 'INV-2026-00042', yearMonth: '2026-10', dueOn: day('2026-10-10') }, ctx('platform_invoice')),

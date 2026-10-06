@@ -195,10 +195,18 @@ const RENDERERS: Renderers = {
   },
   fee_due_reminder: notWritten('fee_due_reminder'),
   fee_overdue: notWritten('fee_overdue'),
-  receipt_issued: notWritten('receipt_issued'),
+  // contracts/slice-20.md §6 (R190): SMS-allowed, so one segment with the longest fixtures; the
+  // children's names are cut to fit. Never a link. The push body is the title (R238).
+  receipt_issued: (vars, ctx) => {
+    const head = `${schoolLabel(ctx.schoolName)}: Receipt ${cutWords(vars.receiptLabel, 30)}: ${formatRupees(vars.amount)} received for`;
+    const tail = `Balance for ${cutWords(vars.yearName, 20)}: ${formatRupees(vars.balance)}.`;
+    return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names}. ${tail}`);
+  },
   payment_claim_rejected: notWritten('payment_claim_rejected'),
   payment_claim_submitted: notWritten('payment_claim_submitted'),
-  handover_shortfall: notWritten('handover_shortfall'),
+  // contracts/slice-20.md §6 (R193): push and email to the principals; no amount (R238).
+  handover_shortfall: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: A cash handover from ${vars.collectorName} was counted short. Open ASMS to resolve it.`,
   reminder_sms_capped: notWritten('reminder_sms_capped'),
   // contracts/slice-19.md §6: push and email to principals and the requester; no amount (R238).
   concession_requested: (vars, ctx) =>
@@ -217,7 +225,10 @@ const RENDERERS: Renderers = {
     `${schoolLabel(ctx.schoolName)}: ${vars.staffName} asks for ${vars.typeName}, ${range(vars.startsOn, vars.endsOn)} (${vars.workingDays} working ${vars.workingDays === 1 ? 'day' : 'days'}). Open the app to decide.`,
   leave_decided: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: Your ${vars.typeName}, ${range(vars.startsOn, vars.endsOn)}, was ${vars.decision}.`,
-  payslip_ready: notWritten('payslip_ready'),
+  // Slice 25 (contracts/slice-25.md §7): internal (push and email), no amount (R238); the push body
+  // is the title only (the processor's TITLE_ONLY_PUSH).
+  payslip_ready: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: Your payslip for ${formatMonth(vars.yearMonth)} is ready. Open ASMS to see it.`,
   // Slice 26 (contracts/slice-26.md §5): to the school's principals, push and email only; no
   // amount (R238), which the settings page's billing status shows.
   platform_invoice_issued: (vars, ctx) =>
@@ -399,6 +410,10 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'New remark';
     case 'fee_charged':
       return 'Fees charged';
+    case 'receipt_issued':
+      return 'Fee receipt';
+    case 'handover_shortfall':
+      return 'Cash handover short';
     case 'concession_requested':
       return 'Concession to decide';
     case 'concession_decided':
@@ -411,6 +426,8 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'Leave request';
     case 'leave_decided':
       return 'Leave decided';
+    case 'payslip_ready':
+      return 'Payslip ready';
     case 'platform_invoice_issued':
       return 'Subscription invoice';
     case 'platform_invoice_overdue':

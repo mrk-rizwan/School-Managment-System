@@ -308,7 +308,8 @@ export class StatementQueryDto extends PageQueryDto {
 
 export class StatementPaymentDto {
   @ApiProperty(ID) paymentId: string;
-  @ApiProperty() receiptLabel: string;
+  /** Null for a carried-forward payment, which has no receipt (R251). */
+  @ApiProperty({ type: String, nullable: true }) receiptLabel: string | null;
   @ApiProperty(DATE) receivedOn: string;
   @ApiProperty(DATE_TIME) verifiedAt: Date;
   @ApiProperty(RUPEES) amount: number;
@@ -325,7 +326,7 @@ export class StatementTotalsDto {
   @ApiProperty(RUPEES) paid: number;
   /** charged − concession − adjustments − paid. */
   @ApiProperty(RUPEES) outstanding: number;
-  /** The child's unallocated advance (slice 20). */
+  /** The child's unallocated advance in the year (slice 20). */
   @ApiProperty(RUPEES) advance: number;
 }
 
@@ -340,7 +341,7 @@ export class StatementDto {
   @ApiProperty(ID) studentId: string;
   @ApiProperty(NULLABLE_ID) academicYearId: string | null;
   @ApiProperty({ type: () => StatementChargesPageDto }) charges: StatementChargesPageDto;
-  /** Empty until slice 20 records payments. */
+  /** The payments that paid this child's charges of the year or hold their advance (slice 20). */
   @ApiProperty({ type: () => StatementPaymentDto, isArray: true }) payments: StatementPaymentDto[];
   @ApiProperty({ type: () => ChargeDto, isArray: true }) adjustments: ChargeDto[];
   @ApiProperty({ type: () => ConcessionDto, isArray: true }) concessions: ConcessionDto[];

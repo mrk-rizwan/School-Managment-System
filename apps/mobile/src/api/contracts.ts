@@ -65,3 +65,7 @@ export type LeaveTypeDto = Schemas['LeaveTypeDto'];
 export type LeaveBalanceDto = Schemas['LeaveBalanceDto'];
 export type LeaveRequestDto = Schemas['LeaveRequestDto'];
 export type CreateMyLeaveRequestDto = Schemas['CreateMyLeaveRequestDto'];
+
+// Phase 3 slice 25: My payslips (online read, rendered natively).
+export type PayslipDto = Schemas['PayslipDto'];
+export type MySalaryStructureDto = Schemas['MySalaryStructureDto'];

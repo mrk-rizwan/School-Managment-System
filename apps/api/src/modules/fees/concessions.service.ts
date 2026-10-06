@@ -14,8 +14,10 @@ import { ChargeRunRepository } from '../../repositories/charge-run.repository';
 import { ConcessionRepository, type ConcessionRecord } from '../../repositories/concession.repository';
 import { FeeHeadRepository, type FeeHeadRecord } from '../../repositories/fee-head.repository';
 import { MessageRecipientRepository } from '../../repositories/message-recipient.repository';
+import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { requirePrincipal } from '../access/money-gates';
+import { Advances } from '../payments/advances';
 import { PermissionsService } from '../access/permissions.service';
 import { yearClosed } from '../academics/academics.shared';
 import { feeHeadArchived } from './fee-heads.service';
@@ -79,6 +81,8 @@ export class ConcessionsService {
     private readonly notifications: NotificationService,
     private readonly audit: AuditLogRepository,
     private readonly idempotency: IdempotentRequests,
+    private readonly advances: Advances,
+    private readonly changeContext: ChangeContextRepository,
   ) {}
 
   async list(query: ListConcessionsQueryDto): Promise<Page<ConcessionDto>> {
@@ -216,7 +220,9 @@ export class ConcessionsService {
       selfApproved,
     });
     if (decided !== 1) throw concessionNotPending(id);
-    const adjustments = dto.applyToOpenCharges ? await this.creditOpenCharges(schoolId, userId, row) : [];
+    const { adjustments, applied } = dto.applyToOpenCharges
+      ? await this.creditOpenCharges(schoolId, userId, row, selfApproved)
+      : { adjustments: [], applied: 0 };
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'concession.approved',
@@ -229,6 +235,7 @@ export class ConcessionsService {
         value: row.value,
         appliedToOpenCharges: adjustments.length,
         creditedAmount: adjustments.reduce((sum, a) => sum + a.amount, 0),
+        advanceApplied: applied,
         selfApproved,
       },
     });
@@ -291,27 +298,42 @@ export class ConcessionsService {
 
   // ------------------------------------------------------------------------------ helpers
 
-  /** A6: one credit per open charge in range, under the charges' locks (id order, §3.2). */
-  private async creditOpenCharges(schoolId: SchoolId, userId: bigint, row: ConcessionRecord): Promise<ChargeRecord[]> {
+  /**
+   * A6: one credit per open charge in range, never capped at what is owed: beyond it the charge's
+   * newest live allocations go back into their payments as advances for the same child (slice
+   * 20), except an admission-head allocation, which caps that one credit. Locks in R236's order:
+   * the charges' payments, then the charges by id.
+   */
+  private async creditOpenCharges(
+    schoolId: SchoolId,
+    userId: bigint,
+    row: ConcessionRecord,
+    selfApproved: boolean,
+  ): Promise<{ adjustments: ChargeRecord[]; applied: number }> {
     const feeHeadIds = row.heads.map((h) => h.feeHeadId);
     const open = await this.charges.openForConcession(schoolId, row.studentId, row.academicYearId, feeHeadIds, row.effectiveFrom);
-    await this.charges.lockForUpdate(schoolId, open.map((c) => c.id));
+    const locked = await this.advances.lockForCredit(schoolId, open.map((c) => c.id));
+    // The allocation triggers read the acting user (R232); the sole principal's own child (R253)
+    // moves money as the system would.
+    if (!selfApproved) await this.changeContext.setChangeContext(userId, null);
     const terms = { kind: row.kind, value: row.value, feeHeadIds };
     const created: ChargeRecord[] = [];
-    for (const stale of open) {
-      const charge = await this.charges.findById(schoolId, stale.id);
-      if (!charge || charge.status !== 'open') continue;
+    const now = new Date();
+    for (const charge of locked) {
+      if (charge.status !== 'open') continue;
       const head = row.heads.find((h) => h.feeHeadId === charge.feeHeadId);
       const due = concessionAmount(charge.grossAmount, terms, {
         id: charge.feeHeadId,
         concessionEligible: head?.feeHead.concessionEligible ?? false,
       });
-      // Up to what is owed: a credit beyond it needs slice 20's de-allocation (contract §3.4).
-      const credit = Math.min(due, outstanding(charge));
-      if (credit <= 0) continue;
-      created.push(await this.charges.create(schoolId, adjustmentOf(charge, credit, row.id, userId), new Date()));
+      const owed = outstanding(charge);
+      const credit = owed + (await this.advances.deallocate(schoolId, charge, due - owed, now));
+      if (Math.min(due, credit) <= 0) continue;
+      created.push(await this.charges.create(schoolId, adjustmentOf(charge, Math.min(due, credit), row.id, userId), now));
     }
-    return created;
+    // The child's advance (freed money, or an earlier one) pays their other open charges.
+    const applied = await this.advances.applyTo(schoolId, row.academicYearId, [row.studentId]);
+    return { adjustments: created, applied: applied.amount };
   }
 
   /** Each named head exists, is live and takes concessions; listed once. */

@@ -299,6 +299,42 @@ export class ChargeRepository {
     }));
   }
 
+  /**
+   * Slice 20: the open charges of these children (of one year, when given), oldest due first:
+   * what a payment allocates over (R188) and the counter shows. Read after the caller has locked
+   * them when it writes. `take` bounds a list the counter shows.
+   */
+  async openOfStudents(
+    schoolId: SchoolId,
+    studentIds: readonly bigint[],
+    academicYearId?: bigint,
+    take?: number,
+  ): Promise<ChargeRecord[]> {
+    if (studentIds.length === 0) return [];
+    return this.named(schoolId, await this.txHost.tx.charge.findMany({
+      where: {
+        schoolId,
+        studentId: { in: [...new Set(studentIds)] },
+        ...(academicYearId === undefined ? {} : { academicYearId }),
+        status: 'open',
+      },
+      select: SELECT,
+      orderBy: [{ dueOn: 'asc' }, { id: 'asc' }],
+      ...(take === undefined ? {} : { take }),
+    }));
+  }
+
+  /** The ids of these children's open charges in one year (to lock them in id order, R236). */
+  async openIdsOfStudents(schoolId: SchoolId, studentIds: readonly bigint[], academicYearId: bigint): Promise<bigint[]> {
+    if (studentIds.length === 0) return [];
+    const rows = await this.txHost.tx.charge.findMany({
+      where: { schoolId, studentId: { in: [...new Set(studentIds)] }, academicYearId, status: 'open' },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => r.id);
+  }
+
   /** The `once`-head charges admission or readmission wrote on this enrolment (R239). */
   async onceChargesOf(schoolId: SchoolId, enrolmentId: bigint): Promise<ChargeRecord[]> {
     return this.named(schoolId, await this.txHost.tx.charge.findMany({

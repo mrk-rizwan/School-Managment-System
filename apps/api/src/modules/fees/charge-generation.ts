@@ -19,6 +19,7 @@ import { SchoolSettingsRepository, type SchoolSettingsRecord } from '../../repos
 import type { AfterCommitPrismaAdapter } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
+import { Advances } from '../payments/advances';
 import { campaignAudienceRows } from './campaign-audiences';
 import { chargeGrace, monthLabel, periodBounds, periodOf, plusDays } from './charges.shared';
 
@@ -58,6 +59,7 @@ export class ChargeGeneration {
     private readonly school: OwnSchoolRepository,
     private readonly notifications: NotificationService,
     private readonly audit: AuditLogRepository,
+    private readonly advances: Advances,
   ) {}
 
   // ------------------------------------------------------------------------- scheduled
@@ -304,8 +306,9 @@ export class ChargeGeneration {
     await this.generation.lockHeadsShared(schoolId);
     const monthly = await this.generation.generateMonthly(schoolId, { ...g, label: monthName });
     const yearly = await this.generation.generateYearly(schoolId, { ...g, label: yearName });
-    // Slice 20 applies each new charge's child's advance here (payments locked first, R189).
-    return { candidates: monthly.candidates + yearly.candidates, inserted: [...monthly.inserted, ...yearly.inserted] };
+    const inserted = [...monthly.inserted, ...yearly.inserted];
+    await this.applyAdvances(schoolId, g.academicYearId, inserted, 'charge-generate');
+    return { candidates: monthly.candidates + yearly.candidates, inserted };
   }
 
   /** A campaign's charges (R184), one transaction; null when the campaign is not generating. */
@@ -347,11 +350,13 @@ export class ChargeGeneration {
   }
 
   @Transactional<AfterCommitPrismaAdapter>({ timeout: CHARGE_JOB_TIMEOUT_MS })
-  private insertCampaign(
+  private async insertCampaign(
     schoolId: SchoolId,
     c: Parameters<ChargeGenerationRepository['generateCampaign']>[1],
   ): ReturnType<ChargeGenerationRepository['generateCampaign']> {
-    return this.generation.generateCampaign(schoolId, c);
+    const result = await this.generation.generateCampaign(schoolId, c);
+    await this.applyAdvances(schoolId, c.academicYearId, result.inserted, 'campaign-generate');
+    return result;
   }
 
   // ------------------------------------------------------------------------- late fees
@@ -410,7 +415,15 @@ export class ChargeGeneration {
       today,
       labels,
     );
-    // Slice 20 applies each new late fee's child's advance here (R189).
+    // R189: an advance pays a fine or a late fee too, per year of the fees written.
+    const key = (studentId: bigint, period: string) => `${studentId}:${period}`;
+    const yearOf = new Map(fees.map((f) => [key(f.studentId, f.period), f.academicYearId]));
+    const byYear = new Map<bigint, InsertedCharge[]>();
+    for (const fee of inserted) {
+      const year = yearOf.get(key(fee.studentId, fee.period));
+      if (year !== undefined) byYear.set(year, [...(byYear.get(year) ?? []), fee]);
+    }
+    for (const [year, yearFees] of byYear) await this.applyAdvances(schoolId, year, yearFees, 'late-fee-sweep');
     if (inserted.length > 0) {
       const perPeriod: Record<string, number> = {};
       for (const fee of inserted) perPeriod[fee.period] = (perPeriod[fee.period] ?? 0) + 1;
@@ -430,6 +443,36 @@ export class ChargeGeneration {
       this.logger.log({ inserted: inserted.length }, 'late fees charged');
     }
     return inserted.length;
+  }
+
+  // ------------------------------------------------------------------------- advances
+
+  /**
+   * R189, A5 (slice 20): the new charges' children's advances in the year pay them, oldest due
+   * first, in the inserting transaction (payments locked first, then charges, R236). A19: one
+   * system-actor audit row per application that moved money.
+   */
+  private async applyAdvances(
+    schoolId: SchoolId,
+    academicYearId: bigint,
+    inserted: readonly InsertedCharge[],
+    job: string,
+  ): Promise<void> {
+    const students = [...new Set(inserted.filter((c) => c.amount > 0).map((c) => c.studentId))];
+    const applied = await this.advances.applyTo(schoolId, academicYearId, students);
+    if (applied.amount === 0) return;
+    await this.audit.recordSystem(schoolId, {
+      action: 'charge.advance_applied',
+      subjectType: 'school',
+      subjectId: null,
+      metadata: {
+        job,
+        academicYearId: academicYearId.toString(),
+        allocations: applied.allocations.length,
+        students: new Set(applied.allocations.map((a) => a.studentId)).size,
+        amount: applied.amount,
+      },
+    });
   }
 
   // ------------------------------------------------------------------------- stale sweep

@@ -4,6 +4,7 @@ import { useSession } from '../../../auth/session';
 import { ExpensesCard } from '../../../expenses/ExpensesCard';
 import { MyAttendanceCard } from '../../../family/MyAttendance';
 import { MyLeaveCard } from '../../../leave/MyLeave';
+import { MyPayslipsCard } from '../../../payslips/MyPayslips';
 import { useOnline } from '../../../net/connectivity';
 import { Banner } from '../../../ui/Banner';
 import { Screen } from '../../../ui/Screen';
@@ -59,6 +60,7 @@ export default function HomeScreen() {
       </View>
       {me.body.capacities.includes('staff') ? <MyAttendanceCard /> : null}
       {me.body.capacities.includes('staff') ? <MyLeaveCard /> : null}
+      {me.body.capacities.includes('staff') ? <MyPayslipsCard /> : null}
       <ExpensesCard />
     </Screen>
   );

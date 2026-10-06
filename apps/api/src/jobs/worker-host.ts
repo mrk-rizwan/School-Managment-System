@@ -44,6 +44,9 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   // new admissions) and the late-fee sweep at 02:00, school time.
   { job: JOB.chargeGenerate, pattern: '0 0 1 * * *' },
   { job: JOB.lateFeeSweep, pattern: '0 0 2 * * *' },
+  // Phase 3 slice 25 (§3.7): daily at 03:00 school time; on its pay day a school gets the previous
+  // month's draft payroll run.
+  { job: JOB.payrollPrepare, pattern: '0 0 3 * * *' },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */

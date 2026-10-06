@@ -92,7 +92,14 @@ printf '%s\n' "$staged" | (
   while IFS= read -r f; do
     [ -f "$f" ] || continue
     size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
-    if [ "$size" -gt 1048576 ]; then
+    # The generated API contract and its generated clients must be committed (CI checks they
+    # are current) and outgrew 1 MB in Phase 3; they get a 5 MB cap. Every other check above
+    # (secrets, paths) still applies to them.
+    limit=1048576
+    case "$f" in
+      apps/api/openapi/*.json|apps/web/lib/api/*.d.ts|apps/mobile/src/api/*.d.ts) limit=5242880 ;;
+    esac
+    if [ "$size" -gt "$limit" ]; then
       subfail=1
       printf '\n[BLOCKED] Large file staged: %s (%s KB)\n' "$f" "$((size / 1024))"
       printf '  Does this belong in the repository? Consider object storage instead.\n'

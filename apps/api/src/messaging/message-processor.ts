@@ -61,6 +61,8 @@ const TITLE_ONLY_PUSH: ReadonlySet<MessageType> = new Set<MessageType>([
   'fee_overdue',
   'receipt_issued',
   'payment_claim_rejected',
+  // Slice 25: a staff member's own pay.
+  'payslip_ready',
 ]);
 
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */

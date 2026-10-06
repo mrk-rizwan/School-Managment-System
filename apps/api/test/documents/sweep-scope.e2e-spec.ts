@@ -135,6 +135,8 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         'billing-notices',
         'charge-generate',
         'late-fee-sweep',
+        // Phase 3 wave J: does not touch idempotency_keys (reviewed 2026-10-06).
+        'payroll-prepare',
       ]);
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });

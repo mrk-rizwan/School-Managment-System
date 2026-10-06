@@ -4,6 +4,7 @@ import { SchoolContext } from '../../common/school-context';
 import { MessagingModule } from '../../messaging/messaging.module';
 import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import { ChargeCampaignRepository } from '../../repositories/charge-campaign.repository';
 import { ChargeGenerationRepository } from '../../repositories/charge-generation.repository';
 import { ChargeRepository } from '../../repositories/charge.repository';
@@ -13,6 +14,7 @@ import { ConcessionRepository } from '../../repositories/concession.repository';
 import { FeeHeadRepository } from '../../repositories/fee-head.repository';
 import { FeeStructureRepository } from '../../repositories/fee-structure.repository';
 import { IdempotencyKeyRepository } from '../../repositories/idempotency-key.repository';
+import { PaymentsModule } from '../payments/payments.module';
 import { AdmissionFees } from './admission-fees';
 import { CampaignsService } from './campaigns.service';
 import { ChargeGeneration } from './charge-generation';
@@ -32,11 +34,12 @@ import { FeeStructuresService } from './fee-structures.service';
  * The receivable side (phase-3-financial.md §2): slice 18's fee heads and fee structures, slice
  * 19's charges, concessions, charge runs and campaigns. Exports AdmissionFees for admission and
  * readmission (R239) and ChargeGeneration for the worker's jobs. MessagingModule lends
- * NotificationService, the outbox and the principals' ids; PermissionsService and SchoolClock come
- * from the global modules.
+ * NotificationService, the outbox and the principals' ids; PaymentsModule lends Advances (R189, A6)
+ * and the statement's payments (slice 20); PermissionsService and SchoolClock come from the global
+ * modules.
  */
 @Module({
-  imports: [MessagingModule],
+  imports: [MessagingModule, PaymentsModule],
   controllers: [
     FeeHeadsController,
     FeeStructuresController,
@@ -67,6 +70,7 @@ import { FeeStructuresService } from './fee-structures.service';
     ClassRepository,
     IdempotencyKeyRepository,
     AuditLogRepository,
+    ChangeContextRepository,
   ],
   exports: [AdmissionFees, ChargeGeneration],
 })

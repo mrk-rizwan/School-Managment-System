@@ -20,6 +20,8 @@ import {
   LayersIcon,
   ReceiptTextIcon,
   ReceiptIcon,
+  WalletIcon,
+  FileTextIcon,
   MegaphoneIcon,
   MessageSquareIcon,
   InboxIcon,
@@ -98,6 +100,10 @@ export const schoolNav: NavItem[] = [
     icon: ReceiptIcon,
     capability: ['expense.record', 'expense.approve', 'finance.report.view'],
   },
+  // Phase 3 slice 25: payroll runs and advances (payroll.view; payroll.run writes) and every staff
+  // member's own payslips (@RequireStaff).
+  { href: '/payroll', label: 'Payroll', icon: WalletIcon, capability: ['payroll.view', 'payroll.run'] },
+  { href: '/my-payslips', label: 'My payslips', icon: FileTextIcon, capability: null },
   {
     href: '/users',
     label: 'User accounts',

@@ -196,9 +196,16 @@ describe('wave J money guards (raw SQL)', () => {
       expect(await refusedBy(`UPDATE payment_allocations SET amount = 1 WHERE id = $1`, [id])).toBe('payment_allocations_amount_immutable');
     });
 
-    it('payment_allocations: R232 a payment is never applied to the recorder\'s own child', async () => {
+    it('payment_allocations: R232 the acting user never applies money to their own child; a job (no actor) is not refused', async () => {
+      // Migration 20261006150500_slice20_review_fixes: the check reads the acting user
+      // (asms.actor_user_id, set by every request path that moves money), not the recorder, so a
+      // recorder later linked as a guardian cannot freeze the system's advance applications. A
+      // recorder paying their own child is still refused at the payment's insert (payments_own_child).
       const p = await add('payments', paymentRow({ recorded_by: parentClerk.userId, verified_by: parentClerk.userId, advance_for_student_id: otherStudent }));
+      await run(`SELECT set_config('asms.actor_user_id', $1, true)`, [parentClerk.userId.toString()]);
       expect(await tryAdd('payment_allocations', allocation(p, await charge(), 100))).toBe('payment_allocations_own_child');
+      await run(`SELECT set_config('asms.actor_user_id', '', true)`);
+      expect(await tryAdd('payment_allocations', allocation(p, await charge(), 100))).toBeNull();
     });
 
     it('payment_allocations: reversing reopens the charge and restores the payment under asms.reversing_payment, which is put back; a live row may follow', async () => {

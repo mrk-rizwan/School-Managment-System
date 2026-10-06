@@ -13,10 +13,13 @@ import { AcademicYearRepository } from '../../repositories/academic-year.reposit
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChargeRepository, type ChargeRecord } from '../../repositories/charge.repository';
 import { ChargeRunRepository, type ChargeRunRecord } from '../../repositories/charge-run.repository';
+import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import { ConcessionRepository } from '../../repositories/concession.repository';
 import { FeeHeadRepository } from '../../repositories/fee-head.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { requirePrincipal } from '../access/money-gates';
+import { Advances } from '../payments/advances';
+import { PaymentsService } from '../payments/payments.service';
 import { PermissionsService } from '../access/permissions.service';
 import { fromDateString, yearClosed } from '../academics/academics.shared';
 import { feeHeadArchived } from './fee-heads.service';
@@ -48,6 +51,7 @@ import {
   yearMonths,
 } from './charges.shared';
 import { ownChildCheck, requireHeld } from './fee-gates';
+import { onceMore } from '../payments/payments.shared';
 
 const ENDPOINT = 'charges';
 const SUBJECT = 'charge';
@@ -78,6 +82,9 @@ export class ChargesService {
     private readonly audit: AuditLogRepository,
     private readonly idempotency: IdempotentRequests,
     private readonly clock: SchoolClock,
+    private readonly advances: Advances,
+    private readonly payments: PaymentsService,
+    private readonly changeContext: ChangeContextRepository,
   ) {}
 
   // ------------------------------------------------------------------------------- reads
@@ -110,7 +117,8 @@ export class ChargesService {
 
   /**
    * R205: a student's year, both dates on every line (rule 25); charged, concession, credits and
-   * paid as separate totals. Payments and the advance come with slice 20.
+   * paid as separate totals; the payments that paid the child (or hold their advance) and the
+   * advance (slice 20).
    */
   async statement(studentId: bigint, query: StatementQueryDto): Promise<StatementDto> {
     const schoolId = this.context.schoolId;
@@ -142,14 +150,15 @@ export class ChargesService {
     const adjustments = await this.charges.adjustmentsOf(schoolId, studentId, academicYearId);
     const concessions = await this.concessions.forStudentYear(schoolId, studentId, academicYearId);
     const totals = await this.charges.totals(schoolId, studentId, academicYearId);
+    const paid = await this.payments.forStatement(studentId, academicYearId);
     return {
       studentId: studentId.toString(),
       academicYearId: academicYearId.toString(),
       charges: { ...toPage(page.rows.map(toChargeDto), query, page.total) },
-      payments: [],
+      payments: paid.payments,
       adjustments: adjustments.map(toChargeDto),
       concessions: concessions.map(toConcessionDto),
-      totals: { ...totals, advance: 0 },
+      totals: { ...totals, advance: paid.advance },
     };
   }
 
@@ -206,7 +215,8 @@ export class ChargesService {
       },
       new Date(),
     );
-    // Slice 20 applies the child's advance to the new charge here (R189).
+    // R189: the child's advance in the year pays the new charge at once (payments locked first).
+    const applied = await this.advances.applyTo(schoolId, enrolment.academicYearId, [enrolment.studentId]);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'charge.created',
@@ -220,10 +230,11 @@ export class ChargesService {
         grossAmount: created.grossAmount,
         concessionAmount: created.concessionAmount,
         dueOn: dto.dueOn,
+        advanceApplied: applied.amount,
       },
     });
     await recordSubject(created.id);
-    return created;
+    return applied.amount > 0 ? ((await this.charges.findById(schoolId, created.id)) ?? created) : created;
   }
 
   // ------------------------------------------------------------------------- void, waive
@@ -310,8 +321,10 @@ export class ChargesService {
   /**
    * R186: a credit is its own settled row; the trigger raises the original's credited amount and
    * settles it when nothing is left owed. Keyed by Idempotency-Key (endpoint charges, path id the
-   * charge). Built up to what is owed: a credit beyond it needs slice 20's de-allocation into
-   * advances, so it is refused here (409 CHARGE_NOT_OPEN, reason exceeds_outstanding).
+   * charge). A credit beyond what is owed (a settled charge too) first de-allocates the charge's
+   * newest live allocations into their payments as advances for the same child (A6, slice 20),
+   * never an admission-head allocation: what cannot be freed is refused (409 CHARGE_NOT_OPEN,
+   * reason exceeds_outstanding). Locks in R236's order: the payments, then the charge.
    */
   async adjust(
     session: SchoolSessionContext,
@@ -323,7 +336,7 @@ export class ChargesService {
     const actor = this.context.actor();
     if (!(await this.charges.findById(actor.schoolId, id))) throw notFound();
     const outcome = await this.idempotency.withIdempotencyKey(actor, ENDPOINT, id, dto, rawKey, (claim) =>
-      this.adjustInTransaction(session, actor, id, dto, claim),
+      onceMore(() => this.adjustInTransaction(session, actor, id, dto, claim)),
     );
     return this.outcome(actor.schoolId, outcome);
   }
@@ -338,12 +351,23 @@ export class ChargesService {
   ): Promise<ChargeRecord> {
     const { schoolId, userId } = actor;
     const recordSubject = await this.idempotency.claim(actor, ENDPOINT, claim, SUBJECT);
-    const row = await this.lockedCharge(schoolId, id);
-    if (row.status !== 'open' || row.kind === 'adjustment') throw chargeNotOpen(id);
+    const [row] = await this.advances.lockForCredit(schoolId, [id]);
+    if (!row) throw notFound();
+    if ((row.status !== 'open' && row.status !== 'settled') || row.kind === 'adjustment') throw chargeNotOpen(id);
     const owed = outstanding(row);
-    if (dto.amount > owed) throw chargeNotOpen(id, { reason: 'exceeds_outstanding', outstanding: owed });
     const selfApproved = await ownChildCheck(this.permissions, session, schoolId, row.studentId);
-    const created = await this.charges.create(schoolId, adjustmentOf(row, dto.amount, null, userId), new Date());
+    // The allocation triggers read the acting user (R232). The sole principal's own child (R253)
+    // moves money as the system would: the service has already decided it.
+    if (!selfApproved) await this.changeContext.setChangeContext(userId, null);
+    const now = new Date();
+    const beyond = dto.amount - owed;
+    const freed = await this.advances.deallocate(schoolId, row, beyond, now);
+    if (freed < beyond) {
+      throw chargeNotOpen(id, { reason: 'exceeds_outstanding', outstanding: owed, creditable: owed + freed });
+    }
+    const created = await this.charges.create(schoolId, adjustmentOf(row, dto.amount, null, userId), now);
+    // The child's advance (the money just freed, or an earlier one) pays their other open charges.
+    const applied = await this.advances.applyTo(schoolId, row.academicYearId, [row.studentId]);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'charge.adjusted',
@@ -355,6 +379,8 @@ export class ChargesService {
         studentId: row.studentId.toString(),
         amount: dto.amount,
         outstandingBefore: owed,
+        deallocated: freed,
+        applied: applied.amount,
         selfApproved,
       },
     });

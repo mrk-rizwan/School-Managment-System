@@ -42,6 +42,8 @@ const SECURE: Record<string, boolean> = {
   'home/my-attendance.tsx': false,
   // Phase 3 slice 24: the staff member's own leave, no child's name
   'home/my-leave.tsx': false,
+  // Phase 3 slice 25: the staff member's own payslips, no child's name
+  'home/my-payslips.tsx': false,
   // Phase 3 slice 23: expense capture, no child's name
   'home/expenses/index.tsx': false,
   'home/expenses/new.tsx': false,

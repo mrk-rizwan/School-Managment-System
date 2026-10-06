@@ -40,8 +40,9 @@ import { StaffAttendanceMonth } from '../../staff-attendance/_lib/staff-attendan
 import { AssignmentsTab } from './assignments-tab';
 import { PermissionsTab } from './permissions-tab';
 import { LoginAndRolesTab } from './roles-tab';
+import { SalaryTab } from './salary-tab';
 
-const TABS = ['details', 'roles', 'assignments', 'attendance', 'permissions'] as const;
+const TABS = ['details', 'roles', 'assignments', 'attendance', 'salary', 'permissions'] as const;
 type Tab = (typeof TABS)[number];
 
 /** contracts/slice-4.md §3.2, §3.4, §3.5 and §8. `initialTab` is `?tab=`; an unknown value is ignored. */
@@ -76,6 +77,8 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
             ...(can(Capability.CLASS_MANAGE) ? [{ id: 'assignments' as const, label: 'Teaching assignments' }] : []),
             // GET …/attendance needs staff.view, which this page already needs (slice-12 §4.4).
             { id: 'attendance' as const, label: 'Attendance' },
+            // Phase 3 slice 25: GET …/salary-structure needs staff.contract.manage or payroll.view.
+            ...(can(Capability.STAFF_CONTRACT_MANAGE) || can(Capability.PAYROLL_VIEW) ? [{ id: 'salary' as const, label: 'Salary' }] : []),
             // GET …/permissions needs role.manage, never on one's own login (slice-7 §9, R47, R55).
             ...(can(Capability.ROLE_MANAGE) && data.userId && !isSelf
               ? [{ id: 'permissions' as const, label: 'Permissions' }]
@@ -136,6 +139,7 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
                 {active === 'attendance' && (
                   <StaffAttendanceMonth source={{ kind: 'staff', staffId: data.id, name: data.fullName }} />
                 )}
+                {active === 'salary' && <SalaryTab staff={data} />}
                 {active === 'permissions' && data.userId && <PermissionsTab staff={data} userId={data.userId} />}
               </div>
               <ChangeStatusDialog staff={data} open={statusOpen} onOpenChange={setStatusOpen} />

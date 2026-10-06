@@ -225,12 +225,21 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
+  // Phase 3 slice 20: any active staff member's own cash in hand and handovers (the user from the
+  // session only); opening one needs payment.record.
+  ['GET', '/api/v1/me/staff/cash-handovers', 'staff'],
+  ['GET', '/api/v1/me/staff/custody', 'staff'],
   // Phase 3 slice 24: any active staff member's own leave and the leave types.
   ['GET', '/api/v1/me/staff/leave-balance', 'staff'],
   ['GET', '/api/v1/me/staff/leave-requests', 'staff'],
   ['POST', '/api/v1/me/staff/leave-requests', 'staff'],
   ['GET', '/api/v1/me/staff/leave-requests/:id', 'staff'],
   ['POST', '/api/v1/me/staff/leave-requests/:id/cancel', 'staff'],
+  // Phase 3 slice 25: any active staff member's own salary and payslips (R217).
+  ['GET', '/api/v1/me/staff/payslips', 'staff'],
+  ['GET', '/api/v1/me/staff/payslips/:id', 'staff'],
+  ['GET', '/api/v1/me/staff/payslips/:id/print', 'staff'],
+  ['GET', '/api/v1/me/staff/salary-structure', 'staff'],
   // contracts/slice-11.md §1.1: the student's own attendance.
   ['GET', '/api/v1/me/student/attendance', 'capacity'],
   // contracts/slice-13.md §1.1, §1.2: the student's own diary and remarks.
@@ -360,6 +369,18 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/charge-campaigns/preview-targets': 'none: a read carried in a body; it writes nothing',
   'POST /api/v1/charge-campaigns/:id/generate': ['charge_campaign.generate_requested'],
   'POST /api/v1/charge-campaigns/:id/cancel': ['charge_campaign.cancelled'],
+  // Phase 3 slice 20 (contracts/slice-20.md §2). A replayed create writes no row; the advance a
+  // job applies is recorded by the system actor (charge.advance_applied), not a route.
+  'POST /api/v1/payments/preview': 'none: a read carried in a body; it writes nothing',
+  'POST /api/v1/payments': ['payment.recorded'],
+  'POST /api/v1/payments/:id/void': ['payment.voided'],
+  'POST /api/v1/payments/:id/refund': ['payment.refunded'],
+  'POST /api/v1/payments/:id/reverse-refund': ['payment.refund_reversed'],
+  'POST /api/v1/payments/:id/carry-forward': ['payment.carried_forward'],
+  'POST /api/v1/me/staff/cash-handovers': ['cash_handover.opened'],
+  'POST /api/v1/cash-handovers': ['cash_handover.opened'],
+  'POST /api/v1/cash-handovers/:id/confirm': ['cash_handover.confirmed'],
+  'POST /api/v1/cash-handovers/:id/resolve-shortfall': ['cash_handover.shortfall_resolved'],
   // Phase 3 slice 23 (contracts/slice-23.md §3). A replayed create, a no-op patch and the same
   // receipt sent again write no row.
   'POST /api/v1/expenses': ['expense.recorded'],
@@ -378,6 +399,17 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/leave-requests/:id/approve': ['leave_request.approved', 'teacher_assignment.created'],
   'POST /api/v1/leave-requests/:id/reject': ['leave_request.rejected'],
   'POST /api/v1/leave-requests/:id/end-early': ['leave_request.ended_early', 'teacher_assignment.ended'],
+  // Phase 3 slice 25 (contracts/slice-25.md §8). A replayed create or adjustment writes no row; the
+  // pay-day job audits as the system actor (payroll_run.auto_prepared, A19).
+  'POST /api/v1/staff/:id/salary-structure': ['salary_structure.created'],
+  'POST /api/v1/salary-advances': ['salary_advance.granted', 'expense.recorded'],
+  'POST /api/v1/salary-advances/:id/write-off': ['salary_advance.written_off'],
+  'POST /api/v1/payroll-runs': ['payroll_run.prepared'],
+  'POST /api/v1/payroll-runs/:id/payslips': ['payslip.added'],
+  'POST /api/v1/payroll-runs/:id/recompute': ['payroll_run.recomputed'],
+  'POST /api/v1/payroll-runs/:id/finalise': ['payroll_run.finalised'],
+  'POST /api/v1/payslips/:id/adjust': ['payslip.adjusted'],
+  'POST /api/v1/payslips/:id/mark-paid': ['payslip.paid'],
   'PATCH /api/v1/sections/:id': ['section.updated'],
   'POST /api/v1/sections/:id/archive': ['section.archived'],
   'POST /api/v1/staff': ['staff.created'],

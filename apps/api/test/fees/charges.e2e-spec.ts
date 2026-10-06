@@ -218,7 +218,7 @@ describe('slice 19: charges, concessions, campaigns over HTTP (e2e)', () => {
     expect((await audit(w.school, 'charge.waived')).map((r) => r.reason)).toEqual(['Paid at the bank in time']);
   });
 
-  it('R186: an adjustment is its own settled row raising credited_amount; up to what is owed; beyond it is refused until slice 20', async () => {
+  it('R186: an adjustment is its own settled row raising credited_amount; beyond what is owed, with nothing paid to de-allocate, is refused', async () => {
     const w = await world();
     const [tuition] = (await october(w)).filter((c) => c.feeHeadId === w.heads.tuition.toString());
     const key = newIdempotencyKey();

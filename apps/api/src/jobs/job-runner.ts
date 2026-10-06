@@ -14,6 +14,7 @@ import {
 import { StagedUploadSweep } from '../modules/documents/staged-upload.sweep';
 import { AnnouncementSendJob } from '../modules/announcements/announcement-send.job';
 import { ChargeGeneration } from '../modules/fees/charge-generation';
+import { PayrollPrepare } from '../modules/payroll/payroll-prepare.job';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
@@ -58,6 +59,8 @@ export class JobRunner {
     private readonly platformBilling: PlatformBillingJob,
     private readonly schoolMetrics: SchoolMetricsRollup,
     private readonly billingNotices: BillingNotices,
+    // Slice 25 (phase-3-financial.md §3.7).
+    private readonly payroll: PayrollPrepare,
   ) {}
 
   /**
@@ -171,6 +174,10 @@ export class JobRunner {
         return 'done';
       case JOB.lateFeeSweep:
         await this.eachSchool(name, (schoolId) => this.charges.lateFees(schoolId, plannedAt));
+        return 'done';
+      // Slice 25 (§3.7, R214): daily; a school whose pay day it is gets last month's draft.
+      case JOB.payrollPrepare:
+        await this.eachSchool(name, (schoolId) => this.payroll.run(schoolId, plannedAt));
         return 'done';
       case JOB.sessionPurge:
         // Every school, terminated included: a dead sign-in is not history anywhere.

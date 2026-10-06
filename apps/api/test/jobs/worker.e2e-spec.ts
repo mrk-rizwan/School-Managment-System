@@ -54,6 +54,8 @@ describe('the worker (e2e)', () => {
       // Phase 3 slice 19 (§3.7): the month's charges and the nightly catch-up, then late fees.
       { job: 'charge-generate', pattern: '0 0 1 * * *' },
       { job: 'late-fee-sweep', pattern: '0 0 2 * * *' },
+      // Phase 3 slice 25 (§3.7): the pay-day draft payroll run.
+      { job: 'payroll-prepare', pattern: '0 0 3 * * *' },
     ]);
   });
 

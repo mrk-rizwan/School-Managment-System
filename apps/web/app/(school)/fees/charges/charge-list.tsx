@@ -182,7 +182,7 @@ export function ChargeList() {
             if (officeVoid || principalVoid) actions.push({ label: 'Void', onSelect: () => setVoiding(charge), destructive: true });
             if (charge.kind === 'late_fee' && canGrant && principal) actions.push({ label: 'Waive late fee', onSelect: () => setWaiving(charge) });
           }
-          if (charge.status === 'open' && charge.kind !== 'adjustment' && canGrant && principal) {
+          if ((charge.status === 'open' || charge.status === 'settled') && charge.kind !== 'adjustment' && canGrant && principal) {
             actions.push({ label: 'Credit…', onSelect: () => setAdjusting(charge) });
           }
           return <RowActions label={`${charge.studentName} ${charge.description}`} actions={actions} />;
@@ -297,7 +297,11 @@ function AdjustForm({ charge, onDone }: { charge: ChargeDto; onDone: () => void 
       if (error instanceof ApiError && error.code === ErrorCode.CHARGE_NOT_OPEN) {
         const details = error.details as Partial<ChargeNotOpen> | null;
         if (details?.reason === 'exceeds_outstanding') {
-          form.setError('amount', { message: `At most ${formatRupees(details.outstanding ?? 0)}, what is still owed.` }, { shouldFocus: true });
+          form.setError(
+            'amount',
+            { message: `At most ${formatRupees(details.creditable ?? details.outstanding ?? 0)}: what is owed, plus paid money that can return as an advance.` },
+            { shouldFocus: true },
+          );
           return;
         }
       }
@@ -311,7 +315,7 @@ function AdjustForm({ charge, onDone }: { charge: ChargeDto; onDone: () => void 
         <DialogTitle>Credit: {charge.description}</DialogTitle>
         <DialogDescription>
           {charge.studentName} still owes {formatRupees(charge.outstanding)}. A credit is recorded as its own line; the charge
-          itself never changes.
+          itself never changes. A credit beyond what is owed returns that much of what was paid to the family as an advance.
         </DialogDescription>
       </DialogHeader>
       <FormRootError form={form} />

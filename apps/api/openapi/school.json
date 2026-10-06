@@ -163,6 +163,24 @@
         ],
         "type": "object"
       },
+      "AddPayslipDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "staffId",
+          "reason"
+        ],
+        "type": "object"
+      },
       "AdjustChargeDto": {
         "properties": {
           "amount": {
@@ -179,6 +197,36 @@
         },
         "required": [
           "amount",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "AdjustPayslipDto": {
+        "properties": {
+          "adjustsPayslipId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees, signed, not 0",
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "name",
           "reason"
         ],
         "type": "object"
@@ -370,6 +418,118 @@
           "dateOfBirth"
         ],
         "type": "object"
+      },
+      "AdvanceDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "approvedByUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "expenseId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "grantedOn": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "instalmentAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "outstanding": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "paidMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ]
+          },
+          "paidReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recoverFrom": {
+            "example": "2026-09",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "recoveredAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvanceStatus"
+              }
+            ]
+          },
+          "writeOffReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "writtenOffAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "staffName",
+          "amount",
+          "grantedOn",
+          "recoverFrom",
+          "instalmentAmount",
+          "recoveredAmount",
+          "outstanding",
+          "approvedByUserId",
+          "paidMethod",
+          "paidReference",
+          "expenseId",
+          "status",
+          "writtenOffAt",
+          "writeOffReason"
+        ],
+        "type": "object"
+      },
+      "AdvanceStatus": {
+        "enum": [
+          "open",
+          "recovered",
+          "written_off"
+        ],
+        "type": "string"
       },
       "AlertSummaryDto": {
         "properties": {
@@ -1508,6 +1668,46 @@
         ],
         "type": "string"
       },
+      "CarryForwardDto": {
+        "properties": {
+          "academicYearId": {
+            "description": "The target year; the child needs an enrolment in it",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Default: the whole unallocated amount",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "CarryForwardResultDto": {
+        "properties": {
+          "payment": {
+            "$ref": "#/components/schemas/PaymentDto"
+          },
+          "reversal": {
+            "$ref": "#/components/schemas/ReversalDto"
+          }
+        },
+        "required": [
+          "reversal",
+          "payment"
+        ],
+        "type": "object"
+      },
       "ChangeClassDto": {
         "properties": {
           "classId": {
@@ -2262,6 +2462,25 @@
         ],
         "type": "string"
       },
+      "ConfirmHandoverDto": {
+        "properties": {
+          "countedAmount": {
+            "description": "The cash counted",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "countedAmount"
+        ],
+        "type": "object"
+      },
       "ConnectCloudApiDto": {
         "properties": {
           "accessToken": {
@@ -2473,6 +2692,60 @@
           "student",
           "guardians",
           "enrolment"
+        ],
+        "type": "object"
+      },
+      "CreateAdvanceDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "grantedOn": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "instalmentAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "paidMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ]
+          },
+          "paidReference": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "recordAsExpense": {
+            "type": "boolean"
+          },
+          "recoverFrom": {
+            "example": "2026-09",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "staffId",
+          "amount",
+          "grantedOn",
+          "instalmentAmount",
+          "paidMethod",
+          "recordAsExpense"
         ],
         "type": "object"
       },
@@ -3201,6 +3474,72 @@
         ],
         "type": "object"
       },
+      "CreatePaymentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "advanceForStudentId": {
+            "description": "The child a remainder is an advance for (one of studentIds); required when it is ambiguous",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "method": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ]
+          },
+          "payerGuardianId": {
+            "description": "The paying guardian; exactly one of payerGuardianId and payerName",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "payerName": {
+            "description": "A walk-in payer (names one student only)",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "receivedOn": {
+            "description": "Today or earlier (school time)",
+            "format": "date",
+            "type": "string"
+          },
+          "reference": {
+            "description": "The slip reference; required for a non-cash method",
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          },
+          "studentIds": {
+            "description": "Allocation spans exactly these children",
+            "items": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "studentIds",
+          "amount",
+          "method",
+          "receivedOn"
+        ],
+        "type": "object"
+      },
       "CreateRemarkDto": {
         "properties": {
           "category": {
@@ -3239,6 +3578,40 @@
           "date",
           "category",
           "text"
+        ],
+        "type": "object"
+      },
+      "CreateSalaryStructureDto": {
+        "properties": {
+          "basic": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/SalaryComponentDto"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "effectiveFrom": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "basic",
+          "components",
+          "effectiveFrom",
+          "reason"
         ],
         "type": "object"
       },
@@ -3400,6 +3773,30 @@
           "amount",
           "dueOn",
           "status"
+        ],
+        "type": "object"
+      },
+      "CustodyDto": {
+        "properties": {
+          "cashInHand": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "paymentCount": {
+            "type": "number"
+          },
+          "since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "cashInHand",
+          "paymentCount",
+          "since"
         ],
         "type": "object"
       },
@@ -3579,6 +3976,24 @@
           "partial"
         ],
         "type": "string"
+      },
+      "DeductionNotTakenDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "amount"
+        ],
+        "type": "object"
       },
       "DeliverySummaryDto": {
         "properties": {
@@ -4577,6 +4992,16 @@
         ],
         "type": "string"
       },
+      "FinaliseRunDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ForgotPasswordDto": {
         "properties": {
           "schoolCode": {
@@ -4706,6 +5131,65 @@
           "revoke"
         ],
         "type": "string"
+      },
+      "GuardianChildDuesDto": {
+        "properties": {
+          "academicYearClosed": {
+            "type": "boolean"
+          },
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "advance": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "className": {
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "openCharges": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeDto"
+            },
+            "type": "array"
+          },
+          "outstanding": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "className",
+          "enrolmentId",
+          "academicYearId",
+          "academicYearName",
+          "academicYearClosed",
+          "outstanding",
+          "advance",
+          "openCharges"
+        ],
+        "type": "object"
       },
       "GuardianDetailDto": {
         "properties": {
@@ -4864,6 +5348,29 @@
           "userId",
           "createdAt",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "GuardianDuesDto": {
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GuardianChildDuesDto"
+            },
+            "type": "array"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "guardianId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "guardianId",
+          "fullName",
+          "children"
         ],
         "type": "object"
       },
@@ -5134,6 +5641,170 @@
           "linkEndedAt"
         ],
         "type": "object"
+      },
+      "HandoverCollectorDto": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "userId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "staffId",
+          "name"
+        ],
+        "type": "object"
+      },
+      "HandoverDto": {
+        "properties": {
+          "collector": {
+            "$ref": "#/components/schemas/HandoverCollectorDto"
+          },
+          "confirmNote": {
+            "nullable": true,
+            "type": "string"
+          },
+          "confirmedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "confirmedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "confirmedByUserId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "countedAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "expectedAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "onBehalf": {
+            "type": "boolean"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedByName": {
+            "type": "string"
+          },
+          "openedByUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "paymentCount": {
+            "type": "number"
+          },
+          "shortfallAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "shortfallExpenseId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "shortfallResolution": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShortfallResolution"
+              }
+            ],
+            "nullable": true
+          },
+          "shortfallResolutionReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "shortfallResolvedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "shortfallReversalId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HandoverStatus"
+              }
+            ]
+          },
+          "surplusAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "collector",
+          "openedByUserId",
+          "openedByName",
+          "onBehalf",
+          "expectedAmount",
+          "paymentCount",
+          "openedAt",
+          "note",
+          "status",
+          "confirmedByUserId",
+          "confirmedByName",
+          "confirmedAt",
+          "countedAmount",
+          "shortfallAmount",
+          "surplusAmount",
+          "confirmNote",
+          "shortfallResolution",
+          "shortfallResolvedAt",
+          "shortfallResolutionReason",
+          "shortfallExpenseId",
+          "shortfallReversalId"
+        ],
+        "type": "object"
+      },
+      "HandoverStatus": {
+        "enum": [
+          "open",
+          "confirmed"
+        ],
+        "type": "string"
       },
       "HealthDto": {
         "properties": {
@@ -5993,6 +6664,32 @@
         ],
         "type": "string"
       },
+      "MarkPayslipPaidDto": {
+        "properties": {
+          "paidMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ]
+          },
+          "paidOn": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "paidReference": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "paidOn",
+          "paidMethod"
+        ],
+        "type": "object"
+      },
       "MeAssignmentDto": {
         "properties": {
           "academicYearId": {
@@ -6711,6 +7408,33 @@
         ],
         "type": "object"
       },
+      "MySalaryStructureDto": {
+        "properties": {
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SalaryStructureDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "upcoming": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SalaryStructureDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "current",
+          "upcoming"
+        ],
+        "type": "object"
+      },
       "MyStaffAttendanceDayDto": {
         "properties": {
           "amended": {
@@ -6820,6 +7544,33 @@
         ],
         "type": "object"
       },
+      "OpenHandoverDto": {
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OpenHandoverOnBehalfDto": {
+        "properties": {
+          "collectorUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectorUserId"
+        ],
+        "type": "object"
+      },
       "PaymentAccountDto": {
         "properties": {
           "accountNo": {
@@ -6889,6 +7640,608 @@
         "enum": [
           "active",
           "disabled"
+        ],
+        "type": "string"
+      },
+      "PaymentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "advanceForStudentId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "allocatedAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "claimId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "duplicateOfPaymentId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "handoverId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "method": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMethod"
+              }
+            ]
+          },
+          "payerGuardianId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "payerName": {
+            "type": "string"
+          },
+          "possibleDuplicate": {
+            "type": "boolean"
+          },
+          "receipt": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "receivedOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "recordedByName": {
+            "type": "string"
+          },
+          "recordedByUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reversals": {
+            "items": {
+              "$ref": "#/components/schemas/ReversalDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentStatus"
+              }
+            ]
+          },
+          "students": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentStudentDto"
+            },
+            "type": "array"
+          },
+          "unallocatedAmount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "verifiedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "payerGuardianId",
+          "payerName",
+          "students",
+          "method",
+          "amount",
+          "allocatedAmount",
+          "unallocatedAmount",
+          "advanceForStudentId",
+          "receivedOn",
+          "verifiedAt",
+          "reference",
+          "recordedByUserId",
+          "recordedByName",
+          "handoverId",
+          "claimId",
+          "status",
+          "voidedAt",
+          "receipt",
+          "reversals",
+          "possibleDuplicate",
+          "duplicateOfPaymentId"
+        ],
+        "type": "object"
+      },
+      "PaymentIntentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "payerGuardianId": {
+            "description": "The paying guardian; exactly one of payerGuardianId and payerName",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "payerName": {
+            "description": "A walk-in payer (names one student only)",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "studentIds": {
+            "description": "Allocation spans exactly these children",
+            "items": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "studentIds",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "PaymentMethod": {
+        "enum": [
+          "cash",
+          "bank_transfer",
+          "jazzcash",
+          "easypaisa",
+          "carried_forward"
+        ],
+        "type": "string"
+      },
+      "PaymentPreviewDto": {
+        "properties": {
+          "advanceUsed": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewAllocationDto"
+            },
+            "type": "array"
+          },
+          "outstanding": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "remainder": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "allocations",
+          "remainder",
+          "outstanding",
+          "advanceUsed"
+        ],
+        "type": "object"
+      },
+      "PaymentStatus": {
+        "enum": [
+          "verified",
+          "voided"
+        ],
+        "type": "string"
+      },
+      "PaymentStudentDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "PayrollRunDto": {
+        "properties": {
+          "finaliseReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "finalisedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "finalisedByUserId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "preparedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "preparedByUserId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedStaffDto"
+            },
+            "type": "array"
+          },
+          "staffCount": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayrollRunStatus"
+              }
+            ]
+          },
+          "totalNet": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "unmarkedDaysTotal": {
+            "type": "number"
+          },
+          "workingDays": {
+            "maximum": 31,
+            "minimum": 0,
+            "type": "number"
+          },
+          "yearMonth": {
+            "example": "2026-09",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "yearMonth",
+          "workingDays",
+          "status",
+          "preparedAt",
+          "preparedByUserId",
+          "finalisedByUserId",
+          "finalisedAt",
+          "finaliseReason",
+          "staffCount",
+          "skipped",
+          "totalNet",
+          "unmarkedDaysTotal"
+        ],
+        "type": "object"
+      },
+      "PayrollRunStatus": {
+        "enum": [
+          "draft",
+          "finalised"
+        ],
+        "type": "string"
+      },
+      "PayslipDaysDto": {
+        "properties": {
+          "unapprovedLeave": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unmarked": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unpaid": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "unpaid",
+          "unmarked",
+          "unapprovedLeave"
+        ],
+        "type": "object"
+      },
+      "PayslipDto": {
+        "properties": {
+          "absenceDeduction": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "adjustmentTotal": {
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          },
+          "advanceRecovery": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "allowancesTotal": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "basic": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "days": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayslipDaysDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "deductionsNotTaken": {
+            "items": {
+              "$ref": "#/components/schemas/DeductionNotTakenDto"
+            },
+            "type": "array"
+          },
+          "deductionsTotal": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "designation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "employedWorkingDays": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/PayslipLineDto"
+            },
+            "type": "array"
+          },
+          "net": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "paidMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ],
+            "nullable": true
+          },
+          "paidOn": {
+            "example": "2026-10-06",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "paidReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "runId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "runStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayrollRunStatus"
+              }
+            ]
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayslipStatus"
+              }
+            ]
+          },
+          "unmarkedDays": {
+            "type": "number"
+          },
+          "unpaidDays": {
+            "type": "number"
+          },
+          "workingDays": {
+            "type": "number"
+          },
+          "yearMonth": {
+            "example": "2026-09",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "yearMonth",
+          "runStatus",
+          "staffId",
+          "staffName",
+          "designation",
+          "workingDays",
+          "employedWorkingDays",
+          "basic",
+          "lines",
+          "allowancesTotal",
+          "deductionsTotal",
+          "deductionsNotTaken",
+          "unpaidDays",
+          "unmarkedDays",
+          "absenceDeduction",
+          "advanceRecovery",
+          "adjustmentTotal",
+          "net",
+          "status",
+          "paidOn",
+          "paidMethod",
+          "paidReference",
+          "days"
+        ],
+        "type": "object"
+      },
+      "PayslipLineDto": {
+        "properties": {
+          "adjustsPayslipId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "maximum": 10000000,
+            "minimum": -10000000,
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PayslipLineKind"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "amount",
+          "adjustsPayslipId",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "PayslipLineKind": {
+        "enum": [
+          "allowance",
+          "deduction",
+          "absence",
+          "advance_recovery",
+          "adjustment"
+        ],
+        "type": "string"
+      },
+      "PayslipStatus": {
+        "enum": [
+          "pending",
+          "paid"
         ],
         "type": "string"
       },
@@ -7003,6 +8356,67 @@
           "customRoleName",
           "customRoleStatus",
           "capabilities"
+        ],
+        "type": "object"
+      },
+      "PrepareRunDto": {
+        "properties": {
+          "yearMonth": {
+            "example": "2026-09",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "yearMonth"
+        ],
+        "type": "object"
+      },
+      "PreviewAllocationDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "chargeId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "dueOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "feeHeadName": {
+            "type": "string"
+          },
+          "fromAdvance": {
+            "type": "boolean"
+          },
+          "period": {
+            "example": "2026-04",
+            "nullable": true,
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "chargeId",
+          "studentId",
+          "studentName",
+          "feeHeadName",
+          "period",
+          "dueOn",
+          "amount",
+          "fromAdvance"
         ],
         "type": "object"
       },
@@ -7244,6 +8658,106 @@
         ],
         "type": "object"
       },
+      "ReceiptDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "issuedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "issuedByName": {
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineDto"
+            },
+            "type": "array"
+          },
+          "paymentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "receiptLabel": {
+            "type": "string"
+          },
+          "receiptNo": {
+            "type": "number"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "receiptNo",
+          "receiptLabel",
+          "academicYearId",
+          "paymentId",
+          "amount",
+          "lines",
+          "issuedAt",
+          "issuedByName",
+          "voidedAt"
+        ],
+        "type": "object"
+      },
+      "ReceiptLineDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "chargeId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "feeHeadName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "period": {
+            "example": "2026-04",
+            "nullable": true,
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "studentName",
+          "chargeId",
+          "feeHeadName",
+          "period",
+          "amount"
+        ],
+        "type": "object"
+      },
       "RecipientCountsDto": {
         "properties": {
           "guardians": {
@@ -7307,6 +8821,40 @@
           "other"
         ],
         "type": "string"
+      },
+      "RefundDto": {
+        "properties": {
+          "amount": {
+            "description": "At most the unallocated amount (an advance)",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "method": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterPaymentMethod"
+              }
+            ],
+            "description": "How the money went back"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "reference": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "reason",
+          "method"
+        ],
+        "type": "object"
       },
       "RegisterCallerRole": {
         "enum": [
@@ -7839,6 +9387,151 @@
         ],
         "type": "object"
       },
+      "ResolveShortfallDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "resolution": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShortfallResolution"
+              }
+            ]
+          },
+          "reversalId": {
+            "description": "explained_by_void only: the void of a payment in this handover",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ReversalDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "approvedByUserId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "carriedToPaymentId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReversalKind"
+              }
+            ]
+          },
+          "paymentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "refundMethod": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentMethod"
+              }
+            ],
+            "nullable": true
+          },
+          "refundReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "requestedByName": {
+            "type": "string"
+          },
+          "requestedByUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reversed": {
+            "type": "boolean"
+          },
+          "reversesId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "paymentId",
+          "academicYearId",
+          "kind",
+          "reversesId",
+          "carriedToPaymentId",
+          "amount",
+          "reason",
+          "requestedByUserId",
+          "requestedByName",
+          "approvedByUserId",
+          "refundMethod",
+          "refundReference",
+          "reversed",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ReversalKind": {
+        "enum": [
+          "void",
+          "refund",
+          "refund_reversal",
+          "carried_forward"
+        ],
+        "type": "string"
+      },
+      "ReverseRefundDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "reversalId": {
+            "description": "The refund of this payment to undo",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reversalId",
+          "reason"
+        ],
+        "type": "object"
+      },
       "RosterRowDto": {
         "properties": {
           "alert": {
@@ -7889,6 +9582,124 @@
           "alert"
         ],
         "type": "object"
+      },
+      "SalaryComponentDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SalaryComponentKind"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "SalaryComponentKind": {
+        "enum": [
+          "allowance",
+          "deduction"
+        ],
+        "type": "string"
+      },
+      "SalaryStructureDto": {
+        "properties": {
+          "basic": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/SalaryComponentDto"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "endedOn": {
+            "example": "2026-10-06",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "selfApproved": {
+            "type": "boolean"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SalaryStructureStatus"
+              }
+            ]
+          },
+          "supersededBy": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "basic",
+          "components",
+          "effectiveFrom",
+          "endedOn",
+          "status",
+          "supersededBy",
+          "createdByUserId",
+          "reason",
+          "selfApproved",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "SalaryStructureStatus": {
+        "enum": [
+          "active",
+          "superseded"
+        ],
+        "type": "string"
       },
       "SchoolLoginDto": {
         "properties": {
@@ -8330,6 +10141,14 @@
         ],
         "type": "object"
       },
+      "ShortfallResolution": {
+        "enum": [
+          "recovered",
+          "written_off",
+          "explained_by_void"
+        ],
+        "type": "string"
+      },
       "SkippedClassDto": {
         "properties": {
           "classId": {
@@ -8346,6 +10165,26 @@
         "required": [
           "classId",
           "className",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "SkippedStaffDto": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "staffId",
+          "name",
           "reason"
         ],
         "type": "object"
@@ -9224,6 +11063,7 @@
             "type": "string"
           },
           "receiptLabel": {
+            "nullable": true,
             "type": "string"
           },
           "receivedOn": {
@@ -14836,6 +16676,695 @@
         },
         "tags": [
           "calendar"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers": {
+      "get": {
+        "operationId": "CashHandoversController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/HandoverStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "collectorUserId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Confirmed with a shortfall nobody has resolved yet",
+            "in": "query",
+            "name": "unresolvedShortfall",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/HandoverDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "operationId": "CashHandoversController_openOnBehalf",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenHandoverOnBehalfDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/{id}": {
+      "get": {
+        "operationId": "CashHandoversController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/{id}/confirm": {
+      "post": {
+        "operationId": "CashHandoversController_confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmHandoverDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/{id}/payments": {
+      "get": {
+        "operationId": "CashHandoversController_handoverPayments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PaymentDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/cash-handovers/{id}/resolve-shortfall": {
+      "post": {
+        "operationId": "CashHandoversController_resolve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveShortfallDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
         ]
       }
     },
@@ -22550,6 +25079,97 @@
         ]
       }
     },
+    "/api/v1/guardians/{id}/dues": {
+      "get": {
+        "operationId": "GuardianDuesController_dues",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardianDuesDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/v1/guardians/{id}/issue-login": {
       "post": {
         "operationId": "GuardiansController_issueLogin",
@@ -26400,6 +29020,277 @@
         ]
       }
     },
+    "/api/v1/me/staff/cash-handovers": {
+      "get": {
+        "operationId": "MyCustodyController_mine",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/HandoverDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "operationId": "MyCustodyController_open",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenHandoverDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoverDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/custody": {
+      "get": {
+        "operationId": "MyCustodyController_custody",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustodyDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/staff/leave-balance": {
       "get": {
         "operationId": "MyLeaveController_balance",
@@ -26888,6 +29779,350 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/payslips": {
+      "get": {
+        "operationId": "MyPayrollController_payslips",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PayslipDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/payslips/{id}": {
+      "get": {
+        "operationId": "MyPayrollController_payslip",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/payslips/{id}/print": {
+      "get": {
+        "operationId": "MyPayrollController_print",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The printable payslip (R237)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/salary-structure": {
+      "get": {
+        "operationId": "MyPayrollController_salary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MySalaryStructureDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
             "content": {
               "application/json": {
                 "schema": {
@@ -28390,6 +31625,2319 @@
         ]
       }
     },
+    "/api/v1/payments": {
+      "get": {
+        "operationId": "PaymentsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "receivedFrom",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "receivedTo",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PaymentMethod"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PaymentStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recordedByUserId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "-receivedOn",
+              "enum": [
+                "-receivedOn"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PaymentDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "operationId": "PaymentsController_record",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": "Replay of a committed payment"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/preview": {
+      "post": {
+        "operationId": "PaymentsController_preview",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentIntentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPreviewDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "operationId": "PaymentsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}/carry-forward": {
+      "post": {
+        "operationId": "PaymentsController_carryForward",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CarryForwardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarryForwardResultDto"
+                }
+              }
+            },
+            "description": "Replay of a committed carry-forward"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarryForwardResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}/refund": {
+      "post": {
+        "operationId": "PaymentsController_refund",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
+                }
+              }
+            },
+            "description": "Replay of a committed refund"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}/reverse-refund": {
+      "post": {
+        "operationId": "PaymentsController_reverseRefund",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseRefundDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
+                }
+              }
+            },
+            "description": "Replay of a committed refund reversal"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}/void": {
+      "post": {
+        "operationId": "PaymentsController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payroll-runs": {
+      "get": {
+        "operationId": "PayrollRunsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PayrollRunDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      },
+      "post": {
+        "operationId": "PayrollRunsController_prepare",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareRunDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollRunDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payroll-runs/{id}": {
+      "get": {
+        "operationId": "PayrollRunsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollRunDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payroll-runs/{id}/finalise": {
+      "post": {
+        "operationId": "PayrollRunsController_finalise",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinaliseRunDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollRunDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payroll-runs/{id}/payslips": {
+      "get": {
+        "operationId": "PayrollRunsController_payslips",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PayslipDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      },
+      "post": {
+        "operationId": "PayrollRunsController_addPayslip",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPayslipDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payroll-runs/{id}/recompute": {
+      "post": {
+        "operationId": "PayrollRunsController_recompute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollRunDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payslips/{id}": {
+      "get": {
+        "operationId": "PayslipsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payslips/{id}/adjust": {
+      "post": {
+        "operationId": "PayslipsController_adjust",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustPayslipDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payslips/{id}/mark-paid": {
+      "post": {
+        "operationId": "PayslipsController_markPaid",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkPayslipPaidDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayslipDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/payslips/{id}/print": {
+      "get": {
+        "operationId": "PayslipsController_print",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The printable payslip (R237)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/receipts/{id}": {
+      "get": {
+        "operationId": "ReceiptsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/receipts/{id}/print": {
+      "get": {
+        "operationId": "ReceiptsController_print",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The printable receipt (R237)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/v1/remarks/{id}/correct": {
       "post": {
         "operationId": "RemarksController_correct",
@@ -28498,6 +34046,445 @@
         },
         "tags": [
           "remarks"
+        ]
+      }
+    },
+    "/api/v1/salary-advances": {
+      "get": {
+        "operationId": "SalaryAdvancesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staffId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AdvanceStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AdvanceDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      },
+      "post": {
+        "operationId": "SalaryAdvancesController_create",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdvanceDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/salary-advances/{id}": {
+      "get": {
+        "operationId": "SalaryAdvancesController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/v1/salary-advances/{id}/write-off": {
+      "post": {
+        "operationId": "SalaryAdvancesController_writeOff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
         ]
       }
     },
@@ -30958,6 +36945,274 @@
         },
         "tags": [
           "leave"
+        ]
+      }
+    },
+    "/api/v1/staff/{id}/salary-structure": {
+      "get": {
+        "operationId": "StaffSalaryController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SalaryStructureDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
+        ]
+      },
+      "post": {
+        "operationId": "StaffSalaryController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSalaryStructureDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalaryStructureDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalaryStructureDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payroll"
         ]
       }
     },
