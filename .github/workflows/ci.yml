@@ -21,8 +21,8 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    # The 3,000-recipient tests and Playwright took it past 30 minutes (2026-10-05).
-    timeout-minutes: 45
+    # The 3,000-recipient tests and Playwright took it past 30 minutes (2026-10-05); Phase 3 past 45 (2026-10-06).
+    timeout-minutes: 75
 
     services:
       postgres:
