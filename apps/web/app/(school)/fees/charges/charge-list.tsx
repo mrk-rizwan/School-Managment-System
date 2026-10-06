@@ -43,16 +43,10 @@ import {
   formatMonth,
   rupeesSchema,
   useIsPrincipal,
+  weekAgo,
 } from '../_lib/fees-ui';
 
 const LIMIT = 25;
-
-/** Seven days back, school time: the start of "this week" for the voided tile. */
-const weekAgo = () => {
-  const day = new Date(`${todayInSchool()}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() - 7);
-  return day.toISOString().slice(0, 10);
-};
 
 /**
  * Charges (slice 19, R179-R186): the school's receivable rows, newest due first, with the voids,

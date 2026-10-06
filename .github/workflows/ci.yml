@@ -443,6 +443,17 @@ jobs:
           disable-animations: true
           script: bash apps/mobile/maestro/ci-run.sh
 
+      # Kept on green runs too: the slice 27 screenshot of the claim sheet is the evidence that
+      # FLAG_SECURE covers the slip (a black frame). Fixture data only.
+      - name: Upload Maestro screenshots
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-screenshots
+          path: apps/mobile/maestro/out/*.png
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Upload Maestro output and the API log
         if: failure() || cancelled()
         uses: actions/upload-artifact@v4

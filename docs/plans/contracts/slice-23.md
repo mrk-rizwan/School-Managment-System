@@ -13,7 +13,7 @@ follows the Phase 1–3 conventions.
 
 | Route | Guard | Notes |
 |---|---|---|
-| `GET /expenses` | `expense.record \| expense.approve \| finance.report.view` | paginated; `spentFrom`, `spentTo`, `category`, `status`, `recordedByUserId`; `sort` `-spentOn` (default) \| `spentOn`, ties by id |
+| `GET /expenses` | `expense.record \| expense.approve \| finance.report.view` | paginated; `spentFrom`, `spentTo`, `decidedFrom`, `decidedTo` (school-time days over `decided_at`, slice 27), `category`, `status`, `recordedByUserId`, `selfApproved` (slice 27); `sort` `-spentOn` (default) \| `spentOn`, ties by id |
 | `GET /expenses/:id` | as list | `404` for another school's id |
 | `POST /expenses` | `expense.record` + `Idempotency-Key` (endpoint `expenses`, path id `0`: the route has none) | §2; `201`, replay `200` with `Idempotency-Replayed: true` |
 | `PATCH /expenses/:id` | `expense.record`; recorder only (`403 PERMISSION_DENIED { reason: not_recorder }`) | the content fields, `null` clears `payee`/`reference`; while `recorded \| pending_approval`, else `409 EXPENSE_NOT_OPEN { expenseId }`; a no-op is `200` with no audit row |

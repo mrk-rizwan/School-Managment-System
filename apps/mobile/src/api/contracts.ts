@@ -78,3 +78,8 @@ export type MyClaimDto = Schemas['MyClaimDto'];
 export type CreateClaimDto = Schemas['CreateClaimDto'];
 export type DepositMethod = Schemas['DepositMethod'];
 export type MyPaymentAccountDto = Schemas['MyPaymentAccountDto'];
+
+// Phase 3 slice 27: the Approvals tab (online only, R226).
+export type ApprovalsDto = Schemas['ApprovalsDto'];
+export type ClaimDto = Schemas['ClaimDto'];
+export type HandoverDto = Schemas['HandoverDto'];

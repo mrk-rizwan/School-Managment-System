@@ -34,5 +34,7 @@ import { ExpensesService } from './expenses.service';
     IdempotencyKeyRepository,
     AuditLogRepository,
   ],
+  // The Approvals read (slice 27) lists the pending queue through the service.
+  exports: [ExpensesService],
 })
 export class ExpensesModule {}

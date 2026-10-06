@@ -69,9 +69,14 @@ export interface NewExpense extends ExpenseContent {
 export interface ExpenseListQuery {
   spentFrom?: Date;
   spentTo?: Date;
+  /** decided_at at or after this instant (the school's day start). */
+  decidedFrom?: Date;
+  /** decided_at before this instant (the start of the day after the last one). */
+  decidedBefore?: Date;
   category?: ExpenseCategory;
   status?: ExpenseStatus;
   recordedBy?: bigint;
+  selfApproved?: boolean;
   sort: 'spentOn' | '-spentOn';
   skip: number;
   take: number;
@@ -123,12 +128,18 @@ export class ExpenseRepository {
       ...(query.spentFrom === undefined ? {} : { gte: query.spentFrom }),
       ...(query.spentTo === undefined ? {} : { lte: query.spentTo }),
     };
+    const decidedAt: Prisma.DateTimeNullableFilter = {
+      ...(query.decidedFrom === undefined ? {} : { gte: query.decidedFrom }),
+      ...(query.decidedBefore === undefined ? {} : { lt: query.decidedBefore }),
+    };
     const where: Prisma.ExpenseWhereInput = {
       schoolId,
       ...(Object.keys(spentOn).length === 0 ? {} : { spentOn }),
+      ...(Object.keys(decidedAt).length === 0 ? {} : { decidedAt }),
       ...(query.category === undefined ? {} : { category: query.category }),
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.recordedBy === undefined ? {} : { recordedBy: query.recordedBy }),
+      ...(query.selfApproved === undefined ? {} : { selfApproved: query.selfApproved }),
     };
     const direction = query.sort === 'spentOn' ? 'asc' : 'desc';
     const rows = await this.txHost.tx.expense.findMany({

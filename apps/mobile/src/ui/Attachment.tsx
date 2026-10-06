@@ -42,9 +42,12 @@ type Props = {
   online: boolean;
   /** What the image is, for the screen reader ("Diary photo"). */
   label?: string;
+  /** The original's path when it is not `<basePath>/attachment` (a deposit slip's `/image`, slice 27). */
+  originalPath?: string;
 };
 
-export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary photo' }: Props) {
+export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary photo', originalPath }: Props) {
+  const original = originalPath ?? `${basePath}/attachment`;
   const [step, setStep] = useState<'none' | 'thumbnail' | 'full'>('none');
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,7 +71,7 @@ export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary p
           disabled={!online}
           onPress={() => {
             setBusy(true);
-            void openPdf(`${basePath}/attachment`)
+            void openPdf(original)
               .catch((error: unknown) => {
                 log('info', 'attachment.pdf_failed', errorFields(error));
                 setFailed(true);
@@ -82,8 +85,8 @@ export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary p
     );
   }
 
-  const source = (kind: 'thumbnail' | 'attachment') => ({
-    uri: `${apiUrl()}${basePath}/${kind}`,
+  const source = (path: string) => ({
+    uri: `${apiUrl()}${path}`,
     headers: authHeaders(),
   });
 
@@ -105,7 +108,7 @@ export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary p
       ) : (
         <>
           <Image
-            source={source(step === 'full' ? 'attachment' : 'thumbnail')}
+            source={source(step === 'full' ? original : `${basePath}/thumbnail`)}
             cachePolicy="disk"
             contentFit="contain"
             style={step === 'full' ? styles.full : styles.thumbnail}

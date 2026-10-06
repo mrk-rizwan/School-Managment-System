@@ -8,6 +8,7 @@ import { colors, fontSize, TAP_TARGET } from '../../ui/theme';
 /** The tab routes that exist in this folder: the screen registry plus "more" (a test holds it so). */
 const ROUTES = [
   'home',
+  'approvals',
   'classes',
   'today',
   'announce',

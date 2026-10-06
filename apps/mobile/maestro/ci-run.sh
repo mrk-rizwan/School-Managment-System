@@ -191,3 +191,33 @@ printf '{"advanceForStudentId":"%s"}' "$STUDENT_ID" \
   | curl -fs -H "Authorization: Bearer $principal_token" -H 'X-App-Version: 0.1.0' \
     -H 'Content-Type: application/json' -X POST "$api/payment-claims/$claim_id/verify" -d @- >/dev/null
 flow parent-receipt parent-receipt.yaml "${ids[@]}"
+
+# --- Phase 3 slice 27: the principal decides from the Approvals tab -----------------------------
+# Seeded over curl: a second deposit slip from the guardian (the slip uploaded, then the claim),
+# and an open cash handover by the teacher, whom the principal grants payment.record for the run
+# (the principal may not confirm a handover they collected or opened, R194).
+key() { node -e "console.log(require('node:crypto').randomUUID())"; }
+post_as() { # token, path, idempotency key ('' for none); the JSON body on stdin
+  local headers=(-H "Authorization: Bearer $1" -H 'X-App-Version: 0.1.0' -H 'Content-Type: application/json')
+  [ -n "$3" ] && headers+=(-H "Idempotency-Key: $3")
+  curl -fs "${headers[@]}" -X POST "$api$2" -d @-
+}
+teacher_id="$(echo "$teacher_me" | json 'b.id')"
+printf '{"capability":"payment.record","effect":"grant","reason":"Maestro cash handover"}' \
+  | post_as "$principal_token" "/users/$teacher_id/grants" '' >/dev/null
+year_id="$(get "$teacher_token" '/academic-years?status=active' | json 'b.data[0].id')"
+printf '{"academicYearId":"%s","payerName":"Maestro payer","studentIds":["%s"],"amount":500,"method":"cash","receivedOn":"%s","advanceForStudentId":"%s"}' \
+  "$year_id" "$STUDENT_ID" "$today" "$STUDENT_ID" \
+  | post_as "$teacher_token" /payments "$(key)" >/dev/null
+HANDOVER_ID="$(printf '{}' | post_as "$teacher_token" /me/staff/cash-handovers '' | json 'b.id')"
+upload_id="$(curl -fs -H "Authorization: Bearer $guardian_token" -H 'X-App-Version: 0.1.0' \
+  -F "file=@$root/apps/mobile/maestro/assets/deposit-slip.png;type=image/png" "$api/me/uploads" | json 'b.id')"
+CLAIM_ID="$(printf '{"method":"jazzcash","claimedAmount":700,"paidOn":"%s","reference":"MAESTRO-27","stagedUploadId":"%s"}' \
+  "$today" "$upload_id" | post_as "$guardian_token" "/me/children/$STUDENT_ID/payment-claims" "$(key)" | json 'b.id')"
+flow principal-approvals principal-approvals.yaml "${ids[@]}" -e CLAIM_ID="$CLAIM_ID" -e HANDOVER_ID="$HANDOVER_ID" -e OUT_DIR="$out"
+# The capture of the open slip under FLAG_SECURE (a black frame compresses to a few kilobytes).
+ls -l "$out/principal-approvals-claim-sheet.png" || true
+claim_status="$(get "$principal_token" "/payment-claims/$CLAIM_ID" | json 'b.status')"
+if [ "$claim_status" != "verified" ]; then echo "the claim is '$claim_status', wanted verified"; exit 1; fi
+handover_status="$(get "$principal_token" "/cash-handovers/$HANDOVER_ID" | json 'b.status')"
+if [ "$handover_status" != "confirmed" ]; then echo "the handover is '$handover_status', wanted confirmed"; exit 1; fi

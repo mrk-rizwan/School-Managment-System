@@ -1,0 +1,74 @@
+# Phase 3 slice 27 (R226, R227) — CI only. ci-run.sh seeds a second deposit slip (the guardian over
+# curl) and an open cash handover (the teacher, granted payment.record for the run). The principal
+# opens the Approvals tab, shows the slip on a tap, verifies the claim (keeping it as the child's
+# advance when nothing is owed), then confirms the handover at the expected amount. ci-run.sh then
+# checks over curl that the claim is verified and the handover confirmed.
+# Env: SCHOOL_CODE, PRINCIPAL_CNIC, CLAIM_ID, HANDOVER_ID, OUT_DIR (ci-run.sh's output folder).
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${PRINCIPAL_CNIC}
+# Approvals is the principal's second tab since slice 27 (Inbox moved under More).
+- tapOn:
+    id: 'tabs.approvals'
+- extendedWaitUntil:
+    visible:
+      id: 'approvals.claim.${CLAIM_ID}'
+    timeout: 30000
+- tapOn:
+    id: 'approvals.claim.${CLAIM_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'approvals.claimSheet'
+    timeout: 10000
+# The slip loads only on a tap (its thumbnail is made after commit, so a slow one is not a failure).
+- tapOn:
+    id: 'attachment.show'
+- extendedWaitUntil:
+    visible:
+      id: 'attachment.thumbnail'
+    timeout: 20000
+    optional: true
+# FLAG_SECURE evidence (slice-27 review): the sheet is drawn in the Activity's own window, not a
+# Modal's, so this capture of the open slip must come out black. ci-run.sh prints its size.
+- takeScreenshot: ${OUT_DIR}/principal-approvals-claim-sheet
+- tapOn:
+    id: 'approvals.claim.verify'
+- extendedWaitUntil:
+    visible:
+      text: '(Verified: receipt.*|Nothing is owed by.*)'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'approvals.claim.advance'
+    commands:
+      - tapOn:
+          id: 'approvals.claim.advance'
+- extendedWaitUntil:
+    visible:
+      text: 'Verified: receipt.*'
+    timeout: 30000
+# The list is read again; the handover is next.
+- scrollUntilVisible:
+    element:
+      id: 'approvals.handover.${HANDOVER_ID}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'approvals.handover.${HANDOVER_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'approvals.handover.counted'
+    timeout: 10000
+# The counted amount starts at the expected amount (Rs 500).
+- tapOn:
+    id: 'approvals.handover.confirm'
+- extendedWaitUntil:
+    visible:
+      text: 'Handover confirmed.'
+    timeout: 30000

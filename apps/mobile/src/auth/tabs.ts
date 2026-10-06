@@ -7,6 +7,7 @@ import type { MeDto } from '../api/contracts';
 
 export const TAB_ORDER = [
   'home',
+  'approvals',
   'classes',
   'today',
   'announce',
@@ -29,6 +30,14 @@ export function composeTabs(me: TabSource): TabId[] {
 
   const shown: Record<TabId, boolean> = {
     home: true,
+    // Phase 3 slice 27 (R227): whoever holds one of the four decision keys. Second, so a principal
+    // finds it in the bar (the principal's app is an approvals inbox; CLAUDE.md "Design").
+    approvals:
+      staff &&
+      (cap(Capability.PAYMENT_VERIFY) ||
+        cap(Capability.COLLECTION_HANDOVER_CONFIRM) ||
+        cap(Capability.EXPENSE_APPROVE) ||
+        cap(Capability.STAFF_LEAVE_APPROVE)),
     classes:
       staff &&
       assigned &&

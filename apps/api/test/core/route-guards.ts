@@ -80,6 +80,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/holidays/:id/cancel': 'capability: holiday.manage',
   'POST /api/v1/holidays/:id/publish': 'capability: holiday.manage',
   'GET /api/v1/me': 'authenticated-only',
+  // Phase 3 slice 27: the Approvals tab and page; each section is present only for its key (R227).
+  'GET /api/v1/me/approvals': 'staff',
   'GET /api/v1/me/calendar': 'authenticated-only',
   'POST /api/v1/me/change-email': 'authenticated-only',
   'POST /api/v1/me/change-password': 'authenticated-only',

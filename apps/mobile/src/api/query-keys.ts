@@ -54,6 +54,9 @@ export const queryKeys = {
   delivery: (id: string) => ['announcements', 'one', id, 'delivery'] as const,
   classes: (page: number) => ['classes', page] as const,
 
+  // Phase 3 slice 27: the Approvals tab (online only, never cached on the phone).
+  approvals: ['me', 'approvals'] as const,
+
   // Everyone (16b): the inbox
   inbox: (category: string, page: number) => ['me', 'inbox', category, page] as const,
   inboxItem: (id: string) => ['me', 'inbox', 'item', id] as const,

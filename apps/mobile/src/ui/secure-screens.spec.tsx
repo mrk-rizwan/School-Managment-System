@@ -1,8 +1,9 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { allowScreenCaptureAsync, preventScreenCaptureAsync } from 'expo-screen-capture';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { Text } from 'react-native';
+import { BackHandler, Modal, ScrollView, Text } from 'react-native';
+import { ModalSheet } from './ModalSheet';
 import { Screen } from './Screen';
 
 // slice-16 §13.2: FLAG_SECURE on every screen that shows a child's name, and on no other. The
@@ -40,6 +41,8 @@ const SECURE: Record<string, boolean> = {
   'announce/index.tsx': false,
   'announce/new.tsx': false,
   'announce/[id].tsx': false,
+  // Phase 3 slice 27: the Approvals tab names children (deposit slips) and shows money and slips
+  'approvals/index.tsx': true,
   // Not secure: the user's own data, no child's name
   'home/index.tsx': false,
   'home/my-attendance.tsx': false,
@@ -103,6 +106,34 @@ describe('<Screen secure>', () => {
     view.unmount();
     expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
     expect(allowScreenCaptureAsync).not.toHaveBeenCalled();
+  });
+
+  // Slice-27 review: a React Native <Modal> is its own Android window, outside the Activity's
+  // FLAG_SECURE, so a slip or receipt in it could be captured. The sheet is drawn in the screen's
+  // own tree, over the whole screen (not inside the scrolling content), and Back closes it.
+  test('a sheet on a secure screen is drawn inside the screen tree, never in a Modal; Back closes it', () => {
+    const back = jest.spyOn(BackHandler, 'addEventListener');
+    const onClose = jest.fn();
+    render(
+      <Screen secure testID="slip.screen">
+        <Text>Ali</Text>
+        <ModalSheet visible title="Deposit slip" onClose={onClose} testID="slip.sheet">
+          <Text>Rs 3,500</Text>
+        </ModalSheet>
+      </Screen>,
+    );
+    expect(screen.UNSAFE_queryAllByType(Modal)).toHaveLength(0);
+    const sheet = within(screen.getByTestId('slip.screen')).getByTestId('slip.sheet');
+    expect(within(sheet).getByText('Rs 3,500')).toBeOnTheScreen();
+    // The first ScrollView is the screen's own content; the sheet is not inside it.
+    expect(within(screen.UNSAFE_getAllByType(ScrollView)[0]!).queryByTestId('slip.sheet')).toBeNull();
+    expect(preventScreenCaptureAsync).toHaveBeenCalled();
+
+    const handler = back.mock.calls.at(-1)![1];
+    expect(handler({ type: 'hardwareBackPress', timeStamp: 0 })).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.press(screen.getByTestId('slip.sheet.close'));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
 

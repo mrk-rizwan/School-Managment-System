@@ -204,6 +204,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   // Phase 3 slice 24: any active staff member reads the leave types.
   ['GET', '/api/v1/leave-types', 'staff'],
   ['GET', '/api/v1/me', 'authenticated-only'],
+  // Phase 3 slice 27: any staff member asks; the answer holds only the sections of the keys held.
+  ['GET', '/api/v1/me/approvals', 'staff'],
   ['GET', '/api/v1/me/calendar', 'authenticated-only'],
   ['POST', '/api/v1/me/change-email', 'authenticated-only'],
   ['POST', '/api/v1/me/change-password', 'authenticated-only'],

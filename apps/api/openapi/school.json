@@ -883,6 +883,107 @@
         ],
         "type": "object"
       },
+      "ApprovalClaimsDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ApprovalExpensesDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExpenseDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ApprovalHandoversDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HandoverDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ApprovalLeaveDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LeaveRequestDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ApprovalsDto": {
+        "properties": {
+          "claims": {
+            "$ref": "#/components/schemas/ApprovalClaimsDto"
+          },
+          "expenses": {
+            "$ref": "#/components/schemas/ApprovalExpensesDto"
+          },
+          "handovers": {
+            "$ref": "#/components/schemas/ApprovalHandoversDto"
+          },
+          "leave": {
+            "$ref": "#/components/schemas/ApprovalLeaveDto"
+          }
+        },
+        "type": "object"
+      },
       "ApproveConcessionDto": {
         "properties": {
           "applyToOpenCharges": {
@@ -23843,6 +23944,28 @@
             }
           },
           {
+            "description": "Decided on or after this day (school time)",
+            "in": "query",
+            "name": "decidedFrom",
+            "required": false,
+            "schema": {
+              "example": "2026-10-06",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Decided on or before this day (school time)",
+            "in": "query",
+            "name": "decidedTo",
+            "required": false,
+            "schema": {
+              "example": "2026-10-06",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "category",
             "required": false,
@@ -23865,6 +23988,15 @@
             "schema": {
               "pattern": "^[1-9][0-9]{0,18}$",
               "type": "string"
+            }
+          },
+          {
+            "description": "True lists only self-approved expenses, false only the others",
+            "in": "query",
+            "name": "selfApproved",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           },
           {
@@ -29593,6 +29725,67 @@
         },
         "tags": [
           "me"
+        ]
+      }
+    },
+    "/api/v1/me/approvals": {
+      "get": {
+        "operationId": "ApprovalsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "approvals"
         ]
       }
     },

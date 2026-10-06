@@ -26,6 +26,7 @@ import {
   MegaphoneIcon,
   MessageSquareIcon,
   InboxIcon,
+  ListChecksIcon,
   SlidersHorizontalIcon,
   UsersRoundIcon,
   WalletCardsIcon,
@@ -48,6 +49,14 @@ export type NavItem = {
 };
 
 export const schoolNav: NavItem[] = [
+  // Phase 3 slice 27: the decision queues and the principal's tiles, for whoever holds one of the
+  // four decision keys (R227).
+  {
+    href: '/approvals',
+    label: 'Approvals',
+    icon: ListChecksIcon,
+    capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve'],
+  },
   { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
   { href: '/staff', label: 'Staff', icon: IdCardIcon, capability: 'staff.view' },
   { href: '/guardians', label: 'Guardians', icon: UsersRoundIcon, capability: 'guardian.manage' },

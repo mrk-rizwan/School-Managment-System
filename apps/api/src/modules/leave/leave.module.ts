@@ -45,5 +45,7 @@ import { LeaveTypesService } from './leave-types.service';
     IdempotencyKeyRepository,
     AuditLogRepository,
   ],
+  // The Approvals read (slice 27) lists the pending queue through the service.
+  exports: [LeaveRequestsService],
 })
 export class LeaveModule {}

@@ -6,7 +6,7 @@ import { ApiException, concurrentUpdate, fieldRefused, notFound } from '../../co
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { readLocked } from '../../common/locking';
 import { toPage, type Page } from '../../common/pagination';
-import { SchoolClock } from '../../common/school-clock';
+import { addDays, dayStart, SchoolClock } from '../../common/school-clock';
 import { SchoolContext, type Actor } from '../../common/school-context';
 import { NotificationService } from '../../messaging/notification.service';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
@@ -148,12 +148,23 @@ export class ExpensesService {
   // ---------------------------------------------------------------------------------- reads
 
   async list(query: ListExpensesQueryDto): Promise<Page<ExpenseDto>> {
-    const { rows, total } = await this.expenses.list(this.context.schoolId, {
+    const schoolId = this.context.schoolId;
+    // decided_at is an instant: a decided day is bounded by the school's own midnights.
+    const timezone =
+      query.decidedFrom === undefined && query.decidedTo === undefined ? null : await this.clock.timezone(schoolId);
+    const { rows, total } = await this.expenses.list(schoolId, {
       ...(query.spentFrom === undefined ? {} : { spentFrom: fromDateString(query.spentFrom) }),
       ...(query.spentTo === undefined ? {} : { spentTo: fromDateString(query.spentTo) }),
+      ...(query.decidedFrom === undefined || timezone === null
+        ? {}
+        : { decidedFrom: dayStart(timezone, fromDateString(query.decidedFrom)) }),
+      ...(query.decidedTo === undefined || timezone === null
+        ? {}
+        : { decidedBefore: dayStart(timezone, addDays(fromDateString(query.decidedTo), 1)) }),
       ...(query.category === undefined ? {} : { category: query.category }),
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.recordedByUserId === undefined ? {} : { recordedBy: BigInt(query.recordedByUserId) }),
+      ...(query.selfApproved === undefined ? {} : { selfApproved: query.selfApproved }),
       sort: query.sort ?? '-spentOn',
       skip: (query.page - 1) * query.limit,
       take: query.limit,

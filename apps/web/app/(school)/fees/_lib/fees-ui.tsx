@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, MAX_RUPEES, YEAR_MONTH_PATTERN } from '@asms/shared';
+import { addDaysTo, Capability, MAX_RUPEES, todayInSchool, YEAR_MONTH_PATTERN } from '@asms/shared';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { z } from 'zod';
@@ -82,6 +82,9 @@ export const rupeesSchema = z
 export const yearMonthSchema = z.string().refine((v) => YEAR_MONTH_PATTERN.test(v), 'Pick a month.');
 
 /** Digits only, as an amount is typed: no decimals, separators or signs. */
+/** The first of the last 7 calendar days, today included (school time): "voided in the last 7 days" (charges page, Approvals). */
+export const weekAgo = () => addDaysTo(todayInSchool(), -6);
+
 export const digitsOnly = (raw: string) => raw.replace(/\D/g, '').slice(0, 8);
 
 /** The principal role (R233): a grant of a key never stands in for it; the API decides. */

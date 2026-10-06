@@ -3,6 +3,7 @@ import { useEffect, useId, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnline } from '../net/connectivity';
+import { SheetHost } from './ModalSheet';
 import { colors, fontSize, space } from './theme';
 
 type Props = {
@@ -56,39 +57,41 @@ export function Screen({
   const body = <View style={[styles.content, !scroll && styles.fill]}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']} testID={testID}>
-      {title !== undefined || accessory !== undefined ? (
-        <View style={styles.header}>
-          {title !== undefined ? (
-            <Text accessibilityRole="header" style={styles.title}>
-              {title}
-            </Text>
-          ) : (
-            <View />
-          )}
-          {accessory}
-        </View>
-      ) : null}
-      {banner}
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={refreshing}
-                enabled={online}
-                onRefresh={onRefresh}
-                colors={[colors.primary]}
-              />
-            ) : undefined
-          }
-        >
-          {body}
-        </ScrollView>
-      ) : (
-        body
-      )}
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      <SheetHost>
+        {title !== undefined || accessory !== undefined ? (
+          <View style={styles.header}>
+            {title !== undefined ? (
+              <Text accessibilityRole="header" style={styles.title}>
+                {title}
+              </Text>
+            ) : (
+              <View />
+            )}
+            {accessory}
+          </View>
+        ) : null}
+        {banner}
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  enabled={online}
+                  onRefresh={onRefresh}
+                  colors={[colors.primary]}
+                />
+              ) : undefined
+            }
+          >
+            {body}
+          </ScrollView>
+        ) : (
+          body
+        )}
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </SheetHost>
     </SafeAreaView>
   );
 }

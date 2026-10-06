@@ -11,7 +11,7 @@ import {
   type ExpenseStatus,
   type RecordableExpenseCategory,
 } from '@asms/shared';
-import { IfPresent, IfPresentNotNull, IsCalendarDate, NameField, Reason, Rupees } from '../../common/fields';
+import { IfPresent, IfPresentNotNull, IsCalendarDate, NameField, QueryBoolean, Reason, Rupees } from '../../common/fields';
 import { IsIdString } from '../../common/ids';
 import { PageQueryDto } from '../../common/pagination';
 
@@ -115,6 +115,17 @@ export class ListExpensesQueryDto extends PageQueryDto {
   @IsCalendarDate()
   spentTo?: string;
 
+  /** Decided (approved or rejected; a self-approved one when recorded) on or after this day, school time (slice 27). */
+  @ApiPropertyOptional({ ...DATE, description: 'Decided on or after this day (school time)' })
+  @IsOptional()
+  @IsCalendarDate()
+  decidedFrom?: string;
+
+  @ApiPropertyOptional({ ...DATE, description: 'Decided on or before this day (school time)' })
+  @IsOptional()
+  @IsCalendarDate()
+  decidedTo?: string;
+
   @ApiPropertyOptional(CATEGORY)
   @IsOptional()
   @IsIn(EXPENSE_CATEGORIES)
@@ -129,6 +140,10 @@ export class ListExpensesQueryDto extends PageQueryDto {
   @IsOptional()
   @IsIdString()
   recordedByUserId?: string;
+
+  /** The principal's own above-threshold expenses (R206): the dashboard's "self-approved this month" tile (slice 27). */
+  @QueryBoolean({ description: "True lists only self-approved expenses, false only the others" })
+  selfApproved?: boolean;
 
   @ApiPropertyOptional({ enum: EXPENSE_SORTS, enumName: 'ExpenseSort', default: '-spentOn' })
   @IsOptional()

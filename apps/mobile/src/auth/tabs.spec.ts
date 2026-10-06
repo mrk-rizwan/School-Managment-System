@@ -29,17 +29,24 @@ const office = [...SYSTEM_ROLE_DEFAULTS.office_staff];
 const teacher = [...SYSTEM_ROLE_DEFAULTS.teacher];
 
 const fixtures: Record<string, { me: TabSource; tabs: string[]; bar: string[]; more: string[] }> = {
+  // Slice 27: Approvals second, so Inbox moves under More with Calendar and Account.
   principal: {
     me: { capacities: ['staff'], capabilities: principal, assignments: [] },
-    tabs: ['home', 'today', 'announce', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'today', 'announce', 'inbox', 'more'],
-    more: ['calendar', 'account'],
+    tabs: ['home', 'approvals', 'today', 'announce', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'approvals', 'today', 'announce', 'more'],
+    more: ['inbox', 'calendar', 'account'],
   },
   'office clerk (role default)': {
     me: { capacities: ['staff'], capabilities: office, assignments: [] },
     tabs: ['home', 'today', 'inbox', 'calendar', 'account'],
     bar: ['home', 'today', 'inbox', 'calendar', 'account'],
     more: [],
+  },
+  'office clerk granted payment.verify (slice 27)': {
+    me: { capacities: ['staff'], capabilities: [...office, C.PAYMENT_VERIFY], assignments: [] },
+    tabs: ['home', 'approvals', 'today', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'approvals', 'today', 'inbox', 'more'],
+    more: ['calendar', 'account'],
   },
   'class teacher': {
     me: {
@@ -97,9 +104,9 @@ const fixtures: Record<string, { me: TabSource; tabs: string[]; bar: string[]; m
   },
   'principal-parent': {
     me: { capacities: ['staff', 'guardian'], capabilities: principal, assignments: [] },
-    tabs: ['home', 'today', 'announce', 'children', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'today', 'announce', 'children', 'more'],
-    more: ['inbox', 'calendar', 'account'],
+    tabs: ['home', 'approvals', 'today', 'announce', 'children', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'approvals', 'today', 'announce', 'more'],
+    more: ['children', 'inbox', 'calendar', 'account'],
   },
   'no capacity': {
     me: { capacities: [], capabilities: [], assignments: [] },
@@ -162,12 +169,20 @@ describe('the screen registry (slice 16b)', () => {
     expect([...SCREEN_REGISTRY].sort()).toEqual([...TAB_ORDER].sort());
   });
 
-  test('a principal sees Home, Today, Announce, Inbox and More (Calendar, Account)', () => {
+  test('a principal sees Home, Approvals, Today, Announce and More (Inbox, Calendar, Account)', () => {
     const tabs = composeTabs(fixtures.principal!.me).filter(hasScreen);
-    expect(tabs).toEqual(['home', 'today', 'announce', 'inbox', 'calendar', 'account']);
+    expect(tabs).toEqual(['home', 'approvals', 'today', 'announce', 'inbox', 'calendar', 'account']);
     expect(layoutTabs(tabs)).toEqual({
-      bar: ['home', 'today', 'announce', 'inbox', 'more'],
-      more: ['calendar', 'account'],
+      bar: ['home', 'approvals', 'today', 'announce', 'more'],
+      more: ['inbox', 'calendar', 'account'],
     });
+  });
+
+  test('Approvals needs one of the four decision keys and a staff capacity (R227)', () => {
+    const staff = { capacities: ['staff'] as TabSource['capacities'], assignments: [] };
+    expect(composeTabs({ ...staff, capabilities: office })).not.toContain('approvals');
+    for (const key of [C.PAYMENT_VERIFY, C.COLLECTION_HANDOVER_CONFIRM, C.EXPENSE_APPROVE, C.STAFF_LEAVE_APPROVE]) {
+      expect(composeTabs({ ...staff, capabilities: [key] })).toContain('approvals');
+    }
   });
 });

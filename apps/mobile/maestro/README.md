@@ -16,11 +16,12 @@ emulator.
 | `flows/principal-announce.yaml`     | API and worker                  | a short notice to 5 A shows "Reaches … · SMS …" before sending, appears on the list, and is in the guardian's inbox |
 | `flows/parent-deposit-slip.yaml`    | API, worker, object storage     | (Phase 3 slice 21) a parent saves a deposit slip in airplane mode (the image added to the gallery with `addMedia`, `assets/deposit-slip.png`); claim and slip reach the school when the connection returns; `ci-run.sh` then verifies the claim over `curl` as the principal (adding a payment account first if the seed has none) |
 | `flows/parent-receipt.yaml`         | API and worker                  | (slice 21) the verified slip and the receipt it issued appear on the child's Fees screen, rendered natively with Share |
+| `flows/principal-approvals.yaml`    | API, worker, object storage     | (slice 27) `ci-run.sh` seeds a deposit slip (the guardian, over `curl`) and an open cash handover (the teacher, granted `payment.record`); the principal opens the Approvals tab, shows the slip on a tap and captures it (`takeScreenshot` to `out/`: black under FLAG_SECURE), verifies the claim (as the child's advance when nothing is owed) and confirms the handover; `ci-run.sh` checks both over `curl` |
 
 They read `SCHOOL_CODE`, `PRINCIPAL_CNIC`, `TEACHER_CNIC` and `GUARDIAN_CNIC` (the seeded people;
 each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the
 ids `ci-run.sh` reads over the API as those people: `SECTION_A`, `SECTION_B`, `ENROLMENT_1`,
-`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
+`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, and the seeded `CLAIM_ID` and `HANDOVER_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
 example `signIn.schoolCode`, `classes.section.<id>.register`, `register.chip.<enrolmentId>`,
 `children.card.<studentId>.today`.
 

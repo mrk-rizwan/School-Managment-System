@@ -53,7 +53,8 @@ import { PaymentsService } from './payments.service';
  * side's insert paths and credits move advances through it, R189, A6) and PaymentsService (the
  * statement's payments, R205). Slice 21's deposit claims, the guardian's dues and receipts and the
  * guardian's upload (UploadsService, with DocumentsModule's re-encode limit and AttachmentFiles);
- * it exports ClaimsService for the claim-image-sweep job. MessagingModule lends
+ * it exports ClaimsService for the claim-image-sweep job, and ClaimsService and CashHandoversService
+ * for the Approvals read (slice 27). MessagingModule lends
  * NotificationService; PermissionsService and SchoolClock come from the global modules.
  */
 @Module({
@@ -105,6 +106,6 @@ import { PaymentsService } from './payments.service';
     SchoolSettingsRepository,
     UserRepository,
   ],
-  exports: [Advances, PaymentsService, ClaimsService],
+  exports: [Advances, PaymentsService, ClaimsService, CashHandoversService],
 })
 export class PaymentsModule {}

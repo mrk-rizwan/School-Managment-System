@@ -4,6 +4,7 @@ import { composeTabs, layoutTabs, type TabId, type TabLayout } from './tabs';
 
 export const TAB_TITLES: Record<TabId | 'more', string> = {
   home: 'Home',
+  approvals: 'Approvals',
   classes: 'Classes',
   today: 'Today',
   announce: 'Announce',

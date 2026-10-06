@@ -6,6 +6,7 @@ import type { TabId } from './tabs';
 // TAB_ORDER has its screen since 16b.
 export const SCREEN_REGISTRY: ReadonlySet<TabId> = new Set<TabId>([
   'home',
+  'approvals',
   'classes',
   'today',
   'announce',

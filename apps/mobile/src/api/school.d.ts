@@ -1716,6 +1716,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApprovalsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/calendar": {
         parameters: {
             query?: never;
@@ -3975,6 +3991,32 @@ export interface components {
         };
         ApiErrorDto: {
             error: components["schemas"]["ApiErrorBodyDto"];
+        };
+        ApprovalClaimsDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["ClaimDto"][];
+        };
+        ApprovalExpensesDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["ExpenseDto"][];
+        };
+        ApprovalHandoversDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["HandoverDto"][];
+        };
+        ApprovalLeaveDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["LeaveRequestDto"][];
+        };
+        ApprovalsDto: {
+            claims?: components["schemas"]["ApprovalClaimsDto"];
+            expenses?: components["schemas"]["ApprovalExpensesDto"];
+            handovers?: components["schemas"]["ApprovalHandoversDto"];
+            leave?: components["schemas"]["ApprovalLeaveDto"];
         };
         ApproveConcessionDto: {
             /**
@@ -13512,9 +13554,15 @@ export interface operations {
                 limit?: number;
                 spentFrom?: string;
                 spentTo?: string;
+                /** @description Decided on or after this day (school time) */
+                decidedFrom?: string;
+                /** @description Decided on or before this day (school time) */
+                decidedTo?: string;
                 category?: components["schemas"]["ExpenseCategory"];
                 status?: components["schemas"]["ExpenseStatus"];
                 recordedByUserId?: string;
+                /** @description True lists only self-approved expenses, false only the others */
+                selfApproved?: boolean;
                 sort?: components["schemas"]["ExpenseSort"];
             };
             header?: never;
@@ -17387,6 +17435,57 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ApprovalsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
