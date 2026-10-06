@@ -204,6 +204,9 @@ export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
 export const SALARY_STRUCTURE_STATUSES = ['active', 'superseded'] as const;
 export type SalaryStructureStatus = (typeof SALARY_STRUCTURE_STATUSES)[number];
 
+export const SALARY_COMPONENT_KINDS = ['allowance', 'deduction'] as const;
+export type SalaryComponentKind = (typeof SALARY_COMPONENT_KINDS)[number];
+
 export const PAYROLL_RUN_STATUSES = ['draft', 'finalised'] as const;
 export type PayrollRunStatus = (typeof PAYROLL_RUN_STATUSES)[number];
 

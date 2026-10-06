@@ -159,6 +159,19 @@ model School {
   expenses                      Expense[]                      @ignore
   leaveTypes                    LeaveType[]                    @ignore
   leaveRequests                 LeaveRequest[]                 @ignore
+  payments                      Payment[]                      @ignore
+  paymentAllocations            PaymentAllocation[]            @ignore
+  receipts                      Receipt[]                      @ignore
+  receiptLines                  ReceiptLine[]                  @ignore
+  paymentReversals              PaymentReversal[]              @ignore
+  cashHandovers                 CashHandover[]                 @ignore
+  salaryStructures              SalaryStructure[]              @ignore
+  salaryStructureComponents     SalaryStructureComponent[]     @ignore
+  salaryAdvances                SalaryAdvance[]                @ignore
+  payrollRuns                   PayrollRun[]                   @ignore
+  payslips                      Payslip[]                      @ignore
+  payslipLines                  PayslipLine[]                  @ignore
+  salaryAdvanceRecoveries       SalaryAdvanceRecovery[]        @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -372,6 +385,7 @@ model AcademicYear {
   classes         Class[]
   chargeRuns      ChargeRun[]
   chargeCampaigns ChargeCampaign[]
+  payments        Payment[]
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -517,6 +531,7 @@ model Guardian {
   messages               Message[]
   announcementAudiences  AnnouncementAudience[]
   announcementRecipients AnnouncementRecipient[]
+  paymentsPaid           Payment[]
 
   @@unique([schoolId, id], map: "guardians_school_id_id_key")
   @@index([schoolId, phone], map: "guardians_school_id_phone_idx")
@@ -598,6 +613,9 @@ model Staff {
   announcementAudiences  AnnouncementAudience[]
   announcementRecipients AnnouncementRecipient[]
   leaveRequests          LeaveRequest[]
+  salaryStructures       SalaryStructure[]
+  salaryAdvances         SalaryAdvance[]
+  payslips               Payslip[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@map("staff")
@@ -706,62 +724,78 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school                   School                  @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff                    Staff?                  @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  guardian                 Guardian?               @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  student                  Student?                @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  sessions                 Session[]
-  tokens                   UserToken[]
-  roles                    UserRole[]              @relation("UserRoleHolder")
-  rolesAssigned            UserRole[]              @relation("UserRoleAssignedBy")
-  rolesEnded               UserRole[]              @relation("UserRoleEndedBy")
-  auditLogs                AuditLog[]
-  studentStatusChanges     StudentStatusChange[]
-  studentDocuments         StudentDocument[]
-  stagedUploads            StagedUpload[]
-  idempotencyKeys          IdempotencyKey[]
-  teacherAssignmentsVoided TeacherAssignment[]
-  capabilityGrants         UserCapabilityGrant[]   @relation("GrantHolder")
-  capabilityGrantsMade     UserCapabilityGrant[]   @relation("GrantGrantedBy")
-  capabilityGrantsEnded    UserCapabilityGrant[]   @relation("GrantRevokedBy")
-  customRoleKeysAdded      CustomRoleCapability[]  @relation("CustomRoleCapabilityAddedBy")
-  customRoleKeysRemoved    CustomRoleCapability[]  @relation("CustomRoleCapabilityRemovedBy")
-  devices                  Device[]
-  whatsappNumbersPaired    WhatsAppNumber[]        @relation("WhatsAppNumberPairedBy")
-  whatsappNumbersDisabled  WhatsAppNumber[]        @relation("WhatsAppNumberDisabledBy")
-  holidaysPublished        Holiday[]               @relation("HolidayPublishedBy")
-  holidaysCancelled        Holiday[]               @relation("HolidayCancelledBy")
-  registersSubmitted       AttendanceRegister[]    @relation("RegisterSubmittedBy")
-  registersAmended         AttendanceRegister[]    @relation("RegisterLastAmendedBy")
-  attendanceMarkChanges    AttendanceMarkChange[]
-  attendanceArrivals       AttendanceArrival[]
-  staffAttendanceMarked    StaffAttendance[]
-  staffAttendanceChanges   StaffAttendanceChange[]
-  diaryEntryChanges        DiaryEntryChange[]
-  announcementsCreated     Announcement[]          @relation("AnnouncementCreatedBy")
-  announcementsCancelled   Announcement[]          @relation("AnnouncementCancelledBy")
-  feeHeadsCreated          FeeHead[]               @relation("FeeHeadCreatedBy")
-  feeHeadsArchived         FeeHead[]               @relation("FeeHeadArchivedBy")
-  feeStructuresCreated     FeeStructure[]
-  paymentAccountsCreated   SchoolPaymentAccount[]  @relation("PaymentAccountCreatedBy")
-  paymentAccountsDisabled  SchoolPaymentAccount[]  @relation("PaymentAccountDisabledBy")
-  concessionsRequested     Concession[]            @relation("ConcessionRequestedBy")
-  concessionsDecided       Concession[]            @relation("ConcessionDecidedBy")
-  concessionsEnded         Concession[]            @relation("ConcessionEndedBy")
-  chargeRunsTriggered      ChargeRun[]
-  chargeCampaignsCreated   ChargeCampaign[]        @relation("ChargeCampaignCreatedBy")
-  chargeCampaignsCancelled ChargeCampaign[]        @relation("ChargeCampaignCancelledBy")
-  chargesCreated           Charge[]                @relation("ChargeCreatedBy")
-  chargesVoided            Charge[]                @relation("ChargeVoidedBy")
-  chargesWaived            Charge[]                @relation("ChargeWaivedBy")
-  expensesRecorded         Expense[]               @relation("ExpenseRecordedBy")
-  expensesDecided          Expense[]               @relation("ExpenseDecidedBy")
-  expensesVoided           Expense[]               @relation("ExpenseVoidedBy")
-  leaveTypesCreated        LeaveType[]             @relation("LeaveTypeCreatedBy")
-  leaveTypesArchived       LeaveType[]             @relation("LeaveTypeArchivedBy")
-  leaveRequested           LeaveRequest[]          @relation("LeaveRequestRequestedBy")
-  leaveDecided             LeaveRequest[]          @relation("LeaveRequestDecidedBy")
-  leaveCancelled           LeaveRequest[]          @relation("LeaveRequestCancelledBy")
+  school                    School                  @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff                     Staff?                  @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian                  Guardian?               @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student                   Student?                @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sessions                  Session[]
+  tokens                    UserToken[]
+  roles                     UserRole[]              @relation("UserRoleHolder")
+  rolesAssigned             UserRole[]              @relation("UserRoleAssignedBy")
+  rolesEnded                UserRole[]              @relation("UserRoleEndedBy")
+  auditLogs                 AuditLog[]
+  studentStatusChanges      StudentStatusChange[]
+  studentDocuments          StudentDocument[]
+  stagedUploads             StagedUpload[]
+  idempotencyKeys           IdempotencyKey[]
+  teacherAssignmentsVoided  TeacherAssignment[]
+  capabilityGrants          UserCapabilityGrant[]   @relation("GrantHolder")
+  capabilityGrantsMade      UserCapabilityGrant[]   @relation("GrantGrantedBy")
+  capabilityGrantsEnded     UserCapabilityGrant[]   @relation("GrantRevokedBy")
+  customRoleKeysAdded       CustomRoleCapability[]  @relation("CustomRoleCapabilityAddedBy")
+  customRoleKeysRemoved     CustomRoleCapability[]  @relation("CustomRoleCapabilityRemovedBy")
+  devices                   Device[]
+  whatsappNumbersPaired     WhatsAppNumber[]        @relation("WhatsAppNumberPairedBy")
+  whatsappNumbersDisabled   WhatsAppNumber[]        @relation("WhatsAppNumberDisabledBy")
+  holidaysPublished         Holiday[]               @relation("HolidayPublishedBy")
+  holidaysCancelled         Holiday[]               @relation("HolidayCancelledBy")
+  registersSubmitted        AttendanceRegister[]    @relation("RegisterSubmittedBy")
+  registersAmended          AttendanceRegister[]    @relation("RegisterLastAmendedBy")
+  attendanceMarkChanges     AttendanceMarkChange[]
+  attendanceArrivals        AttendanceArrival[]
+  staffAttendanceMarked     StaffAttendance[]
+  staffAttendanceChanges    StaffAttendanceChange[]
+  diaryEntryChanges         DiaryEntryChange[]
+  announcementsCreated      Announcement[]          @relation("AnnouncementCreatedBy")
+  announcementsCancelled    Announcement[]          @relation("AnnouncementCancelledBy")
+  feeHeadsCreated           FeeHead[]               @relation("FeeHeadCreatedBy")
+  feeHeadsArchived          FeeHead[]               @relation("FeeHeadArchivedBy")
+  feeStructuresCreated      FeeStructure[]
+  paymentAccountsCreated    SchoolPaymentAccount[]  @relation("PaymentAccountCreatedBy")
+  paymentAccountsDisabled   SchoolPaymentAccount[]  @relation("PaymentAccountDisabledBy")
+  concessionsRequested      Concession[]            @relation("ConcessionRequestedBy")
+  concessionsDecided        Concession[]            @relation("ConcessionDecidedBy")
+  concessionsEnded          Concession[]            @relation("ConcessionEndedBy")
+  chargeRunsTriggered       ChargeRun[]
+  chargeCampaignsCreated    ChargeCampaign[]        @relation("ChargeCampaignCreatedBy")
+  chargeCampaignsCancelled  ChargeCampaign[]        @relation("ChargeCampaignCancelledBy")
+  chargesCreated            Charge[]                @relation("ChargeCreatedBy")
+  chargesVoided             Charge[]                @relation("ChargeVoidedBy")
+  chargesWaived             Charge[]                @relation("ChargeWaivedBy")
+  expensesRecorded          Expense[]               @relation("ExpenseRecordedBy")
+  expensesDecided           Expense[]               @relation("ExpenseDecidedBy")
+  expensesVoided            Expense[]               @relation("ExpenseVoidedBy")
+  leaveTypesCreated         LeaveType[]             @relation("LeaveTypeCreatedBy")
+  leaveTypesArchived        LeaveType[]             @relation("LeaveTypeArchivedBy")
+  leaveRequested            LeaveRequest[]          @relation("LeaveRequestRequestedBy")
+  leaveDecided              LeaveRequest[]          @relation("LeaveRequestDecidedBy")
+  leaveCancelled            LeaveRequest[]          @relation("LeaveRequestCancelledBy")
+  paymentsRecorded          Payment[]               @relation("PaymentRecordedBy")
+  paymentsVerified          Payment[]               @relation("PaymentVerifiedBy")
+  receiptsIssued            Receipt[]
+  paymentReversalsRequested PaymentReversal[]       @relation("PaymentReversalRequestedBy")
+  paymentReversalsApproved  PaymentReversal[]       @relation("PaymentReversalApprovedBy")
+  cashHandoversCollected    CashHandover[]          @relation("CashHandoverCollector")
+  cashHandoversOpened       CashHandover[]          @relation("CashHandoverOpenedBy")
+  cashHandoversConfirmed    CashHandover[]          @relation("CashHandoverConfirmedBy")
+  cashHandoversResolved     CashHandover[]          @relation("CashHandoverResolvedBy")
+  salaryStructuresCreated   SalaryStructure[]
+  salaryAdvancesApproved    SalaryAdvance[]         @relation("SalaryAdvanceApprovedBy")
+  salaryAdvancesWrittenOff  SalaryAdvance[]         @relation("SalaryAdvanceWrittenOffBy")
+  payrollRunsPrepared       PayrollRun[]            @relation("PayrollRunPreparedBy")
+  payrollRunsFinalised      PayrollRun[]            @relation("PayrollRunFinalisedBy")
+  payslipsPaid              Payslip[]
+  payslipLinesCreated       PayslipLine[]
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -986,6 +1020,8 @@ model Student {
   announcementRecipients        AnnouncementRecipient[]
   announcementRecipientStudents AnnouncementRecipientStudent[]
   chargeCampaignAudiences       ChargeCampaignAudience[]
+  advancePayments               Payment[]
+  receiptLines                  ReceiptLine[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -3034,23 +3070,25 @@ model Charge {
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school        School          @relation(fields: [schoolId], references: [id], map: "charges_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  school        School              @relation(fields: [schoolId], references: [id], map: "charges_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   /// The enrolment, the child and the year together (four-column FK).
-  enrolment     Enrolment       @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "charges_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  feeHead       FeeHead         @relation(fields: [schoolId, feeHeadId], references: [schoolId, id], map: "charges_fee_head_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment     Enrolment           @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "charges_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  feeHead       FeeHead             @relation(fields: [schoolId, feeHeadId], references: [schoolId, id], map: "charges_fee_head_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   /// A campaign of the charge's year.
-  campaign      ChargeCampaign? @relation(fields: [schoolId, campaignId, academicYearId], references: [schoolId, id, academicYearId], map: "charges_campaign_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  campaign      ChargeCampaign?     @relation(fields: [schoolId, campaignId, academicYearId], references: [schoolId, id, academicYearId], map: "charges_campaign_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   /// The charge a late fee is for: same child and year.
-  lateFeeFor    Charge?         @relation("ChargeLateFeeFor", fields: [schoolId, lateFeeForChargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "charges_late_fee_for_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  lateFees      Charge[]        @relation("ChargeLateFeeFor")
+  lateFeeFor    Charge?             @relation("ChargeLateFeeFor", fields: [schoolId, lateFeeForChargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "charges_late_fee_for_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  lateFees      Charge[]            @relation("ChargeLateFeeFor")
   /// The charge an adjustment credits: same child and year.
-  adjusts       Charge?         @relation("ChargeAdjusts", fields: [schoolId, adjustsChargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "charges_adjusts_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  adjustments   Charge[]        @relation("ChargeAdjusts")
+  adjusts       Charge?             @relation("ChargeAdjusts", fields: [schoolId, adjustsChargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "charges_adjusts_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  adjustments   Charge[]            @relation("ChargeAdjusts")
   /// A concession of the same child and year.
-  concession    Concession?     @relation(fields: [schoolId, concessionId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "charges_concession_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  createdByUser User?           @relation("ChargeCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "charges_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  voidedByUser  User?           @relation("ChargeVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "charges_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  waivedByUser  User?           @relation("ChargeWaivedBy", fields: [schoolId, waivedBy], references: [schoolId, id], map: "charges_waived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  concession    Concession?         @relation(fields: [schoolId, concessionId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "charges_concession_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User?               @relation("ChargeCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "charges_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?               @relation("ChargeVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "charges_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  waivedByUser  User?               @relation("ChargeWaivedBy", fields: [schoolId, waivedBy], references: [schoolId, id], map: "charges_waived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  allocations   PaymentAllocation[]
+  receiptLines  ReceiptLine[]
 
   @@unique([schoolId, id], map: "charges_school_id_id_key")
   /// The target of charge-linked rows (late fees, adjustments, slice 20's allocations and lines).
@@ -3106,10 +3144,12 @@ model Expense {
   voidReason       String?         @map("void_reason") @db.VarChar(500)
   updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school         School @relation(fields: [schoolId], references: [id], map: "expenses_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  recordedByUser User   @relation("ExpenseRecordedBy", fields: [schoolId, recordedBy], references: [schoolId, id], map: "expenses_recorded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  decidedByUser  User?  @relation("ExpenseDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "expenses_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  voidedByUser   User?  @relation("ExpenseVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "expenses_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school             School          @relation(fields: [schoolId], references: [id], map: "expenses_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  recordedByUser     User            @relation("ExpenseRecordedBy", fields: [schoolId, recordedBy], references: [schoolId, id], map: "expenses_recorded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser      User?           @relation("ExpenseDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "expenses_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser       User?           @relation("ExpenseVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "expenses_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  shortfallHandovers CashHandover[]
+  salaryAdvances     SalaryAdvance[]
 
   @@unique([schoolId, id], map: "expenses_school_id_id_key")
   @@unique([schoolId, expenseNo], map: "expenses_school_id_expense_no_key")
@@ -3206,6 +3246,620 @@ model LeaveRequest {
   @@index([schoolId, decidedBy], map: "leave_requests_school_id_decided_by_idx")
   @@index([schoolId, cancelledBy], map: "leave_requests_school_id_cancelled_by_idx")
   @@map("leave_requests")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 3 wave J schema groundwork (phase-3-financial.md §3.2, §3.4, §3.5, §4): slice 20 payments,
+// allocations, receipts, reversals and cash handovers; slice 25 salary structures, advances,
+// payroll runs and payslips. Money discipline in migration SQL (20261006140000_slice20_payments,
+// 20261006140100_slice25_payroll), every named object in test/guardrails/schema-checks.ts
+// (WAVE_J_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// `verified -> voided` (trigger payments_status_transition); a void is a payment_reversals row.
+enum PaymentStatus {
+  verified
+  voided
+
+  @@map("payment_status")
+}
+
+/// `carried_forward` moves an advance to another year (R251): a reversal plus a new payment.
+enum ReversalKind {
+  void
+  refund
+  refund_reversal
+  carried_forward
+
+  @@map("reversal_kind")
+}
+
+enum HandoverStatus {
+  open
+  confirmed
+
+  @@map("handover_status")
+}
+
+enum ShortfallResolution {
+  recovered
+  written_off
+  explained_by_void
+
+  @@map("shortfall_resolution")
+}
+
+/// Tenant: money received for one academic year (R187-R189), verified when recorded (rule 25:
+/// verified_at). unallocated_amount starts at amount (trigger payments_unallocated_init) and moves
+/// only through the allocation and reversal triggers, bounded by payments_unallocated_amount_check;
+/// a remainder above 0 must name advance_for_student_id by commit (deferred constraint trigger
+/// payments_advance_student_required). A cash payment sits in its recorder's custody until a
+/// handover of that recorder gathers it (handover_id, set once; the FK binds handover and
+/// recorder). Never recorded for the recorder's own child (trigger payments_own_child, R232).
+model Payment {
+  id                    BigInt        @id(map: "payments_pkey") @default(autoincrement())
+  schoolId              BigInt        @map("school_id")
+  academicYearId        BigInt        @map("academic_year_id")
+  /// Exactly one of payer_guardian_id and payer_name (CHECK payments_payer_check).
+  payerGuardianId       BigInt?       @map("payer_guardian_id")
+  /// A walk-in payer; names one student (the service).
+  payerName             String?       @map("payer_name") @db.VarChar(100)
+  method                PaymentMethod
+  /// Whole rupees > 0.
+  amount                Int
+  /// Trigger-maintained; never re-summed. Starts at amount.
+  unallocatedAmount     Int           @default(0) @map("unallocated_amount")
+  receivedOn            DateTime      @map("received_on") @db.Date
+  /// Required for bank_transfer, jazzcash and easypaisa (CHECK payments_reference_required_check).
+  reference             String?       @db.VarChar(60)
+  /// Set iff method = carried_forward: the reversal that moved the money here (R251).
+  carriedFromReversalId BigInt?       @map("carried_from_reversal_id")
+  recordedBy            BigInt        @map("recorded_by")
+  recordedAt            DateTime      @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  /// Rule 25: who verified, and when (the office path: the recorder, at recording).
+  verifiedBy            BigInt        @map("verified_by")
+  verifiedAt            DateTime      @default(now()) @map("verified_at") @db.Timestamptz(3)
+  /// Cash only (CHECK payments_handover_cash_check); set once, while the handover is open.
+  handoverId            BigInt?       @map("handover_id")
+  /// The child an unallocated remainder belongs to (R189); set once.
+  advanceForStudentId   BigInt?       @map("advance_for_student_id")
+  status                PaymentStatus @default(verified)
+  voidedAt              DateTime?     @map("voided_at") @db.Timestamptz(3)
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school              School              @relation(fields: [schoolId], references: [id], map: "payments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear        AcademicYear        @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "payments_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  payerGuardian       Guardian?           @relation(fields: [schoolId, payerGuardianId], references: [schoolId, id], map: "payments_payer_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  carriedFromReversal PaymentReversal?    @relation("PaymentCarriedFrom", fields: [schoolId, carriedFromReversalId], references: [schoolId, id], map: "payments_carried_from_reversal_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  recordedByUser      User                @relation("PaymentRecordedBy", fields: [schoolId, recordedBy], references: [schoolId, id], map: "payments_recorded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  verifiedByUser      User                @relation("PaymentVerifiedBy", fields: [schoolId, verifiedBy], references: [schoolId, id], map: "payments_verified_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// A handover of the payment's own recorder (cash_handovers (school_id, id, collector_user_id)).
+  handover            CashHandover?       @relation(fields: [schoolId, handoverId, recordedBy], references: [schoolId, id, collectorUserId], map: "payments_handover_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  advanceForStudent   Student?            @relation(fields: [schoolId, advanceForStudentId], references: [schoolId, id], map: "payments_advance_for_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  allocations         PaymentAllocation[]
+  receipt             Receipt?
+  reversals           PaymentReversal[]   @relation("ReversalPayment")
+  /// The carry-forward reversals that created this payment's target (at most one, R251).
+  carriedToReversals  PaymentReversal[]   @relation("ReversalCarriedTo")
+
+  @@unique([schoolId, id], map: "payments_school_id_id_key")
+  /// The target of payment-linked rows (allocations, receipts, reversals): same year.
+  @@unique([schoolId, id, academicYearId], map: "payments_school_id_id_academic_year_id_key")
+  @@index([schoolId, receivedOn], map: "payments_school_id_received_on_idx")
+  @@index([schoolId, payerGuardianId, receivedOn], map: "payments_school_id_payer_guardian_id_received_on_idx")
+  @@index([schoolId, recordedBy, receivedOn], map: "payments_school_id_recorded_by_received_on_idx")
+  @@index([schoolId, handoverId, recordedBy], map: "payments_school_id_handover_id_idx")
+  @@index([schoolId, status, receivedOn], map: "payments_school_id_status_received_on_idx")
+  @@index([schoolId, advanceForStudentId], map: "payments_school_id_advance_for_student_id_idx")
+  @@index([schoolId, verifiedBy], map: "payments_school_id_verified_by_idx")
+  @@index([schoolId, academicYearId, receivedOn], map: "payments_school_id_academic_year_id_received_on_idx")
+  @@index([schoolId, carriedFromReversalId], map: "payments_school_id_carried_from_reversal_id_idx")
+  @@map("payments")
+}
+
+/// Tenant: part of a payment applied to one charge of the same year and child (R188). Inserting
+/// raises charges.allocated_amount and lowers payments.unallocated_amount under the row locks
+/// (statement trigger payment_allocations_apply); setting reversed_at, once, does the opposite and
+/// reopens a settled charge (statement trigger payment_allocations_reverse). One live row per
+/// payment and charge (partial unique payment_allocations_live_key). Columns frozen.
+model PaymentAllocation {
+  id             BigInt    @id(map: "payment_allocations_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  paymentId      BigInt    @map("payment_id")
+  chargeId       BigInt    @map("charge_id")
+  studentId      BigInt    @map("student_id")
+  academicYearId BigInt    @map("academic_year_id")
+  /// Whole rupees > 0.
+  amount         Int
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set once: a void, or a credit's de-allocation (A6).
+  reversedAt     DateTime? @map("reversed_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "payment_allocations_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  payment Payment @relation(fields: [schoolId, paymentId, academicYearId], references: [schoolId, id, academicYearId], map: "payment_allocations_payment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The charge, its child and its year together.
+  charge  Charge  @relation(fields: [schoolId, chargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "payment_allocations_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "payment_allocations_school_id_id_key")
+  @@index([schoolId, paymentId, academicYearId], map: "payment_allocations_school_id_payment_id_idx")
+  @@index([schoolId, chargeId, academicYearId, studentId], map: "payment_allocations_school_id_charge_id_idx")
+  @@index([schoolId, studentId, createdAt], map: "payment_allocations_school_id_student_id_created_at_idx")
+  @@map("payment_allocations")
+}
+
+/// Tenant: the one receipt of a payment (R190), numbered from the school's receipt_<yearId>
+/// counter, taken last in the payment's transaction; unique per school and year
+/// (receipts_number_key). A voided payment's receipt keeps its number (voided_at, set once by the
+/// void). Otherwise frozen.
+model Receipt {
+  id             BigInt    @id(map: "receipts_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  paymentId      BigInt    @map("payment_id")
+  academicYearId BigInt    @map("academic_year_id")
+  receiptNo      Int       @map("receipt_no")
+  /// The payment's amount, snapshotted.
+  amount         Int
+  issuedAt       DateTime  @default(now()) @map("issued_at") @db.Timestamptz(3)
+  issuedBy       BigInt    @map("issued_by")
+  voidedAt       DateTime? @map("voided_at") @db.Timestamptz(3)
+
+  school       School        @relation(fields: [schoolId], references: [id], map: "receipts_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  payment      Payment       @relation(fields: [schoolId, paymentId, academicYearId], references: [schoolId, id, academicYearId], map: "receipts_payment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  issuedByUser User          @relation(fields: [schoolId, issuedBy], references: [schoolId, id], map: "receipts_issued_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  lines        ReceiptLine[]
+
+  @@unique([schoolId, id], map: "receipts_school_id_id_key")
+  /// The target of receipt_lines: same year.
+  @@unique([schoolId, id, academicYearId], map: "receipts_school_id_id_academic_year_id_key")
+  /// One receipt per payment (the year is the payment's, fixed by the FK).
+  @@unique([schoolId, paymentId, academicYearId], map: "receipts_payment_key")
+  /// R190: gapless and never reused per school and year.
+  @@unique([schoolId, academicYearId, receiptNo], map: "receipts_number_key")
+  @@index([schoolId, issuedBy], map: "receipts_school_id_issued_by_idx")
+  @@map("receipts")
+}
+
+/// Tenant, append-only: a receipt's printed lines, snapshotted (§3.5). charge_id null is the
+/// advance line (fee_head_name and period null with it).
+model ReceiptLine {
+  id             BigInt   @id(map: "receipt_lines_pkey") @default(autoincrement())
+  schoolId       BigInt   @map("school_id")
+  receiptId      BigInt   @map("receipt_id")
+  academicYearId BigInt   @map("academic_year_id")
+  studentId      BigInt   @map("student_id")
+  chargeId       BigInt?  @map("charge_id")
+  feeHeadName    String?  @map("fee_head_name") @db.VarChar(60)
+  /// `YYYY-MM`.
+  period         String?  @db.Char(7)
+  amount         Int
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "receipt_lines_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  receipt Receipt @relation(fields: [schoolId, receiptId, academicYearId], references: [schoolId, id, academicYearId], map: "receipt_lines_receipt_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "receipt_lines_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The charge, its child and its year together.
+  charge  Charge? @relation(fields: [schoolId, chargeId, academicYearId, studentId], references: [schoolId, id, academicYearId, studentId], map: "receipt_lines_charge_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "receipt_lines_school_id_id_key")
+  @@index([schoolId, receiptId, academicYearId], map: "receipt_lines_school_id_receipt_id_idx")
+  @@index([schoolId, studentId], map: "receipt_lines_school_id_student_id_idx")
+  @@index([schoolId, chargeId, academicYearId, studentId], map: "receipt_lines_school_id_charge_id_idx")
+  @@map("receipt_lines")
+}
+
+/// Tenant, append-only: a correction of a payment (rule 0.19, R191, R192, R251). `void` reverses
+/// every live allocation, reopens the charges and voids the payment and its receipt; `refund` and
+/// `carried_forward` lower unallocated_amount; `refund_reversal` raises it back (triggers
+/// payment_reversals_not_self, payment_reversals_apply). A carry-forward names its target payment
+/// once that payment exists (carried_to_payment_id, set once; deferred constraint trigger
+/// payment_reversals_carry_forward_linked).
+model PaymentReversal {
+  id                 BigInt         @id(map: "payment_reversals_pkey") @default(autoincrement())
+  schoolId           BigInt         @map("school_id")
+  paymentId          BigInt         @map("payment_id")
+  academicYearId     BigInt         @map("academic_year_id")
+  kind               ReversalKind
+  /// Set iff refund_reversal: the refund of the same payment it reverses.
+  reversesId         BigInt?        @map("reverses_id")
+  /// Only on carried_forward; set once, after the target payment exists.
+  carriedToPaymentId BigInt?        @map("carried_to_payment_id")
+  /// Whole rupees > 0; a void's is the payment's amount.
+  amount             Int
+  reason             String         @db.VarChar(500)
+  requestedBy        BigInt         @map("requested_by")
+  /// The principal approving a refund or refund reversal; null otherwise.
+  approvedBy         BigInt?        @map("approved_by")
+  /// Set iff refund; never carried_forward.
+  refundMethod       PaymentMethod? @map("refund_method")
+  refundReference    String?        @map("refund_reference") @db.VarChar(60)
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school              School            @relation(fields: [schoolId], references: [id], map: "payment_reversals_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  payment             Payment           @relation("ReversalPayment", fields: [schoolId, paymentId, academicYearId], references: [schoolId, id, academicYearId], map: "payment_reversals_payment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// A reversal of the same payment.
+  reverses            PaymentReversal?  @relation("ReversalReverses", fields: [schoolId, reversesId, paymentId], references: [schoolId, id, paymentId], map: "payment_reversals_reverses_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  reversedBy          PaymentReversal[] @relation("ReversalReverses")
+  carriedToPayment    Payment?          @relation("ReversalCarriedTo", fields: [schoolId, carriedToPaymentId], references: [schoolId, id], map: "payment_reversals_carried_to_payment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  carriedPayments     Payment[]         @relation("PaymentCarriedFrom")
+  requestedByUser     User              @relation("PaymentReversalRequestedBy", fields: [schoolId, requestedBy], references: [schoolId, id], map: "payment_reversals_requested_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  approvedByUser      User?             @relation("PaymentReversalApprovedBy", fields: [schoolId, approvedBy], references: [schoolId, id], map: "payment_reversals_approved_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  explainedShortfalls CashHandover[]
+
+  @@unique([schoolId, id], map: "payment_reversals_school_id_id_key")
+  /// The target of reverses_id: a reversal of the same payment.
+  @@unique([schoolId, id, paymentId], map: "payment_reversals_school_id_id_payment_id_key")
+  @@index([schoolId, paymentId, academicYearId], map: "payment_reversals_school_id_payment_id_idx")
+  @@index([schoolId, reversesId, paymentId], map: "payment_reversals_school_id_reverses_id_idx")
+  @@index([schoolId, carriedToPaymentId], map: "payment_reversals_school_id_carried_to_payment_id_idx")
+  @@index([schoolId, requestedBy], map: "payment_reversals_school_id_requested_by_idx")
+  @@index([schoolId, approvedBy], map: "payment_reversals_school_id_approved_by_idx")
+  @@index([schoolId, kind, createdAt], map: "payment_reversals_school_id_kind_created_at_idx")
+  @@map("payment_reversals")
+}
+
+/// Tenant: one collector's cash gathered for counting (§3.4, R193, R194). expected_amount and
+/// payment_count are stored at open and match the payments gathered by commit (deferred
+/// constraint trigger cash_handovers_expected_matches). The confirmer is never the collector nor
+/// the opener (CHECK cash_handovers_not_self_check); counted - expected = surplus - shortfall. A
+/// shortfall is resolved once: recovered, written off (a cash_shortfall expense) or explained by
+/// a void of one of its payments.
+model CashHandover {
+  id                        BigInt               @id(map: "cash_handovers_pkey") @default(autoincrement())
+  schoolId                  BigInt               @map("school_id")
+  collectorUserId           BigInt               @map("collector_user_id")
+  collectorStaffId          BigInt               @map("collector_staff_id")
+  openedBy                  BigInt               @map("opened_by")
+  /// opened_by <> collector_user_id (CHECK cash_handovers_on_behalf_check).
+  onBehalf                  Boolean              @default(false) @map("on_behalf")
+  expectedAmount            Int                  @map("expected_amount")
+  paymentCount              Int                  @map("payment_count")
+  openedAt                  DateTime             @default(now()) @map("opened_at") @db.Timestamptz(3)
+  /// The opener's note.
+  note                      String?              @db.VarChar(500)
+  status                    HandoverStatus       @default(open)
+  confirmedBy               BigInt?              @map("confirmed_by")
+  confirmedAt               DateTime?            @map("confirmed_at") @db.Timestamptz(3)
+  countedAmount             Int?                 @map("counted_amount")
+  shortfallAmount           Int?                 @map("shortfall_amount")
+  surplusAmount             Int?                 @map("surplus_amount")
+  /// The confirmer's note.
+  confirmNote               String?              @map("confirm_note") @db.VarChar(500)
+  shortfallResolution       ShortfallResolution? @map("shortfall_resolution")
+  shortfallResolvedAt       DateTime?            @map("shortfall_resolved_at") @db.Timestamptz(3)
+  shortfallResolvedBy       BigInt?              @map("shortfall_resolved_by")
+  shortfallResolutionReason String?              @map("shortfall_resolution_reason") @db.VarChar(500)
+  /// Set iff written_off: the cash_shortfall expense.
+  shortfallExpenseId        BigInt?              @map("shortfall_expense_id")
+  /// Set iff explained_by_void: the void of a payment in this handover.
+  shortfallReversalId       BigInt?              @map("shortfall_reversal_id")
+  updatedAt                 DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school            School           @relation(fields: [schoolId], references: [id], map: "cash_handovers_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  /// The collector's login and staff record together (users (school_id, id, staff_id)).
+  collector         User             @relation("CashHandoverCollector", fields: [schoolId, collectorUserId, collectorStaffId], references: [schoolId, id, staffId], map: "cash_handovers_collector_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  openedByUser      User             @relation("CashHandoverOpenedBy", fields: [schoolId, openedBy], references: [schoolId, id], map: "cash_handovers_opened_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  confirmedByUser   User?            @relation("CashHandoverConfirmedBy", fields: [schoolId, confirmedBy], references: [schoolId, id], map: "cash_handovers_confirmed_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  resolvedByUser    User?            @relation("CashHandoverResolvedBy", fields: [schoolId, shortfallResolvedBy], references: [schoolId, id], map: "cash_handovers_shortfall_resolved_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  shortfallExpense  Expense?         @relation(fields: [schoolId, shortfallExpenseId], references: [schoolId, id], map: "cash_handovers_shortfall_expense_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  shortfallReversal PaymentReversal? @relation(fields: [schoolId, shortfallReversalId], references: [schoolId, id], map: "cash_handovers_shortfall_reversal_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  payments          Payment[]
+
+  @@unique([schoolId, id], map: "cash_handovers_school_id_id_key")
+  /// The target of payments.handover_id: a handover of the payment's recorder.
+  @@unique([schoolId, id, collectorUserId], map: "cash_handovers_school_id_id_collector_user_id_key")
+  @@index([schoolId, status, openedAt], map: "cash_handovers_school_id_status_opened_at_idx")
+  @@index([schoolId, confirmedBy], map: "cash_handovers_school_id_confirmed_by_idx")
+  @@index([schoolId, collectorUserId, collectorStaffId], map: "cash_handovers_school_id_collector_user_id_idx")
+  @@index([schoolId, openedBy], map: "cash_handovers_school_id_opened_by_idx")
+  @@index([schoolId, shortfallResolvedBy], map: "cash_handovers_school_id_shortfall_resolved_by_idx")
+  @@index([schoolId, shortfallExpenseId], map: "cash_handovers_school_id_shortfall_expense_id_idx")
+  @@index([schoolId, shortfallReversalId], map: "cash_handovers_school_id_shortfall_reversal_id_idx")
+  @@map("cash_handovers")
+}
+
+enum SalaryStructureStatus {
+  active
+  superseded
+
+  @@map("salary_structure_status")
+}
+
+enum SalaryComponentKind {
+  allowance
+  deduction
+
+  @@map("salary_component_kind")
+}
+
+enum AdvanceStatus {
+  open
+  recovered
+  written_off
+
+  @@map("advance_status")
+}
+
+enum PayrollRunStatus {
+  draft
+  finalised
+
+  @@map("payroll_run_status")
+}
+
+enum PayslipStatus {
+  pending
+  paid
+
+  @@map("payslip_status")
+}
+
+enum PayslipLineKind {
+  allowance
+  deduction
+  absence
+  advance_recovery
+  adjustment
+
+  @@map("payslip_line_kind")
+}
+
+/// Tenant: a staff member's salary from effective_from (R213, R214). Calendar-scoped, no academic
+/// year. Active rows of one staff member never overlap (exclusion constraint
+/// salary_structures_live_excl; a null ended_on is open-ended). A later structure closes this one
+/// (ended_on, set once); a same-day replacement supersedes it (superseded_at with the status,
+/// superseded_by once the replacement exists). Never written for the writer's own staff row
+/// except by the sole principal, self_approved (trigger salary_structures_not_self, R235, R253).
+model SalaryStructure {
+  id            BigInt                @id(map: "salary_structures_pkey") @default(autoincrement())
+  schoolId      BigInt                @map("school_id")
+  staffId       BigInt                @map("staff_id")
+  /// Whole rupees, 0 or more.
+  basic         Int
+  effectiveFrom DateTime              @map("effective_from") @db.Date
+  /// Set once, when a later structure starts; inclusive.
+  endedOn       DateTime?             @map("ended_on") @db.Date
+  status        SalaryStructureStatus @default(active)
+  supersededAt  DateTime?             @map("superseded_at") @db.Timestamptz(3)
+  supersededBy  BigInt?               @map("superseded_by")
+  reason        String                @db.VarChar(500)
+  createdBy     BigInt                @map("created_by")
+  /// The sole principal's own structure (R253).
+  selfApproved  Boolean               @default(false) @map("self_approved")
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School                     @relation(fields: [schoolId], references: [id], map: "salary_structures_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff         Staff                      @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "salary_structures_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The replacement: a structure of the same staff member.
+  successor     SalaryStructure?           @relation("SalaryStructureSupersededBy", fields: [schoolId, supersededBy, staffId], references: [schoolId, id, staffId], map: "salary_structures_superseded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  predecessors  SalaryStructure[]          @relation("SalaryStructureSupersededBy")
+  createdByUser User                       @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "salary_structures_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  components    SalaryStructureComponent[]
+  payslips      Payslip[]
+
+  @@unique([schoolId, id], map: "salary_structures_school_id_id_key")
+  /// The target of payslips.structure_id and superseded_by: the same staff member.
+  @@unique([schoolId, id, staffId], map: "salary_structures_school_id_id_staff_id_key")
+  @@index([schoolId, staffId, effectiveFrom], map: "salary_structures_school_id_staff_id_effective_from_idx")
+  @@index([schoolId, supersededBy, staffId], map: "salary_structures_school_id_superseded_by_idx")
+  @@index([schoolId, createdBy], map: "salary_structures_school_id_created_by_idx")
+  @@map("salary_structures")
+}
+
+/// Tenant, append-only: a named allowance or deduction of a structure. Deductions are taken in
+/// `position` order (§3.3); positions are unique within the structure.
+model SalaryStructureComponent {
+  id          BigInt              @id(map: "salary_structure_components_pkey") @default(autoincrement())
+  schoolId    BigInt              @map("school_id")
+  structureId BigInt              @map("structure_id")
+  kind        SalaryComponentKind
+  name        String              @db.VarChar(60)
+  /// Whole rupees > 0.
+  amount      Int
+  /// 0-19 (at most 20 components).
+  position    Int                 @db.SmallInt
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school    School          @relation(fields: [schoolId], references: [id], map: "salary_structure_components_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  structure SalaryStructure @relation(fields: [schoolId, structureId], references: [schoolId, id], map: "salary_structure_components_structure_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "salary_structure_components_school_id_id_key")
+  @@unique([schoolId, structureId, kind, name], map: "salary_structure_components_name_key")
+  @@unique([schoolId, structureId, position], map: "salary_structure_components_position_key")
+  @@map("salary_structure_components")
+}
+
+/// Tenant: money lent to a staff member, recovered from later payslips in instalments (R215).
+/// recovered_amount moves only through salary_advance_recoveries (trigger
+/// salary_advance_recoveries_apply), bounded by salary_advances_recovered_check; the advance turns
+/// recovered when fully repaid. Never granted or written off for the actor's own staff row
+/// (trigger salary_advances_not_self, R235).
+model SalaryAdvance {
+  id               BigInt        @id(map: "salary_advances_pkey") @default(autoincrement())
+  schoolId         BigInt        @map("school_id")
+  staffId          BigInt        @map("staff_id")
+  /// Whole rupees > 0.
+  amount           Int
+  grantedOn        DateTime      @map("granted_on") @db.Date
+  /// `YYYY-MM`: the first payroll month that recovers (default the month after granted_on).
+  recoverFrom      String        @map("recover_from") @db.Char(7)
+  /// 1 .. amount.
+  instalmentAmount Int           @map("instalment_amount")
+  /// The principal (the service, requirePrincipal).
+  approvedBy       BigInt        @map("approved_by")
+  /// Never carried_forward.
+  paidMethod       PaymentMethod @map("paid_method")
+  paidReference    String?       @map("paid_reference") @db.VarChar(60)
+  /// The salary_advance_cash expense written with it (R215); one advance per expense.
+  expenseId        BigInt?       @map("expense_id")
+  /// Trigger-maintained; never re-summed.
+  recoveredAmount  Int           @default(0) @map("recovered_amount")
+  status           AdvanceStatus @default(open)
+  writtenOffAt     DateTime?     @map("written_off_at") @db.Timestamptz(3)
+  writtenOffBy     BigInt?       @map("written_off_by")
+  writeOffReason   String?       @map("write_off_reason") @db.VarChar(500)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school           School                  @relation(fields: [schoolId], references: [id], map: "salary_advances_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff            Staff                   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "salary_advances_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  approvedByUser   User                    @relation("SalaryAdvanceApprovedBy", fields: [schoolId, approvedBy], references: [schoolId, id], map: "salary_advances_approved_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  writtenOffByUser User?                   @relation("SalaryAdvanceWrittenOffBy", fields: [schoolId, writtenOffBy], references: [schoolId, id], map: "salary_advances_written_off_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  expense          Expense?                @relation(fields: [schoolId, expenseId], references: [schoolId, id], map: "salary_advances_expense_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  recoveries       SalaryAdvanceRecovery[]
+
+  @@unique([schoolId, id], map: "salary_advances_school_id_id_key")
+  /// The target of salary_advance_recoveries: the same staff member.
+  @@unique([schoolId, id, staffId], map: "salary_advances_school_id_id_staff_id_key")
+  @@index([schoolId, staffId, status], map: "salary_advances_school_id_staff_id_status_idx")
+  @@index([schoolId, approvedBy], map: "salary_advances_school_id_approved_by_idx")
+  @@index([schoolId, writtenOffBy], map: "salary_advances_school_id_written_off_by_idx")
+  @@index([schoolId, expenseId], map: "salary_advances_school_id_expense_id_idx")
+  @@map("salary_advances")
+}
+
+/// Tenant: one month's payroll (R214). Calendar-scoped, one per school and month. A draft is
+/// recomputed in place; once finalised its content and its payslips are frozen.
+model PayrollRun {
+  id             BigInt           @id(map: "payroll_runs_pkey") @default(autoincrement())
+  schoolId       BigInt           @map("school_id")
+  /// `YYYY-MM`.
+  yearMonth      String           @map("year_month") @db.Char(7)
+  /// 0-31.
+  workingDays    Int              @map("working_days") @db.SmallInt
+  status         PayrollRunStatus @default(draft)
+  preparedAt     DateTime         @default(now()) @map("prepared_at") @db.Timestamptz(3)
+  /// Null when the pay-day job prepared it.
+  preparedBy     BigInt?          @map("prepared_by")
+  finalisedBy    BigInt?          @map("finalised_by")
+  finalisedAt    DateTime?        @map("finalised_at") @db.Timestamptz(3)
+  finaliseReason String?          @map("finalise_reason") @db.VarChar(500)
+  staffCount     Int              @default(0) @map("staff_count")
+  /// `[{ staffId, reason }]` objects only (CHECK payroll_runs_skipped_check).
+  skipped        Json             @default("[]")
+  totalNet       Int              @default(0) @map("total_net")
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School    @relation(fields: [schoolId], references: [id], map: "payroll_runs_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  preparedByUser  User?     @relation("PayrollRunPreparedBy", fields: [schoolId, preparedBy], references: [schoolId, id], map: "payroll_runs_prepared_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  finalisedByUser User?     @relation("PayrollRunFinalisedBy", fields: [schoolId, finalisedBy], references: [schoolId, id], map: "payroll_runs_finalised_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  payslips        Payslip[]
+
+  @@unique([schoolId, id], map: "payroll_runs_school_id_id_key")
+  /// One run per school and month (PAYROLL_RUN_EXISTS).
+  @@unique([schoolId, yearMonth], map: "payroll_runs_month_key")
+  @@index([schoolId, preparedBy], map: "payroll_runs_school_id_prepared_by_idx")
+  @@index([schoolId, finalisedBy], map: "payroll_runs_school_id_finalised_by_idx")
+  @@map("payroll_runs")
+}
+
+/// Tenant: one staff member's pay for a run (R214-R218). net = basic + allowances - deductions -
+/// absence - recovery + adjustment, never negative (CHECK payslips_net_check). Rewritten by
+/// recompute while the run is a draft; frozen once it is finalised except the paid columns, which
+/// are set once and only then (trigger payslips_run_guard).
+model Payslip {
+  id                  BigInt         @id(map: "payslips_pkey") @default(autoincrement())
+  schoolId            BigInt         @map("school_id")
+  runId               BigInt         @map("run_id")
+  staffId             BigInt         @map("staff_id")
+  structureId         BigInt         @map("structure_id")
+  employedWorkingDays Int            @map("employed_working_days") @db.SmallInt
+  /// Pro-rated over the employed working days (R246).
+  basic               Int
+  allowancesTotal     Int            @map("allowances_total")
+  deductionsTotal     Int            @map("deductions_total")
+  unpaidDays          Int            @map("unpaid_days") @db.SmallInt
+  unmarkedDays        Int            @map("unmarked_days") @db.SmallInt
+  absenceDeduction    Int            @map("absence_deduction")
+  advanceRecovery     Int            @map("advance_recovery")
+  /// Signed: the sum of adjustment lines.
+  adjustmentTotal     Int            @default(0) @map("adjustment_total")
+  net                 Int
+  status              PayslipStatus  @default(pending)
+  paidOn              DateTime?      @map("paid_on") @db.Date
+  paidMethod          PaymentMethod? @map("paid_method")
+  paidReference       String?        @map("paid_reference") @db.VarChar(60)
+  paidBy              BigInt?        @map("paid_by")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school     School                  @relation(fields: [schoolId], references: [id], map: "payslips_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  run        PayrollRun              @relation(fields: [schoolId, runId], references: [schoolId, id], map: "payslips_run_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff      Staff                   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "payslips_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// A structure of the same staff member.
+  structure  SalaryStructure         @relation(fields: [schoolId, structureId, staffId], references: [schoolId, id, staffId], map: "payslips_structure_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  paidByUser User?                   @relation(fields: [schoolId, paidBy], references: [schoolId, id], map: "payslips_paid_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  lines      PayslipLine[]           @relation("PayslipLines")
+  adjustedBy PayslipLine[]           @relation("PayslipLineAdjusts")
+  recoveries SalaryAdvanceRecovery[]
+
+  @@unique([schoolId, id], map: "payslips_school_id_id_key")
+  /// The target of lines and recoveries: the same staff member.
+  @@unique([schoolId, id, staffId], map: "payslips_school_id_id_staff_id_key")
+  /// One payslip per staff member per run.
+  @@unique([schoolId, runId, staffId], map: "payslips_run_staff_key")
+  @@index([schoolId, staffId, runId], map: "payslips_school_id_staff_id_run_id_idx")
+  @@index([schoolId, runId, status], map: "payslips_school_id_run_id_status_idx")
+  @@index([schoolId, structureId, staffId], map: "payslips_school_id_structure_id_idx")
+  @@index([schoolId, paidBy], map: "payslips_school_id_paid_by_idx")
+  @@map("payslips")
+}
+
+/// Tenant: a payslip's lines. Computed lines are rewritten (and may be removed) while the run is a
+/// draft; an adjustment (signed, by a person, with a reason) is kept, may correct an earlier
+/// finalised payslip of the same staff member, and is never one's own (triggers
+/// payslip_lines_draft_only, payslip_adjust_not_self; R216, R235).
+model PayslipLine {
+  id               BigInt          @id(map: "payslip_lines_pkey") @default(autoincrement())
+  schoolId         BigInt          @map("school_id")
+  payslipId        BigInt          @map("payslip_id")
+  staffId          BigInt          @map("staff_id")
+  kind             PayslipLineKind
+  name             String          @db.VarChar(60)
+  /// > 0; signed and non-zero for an adjustment.
+  amount           Int
+  /// An adjustment correcting an earlier finalised payslip.
+  adjustsPayslipId BigInt?         @map("adjusts_payslip_id")
+  /// Set iff adjustment.
+  reason           String?         @db.VarChar(500)
+  /// Set iff adjustment.
+  createdBy        BigInt?         @map("created_by")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school        School   @relation(fields: [schoolId], references: [id], map: "payslip_lines_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  payslip       Payslip  @relation("PayslipLines", fields: [schoolId, payslipId, staffId], references: [schoolId, id, staffId], map: "payslip_lines_payslip_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  adjusts       Payslip? @relation("PayslipLineAdjusts", fields: [schoolId, adjustsPayslipId, staffId], references: [schoolId, id, staffId], map: "payslip_lines_adjusts_payslip_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User?    @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "payslip_lines_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "payslip_lines_school_id_id_key")
+  @@index([schoolId, payslipId, staffId], map: "payslip_lines_school_id_payslip_id_idx")
+  @@index([schoolId, adjustsPayslipId, staffId], map: "payslip_lines_school_id_adjusts_payslip_id_idx")
+  @@index([schoolId, createdBy], map: "payslip_lines_school_id_created_by_idx")
+  @@map("payslip_lines")
+}
+
+/// Tenant, append-only: an instalment of an advance taken by a finalised payslip of the same staff
+/// member (R215, R247). Its insert raises salary_advances.recovered_amount (trigger
+/// salary_advance_recoveries_apply).
+model SalaryAdvanceRecovery {
+  id        BigInt   @id(map: "salary_advance_recoveries_pkey") @default(autoincrement())
+  schoolId  BigInt   @map("school_id")
+  advanceId BigInt   @map("advance_id")
+  payslipId BigInt   @map("payslip_id")
+  staffId   BigInt   @map("staff_id")
+  /// Whole rupees > 0.
+  amount    Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school  School        @relation(fields: [schoolId], references: [id], map: "salary_advance_recoveries_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  advance SalaryAdvance @relation(fields: [schoolId, advanceId, staffId], references: [schoolId, id, staffId], map: "salary_advance_recoveries_advance_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  payslip Payslip       @relation(fields: [schoolId, payslipId, staffId], references: [schoolId, id, staffId], map: "salary_advance_recoveries_payslip_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "salary_advance_recoveries_school_id_id_key")
+  @@unique([schoolId, advanceId, payslipId], map: "salary_advance_recoveries_advance_payslip_key")
+  @@index([schoolId, advanceId, staffId], map: "salary_advance_recoveries_school_id_advance_id_idx")
+  @@index([schoolId, payslipId, staffId], map: "salary_advance_recoveries_school_id_payslip_id_idx")
+  @@map("salary_advance_recoveries")
 }
 
 /// Non-tenant: a platform price tier (R219). Active bands never overlap (exclusion constraint

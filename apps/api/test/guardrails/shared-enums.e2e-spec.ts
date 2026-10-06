@@ -61,6 +61,16 @@ import {
   LEAVE_STATUSES,
   PLAN_STATUSES,
   INVOICE_STATUSES,
+  PAYMENT_STATUSES,
+  REVERSAL_KINDS,
+  HANDOVER_STATUSES,
+  SHORTFALL_RESOLUTIONS,
+  SALARY_STRUCTURE_STATUSES,
+  SALARY_COMPONENT_KINDS,
+  ADVANCE_STATUSES,
+  PAYROLL_RUN_STATUSES,
+  PAYSLIP_STATUSES,
+  PAYSLIP_LINE_KINDS,
 } from '@asms/shared';
 import { Client } from 'pg';
 
@@ -126,6 +136,17 @@ const PAIRS: [string, readonly string[]][] = [
   ['leave_status', LEAVE_STATUSES],
   ['plan_status', PLAN_STATUSES],
   ['invoice_status', INVOICE_STATUSES],
+  // Wave J (slices 20, 25).
+  ['payment_status', PAYMENT_STATUSES],
+  ['reversal_kind', REVERSAL_KINDS],
+  ['handover_status', HANDOVER_STATUSES],
+  ['shortfall_resolution', SHORTFALL_RESOLUTIONS],
+  ['salary_structure_status', SALARY_STRUCTURE_STATUSES],
+  ['salary_component_kind', SALARY_COMPONENT_KINDS],
+  ['advance_status', ADVANCE_STATUSES],
+  ['payroll_run_status', PAYROLL_RUN_STATUSES],
+  ['payslip_status', PAYSLIP_STATUSES],
+  ['payslip_line_kind', PAYSLIP_LINE_KINDS],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */
