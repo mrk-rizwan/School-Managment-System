@@ -213,6 +213,15 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/children/:id/diary-entries', 'capacity'],
   ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/attachment', 'capacity'],
   ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/thumbnail', 'capacity'],
+  // Phase 3 slice 21 (R198): a child's dues and deposit claims, by the capacity scope.
+  ['GET', '/api/v1/me/children/:id/dues', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/payment-claims', 'capacity'],
+  ['POST', '/api/v1/me/children/:id/payment-claims', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/payment-claims/:claimId', 'capacity'],
+  ['PATCH', '/api/v1/me/children/:id/payment-claims/:claimId', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/payment-claims/:claimId/image', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/payment-claims/:claimId/thumbnail', 'capacity'],
+  ['POST', '/api/v1/me/children/:id/payment-claims/:claimId/withdraw', 'capacity'],
   ['GET', '/api/v1/me/children/:id/remarks', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
   // contracts/slice-14.md §7 (R166): any live session's own inbox, by person at read time.
@@ -222,6 +231,9 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/inbox/:id/thumbnail', 'authenticated-only'],
   // Phase 3 slice 18: where a guardian can pay.
   ['GET', '/api/v1/me/payment-accounts', 'capacity'],
+  // Phase 3 slice 21 (R198): the family's receipts, their own children's lines only.
+  ['GET', '/api/v1/me/receipts', 'capacity'],
+  ['GET', '/api/v1/me/receipts/:id', 'capacity'],
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
@@ -247,6 +259,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/student/diary-entries/:entryId/attachment', 'capacity'],
   ['GET', '/api/v1/me/student/diary-entries/:entryId/thumbnail', 'capacity'],
   ['GET', '/api/v1/me/student/remarks', 'capacity'],
+  // Phase 3 slice 21 (R199): a guardian's deposit slip, under /me (R78) with a daily cap.
+  ['POST', '/api/v1/me/uploads', 'capacity'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
   ['GET', '/api/v1/sections/:id', 'staff'],
   ['GET', '/api/v1/subjects', 'staff'],
@@ -381,6 +395,18 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/cash-handovers': ['cash_handover.opened'],
   'POST /api/v1/cash-handovers/:id/confirm': ['cash_handover.confirmed'],
   'POST /api/v1/cash-handovers/:id/resolve-shortfall': ['cash_handover.shortfall_resolved'],
+  // Phase 3 slice 21 (contracts/slice-21.md §2). A replayed claim, the same slip sent again and a
+  // staged upload write no row; a verification records the payment as the counter does.
+  'POST /api/v1/payment-claims/:id/verify': ['payment_claim.verified', 'payment.recorded', 'charge.waived'],
+  'POST /api/v1/payment-claims/:id/reject': ['payment_claim.rejected'],
+  'POST /api/v1/me/children/:id/payment-claims': ['payment_claim.submitted'],
+  'PATCH /api/v1/me/children/:id/payment-claims/:claimId': ['payment_claim.image_attached'],
+  'POST /api/v1/me/children/:id/payment-claims/:claimId/withdraw': ['payment_claim.withdrawn'],
+  'POST /api/v1/me/uploads': 'none: a staged upload is not a record; committing it to a claim is audited as payment_claim.submitted or payment_claim.image_attached',
+  // Phase 3 slice 22 (contracts/slice-22.md §2): the reminders sent on demand (with their counts)
+  // and the dues-clearance override, which is its audit row (R204).
+  'POST /api/v1/fee-reminders/send': ['fee_reminder.sent'],
+  'POST /api/v1/students/:id/dues-clearance/override': ['dues_clearance.overridden'],
   // Phase 3 slice 23 (contracts/slice-23.md §3). A replayed create, a no-op patch and the same
   // receipt sent again write no row.
   'POST /api/v1/expenses': ['expense.recorded'],

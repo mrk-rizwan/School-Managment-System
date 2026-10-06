@@ -172,3 +172,22 @@ if [ "$recorded" != "true" ]; then echo "the principal's 5 B register is not on 
 # Announce: a short notice to 5 A, then the guardian's inbox shows it.
 CLASS_ID="$(echo "$view" | json 'b.section.classId')"
 flow principal-announce principal-announce.yaml "${ids[@]}" -e CLASS_ID="$CLASS_ID"
+
+# --- Phase 3 slice 21: a deposit slip sent in airplane mode, verified by the office, receipted --
+# The school takes deposits only with an active payment account (R196): the principal adds one
+# if the seed has none.
+accounts="$(get "$principal_token" '/payment-accounts?status=active' | json 'b.total')"
+if [ "$accounts" = "0" ]; then
+  printf '{"kind":"jazzcash","title":"Demo School","accountNo":"0300-0000000"}' \
+    | curl -fs -H "Authorization: Bearer $principal_token" -H 'X-App-Version: 0.1.0' \
+      -H 'Content-Type: application/json' -X POST "$api/payment-accounts" -d @- >/dev/null
+fi
+flow parent-deposit-slip parent-deposit-slip.yaml "${ids[@]}"
+# The office verifies it over curl (the principal holds payment.verify); with nothing owed the
+# money is the child's advance.
+claim_id="$(get "$principal_token" "/payment-claims?status=pending&studentId=$STUDENT_ID" | json 'b.data[0].id')"
+if [ -z "$claim_id" ] || [ "$claim_id" = "undefined" ]; then echo "the parent's claim is not in the office queue"; exit 1; fi
+printf '{"advanceForStudentId":"%s"}' "$STUDENT_ID" \
+  | curl -fs -H "Authorization: Bearer $principal_token" -H 'X-App-Version: 0.1.0' \
+    -H 'Content-Type: application/json' -X POST "$api/payment-claims/$claim_id/verify" -d @- >/dev/null
+flow parent-receipt parent-receipt.yaml "${ids[@]}"

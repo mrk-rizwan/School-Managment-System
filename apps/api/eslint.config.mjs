@@ -282,6 +282,10 @@ const RAW_SQL_FILES = [
   // school_id (test/payments/isolation.e2e-spec.ts).
   'src/repositories/payment.repository.ts',
   'src/repositories/receipt.repository.ts',
+  // Phase 3 slice 22: the finance reports' aggregates, the fee-reminder families and the dues
+  // clearance's reads; read-only. Every statement filters school_id on every table it reads
+  // (test/finance-reports/isolation.e2e-spec.ts).
+  'src/repositories/finance-report.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans

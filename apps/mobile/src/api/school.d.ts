@@ -1204,6 +1204,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fee-reminders/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FeeRemindersController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fee-structures": {
         parameters: {
             query?: never;
@@ -1230,6 +1246,118 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["FeeStructuresController_copy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_collections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/concessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_concessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/daily-cash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_dailyCash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/defaulters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_defaulters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_expenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/outstanding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_outstanding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance-reports/payroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_payroll"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1700,6 +1828,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/children/{id}/dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildFeesController_dues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/payment-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildFeesController_listClaims"];
+        put?: never;
+        post: operations["MyChildFeesController_createClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/payment-claims/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildFeesController_getClaim"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["MyChildFeesController_attachImage"];
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/payment-claims/{claimId}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildFeesController_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/payment-claims/{claimId}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildFeesController_thumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/payment-claims/{claimId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyChildFeesController_withdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/children/{id}/remarks": {
         parameters: {
             query?: never;
@@ -1804,6 +2028,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyPaymentAccountsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyReceiptsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/receipts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyReceiptsController_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2084,6 +2340,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyUploadsController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/messaging/test": {
         parameters: {
             query?: never;
@@ -2222,6 +2494,102 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PaymentAccountsController_disable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentClaimsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentClaimsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentClaimsController_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PaymentClaimsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims/{id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentClaimsController_thumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-claims/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PaymentClaimsController_verify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2980,6 +3348,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/students/{id}/dues-clearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DuesClearanceController_clearance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{id}/dues-clearance/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DuesClearanceController_override"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/students/{id}/enrolments": {
         parameters: {
             query?: never;
@@ -3513,6 +3913,11 @@ export interface components {
             reason: string;
             status: components["schemas"]["AttendanceStatus"];
         };
+        AmountCountDto: {
+            /** @description Whole rupees */
+            amount: number;
+            count: number;
+        };
         /** @enum {string} */
         AnnouncementCategory: "holiday" | "exam" | "fee" | "event" | "general";
         AnnouncementDto: {
@@ -3898,6 +4303,47 @@ export interface components {
         ChargeSort: "-dueOn" | "dueOn" | "studentName";
         /** @enum {string} */
         ChargeStatus: "open" | "settled" | "voided" | "waived";
+        ClaimDto: {
+            /** @description Whole rupees */
+            claimedAmount: number;
+            className: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            decidedByUserId: string | null;
+            decisionReason: string | null;
+            duplicateOfClaimId: string | null;
+            guardianId: string;
+            guardianName: string;
+            hasImage: boolean;
+            id: string;
+            imageMime: string | null;
+            method: components["schemas"]["DepositMethod"];
+            note: string | null;
+            /** Format: date */
+            paidOn: string;
+            paymentId: string | null;
+            possibleDuplicate: boolean;
+            receiptId: string | null;
+            reference: string | null;
+            /** Format: date-time */
+            reopenedAt: string | null;
+            status: components["schemas"]["ClaimStatus"];
+            studentId: string;
+            studentName: string;
+            /** @description Whole rupees */
+            verifiedAmount: number | null;
+            /** Format: date */
+            verifiedPaidOn: string | null;
+        };
+        ClaimImageDto: {
+            /** @description The slip (POST /me/uploads), by its uploader */
+            stagedUploadId: string;
+        };
+        /** @enum {string} */
+        ClaimStatus: "pending" | "verified" | "rejected" | "withdrawn" | "expired";
         ClassDto: {
             academicYearId: string;
             academicYearName: string;
@@ -3915,6 +4361,38 @@ export interface components {
         ClassSort: "sortOrder" | "-sortOrder" | "name" | "-name";
         /** @enum {string} */
         ClassStatus: "active" | "archived";
+        ClearanceOverrideDto: {
+            /** Format: date-time */
+            at: string;
+            byName: string;
+            byUserId: string;
+            reason: string;
+        };
+        /** @enum {string} */
+        CollectionBasis: "received" | "verified";
+        /** @enum {string} */
+        CollectionGroup: "day" | "method" | "feeHead" | "class" | "collector";
+        CollectionsReportDto: {
+            basis: components["schemas"]["CollectionBasis"];
+            carriedForward: components["schemas"]["AmountCountDto"];
+            count: number;
+            /** @description Whole rupees; may be negative */
+            net: number;
+            refundReversals: components["schemas"]["AmountCountDto"];
+            refunds: components["schemas"]["AmountCountDto"];
+            rows: components["schemas"]["ReportRowDto"][];
+            /** @description Whole rupees */
+            total: number;
+            voided: components["schemas"]["AmountCountDto"];
+        };
+        CollectorCashDto: {
+            /** @description Whole rupees */
+            amount: number;
+            collector: string;
+            collectorUserId: string;
+            /** Format: date-time */
+            since: string;
+        };
         ConcessionDecisionDto: {
             adjustments: components["schemas"]["ChargeDto"][];
             concession: components["schemas"]["ConcessionDto"];
@@ -3946,16 +4424,30 @@ export interface components {
             studentName: string;
             value: number;
         };
+        /** @enum {string} */
+        ConcessionGroup: "feeHead" | "class";
         ConcessionHeadDto: {
             feeHeadId: string;
             name: string;
         };
         /** @enum {string} */
         ConcessionKind: "percentage" | "fixed";
+        ConcessionRowDto: {
+            key: string;
+            label: string;
+            /** @description Whole rupees */
+            reduction: number;
+            students: number;
+        };
         /** @enum {string} */
         ConcessionSort: "-requestedAt" | "requestedAt";
         /** @enum {string} */
         ConcessionStatus: "requested" | "approved" | "rejected" | "ended";
+        ConcessionsReportDto: {
+            rows: components["schemas"]["ConcessionRowDto"][];
+            /** @description Whole rupees */
+            total: number;
+        };
         ConfirmHandoverDto: {
             /** @description The cash counted */
             countedAmount: number;
@@ -4088,6 +4580,21 @@ export interface components {
             dueOn: string;
             enrolmentId: string;
             feeHeadId: string;
+        };
+        CreateClaimDto: {
+            /** @description Whole rupees */
+            claimedAmount: number;
+            method: components["schemas"]["DepositMethod"];
+            note?: string;
+            /**
+             * Format: date
+             * @description Today or earlier (school time)
+             */
+            paidOn: string;
+            /** @description The slip or transaction reference */
+            reference?: string;
+            /** @description The slip (POST /me/uploads); or send it later with PATCH */
+            stagedUploadId?: string;
         };
         CreateClassDto: {
             academicYearId: string;
@@ -4370,6 +4877,26 @@ export interface components {
         CustomRoleSort: "name" | "-name" | "createdAt" | "-createdAt";
         /** @enum {string} */
         CustomRoleStatus: "active" | "archived";
+        DailyCashReportDto: {
+            /** @description Whole rupees */
+            cashExpenses: number;
+            /** @description Whole rupees */
+            cashReceived: number;
+            /** Format: date */
+            date: string;
+            handedOver: components["schemas"]["HandedOverDto"][];
+            /** @description Whole rupees; may be negative */
+            refundsPaidCash: number;
+            /** @description Whole rupees */
+            salariesPaidCash: number;
+            /** @description Whole rupees */
+            shortfallWrittenOff: number;
+            /** @description Whole rupees */
+            voidedAfterHandover: number;
+            /** @description Whole rupees */
+            voidedBeforeHandover: number;
+            withCollectors: components["schemas"]["CollectorCashDto"][];
+        };
         DailySummaryDto: {
             absent: number;
             classId: string;
@@ -4404,6 +4931,28 @@ export interface components {
             amount: number;
             name: string;
         };
+        DefaulterDto: {
+            admissionNo: string;
+            className: string | null;
+            feePayer: components["schemas"]["FeePayerDto"] | null;
+            /** Format: date */
+            lastPaymentOn: string | null;
+            /** Format: date-time */
+            lastReminderAt: string | null;
+            /** Format: date */
+            oldestDueOn: string;
+            openCharges: number;
+            /** @description Whole rupees */
+            outstanding: number;
+            /** @description Whole rupees */
+            overdue: number;
+            pendingClaim: boolean;
+            sectionName: string | null;
+            studentId: string;
+            studentName: string;
+        };
+        /** @enum {string} */
+        DefaulterSort: "-outstanding" | "studentName" | "className" | "oldestDueOn" | "-oldestDueOn";
         DeliverySummaryDto: {
             announcementId: string;
             byChannel: components["schemas"]["ChannelCountsDto"][];
@@ -4416,6 +4965,8 @@ export interface components {
             status: components["schemas"]["AnnouncementStatus"];
             suppressions: components["schemas"]["SuppressionCountDto"][];
         };
+        /** @enum {string} */
+        DepositMethod: "bank_transfer" | "jazzcash" | "easypaisa";
         DeviceDto: {
             appVersion: string;
             /** Format: date-time */
@@ -4468,6 +5019,16 @@ export interface components {
         DocumentMime: "image/jpeg" | "image/png" | "application/pdf";
         /** @enum {string} */
         DocumentType: "b_form" | "photo" | "previous_school_leaving" | "guardian_cnic" | "other";
+        DuesClearanceDto: {
+            /** @description Whole rupees */
+            advance: number;
+            cleared: boolean;
+            openCharges: components["schemas"]["ChargeDto"][];
+            /** @description Whole rupees */
+            outstanding: number;
+            override: components["schemas"]["ClearanceOverrideDto"] | null;
+            studentId: string;
+        };
         EffectiveCapabilityDto: {
             capability: components["schemas"]["Capability"];
             group: components["schemas"]["CapabilityGroup"];
@@ -4545,6 +5106,8 @@ export interface components {
             /** Format: date-time */
             voidedAt: string | null;
         };
+        /** @enum {string} */
+        ExpenseGroup: "category" | "day" | "method" | "recorder";
         ExpenseReceiptDto: {
             /** @description A staged upload of the caller (POST /uploads) */
             stagedUploadId: string;
@@ -4553,6 +5116,13 @@ export interface components {
         ExpenseSort: "-spentOn" | "spentOn";
         /** @enum {string} */
         ExpenseStatus: "recorded" | "pending_approval" | "approved" | "rejected" | "voided";
+        ExpensesReportDto: {
+            pendingApproval: components["schemas"]["AmountCountDto"];
+            rows: components["schemas"]["ReportRowDto"][];
+            subThresholdByRecorder: components["schemas"]["RecorderTotalDto"][];
+            /** @description Whole rupees */
+            total: number;
+        };
         /** @enum {string} */
         ExternalChannel: "push" | "whatsapp" | "sms" | "email";
         /** @enum {string} */
@@ -4578,6 +5148,10 @@ export interface components {
         FeeHeadSort: "name" | "-name";
         /** @enum {string} */
         FeeHeadStatus: "active" | "archived";
+        FeePayerDto: {
+            contactCapability: components["schemas"]["ContactCapability"];
+            name: string;
+        };
         FeeStructureClassDto: {
             classId: string;
             className: string;
@@ -4781,6 +5355,25 @@ export interface components {
             sectionName: string | null;
             studentFullName: string;
             studentId: string;
+        };
+        HandedOverDto: {
+            collector: string;
+            confirmedBy: string | null;
+            /** @description Whole rupees */
+            counted: number | null;
+            /** @description Whole rupees */
+            expected: number;
+            /** @description Whole rupees */
+            fromDay: number;
+            handoverId: string;
+            /** @description Whole rupees */
+            shortfall: number | null;
+            /** @enum {string|null} */
+            shortfallResolution: "recovered" | "written_off" | "explained_by_void" | null;
+            /** @enum {string} */
+            status: "open" | "confirmed";
+            /** @description Whole rupees */
+            surplus: number | null;
         };
         HandoverCollectorDto: {
             name: string;
@@ -5148,12 +5741,60 @@ export interface components {
             /** Format: date */
             startsOn: string;
         };
+        MyChargeDto: {
+            academicYearId: string;
+            /** @description Whole rupees */
+            amount: number;
+            /** @description Whole rupees */
+            concessionAmount: number;
+            /** @description Whole rupees */
+            creditedAmount: number;
+            description: string;
+            /** Format: date */
+            dueOn: string;
+            feeHeadName: string;
+            /** @description Whole rupees */
+            grossAmount: number;
+            id: string;
+            kind: components["schemas"]["ChargeKind"];
+            /** @description Whole rupees */
+            outstanding: number;
+            /** @description Whole rupees */
+            paidAmount: number;
+            /** @example 2026-04 */
+            period: string | null;
+            status: components["schemas"]["ChargeStatus"];
+        };
         MyChildDto: {
             current: components["schemas"]["StudentCurrentEnrolmentDto"] | null;
             fullName: string;
             relationship: components["schemas"]["Relationship"];
             status: components["schemas"]["StudentStatus"];
             studentId: string;
+        };
+        MyClaimDto: {
+            /** @description Whole rupees */
+            claimedAmount: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionReason: string | null;
+            hasImage: boolean;
+            id: string;
+            method: components["schemas"]["DepositMethod"];
+            note: string | null;
+            /** Format: date */
+            paidOn: string;
+            receiptId: string | null;
+            reference: string | null;
+            status: components["schemas"]["ClaimStatus"];
+            studentId: string;
+            submittedByMe: boolean;
+            /** @description Whole rupees */
+            verifiedAmount: number | null;
+            /** Format: date */
+            verifiedPaidOn: string | null;
         };
         MyDiaryEntryDto: {
             assignment: string | null;
@@ -5182,12 +5823,54 @@ export interface components {
              */
             updatedAt: string;
         };
+        MyDuesDto: {
+            academicYearId: string | null;
+            /** @description Whole rupees */
+            advance: number;
+            charges: components["schemas"]["MyChargeDto"][];
+            claimsAccepted: boolean;
+            /** Format: date */
+            nextDueOn: string | null;
+            /** @description Whole rupees */
+            outstanding: number;
+            studentId: string;
+        };
         MyPaymentAccountDto: {
             accountNo: string;
             bankName: string | null;
             id: string;
             kind: components["schemas"]["PaymentAccountKind"];
             title: string;
+        };
+        MyReceiptDto: {
+            academicYearId: string;
+            academicYearName: string;
+            /** @description Whole rupees */
+            amount: number;
+            id: string;
+            /** Format: date-time */
+            issuedAt: string;
+            lines: components["schemas"]["MyReceiptLineDto"][];
+            method: components["schemas"]["PaymentMethod"];
+            /** @description Whole rupees */
+            otherChildrenAmount: number;
+            /**
+             * Format: date
+             * @description When the money was paid
+             */
+            paidOn: string;
+            receiptLabel: string;
+            /** Format: date-time */
+            voidedAt: string | null;
+        };
+        MyReceiptLineDto: {
+            /** @description Whole rupees */
+            amount: number;
+            feeHeadName: string | null;
+            /** @example 2026-04 */
+            period: string | null;
+            studentId: string;
+            studentName: string;
         };
         MyRemarkDto: {
             authorName: string;
@@ -5250,6 +5933,16 @@ export interface components {
         OpenHandoverOnBehalfDto: {
             collectorUserId: string;
             note?: string;
+        };
+        /** @enum {string} */
+        OutstandingGroup: "class" | "feeHead" | "period";
+        OutstandingReportDto: {
+            adjustments: components["schemas"]["AmountCountDto"];
+            /** Format: date */
+            asOf: string;
+            rows: components["schemas"]["ReportRowDto"][];
+            /** @description Whole rupees */
+            total: number;
         };
         PaymentAccountDto: {
             accountNo: string;
@@ -5328,6 +6021,27 @@ export interface components {
             amount: number;
             fullName: string;
             studentId: string;
+        };
+        PayrollMonthDto: {
+            /** @description Whole rupees; may be negative */
+            adjustments: number;
+            /** @description Whole rupees */
+            deductions: number;
+            /** @description Whole rupees */
+            gross: number;
+            /** @description Whole rupees */
+            net: number;
+            /** @description Whole rupees */
+            paid: number;
+            staffCount: number;
+            /** @description Whole rupees */
+            unpaid: number;
+            /** @example 2026-04 */
+            yearMonth: string;
+        };
+        PayrollReportDto: {
+            rows: components["schemas"]["PayrollMonthDto"][];
+            total: components["schemas"]["PayrollMonthDto"];
         };
         PayrollRunDto: {
             finaliseReason: string | null;
@@ -5553,6 +6267,13 @@ export interface components {
         };
         /** @enum {string} */
         RecordableExpenseCategory: "electricity" | "water" | "internet" | "cleaning" | "stationery" | "repairs" | "maintenance" | "fuel" | "transport" | "building" | "daily_purchases" | "other";
+        RecorderTotalDto: {
+            /** @description Whole rupees */
+            amount: number;
+            count: number;
+            recorder: string;
+            recorderUserId: string;
+        };
         RefundDto: {
             /** @description At most the unallocated amount (an advance) */
             amount: number;
@@ -5646,6 +6367,10 @@ export interface components {
             /** @description Now */
             teachingDay: boolean;
         };
+        RejectClaimDto: {
+            /** @description The guardian is told, by WhatsApp or SMS too: no phone number */
+            reason: string;
+        };
         RejectExpenseDto: {
             /**
              * Format: date-time
@@ -5684,8 +6409,23 @@ export interface components {
         };
         /** @enum {string} */
         RemarkVisibility: "internal" | "guardian" | "student";
+        /** @enum {string} */
+        ReminderKind: "due" | "overdue";
+        RemindersSentDto: {
+            capped: number;
+            enqueued: number;
+            families: number;
+            smsUnits: number;
+        };
         RemoveRoleDto: {
             reason: string;
+        };
+        ReportRowDto: {
+            /** @description Whole rupees */
+            amount: number;
+            count: number;
+            key: string;
+            label: string;
         };
         ResetPasswordDto: {
             /** Format: password */
@@ -5873,6 +6613,14 @@ export interface components {
         };
         /** @enum {string} */
         SectionSort: "name" | "-name";
+        SendRemindersDto: {
+            /** @description At most one of classId, sectionId and studentIds; none = every family */
+            classId?: string;
+            kind: components["schemas"]["ReminderKind"];
+            sectionId?: string;
+            /** @description These students' families */
+            studentIds?: string[];
+        };
         /** @enum {string} */
         SessionChannel: "cookie" | "bearer";
         SessionsRevokedDto: {
@@ -6621,6 +7369,57 @@ export interface components {
         };
         /** @enum {string} */
         UserStatus: "active" | "disabled";
+        VerifiedClaimDto: {
+            /** @description Whole rupees */
+            claimedAmount: number;
+            className: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            decidedByUserId: string | null;
+            decisionReason: string | null;
+            duplicateOfClaimId: string | null;
+            guardianId: string;
+            guardianName: string;
+            hasImage: boolean;
+            id: string;
+            imageMime: string | null;
+            method: components["schemas"]["DepositMethod"];
+            note: string | null;
+            /** Format: date */
+            paidOn: string;
+            payment: components["schemas"]["PaymentDto"];
+            paymentId: string | null;
+            possibleDuplicate: boolean;
+            receiptId: string | null;
+            reference: string | null;
+            /** Format: date-time */
+            reopenedAt: string | null;
+            status: components["schemas"]["ClaimStatus"];
+            studentId: string;
+            studentName: string;
+            /** @description Whole rupees */
+            verifiedAmount: number | null;
+            /** Format: date */
+            verifiedPaidOn: string | null;
+        };
+        VerifyClaimDto: {
+            /** @description Default: the year of the child's active enrolment */
+            academicYearId?: string;
+            /** @description Record what is left over as an advance for the child (the claim names one child) */
+            advanceForStudentId?: string;
+            /**
+             * Format: date
+             * @description The paid date the slip shows, when it differs from the guardian's: today or earlier, and not after the claim was made
+             */
+            paidOn?: string;
+            /** @description Required when the amount is lower or the date differs; the guardian sees it */
+            reason?: string;
+            /** @description At most the amount claimed; default the amount claimed */
+            verifiedAmount?: number;
+        };
         VerifyEmailDto: {
             schoolCode: string;
             token: string;
@@ -6664,6 +7463,9 @@ export interface components {
         };
         /** @enum {string} */
         WhatsAppStatus: "pending" | "connected" | "down" | "disabled";
+        WithdrawClaimDto: {
+            reason?: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -13820,6 +14622,69 @@ export interface operations {
             };
         };
     };
+    FeeRemindersController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRemindersDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemindersSentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     FeeStructuresController_list: {
         parameters: {
             query: {
@@ -14010,6 +14875,460 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_collections: {
+        parameters: {
+            query: {
+                /** @description Inclusive; at most 92 days before receivedTo */
+                receivedFrom: string;
+                /** @description Inclusive */
+                receivedTo: string;
+                groupBy: components["schemas"]["CollectionGroup"];
+                /** @description Rule 25: the day a payment was received, or the day it was verified (credited) */
+                basis?: components["schemas"]["CollectionBasis"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionsReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_concessions: {
+        parameters: {
+            query: {
+                academicYearId: string;
+                groupBy?: components["schemas"]["ConcessionGroup"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConcessionsReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_dailyCash: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyCashReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_defaulters: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                classId?: string;
+                sectionId?: string;
+                /** @description Only students owing at least this much */
+                minOutstanding?: number;
+                /** @description Only students with something past its due date */
+                overdueOnly?: boolean;
+                /** @description `oldestDueOn`: the longest-owed first */
+                sort?: components["schemas"]["DefaulterSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DefaulterDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_expenses: {
+        parameters: {
+            query: {
+                /** @description Inclusive; at most 92 days before spentTo */
+                spentFrom: string;
+                spentTo: string;
+                groupBy?: components["schemas"]["ExpenseGroup"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpensesReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_outstanding: {
+        parameters: {
+            query: {
+                academicYearId: string;
+                groupBy?: components["schemas"]["OutstandingGroup"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutstandingReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_payroll: {
+        parameters: {
+            query: {
+                from: string;
+                /** @description At most 24 months from `from`, inclusive */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16602,6 +17921,615 @@ export interface operations {
             };
         };
     };
+    MyChildFeesController_dues: {
+        parameters: {
+            query?: {
+                academicYearId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyDuesDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_listClaims: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyClaimDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_createClaim: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -: the outbox item id on the phone, or generated once when the form opens; a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClaimDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed claim */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaimDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_getClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_attachImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimImageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_thumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildFeesController_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                claimId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawClaimDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyChildDiaryController_remarksOf: {
         parameters: {
             query?: {
@@ -17080,6 +19008,152 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyReceiptsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                studentId?: string;
+                sort?: "-issuedAt";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyReceiptDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyReceiptsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyReceiptDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18382,6 +20456,101 @@ export interface operations {
             };
         };
     };
+    MyUploadsController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadFileDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StagedUploadDto"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MessagingController_test: {
         parameters: {
             query?: never;
@@ -19008,6 +21177,443 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["ClaimStatus"];
+                /** @description False lists the claims still waiting for their slip (R243) */
+                hasImage?: boolean;
+                studentId?: string;
+                createdFrom?: string;
+                createdTo?: string;
+                sort?: "createdAt" | "-createdAt";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ClaimDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_image: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectClaimDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_thumbnail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentClaimsController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyClaimDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedClaimDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23576,6 +26182,156 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DuesClearanceController_clearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuesClearanceDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DuesClearanceController_override: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuesClearanceDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

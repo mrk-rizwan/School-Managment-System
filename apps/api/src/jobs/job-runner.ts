@@ -15,6 +15,8 @@ import { StagedUploadSweep } from '../modules/documents/staged-upload.sweep';
 import { AnnouncementSendJob } from '../modules/announcements/announcement-send.job';
 import { ChargeGeneration } from '../modules/fees/charge-generation';
 import { PayrollPrepare } from '../modules/payroll/payroll-prepare.job';
+import { FeeReminders } from '../modules/finance-reports/fee-reminders';
+import { ClaimsService } from '../modules/payments/claims.service';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
@@ -61,6 +63,10 @@ export class JobRunner {
     private readonly billingNotices: BillingNotices,
     // Slice 25 (phase-3-financial.md §3.7).
     private readonly payroll: PayrollPrepare,
+    // Slice 22 (phase-3-financial.md §3.7).
+    private readonly feeReminders: FeeReminders,
+    // Slice 21 (phase-3-financial.md §3.7, R200).
+    private readonly claims: ClaimsService,
   ) {}
 
   /**
@@ -178,6 +184,14 @@ export class JobRunner {
       // Slice 25 (§3.7, R214): daily; a school whose pay day it is gets last month's draft.
       case JOB.payrollPrepare:
         await this.eachSchool(name, (schoolId) => this.payroll.run(schoolId, plannedAt));
+        return 'done';
+      // Slice 22 (§3.7, R201, R202, R250): the day's due and overdue fee reminders.
+      case JOB.feeReminder:
+        await this.eachSchool(name, (schoolId) => this.feeReminders.daily(schoolId, plannedAt));
+        return 'done';
+      // Slice 21 (§3.7, R200): deposit claims still without their slip after 24 h expire.
+      case JOB.claimImageSweep:
+        await this.eachSchool(name, (schoolId) => this.claims.expireImageless(schoolId, plannedAt));
         return 'done';
       case JOB.sessionPurge:
         // Every school, terminated included: a dead sign-in is not history anywhere.

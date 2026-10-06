@@ -11,13 +11,19 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phases 1 and 2 complete and closed. **Phase 2 closed 2026-10-05**: phase gate PASS
-  (second run) on `e4494b2`, CI run 37329811329 green including all seven Maestro flows on the
-  emulator. The real-driver proof is deferred as an owner-blocked hard precondition of the first
-  deployment and the Phase 3 gate ("Left to do" item 1). **Next: Phase 3 (Financial)**: it needs
-  the owner's answers to register items 7-11 before its schema, then a plan
-  (`docs/plans/phase-3-financial.md`, written and revised after four reviews, awaiting owner
-  approval). Project progress = 72 / 160 days = 45 %.
+- **Phase:** Phases 1 and 2 complete and closed (Phase 2 gate PASS on `e4494b2`, 2026-10-05).
+  **Phase 3 (Financial) is being built** from the approved plan `docs/plans/phase-3-financial.md`
+  (2026-10-06). Slices 18-26 are built, reviewed and committed (waves H-K); **left: slice 27 (the
+  Approvals tab and page) and slice 28 (the phase close)**. Phase 3 = 35 / 38.5 days = 91 %;
+  project = 107 / 160.5 days = 67 %. The real-driver proof is still owner-blocked and is a hard
+  precondition of the Phase 3 gate and the first deployment ("Left to do" item 1).
+- **pnpm does not start on this machine** since 2026-10-06 (corepack's `pnpm-native.exe` fails to
+  spawn). Run tools directly: API Jest `node --experimental-vm-modules node_modules/jest/bin/jest.js`,
+  mobile Jest with `NODE_PATH=<repo>/node_modules/.pnpm/node_modules`, `npx nest build` +
+  `npx tsx scripts/generate-openapi.ts`, `npx openapi-typescript …` for the clients, and start
+  `npx next dev --port 3100` yourself before `npx playwright test -c playwright.mocked.config.ts`.
+  CI is unaffected. Stop any dev server you start: a stale one on :3100 answered 500 on every
+  dynamic route and cost a fix agent 40 minutes.
 - **Local ports (owner, 2026-10-04): web 3460, API 3461** — the owner runs other apps on 3000.
   `.env` / `.env.example`, web scripts, Playwright, CI, mobile defaults and README all use them.
 - **CI:** green through wave A (`067e767`); the Phase 1 close push (`ef2e5e8`, run 37138806242)
@@ -54,8 +60,9 @@ them when each phase is planned, and say so in the report.
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
 slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
-11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Planning and reviews done before
-slice 0 are not counted.
+11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Phase 3 slice sizes (plan §5):
+18 = 2.5 · 19 = 7 · 20 = 6 · 21 = 4 · 22 = 3 · 23 = 2 · 24 = 2.5 · 25 = 4.5 · 26 = 3 · 27 = 2 ·
+28 = 1.5 (the plan's total is 38.5). Planning and reviews done before slice 0 are not counted.
 
 ## Left to do (ordered)
 
@@ -76,7 +83,9 @@ slice 0 are not counted.
    closed). Defaults the main thread chose where it had made no recommendation (late fee off,
    both payment paths, seeded fee heads, receipts, expense threshold Rs 5,000, salary and leave
    defaults, platform billing tiers, 15-day grace, 12-month retention) are open to the owner's
-   correction. Next: `docs/plans/phase-3-financial.md`.
+   correction. The plan is approved and slices 18-26 are built; **next: slice 27 (Approvals),
+   then slice 28 (phase close and gate)**. Owner items from the build are in the 2026-10-06/07
+   entry below.
 3a. **Owner answered Phase 2 §1.2 on 2026-10-03** (recorded in the plan): the principal pairs
    the school's own WhatsApp number; the platform admin sets each school's SMS cap; **nothing is
    disturbed under suspension until termination** (this lifts Phase 1 R80's read-only rule —
@@ -238,6 +247,55 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-06/07 — Phase 3 waves H-K: slices 18-26 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
+
+Built overnight at the owner's request ("complete Phase 3 this night"). Process as in Phase 2:
+the schema is committed first, parallel build agents own disjoint files, then a security review
+and a correctness review per slice (Fable), one fix round (Opus), the main thread's full check,
+commit, push, CI.
+
+**Commits:** `0981a86` plan · `75db041` wave H (slice 18: fee setup, payment accounts,
+settings, rule 24) + wave I schema · `b3e9d8e` wave I (19 charges, 23 expenses, 24 leave,
+26 platform billing) · `78d45cf` + `8a5ca92` wave J (20 payments, receipts, voids, refunds,
+cash handover; 25 payroll; the Expo upgrade) · `ea6b815` wave K schema · `afb1eb3` CI 75 min ·
+`f6d9977` test order · wave K (21 deposit claims, guardian Fees tab; 22 reminders, finance
+reports, dues clearance) in the commit after this entry.
+
+**Main-thread decisions taken during the build (owner may overturn):**
+- Rule 24 is checked against what a user holds *nominally*, so a principal's in-service
+  override still works (`holdsNominally`); the sole-principal lock applies to both paths that
+  add a principal.
+- Own-child separation of duties is keyed on the acting user (`asms.actor_user_id`), so system
+  jobs never trip it; system-actor audit rows (`recordSystem`) need `metadata ? 'job'`.
+- **Late-fee waiver on claim verify:** only when the verified payment settles the late fee's
+  charge in full (a token deposit inside the grace no longer waives it — wave K audit).
+- **Dues-clearance override** (rule 20): refused for the principal's own child, **with no
+  sole-principal exception** (the dues must be paid); the override lapses when the amount owed
+  rises above what was overridden (e.g. a void reopens a charge).
+- Fee reminders: overdue families keep SMS before due-soon families on a short budget; the
+  SMS pre-check is advisory (the dispatcher's `reserveSms` holds the cap); no "allowance ran
+  out" notice when the cap was 0 before the run; manual sends throttled 5/min, 30/h.
+- Claims: the guardian upload is `POST /me/uploads` (R78: a parent reaches nothing outside
+  `/me`); slip images are served inline, PDFs as attachments (a sandboxed PDF renders blank);
+  a co-guardian sees a claim's reference but not the other guardian's note; an office verifier
+  who is the child's guardian gets 404 on the slip image but still sees the claim in the queue
+  (cannot decide it).
+- **Open for the owner:** a guardian who is not the fee payer gets no message when the office
+  verifies their claim at a lower amount or a corrected date (no message type exists; they see
+  it in the app/web). Price-tier values (no invoice until entered). Pre-commit hook allows 5 MB
+  for the generated OpenAPI files and clients (they passed 1 MB in Phase 3).
+
+**Reviews, wave K:** security PASS on both slices (no critical/high); raw SQL of all 18 report
+queries filters `school_id` on every table and join. Correctness: no severe defect; one rule gap
+(the waiver above) and five low findings, all fixed with tests. R228 scripted year asserts every
+§0.20 identity against the database, now including a cash refund and a void after handover.
+Performance at 3,000 students: defaulters page 50-91 ms, collections ≤ 140 ms, reminder job
+10.3 s for 4,000 reminders (needs `ANALYZE` after bulk loads).
+
+**Test-infra notes:** `apps/api/test/sequencer.js` runs the route suite last (its R57 check read
+no audit rows on a fresh CI database). A slice 22 agent once disabled `audit_log_append_only`
+in the *test* database to delete four bad rows it had written; agents are now told never to.
 
 ## 2026-10-05 — Phase 2 wave G: slice 17, the phase close (Opus 5.5 builds, Fable 5.1 reviews) — DONE, phase gate PASS on `e4494b2`
 

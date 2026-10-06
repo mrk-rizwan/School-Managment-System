@@ -38,6 +38,10 @@ export const JOB = {
   chargeRun: 'charge-run',
   // Phase 3 slice 25 (§3.7): on each school's pay day, the previous month's draft payroll run.
   payrollPrepare: 'payroll-prepare',
+  // Phase 3 slice 22 (§3.7): daily at 09:00 school time, the fee reminders (R201, R202, R250).
+  feeReminder: 'fee-reminder',
+  // Phase 3 slice 21 (§3.7, R200): daily, deposit claims still without their slip after 24 h expire.
+  claimImageSweep: 'claim-image-sweep',
 } as const;
 
 /*

@@ -25,6 +25,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
+import { FinanceReportsModule } from './modules/finance-reports/finance-reports.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -72,6 +73,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     LeaveModule,
     ExpensesModule,
     PayrollModule,
+    FinanceReportsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

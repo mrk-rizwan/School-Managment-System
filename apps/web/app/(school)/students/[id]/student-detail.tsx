@@ -6,6 +6,7 @@ import {
   GENDERS,
   READMISSIBLE_STATUSES,
   STUDENT_STATUS_TRANSITIONS,
+  formatRupees,
   normaliseIdentityDigits,
 } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,6 +53,7 @@ import {
   StudentStatusBadge,
 } from '../_lib/students-ui';
 import { StudentAttendanceTab } from './attendance-tab';
+import { DuesClearancePanel, useDuesClearance } from './dues-clearance-panel';
 import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
@@ -145,7 +147,12 @@ export function StudentDetail({ id }: { id: string }) {
                 {tab === 'attendance' && <StudentAttendanceTab student={data} />}
                 {tab === 'remarks' && <RemarksTab student={data} />}
                 {tab === 'documents' && <DocumentsTab student={data} />}
-                {tab === 'fees' && <FeeStatementTab student={data} />}
+                {tab === 'fees' && (
+                  <div className="grid gap-6">
+                    <DuesClearancePanel studentId={data.id} />
+                    <FeeStatementTab student={data} />
+                  </div>
+                )}
                 {tab === 'history' && <StatusHistory studentId={data.id} />}
               </div>
             </>
@@ -384,6 +391,7 @@ function ChangeStatusDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
+  const { can } = useCapabilities();
   const ids = { status: useId(), date: useId() };
   const [status, setStatus] = useState<StudentStatus | ''>('');
   const [effectiveOn, setEffectiveOn] = useState(todayInSchool);
@@ -426,6 +434,9 @@ function ChangeStatusDialog({
         ? 'The date cannot be before the admission date.'
         : null;
   const leaving = status === 'withdrawn' || status === 'transferred';
+  // Slice 22, rule 20: a warning, not a block; a failed lookup shows nothing.
+  const clearance = useDuesClearance(student.id, leaving && can(Capability.FEE_STATEMENT_VIEW));
+  const owed = leaving && clearance.data && !clearance.data.cleared ? clearance.data.outstanding : 0;
 
   return (
     <ConfirmWithReasonDialog
@@ -478,6 +489,14 @@ function ChangeStatusDialog({
           The student leaves their class on this date and any student login stops working. Coming
           back later is a readmission.
         </p>
+      )}
+      {owed > 0 && (
+        <Alert>
+          <AlertDescription>
+            This student owes {formatRupees(owed)} across all years; the leaving certificate will need the dues
+            cleared or a principal&apos;s override.
+          </AlertDescription>
+        </Alert>
       )}
       {change.error && !isAlreadyDone(change.error) && (
         <Alert variant="destructive">

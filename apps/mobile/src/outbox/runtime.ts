@@ -13,6 +13,7 @@ import { invalidationKeys, queryKeys } from '../api/query-keys';
 import { applySubmitResult, marksFromMinimal } from '../attendance/register-model';
 import { cacheKey, readCache, writeCache, type Cached } from '../db/cache';
 import {
+  markClaimSaved,
   markDiarySaved,
   markExpenseSaved,
   markRegisterSaved,
@@ -186,6 +187,18 @@ export const ON_SAVED: Record<string, (item: OutboxItem, outcome: SentOutcome) =
     // The phone deletes the receipt photo once the server has it.
     if (item.domainId !== null) await markUploadDone('local_files', item.domainId);
     invalidate([]);
+  },
+  // Phase 3 slice 21 (§3.9, R199): the claim's server id; its slip is queued behind it.
+  async payment_claim(item, outcome) {
+    const result = WithId.safeParse(outcome.body);
+    const queued = await markClaimSaved(item.id, result.success ? result.data : null);
+    invalidate([queryKeys.fees(idAfter(item.path, 'children'))]);
+    if (queued > 0) void outboxWorker.trigger('enqueued');
+  },
+  async payment_claim_image(item) {
+    // The phone deletes the deposit slip once the server has it.
+    if (item.domainId !== null) await markUploadDone('local_files', item.domainId);
+    invalidate([queryKeys.fees(idAfter(item.path, 'children'))]);
   },
 };
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { allocate, ErrorCode, outstanding } from '@asms/shared';
+import { allocate, ErrorCode, outstanding, type ExistingAdvance, type PaymentMethod } from '@asms/shared';
 import { fieldRefused, notFound } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { toPage, type Page } from '../../common/pagination';
@@ -9,7 +9,7 @@ import { SchoolContext, type Actor } from '../../common/school-context';
 import { NotificationService } from '../../messaging/notification.service';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
-import { ChargeRepository } from '../../repositories/charge.repository';
+import { ChargeRepository, type ChargeRecord } from '../../repositories/charge.repository';
 import { PaymentAllocationRepository, type NewAllocation } from '../../repositories/payment-allocation.repository';
 import { PaymentReversalRepository } from '../../repositories/payment-reversal.repository';
 import { PaymentRepository, type PaymentRecord } from '../../repositories/payment.repository';
@@ -192,15 +192,81 @@ export class PaymentsService {
     if (advanceFor !== null && !intent.studentIds.includes(advanceFor)) {
       throw fieldRefused('advanceForStudentId', ErrorCode.INVALID_VALUE, 'The advance must be for one of the named children');
     }
+    const payment = await this.write(actor, intent, {
+      method: dto.method,
+      amount: dto.amount,
+      receivedOn,
+      reference,
+      advanceFor,
+      claimId: null,
+    });
+    await recordSubject(payment.id);
+    return payment.id;
+  }
 
+  /**
+   * Slice 21 (R196): a verified deposit claim recorded exactly as the counter records a payment —
+   * the same checks (the payer guardian live-linked, the child enrolled in the year, never the
+   * actor's own child), the same locks, allocation, receipt and receipt_issued — with the claim's
+   * id on the payment. Runs in the caller's transaction, after it has locked the claim (contract
+   * slice-21 §1.4). `beforeAllocate` runs under the charge locks, before allocation (the in-grace
+   * late-fee waiver).
+   */
+  async recordForClaim(
+    actor: Actor,
+    input: {
+      academicYearId: bigint;
+      payerGuardianId: bigint;
+      studentId: bigint;
+      method: PaymentMethod;
+      amount: number;
+      receivedOn: Date;
+      reference: string;
+      advanceFor: bigint | null;
+      claimId: bigint;
+      beforeAllocate: (open: readonly ChargeRecord[], advances: readonly ExistingAdvance[]) => Promise<void>;
+    },
+  ): Promise<PaymentRecord> {
+    await this.changeContext.setChangeContext(actor.userId, null);
+    const intent = await this.checkIntent(actor, {
+      academicYearId: input.academicYearId.toString(),
+      payerGuardianId: input.payerGuardianId.toString(),
+      studentIds: [input.studentId.toString()],
+      amount: input.amount,
+    });
+    return this.write(actor, intent, input);
+  }
+
+  /**
+   * The payment, its allocations and its receipt in R236's lock order (the advances' payments,
+   * then the open charges by id, the receipt counter last), audited, with receipt_issued (§1.1).
+   */
+  private async write(
+    actor: Actor,
+    intent: Intent,
+    input: {
+      method: PaymentMethod;
+      amount: number;
+      receivedOn: Date;
+      reference: string | null;
+      advanceFor: bigint | null;
+      claimId: bigint | null;
+      beforeAllocate?: (open: readonly ChargeRecord[], advances: readonly ExistingAdvance[]) => Promise<void>;
+    },
+  ): Promise<PaymentRecord> {
+    const { schoolId, userId } = actor;
+    const advanceFor = input.advanceFor;
     // R236: the advances' payments, then the charges by id; the counter last.
     const advances = await this.payments.lockAdvances(schoolId, intent.studentIds, intent.academicYearId);
     await this.charges.lockForUpdate(
       schoolId,
       await this.charges.openIdsOfStudents(schoolId, intent.studentIds, intent.academicYearId),
     );
+    if (input.beforeAllocate) {
+      await input.beforeAllocate(await this.charges.openOfStudents(schoolId, intent.studentIds, intent.academicYearId), advances);
+    }
     const open = await this.charges.openOfStudents(schoolId, intent.studentIds, intent.academicYearId);
-    const result = allocate(dto.amount, intent.studentIds, open.map(openCharge), advances);
+    const result = allocate(input.amount, intent.studentIds, open.map(openCharge), advances);
     const owed = open.reduce((sum, c) => sum + outstanding(c), 0);
     const advanceUsed = result.allocations.reduce((sum, a) => sum + (a.paymentId === null ? 0 : a.amount), 0);
     if (owed - advanceUsed === 0 && advanceFor === null) {
@@ -225,13 +291,14 @@ export class PaymentsService {
         academicYearId: intent.academicYearId,
         payerGuardianId: intent.payerGuardianId,
         payerName: intent.payerName,
-        method: dto.method,
-        amount: dto.amount,
-        receivedOn,
-        reference,
+        method: input.method,
+        amount: input.amount,
+        receivedOn: input.receivedOn,
+        reference: input.reference,
         carriedFromReversalId: null,
         recordedBy: userId,
         advanceForStudentId,
+        claimId: input.claimId,
       },
       now,
     );
@@ -264,7 +331,7 @@ export class PaymentsService {
     const receiptNo = await this.receipts.nextNumber(schoolId, intent.academicYearId);
     const receipt = await this.receipts.create(
       schoolId,
-      { paymentId: payment.id, academicYearId: intent.academicYearId, receiptNo, amount: dto.amount, issuedBy: userId, lines },
+      { paymentId: payment.id, academicYearId: intent.academicYearId, receiptNo, amount: input.amount, issuedBy: userId, lines },
       now,
     );
     await this.audit.record(schoolId, {
@@ -273,8 +340,8 @@ export class PaymentsService {
       subjectType: SUBJECT,
       subjectId: payment.id,
       metadata: {
-        amount: dto.amount,
-        method: dto.method,
+        amount: input.amount,
+        method: input.method,
         academicYearId: intent.academicYearId.toString(),
         payerGuardianId: intent.payerGuardianId?.toString() ?? null,
         studentIds: intent.studentIds.join(','),
@@ -282,13 +349,13 @@ export class PaymentsService {
         advanceUsed,
         remainder: result.remainder,
         receiptNo,
+        ...(input.claimId === null ? {} : { claimId: input.claimId.toString() }),
       },
     });
     // Every child who received money (from this payment or their advance) or holds its advance.
     const reached = new Set([...result.allocations.map((a) => a.studentId), ...(advanceForStudentId === null ? [] : [advanceForStudentId])]);
     await this.tellFamily(schoolId, intent, receipt, reached, owed - result.allocations.reduce((sum, a) => sum + a.amount, 0));
-    await recordSubject(payment.id);
-    return payment.id;
+    return payment;
   }
 
   /** receipt_issued (R190, §1.1 "Receipt channel"), written in the payment's transaction. */
@@ -521,7 +588,7 @@ export class PaymentsService {
         recordedByUserId: row.recordedBy.toString(),
         recordedByName: users.get(row.recordedBy) ?? '',
         handoverId: row.handoverId?.toString() ?? null,
-        claimId: null,
+        claimId: row.claimId?.toString() ?? null,
         status: row.status,
         voidedAt: row.voidedAt,
         receipt:

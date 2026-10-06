@@ -23,10 +23,14 @@ export function requestIdAndNoStore(req: Request, res: Response, next: NextFunct
 }
 
 /**
- * Routes allowed to receive a non-JSON body, as `METHOD /path`. The one multipart route is
- * `POST /api/v1/uploads` (contracts/slice-6.md §6.1).
+ * Routes allowed to receive a non-JSON body, as `METHOD /path`. The multipart routes are
+ * `POST /api/v1/uploads` (contracts/slice-6.md §6.1) and the guardian's own, `POST /api/v1/me/uploads`
+ * (contracts/slice-21.md §1).
  */
-export const NON_JSON_BODY_ROUTES: ReadonlySet<string> = new Set([`POST /${API_PREFIX}/uploads`]);
+export const NON_JSON_BODY_ROUTES: ReadonlySet<string> = new Set([
+  `POST /${API_PREFIX}/uploads`,
+  `POST /${API_PREFIX}/me/uploads`,
+]);
 
 /** 415 for any state-changing request whose body is not JSON. A bodiless POST is fine. */
 export function requireJsonBody(req: Request, _res: Response, next: NextFunction): void {

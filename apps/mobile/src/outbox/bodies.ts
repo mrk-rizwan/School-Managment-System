@@ -1,9 +1,11 @@
 import { containsIdentityNumber, type AttendanceStatus, type RemarkCategory } from '@asms/shared';
 import type {
   CounterPaymentMethod,
+  CreateClaimDto,
   CreateDiaryEntryDto,
   CreateExpenseDto,
   CreateRemarkDto,
+  DepositMethod,
   RecordableExpenseCategory,
   SubmitRegisterDto,
 } from '../api/contracts';
@@ -137,6 +139,28 @@ export function buildExpenseBody(input: ExpenseInput): CreateExpenseDto {
     ...(given(input.payee) ? { payee: input.payee.trim() } : {}),
     method: input.method,
     ...(given(input.reference) ? { reference: input.reference.trim() } : {}),
+  };
+}
+
+export type ClaimInput = {
+  method: DepositMethod;
+  /** Whole rupees. */
+  claimedAmount: number;
+  paidOn: string;
+  reference?: string | null;
+  note?: string | null;
+};
+
+/** Never a stagedUploadId: the slip travels in its own lane (payment_claim_image, §3.9). */
+export function buildClaimBody(input: ClaimInput): CreateClaimDto {
+  checked('reference', input.reference);
+  checked('note', input.note);
+  return {
+    method: input.method,
+    claimedAmount: input.claimedAmount,
+    paidOn: input.paidOn,
+    ...(given(input.reference) ? { reference: input.reference.trim() } : {}),
+    ...(given(input.note) ? { note: input.note.trim() } : {}),
   };
 }
 

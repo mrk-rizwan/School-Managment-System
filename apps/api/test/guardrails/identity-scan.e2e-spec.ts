@@ -311,13 +311,7 @@ describe('R16 (slice 17): every message template, rendered with realistic values
    * Phase 3 types whose templates their own slices write (phase-3-financial.md §3.6). Each still
    * refuses to render; once a slice writes its template it leaves this set and is scanned above.
    */
-  const TEMPLATE_PENDING = new Set<MessageType>([
-    'fee_due_reminder',
-    'fee_overdue',
-    'payment_claim_rejected',
-    'payment_claim_submitted',
-    'reminder_sms_capped',
-  ]);
+  const TEMPLATE_PENDING = new Set<MessageType>([]);
 
   const RENDERED: { [K in MessageType]: () => Rendered[] } = {
     absence_alert: () => [renderMessage('absence_alert', { ...child, date: day('2026-10-05') }, ctx('attendance_alert'))],
@@ -404,8 +398,21 @@ describe('R16 (slice 17): every message template, rendered with realistic values
         ctx('charge_run'),
       ),
     ],
-    fee_due_reminder: () => [],
-    fee_overdue: () => [],
+    // Slice 22 (contracts/slice-22.md §4): the family's total, the children's names and a date.
+    fee_due_reminder: () => [
+      renderMessage(
+        'fee_due_reminder',
+        { total: 12_500, children: ['Muhammad Abdul Rehman Siddiqui', 'Ayesha Siddiqa Rehman'], dueOn: day('2026-10-10') },
+        ctx('fee_reminder'),
+      ),
+    ],
+    fee_overdue: () => [
+      renderMessage(
+        'fee_overdue',
+        { overdue: 12_500, children: ['Muhammad Abdul Rehman Siddiqui', 'Ayesha Siddiqa Rehman'], since: day('2026-09-10') },
+        ctx('fee_reminder'),
+      ),
+    ],
     // Slice 20 (contracts/slice-20.md §6): the receipt's label, amounts and children's names.
     receipt_issued: () => [
       renderMessage(
@@ -420,12 +427,26 @@ describe('R16 (slice 17): every message template, rendered with realistic values
         ctx('receipt'),
       ),
     ],
-    payment_claim_rejected: () => [],
-    payment_claim_submitted: () => [],
+    // Slice 21 (contracts/slice-21.md §5): the child's name, the amount and the office's reason.
+    payment_claim_rejected: () => [
+      renderMessage(
+        'payment_claim_rejected',
+        {
+          studentName: 'Muhammad Abdul Rehman Siddiqui',
+          amount: 12_500,
+          paidOn: day('2026-10-05'),
+          reason: 'The slip shows a different account; please pay to the account on the fees page and send the new slip.',
+        },
+        ctx('payment_claim'),
+      ),
+    ],
+    payment_claim_submitted: () => [
+      renderMessage('payment_claim_submitted', { studentName: 'Muhammad Abdul Rehman Siddiqui' }, ctx('payment_claim')),
+    ],
     handover_shortfall: () => [
       renderMessage('handover_shortfall', { collectorName: 'Muhammad Abdul Rehman Siddiqui' }, ctx('cash_handover')),
     ],
-    reminder_sms_capped: () => [],
+    reminder_sms_capped: () => [renderMessage('reminder_sms_capped', { families: 42 }, ctx('fee_reminder'))],
     concession_requested: () => [
       renderMessage(
         'concession_requested',

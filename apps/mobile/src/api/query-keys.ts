@@ -35,6 +35,11 @@ export const queryKeys = {
     ] as const,
   staffAttendance: (dateFrom: string, dateTo: string) =>
     ['me', 'staff', 'attendance', dateFrom, dateTo] as const,
+  /** Phase 3 slice 21: a child's Fees — dues, claims, receipts — and its prefix for invalidation. */
+  fees: (studentId: string) => ['me', 'children', studentId, 'fees'] as const,
+  feesDues: (studentId: string) => ['me', 'children', studentId, 'fees', 'dues'] as const,
+  feesClaims: (studentId: string) => ['me', 'children', studentId, 'fees', 'claims'] as const,
+  feesReceipts: (studentId: string) => ['me', 'children', studentId, 'fees', 'receipts'] as const,
 
   // Principal (16b): Today and Announce
   unrecorded: (date: string, page: number) =>
@@ -59,6 +64,7 @@ export const queryKeys = {
     ['local', 'register', sectionId, date, period] as const,
   localDiary: (sectionId: string) => ['local', 'diary', sectionId] as const,
   localRemarks: (studentId: string) => ['local', 'remarks', studentId] as const,
+  localClaims: (studentId: string) => ['local', 'claims', studentId] as const,
 };
 
 /** Prefixes for invalidation after a write reaches the server (slice-16 §3.1). */

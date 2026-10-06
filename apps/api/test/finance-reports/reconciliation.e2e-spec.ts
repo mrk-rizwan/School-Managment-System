@@ -1,0 +1,290 @@
+// R228 over a scripted year (phase-3-financial.md §0.20, slice 22): admission mid-month, a
+// concession applied to open charges, late fees and a waiver, partial and sibling payments, an
+// advance, a void, a refund and its reversal, a cash refund that stands, a carry-forward, a deposit claim verified a month
+// after it was paid, a handover counted short and written off, a void after that handover, unpaid
+// leave, and a payroll
+// correction — every verb through the API that owns it. Then every §0.20 identity is asserted,
+// against the database and against the reports.
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { newIdempotencyKey } from '@asms/shared';
+import { createTestApp } from '../core/app';
+import { closeTestDb } from '../support/schools';
+import { createAcademicYear, createClass, createGuardian, createSection, enrol, isoDay } from '../support/students';
+import { db, karachi, lateFees, pupil, runMonth } from '../fees/charges-support';
+import { monthOf, reportsHttp } from './support';
+
+interface Collections {
+  total: number;
+  refunds: { amount: number };
+  refundReversals: { amount: number };
+  net: number;
+  voided: { amount: number };
+  carriedForward: { amount: number };
+}
+
+const ULID = '01J9ZQ3W4X5Y6Z7A8B9C0D1E2F';
+
+describe('R228: the §0.20 identities over a scripted year (e2e)', () => {
+  let app: NestExpressApplication;
+  const h = reportsHttp(() => app);
+  const { get, post } = h;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+  });
+  afterAll(async () => {
+    await app.close();
+    await closeTestDb();
+  });
+
+  it('every identity holds after a year of every verb', async () => {
+    const w = await h.world();
+    const schoolId = w.school.id;
+    const P = w.principal;
+    const O = w.office;
+    const key = newIdempotencyKey;
+
+    // ---- the year: two older months, an admission after the cut-off, the generated months ----
+    const m1 = monthOf(-105);
+    const m2 = monthOf(-75);
+    const g3 = await createGuardian(db(), w.school, { fullName: 'Sana Ali', contactCapability: 'smartphone_data' });
+    const d = await pupil(w.school, w.section, { startedOn: `${m2}-20`, fullName: 'Daniyal Ali', guardianId: g3.id });
+    for (const month of [m1, m2, w.past]) await runMonth(app, w.school, w.year, month, karachi(`${month}-02`));
+    // Admitted on the 20th, after the cut-off (15th): not charged that month, charged after (R180).
+    const dCharges = await db().charge.findMany({ where: { schoolId, studentId: d.studentId } });
+    expect(dCharges.map((c) => c.period)).toEqual([w.past]);
+
+    // ---- a concession requested by the office, approved onto the open charges (A6) ----
+    const concession = await post(
+      '/concessions',
+      { studentId: w.c.studentId.toString(), academicYearId: w.year.id.toString(), kind: 'percentage', value: 10, feeHeadIds: [w.heads.tuition.toString()], effectiveFrom: m1, reason: 'Orphan support' },
+      O,
+      key(),
+    ).expect(201);
+    await post(`/concessions/${(concession.body as { id: string }).id}/approve`, { applyToOpenCharges: true }, P).expect(200);
+
+    // ---- late fees (on since before the months began), and one waived ----
+    await db().schoolSettings.updateMany({
+      where: { schoolId },
+      data: { lateFeeEnabled: true, lateFeeAmount: 500, lateFeeEnabledAt: new Date(`${m1}-01T00:00:00.000Z`) },
+    });
+    expect(await lateFees(app, w.school, new Date())).toBeGreaterThan(0);
+    const lateFee = await db().charge.findFirstOrThrow({ where: { schoolId, studentId: w.a.studentId, kind: 'late_fee', period: m1 } });
+    await post(`/charges/${lateFee.id}/waive`, { reason: 'First time late' }, P).expect(200);
+
+    // ---- partial and sibling payments, an advance, a void ----
+    await h.pay(w, O, { guardianId: w.g1, studentIds: [w.a.studentId, w.b.studentId], amount: 10000 });
+    await h.pay(w, O, { guardianId: g3.id, studentIds: [d.studentId], amount: 8000 });
+    const typo = await h.pay(w, O, { guardianId: w.g2, studentIds: [w.c.studentId], amount: 2000 });
+    await post(`/payments/${typo.id}/void`, { reason: 'Recorded twice' }, P).expect(200);
+    const dAdvance = await db().payment.findFirstOrThrow({ where: { schoolId, advanceForStudentId: d.studentId, status: 'verified' } });
+    expect(dAdvance.unallocatedAmount).toBe(8000 - 3000 - 500);
+
+    // ---- a refund of the advance and its reversal; a carry-forward to next year ----
+    const refund = (await post(`/payments/${dAdvance.id}/refund`, { amount: 1000, reason: 'Family asked for it', method: 'cash' }, P, key()).expect(201)).body as { id: string };
+    await post(`/payments/${dAdvance.id}/reverse-refund`, { reversalId: refund.id, reason: 'Family changed their mind' }, P, key()).expect(201);
+    // A cash refund that stands: cash out of the drawer today.
+    await post(`/payments/${dAdvance.id}/refund`, { amount: 300, reason: 'Uniform not needed', method: 'cash' }, P, key()).expect(201);
+    const next = await createAcademicYear(db(), w.school, { startsOn: isoDay(161), endsOn: isoDay(520) });
+    const nextSection = await createSection(db(), w.school, await createClass(db(), w.school, next));
+    await enrol(db(), w.school, { id: d.studentId }, nextSection, { startedOn: isoDay(161), status: 'left', endedOn: isoDay(170) });
+    await post(`/payments/${dAdvance.id}/carry-forward`, { academicYearId: next.id.toString(), amount: 1500, reason: 'Kept for next session' }, O, key()).expect(201);
+
+    // ---- a deposit claim paid 35 days ago: pending, it is in no report; verified, it is credited ----
+    await db().studentGuardian.updateMany({ where: { schoolId, studentId: w.c.studentId }, data: { canLogin: true } });
+    const claim = await db().paymentClaim.create({
+      data: {
+        schoolId,
+        studentId: w.c.studentId,
+        guardianId: w.g2,
+        method: 'bank_transfer',
+        claimedAmount: 3000,
+        paidOn: new Date(`${isoDay(-35)}T00:00:00.000Z`),
+        reference: 'HBL-889',
+        imageObjectKey: `${schoolId}/${ULID}.jpg`,
+        imageMime: 'image/jpeg',
+        imageSizeBytes: 2048,
+      },
+    });
+    const collections = async (basis: string, from = isoDay(-91), to = isoDay(0)) =>
+      (await get(`/finance-reports/collections?receivedFrom=${from}&receivedTo=${to}&groupBy=method&basis=${basis}`, P).expect(200)).body as Collections;
+    expect((await collections('received')).total).toBe(18000);
+    await post(`/payment-claims/${claim.id}/verify`, {}, P).expect(200);
+
+    // ---- the collector hands over; counted 200 short; the principal writes it off; then a
+    //      payment in that confirmed handover is voided (it stays in the handover) ----
+    const late = await h.pay(w, O, { guardianId: w.g2, studentIds: [w.c.studentId], amount: 500 });
+    const handover = (await post('/me/staff/cash-handovers', {}, O).expect(201)).body as { id: string; expectedAmount: number };
+    expect(handover.expectedAmount).toBe(18500);
+    await post(`/cash-handovers/${handover.id}/confirm`, { countedAmount: 18300 }, P).expect(200);
+    await post(`/cash-handovers/${handover.id}/resolve-shortfall`, { resolution: 'written_off', reason: 'Not found after recount' }, P).expect(200);
+    await post(`/payments/${late.id}/void`, { reason: 'Entered against the wrong family' }, P).expect(200);
+
+    // ---- staff: salaries, an unpaid leave, a payroll run and its correction a month later ----
+    const p1 = monthOf(-65);
+    const p2 = monthOf(-35);
+    for (const staff of [w.teacher, O]) {
+      await post(
+        `/staff/${staff.user.staffId}/salary-structure`,
+        { basic: 26000, components: [{ kind: 'allowance', name: 'Conveyance', amount: 2000 }], effectiveFrom: `${monthOf(-150)}-01`, reason: 'Appointment' },
+        P,
+        key(),
+      ).expect(201);
+    }
+    const unpaid = await db().leaveType.findFirstOrThrow({ where: { schoolId, code: 'unpaid' } });
+    // The API takes a request at most 7 days back (slice 24), so the month's approved unpaid leave
+    // is written as it would stand after its approval then.
+    await db().leaveRequest.create({
+      data: {
+        schoolId,
+        staffId: w.teacher.user.staffId,
+        leaveTypeId: unpaid.id,
+        startsOn: new Date(`${p1}-12T00:00:00.000Z`),
+        endsOn: new Date(`${p1}-16T00:00:00.000Z`),
+        workingDays: 5,
+        reason: 'Family wedding',
+        status: 'approved',
+        requestedBy: P.user.userId,
+        onBehalf: true,
+        decidedBy: P.user.userId,
+        decidedAt: new Date(),
+      },
+    });
+    const run1 = (await post('/payroll-runs', { yearMonth: p1 }, P).expect(201)).body as { id: string };
+    await post(`/payroll-runs/${run1.id}/finalise`, {}, P).expect(200);
+    const slips1 = await db().payslip.findMany({ where: { schoolId, runId: BigInt(run1.id) } });
+    const teacherSlip1 = slips1.find((s) => s.staffId === w.teacher.user.staffId);
+    expect(teacherSlip1?.absenceDeduction).toBeGreaterThan(0);
+    await post(`/payslips/${teacherSlip1?.id}/mark-paid`, { paidOn: isoDay(0), paidMethod: 'cash' }, P).expect(200);
+    const run2 = (await post('/payroll-runs', { yearMonth: p2 }, P).expect(201)).body as { id: string };
+    const teacherSlip2 = await db().payslip.findFirstOrThrow({ where: { schoolId, runId: BigInt(run2.id), staffId: w.teacher.user.staffId } });
+    const adjusted = await post(
+      `/payslips/${teacherSlip2.id}/adjust`,
+      { amount: 1000, name: 'Leave deducted in error', adjustsPayslipId: teacherSlip1?.id.toString(), reason: 'One leave day was a holiday' },
+      P,
+      key(),
+    );
+    expect([200, 201]).toContain(adjusted.status);
+    await post(`/payroll-runs/${run2.id}/finalise`, {}, P).expect(200);
+
+    // ================================================================ the identities (§0.20)
+
+    // 1. Every non-voided payment: Σ live allocations + Σ refunds (net of reversals) + Σ carried
+    //    forward + unallocated = amount.
+    const payments = await db().payment.findMany({ where: { schoolId, status: 'verified' } });
+    expect(payments.length).toBeGreaterThanOrEqual(4);
+    for (const p of payments) {
+      const live = await db().paymentAllocation.aggregate({ where: { schoolId, paymentId: p.id, reversedAt: null }, _sum: { amount: true } });
+      const reversals = await db().paymentReversal.findMany({ where: { schoolId, paymentId: p.id } });
+      const sum = (kind: string) => reversals.filter((r) => r.kind === kind).reduce((s, r) => s + r.amount, 0);
+      expect((live._sum.amount ?? 0) + sum('refund') - sum('refund_reversal') + sum('carried_forward') + p.unallocatedAmount).toBe(p.amount);
+    }
+
+    // 2. Every charge: the counters bounded; a live one is open exactly while something is owed
+    //    (a waived or voided one owes nothing whatever its counters say; an adjustment row is a
+    //    settled credit, never owed).
+    const charges = await db().charge.findMany({ where: { schoolId } });
+    for (const c of charges.filter((x) => x.kind !== 'adjustment')) {
+      const owed = c.amount - c.allocatedAmount - c.creditedAmount;
+      expect(owed).toBeGreaterThanOrEqual(0);
+      if (c.status === 'open' || c.status === 'settled') expect(c.status === 'open').toBe(owed > 0);
+    }
+    expect(charges.filter((c) => c.status === 'waived').map((c) => c.id)).toEqual([lateFee.id]);
+
+    // 3. Outstanding = Σ (amount − allocated − credited) over open charges, in the report and in
+    //    each statement (charged − concession − adjustments − paid = outstanding).
+    const open = charges.filter((c) => c.status === 'open' && c.academicYearId === w.year.id);
+    const owedTotal = open.reduce((s, c) => s + c.amount - c.allocatedAmount - c.creditedAmount, 0);
+    const outstanding = (await get(`/finance-reports/outstanding?academicYearId=${w.year.id}`, P).expect(200)).body as { total: number; adjustments: { amount: number } };
+    expect(outstanding.total).toBe(owedTotal);
+    expect(outstanding.adjustments.amount).toBe(900); // the concession's three credits on Zainab's charges
+    let statements = 0;
+    for (const p of [w.a, w.b, w.c, d]) {
+      const s = (await get(`/students/${p.studentId}/fee-statement?academicYearId=${w.year.id}`, P).expect(200)).body as {
+        totals: { charged: number; concession: number; adjustments: number; paid: number; outstanding: number };
+      };
+      expect(s.totals.charged - s.totals.concession - s.totals.adjustments - s.totals.paid).toBe(s.totals.outstanding);
+      statements += s.totals.outstanding;
+    }
+    expect(statements).toBe(owedTotal);
+    const defaulters = (await get('/finance-reports/defaulters?limit=50', P).expect(200)).body as { data: { outstanding: number }[] };
+    expect(defaulters.data.reduce((s, r) => s + r.outstanding, 0)).toBe(owedTotal);
+    // The waived late fee owes nothing.
+    expect((await db().charge.findFirstOrThrow({ where: { schoolId, id: lateFee.id } })).status).toBe('waived');
+
+    // 4. Collections = non-voided receipts; refunds, refund reversals, voids and the carry-forward
+    //    are their own lines; the claim is credited on the day it was verified, not paid.
+    const receipts = await db().receipt.findMany({ where: { schoolId } });
+    const liveReceipts = receipts.filter((r) => payments.some((p) => p.id === r.paymentId));
+    const verified = await collections('verified');
+    expect(verified.total).toBe(liveReceipts.reduce((s, r) => s + r.amount, 0));
+    expect(verified.total).toBe(10000 + 8000 + 3000);
+    expect([verified.refunds.amount, verified.refundReversals.amount, verified.voided.amount, verified.carriedForward.amount]).toEqual([1300, 1000, 2500, 1500]);
+    expect(verified.net).toBe(verified.total - verified.refunds.amount + verified.refundReversals.amount);
+    const today = await collections('received', isoDay(0), isoDay(0));
+    expect(today.total).toBe(18000);
+    expect((await collections('received', isoDay(-35), isoDay(-35))).total).toBe(3000);
+    // The carried-forward payment has no receipt and is in no collection of its year either.
+    const carried = await db().payment.findFirstOrThrow({ where: { schoolId, method: 'carried_forward' } });
+    expect([carried.academicYearId, carried.amount]).toEqual([next.id, 1500]);
+    expect(await db().receipt.count({ where: { schoolId, paymentId: carried.id } })).toBe(0);
+
+    // 5. Cash: payments − voids before handover = with collectors + handed over (expected), and
+    //    counted − expected = surplus − shortfall, the shortfall written off as a cash expense.
+    const cash = (await get(`/finance-reports/daily-cash?date=${isoDay(0)}`, P).expect(200)).body as {
+      cashReceived: number;
+      voidedBeforeHandover: number;
+      voidedAfterHandover: number;
+      withCollectors: { amount: number }[];
+      handedOver: { expected: number; counted: number; shortfall: number; surplus: number; fromDay: number; shortfallResolution: string }[];
+      refundsPaidCash: number;
+      cashExpenses: number;
+      shortfallWrittenOff: number;
+      salariesPaidCash: number;
+    };
+    expect(cash.cashReceived - cash.voidedBeforeHandover).toBe(
+      cash.withCollectors.reduce((s, c) => s + c.amount, 0) + cash.handedOver.reduce((s, x) => s + x.fromDay, 0),
+    );
+    expect([cash.cashReceived, cash.voidedBeforeHandover, cash.voidedAfterHandover]).toEqual([20500, 2000, 500]);
+    expect(cash.handedOver.map((x) => [x.expected, x.fromDay])).toEqual([[18500, 18500]]);
+    for (const x of cash.handedOver) expect(x.counted - x.expected).toBe(x.surplus - x.shortfall);
+    expect(cash.handedOver.map((x) => [x.shortfall, x.shortfallResolution])).toEqual([[200, 'written_off']]);
+    expect([cash.cashExpenses, cash.shortfallWrittenOff]).toEqual([200, 200]);
+    // The first refund and its reversal cancel out; the second stands.
+    expect(cash.refundsPaidCash).toBe(300);
+    expect(cash.salariesPaidCash).toBe(teacherSlip1?.net);
+    const allCash = await db().payment.findMany({ where: { schoolId, method: 'cash' } });
+    const custody = allCash.filter((p) => p.status === 'verified' && p.handoverId === null).reduce((s, p) => s + p.amount, 0);
+    const handovers = await db().cashHandover.findMany({ where: { schoolId } });
+    const voidedBefore = allCash.filter((p) => p.status === 'voided' && p.handoverId === null).reduce((s, p) => s + p.amount, 0);
+    const voidedAfter = allCash.filter((p) => p.status === 'voided' && p.handoverId !== null).reduce((s, p) => s + p.amount, 0);
+    expect([voidedBefore, voidedAfter]).toEqual([cash.voidedBeforeHandover, cash.voidedAfterHandover]);
+    expect(allCash.reduce((s, p) => s + p.amount, 0) - voidedBefore).toBe(custody + handovers.reduce((s, x) => s + x.expectedAmount, 0));
+    // Cash refunds in the database: made today, net of today's reversals of cash refunds.
+    const reversalRows = await db().paymentReversal.findMany({ where: { schoolId }, include: { reverses: { select: { refundMethod: true } } } });
+    const cashOut = reversalRows.reduce(
+      (s, r) => s + (r.kind === 'refund' && r.refundMethod === 'cash' ? r.amount : r.kind === 'refund_reversal' && r.reverses?.refundMethod === 'cash' ? -r.amount : 0),
+      0,
+    );
+    expect(cashOut).toBe(cash.refundsPaidCash);
+
+    // 6. Concessions: the reductions the concession made (its credits on the open charges).
+    const concessions = (await get(`/finance-reports/concessions?academicYearId=${w.year.id}`, P).expect(200)).body as { total: number };
+    expect(concessions.total).toBe(900);
+
+    // 7. Payroll: finalised runs only; gross − deductions + adjustments = net; the correction is
+    //    its own adjustment in the later month.
+    const payroll = (await get(`/finance-reports/payroll?from=${p1}&to=${p2}`, P).expect(200)).body as {
+      rows: { yearMonth: string; gross: number; deductions: number; adjustments: number; net: number; paid: number; unpaid: number }[];
+    };
+    expect(payroll.rows.map((r) => [r.yearMonth, r.adjustments])).toEqual([
+      [p1, 0],
+      [p2, 1000],
+    ]);
+    for (const r of payroll.rows) {
+      expect(r.gross - r.deductions + r.adjustments).toBe(r.net);
+      expect(r.paid + r.unpaid).toBe(r.net);
+    }
+    expect(payroll.rows[0]?.deductions).toBe(teacherSlip1?.absenceDeduction);
+  });
+});

@@ -56,6 +56,10 @@ describe('the worker (e2e)', () => {
       { job: 'late-fee-sweep', pattern: '0 0 2 * * *' },
       // Phase 3 slice 25 (§3.7): the pay-day draft payroll run.
       { job: 'payroll-prepare', pattern: '0 0 3 * * *' },
+      // Phase 3 slice 22 (§3.7): the fee reminders.
+      { job: 'fee-reminder', pattern: '0 0 9 * * *' },
+      // Phase 3 slice 21 (§3.7, R200): image-less deposit claims expire.
+      { job: 'claim-image-sweep', pattern: '0 15 2 * * *' },
     ]);
   });
 

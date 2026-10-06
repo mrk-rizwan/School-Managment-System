@@ -44,7 +44,7 @@ test('the online-only list after Phase 3 (§3.9, R226)', () => {
   );
 });
 
-test('seven lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and local tables', () => {
+test('nine lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and local tables', () => {
   expect(Object.keys(LANES).sort()).toEqual(
     [
       'device_register',
@@ -54,6 +54,8 @@ test('seven lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and lo
       'submit_register',
       'expense',
       'expense_receipt',
+      'payment_claim',
+      'payment_claim_image',
     ].sort(),
   );
   expect(LANES.device_register).toMatchObject({
@@ -105,10 +107,27 @@ test('seven lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and lo
     domainTable: 'local_files',
     label: 'Expense receipt',
   });
+  expect(LANES.expense_receipt).not.toHaveProperty('uploadPath');
+  // Phase 3 slice 21: a guardian's claim and its slip, uploaded under /me (R78).
+  expect(LANES.payment_claim).toMatchObject({
+    method: 'POST',
+    path: '/api/v1/me/children/:id/payment-claims',
+    sender: 'json',
+    domainTable: 'local_claims',
+    label: 'Deposit slip',
+  });
+  expect(LANES.payment_claim_image).toMatchObject({
+    method: 'PATCH',
+    path: '/api/v1/me/children/:id/payment-claims/:claimId',
+    sender: 'staged_upload_patch',
+    uploadPath: '/api/v1/me/uploads',
+    domainTable: 'local_files',
+    label: 'Deposit slip photo',
+  });
 });
 
 // A deposit claim and its image (slice 21) are the other money lanes §3.9 allows.
-test('no money write but an expense (and its receipt) is a lane (R207, R226)', () => {
+test('no money write but an expense and a deposit claim (and their files) is a lane (R207, R226)', () => {
   const paths = Object.values(LANES).map((lane) => lane.path);
   for (const path of paths) {
     expect(path).not.toMatch(/\/payments|cash-handovers|approve|reject|void|verify|withdraw|leave/);
@@ -117,19 +136,25 @@ test('no money write but an expense (and its receipt) is a lane (R207, R226)', (
     '/api/v1/expenses',
     '/api/v1/expenses/:id/receipt',
   ]);
+  expect(paths.filter((path) => path.includes('/payment-claims'))).toEqual([
+    '/api/v1/me/children/:id/payment-claims',
+    '/api/v1/me/children/:id/payment-claims/:claimId',
+  ]);
 });
 
-test('submit_register is the only coalescing lane; diary_entry, remark and expense the header lanes', () => {
+test('submit_register is the only coalescing lane; diary_entry, remark, expense and payment_claim the header lanes', () => {
   const ids = Object.keys(LANES) as (keyof typeof LANES)[];
   expect(ids.filter((id) => LANES[id].coalesces)).toEqual(['submit_register']);
   expect(ids.filter((id) => LANES[id].idempotencyHeader).sort()).toEqual([
     'diary_entry',
     'expense',
+    'payment_claim',
     'remark',
   ]);
   expect(ids.filter((id) => LANES[id].sender !== 'json').sort()).toEqual([
     'diary_attachment',
     'expense_receipt',
+    'payment_claim_image',
   ]);
 });
 
@@ -159,6 +184,12 @@ test.each([
   ['expense_receipt', 'EXPENSE_RECEIPT_EXISTS', 'discard'],
   ['expense_receipt', 'REFERENCE_NOT_FOUND', 'retry'],
   ['expense_receipt', 'ATTACHMENT_FILE_MISSING', 'discard'],
+  ['payment_claim', 'CLAIMS_NOT_ACCEPTED', 'discard'],
+  ['payment_claim', 'CLAIM_LIMIT_REACHED', 'discard'],
+  ['payment_claim', 'VALIDATION_FAILED', 'discard'],
+  ['payment_claim_image', 'CLAIM_NOT_PENDING', 'discard'],
+  ['payment_claim_image', 'REFERENCE_NOT_FOUND', 'retry'],
+  ['payment_claim_image', 'ATTACHMENT_FILE_MISSING', 'discard'],
 ])('%s, %s → %s', (lane, code, remedy) => {
   expect(remedyFor(lane, code)).toBe(remedy);
 });

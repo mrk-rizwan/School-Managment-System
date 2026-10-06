@@ -21,6 +21,7 @@ export function AppShell({
   title,
   nav,
   capabilities = [],
+  capacities = [],
   topBarEnd,
   children,
 }: {
@@ -28,11 +29,13 @@ export function AppShell({
   nav: keyof typeof NAV;
   /** Effective capabilities of the signed-in user; entries needing others are hidden. */
   capabilities?: readonly string[];
+  /** Active capacities (staff, guardian, student); a capacity's own entries need it. */
+  capacities?: readonly string[];
   topBarEnd?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const items = visibleNav(NAV[nav], new Set(capabilities));
+  const items = visibleNav(NAV[nav], new Set(capabilities), new Set(capacities));
 
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-[15rem_1fr]">

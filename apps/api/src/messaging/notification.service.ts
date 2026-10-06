@@ -147,6 +147,9 @@ export class NotificationService {
    * fee_charged per family, with that family's total). One resolution, one channel plan and one
    * insert for the whole set, so a run that tells 2,000 families stays inside its budget (§7.2).
    * A recipient listed twice keeps its first variables. Not for announcement-carried messages.
+   * `planned`, when given, is plan() of these recipients (in this order) computed earlier in the
+   * caller's transaction and possibly narrowed (the fee reminder strips SMS legs past the month's
+   * allowance, contracts/slice-22.md §3); it is written as it stands.
    */
   async sendEach<T extends MessageType>(
     schoolId: SchoolId,
@@ -154,6 +157,7 @@ export class NotificationService {
       readonly type: T;
       readonly subject: SendInput<T>['subject'];
       readonly items: readonly { readonly recipient: Recipient; readonly vars: TemplateVarsMap[T] }[];
+      readonly planned?: PlannedSend;
     },
   ): Promise<SendResult> {
     this.outbox.requireTransaction();
@@ -172,7 +176,10 @@ export class NotificationService {
       const key = keyOf(item.recipient);
       if (!varsOf.has(key)) varsOf.set(key, item.vars);
     }
-    const plan = await this.planFor(schoolId, settings, { type: input.type, recipients: input.items.map((i) => i.recipient) });
+    const plan =
+      input.planned ??
+      (await this.planFor(schoolId, settings, { type: input.type, recipients: input.items.map((i) => i.recipient) }));
+    if (plan.people.length !== varsOf.size) throw new Error('a precomputed plan is not of these recipients');
     const bodies = plan.people.map((person) => {
       const vars = varsOf.get(keyOf(person.recipient));
       if (vars === undefined) throw new Error('a planned person has no variables');

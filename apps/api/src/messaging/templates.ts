@@ -193,8 +193,18 @@ const RENDERERS: Renderers = {
     const due = `Due ${formatDay(vars.dueOn)}.`;
     return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names}. ${due}`);
   },
-  fee_due_reminder: notWritten('fee_due_reminder'),
-  fee_overdue: notWritten('fee_overdue'),
+  // contracts/slice-22.md §4 (R201, R202): SMS-allowed, so one segment with the longest fixtures;
+  // the children's names are cut to fit. The push body is the title (R238).
+  fee_due_reminder: (vars, ctx) => {
+    const head = `${schoolLabel(ctx.schoolName)}: Fee reminder: ${formatRupees(vars.total)} for`;
+    const tail = `is due ${formatDay(vars.dueOn)}. Please pay at the school office.`;
+    return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names} ${tail}`);
+  },
+  fee_overdue: (vars, ctx) => {
+    const head = `${schoolLabel(ctx.schoolName)}: Fees overdue: ${formatRupees(vars.overdue)} for`;
+    const tail = `unpaid since ${formatDay(vars.since)}. Please pay at the school office.`;
+    return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names}, ${tail}`);
+  },
   // contracts/slice-20.md §6 (R190): SMS-allowed, so one segment with the longest fixtures; the
   // children's names are cut to fit. Never a link. The push body is the title (R238).
   receipt_issued: (vars, ctx) => {
@@ -202,12 +212,22 @@ const RENDERERS: Renderers = {
     const tail = `Balance for ${cutWords(vars.yearName, 20)}: ${formatRupees(vars.balance)}.`;
     return fitOneSegment(vars.children.map((c) => cutWords(c, STUDENT_NAME_MAX)).join(', '), (names) => `${head} ${names}. ${tail}`);
   },
-  payment_claim_rejected: notWritten('payment_claim_rejected'),
-  payment_claim_submitted: notWritten('payment_claim_submitted'),
+  // contracts/slice-21.md §5 (R196): SMS-allowed, so one segment with the longest fixtures; the
+  // office's reason is cut to fit. Never a link. The push body is the title (R238).
+  payment_claim_rejected: (vars, ctx) => {
+    const head = `${schoolLabel(ctx.schoolName)}: Deposit slip for ${cutWords(vars.studentName, STUDENT_NAME_MAX)} (${formatRupees(vars.amount)}, ${formatDay(vars.paidOn)}) not accepted:`;
+    return fitOneSegment(vars.reason, (reason) => `${head} ${reason}`);
+  },
+  // contracts/slice-21.md §5 (R200): push and email to the verifiers, once, when the slip lands;
+  // no amount (R238), which the claim queue shows.
+  payment_claim_submitted: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: A deposit slip for ${cutWords(vars.studentName, STUDENT_NAME_MAX)} is waiting to be verified. Open ASMS to check it.`,
   // contracts/slice-20.md §6 (R193): push and email to the principals; no amount (R238).
   handover_shortfall: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: A cash handover from ${vars.collectorName} was counted short. Open ASMS to resolve it.`,
-  reminder_sms_capped: notWritten('reminder_sms_capped'),
+  // contracts/slice-22.md §4 (R250): push and email to the principals; no amount (R238).
+  reminder_sms_capped: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ${vars.families} ${vars.families === 1 ? 'family' : 'families'} could not be reminded by SMS because this month's SMS allowance is used up.`,
   // contracts/slice-19.md §6: push and email to principals and the requester; no amount (R238).
   concession_requested: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: A fee concession for ${cutWords(vars.studentName, STUDENT_NAME_MAX)} was requested by ${vars.requesterName}. Open ASMS to decide.`,
@@ -412,6 +432,16 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'Fees charged';
     case 'receipt_issued':
       return 'Fee receipt';
+    case 'payment_claim_rejected':
+      return 'Deposit slip not accepted';
+    case 'payment_claim_submitted':
+      return 'Deposit slip to verify';
+    case 'fee_due_reminder':
+      return 'Fee reminder';
+    case 'fee_overdue':
+      return 'Fees overdue';
+    case 'reminder_sms_capped':
+      return 'Reminder SMS capped';
     case 'handover_shortfall':
       return 'Cash handover short';
     case 'concession_requested':

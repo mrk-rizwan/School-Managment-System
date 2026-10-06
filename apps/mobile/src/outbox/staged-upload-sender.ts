@@ -10,6 +10,7 @@ import {
   type UploadTable,
 } from '../db/local.repository';
 import { outboxFileExists, outboxUploadFile } from '../media/files';
+import { laneOf } from './lanes';
 import { outcomeOf, thrownOutcome, type SentOutcome } from './outcome';
 
 // The `staged_upload_patch` sender (slice-16 §4.5, §10.1; generalised in Phase 3 §3.9): upload
@@ -18,8 +19,10 @@ import { outcomeOf, thrownOutcome, type SentOutcome } from './outcome';
 // local_files for an expense's receipt). Two client-side adjustments, table-tested in
 // staged-upload-sender.spec: an upload refused for size or type never heals, so 413/415 become a
 // terminal 422 with the server's code; a staged id refused as gone (REFERENCE_NOT_FOUND) is
-// retried once with a fresh upload, and a second refusal is terminal. Everything else is the
-// machine's ordinary table.
+// retried once with a fresh upload, and a second refusal is terminal. A deposit slip (slice 21)
+// is uploaded to the lane's own uploadPath (/me/uploads), and its CLAIM_IMAGE_EXISTS is read as
+// done: the claim already holds this phone's slip from a send whose answer was lost before a
+// re-upload. Everything else is the machine's ordinary table.
 
 /** Re-upload when the staged id expires within this window. */
 export const STAGED_MARGIN_MS = 5 * 60_000;
@@ -49,12 +52,15 @@ function stagedIsFresh(row: UploadFile, now: Date): boolean {
   );
 }
 
+/** Where a staff lane's file is uploaded (POST /uploads); a lane may name its own (uploadPath). */
+export const DEFAULT_UPLOAD_PATH = '/api/v1/uploads';
+
 /** Uploads the file: the staged id, or the outcome that stops this attempt. */
-async function upload(table: UploadTable, row: UploadFile): Promise<string | SentOutcome> {
+async function upload(table: UploadTable, row: UploadFile, uploadPath: string): Promise<string | SentOutcome> {
   const sentWith = currentBearerToken();
   let response: Response;
   try {
-    response = await sendMultipart('/api/v1/uploads', 'file', outboxUploadFile(row.fileName));
+    response = await sendMultipart(uploadPath, 'file', outboxUploadFile(row.fileName));
   } catch (error) {
     return thrownOutcome(error);
   }
@@ -72,9 +78,10 @@ async function upload(table: UploadTable, row: UploadFile): Promise<string | Sen
 }
 
 export async function sendStagedUploadPatch(
-  item: { path: string; body: string; domainTable: string | null },
+  item: { lane?: string; path: string; body: string; domainTable: string | null },
   now: Date = new Date(),
 ): Promise<SentOutcome> {
+  const uploadPath = (item.lane === undefined ? null : laneOf(item.lane)?.uploadPath) ?? DEFAULT_UPLOAD_PATH;
   const table = uploadTableOf(item.domainTable);
   let parsed: z.infer<typeof Body>;
   try {
@@ -87,7 +94,7 @@ export async function sendStagedUploadPatch(
 
   let stagedUploadId = row.stagedUploadId;
   if (!stagedIsFresh(row, now)) {
-    const uploaded = await upload(table, row);
+    const uploaded = await upload(table, row, uploadPath);
     if (typeof uploaded !== 'string') return uploaded;
     stagedUploadId = uploaded;
   }
@@ -108,6 +115,11 @@ export async function sendStagedUploadPatch(
     // The staged upload expired or was consumed meanwhile: upload again, once.
     await clearStagedUpload(row.id, table);
     return { kind: 'network' };
+  }
+  if (outcome.kind === 'response' && outcome.code === ErrorCode.CLAIM_IMAGE_EXISTS) {
+    // The claim's slip is set once (R243) and only this phone's lane sends it: an earlier send
+    // landed. Done, so the local slip is deleted.
+    return { ...outcome, status: 200, code: null, message: null };
   }
   return outcome;
 }

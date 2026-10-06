@@ -1,0 +1,64 @@
+# Phase 3 slice 21 (§3.9, R199) — CI only. A parent who paid by wallet photographs nothing new: the
+# slip image is put in the emulator's gallery (addMedia) and chosen from there, in airplane mode.
+# The phone says the claim and the slip are saved on the device; when the connection returns both
+# reach the school ("Slip: with the school"). ci-run.sh then verifies the claim over curl as the
+# principal (payment.verify), and parent-receipt.yaml shows the receipt that verification issued.
+# Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- addMedia:
+    - '../assets/deposit-slip.png'
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${GUARDIAN_CNIC}
+- tapOn:
+    id: 'tabs.children'
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.fees'
+- extendedWaitUntil:
+    visible:
+      id: 'fees.upload'
+    timeout: 30000
+- tapOn:
+    id: 'fees.upload'
+- extendedWaitUntil:
+    visible:
+      id: 'depositSlip.screen'
+    timeout: 20000
+- setAirplaneMode: enabled
+- tapOn:
+    id: 'depositSlip.method.jazzcash'
+- tapOn:
+    id: 'depositSlip.amount'
+- inputText: '500'
+- hideKeyboard
+- tapOn:
+    id: 'depositSlip.library'
+# The system photo picker: the one image in the gallery.
+- extendedWaitUntil:
+    visible:
+      text: '.*(Photos|Recent|Images).*'
+    timeout: 20000
+    optional: true
+- tapOn:
+    point: '20%,35%'
+- extendedWaitUntil:
+    visible:
+      id: 'depositSlip.chosen'
+    timeout: 20000
+- tapOn:
+    id: 'depositSlip.save'
+- extendedWaitUntil:
+    visible:
+      text: 'Slip: waits for the claim to reach the school'
+    timeout: 20000
+- assertVisible:
+    text: '.*Saved on device.*'
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      text: 'Slip: with the school'
+    timeout: 60000

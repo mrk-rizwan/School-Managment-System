@@ -43,6 +43,7 @@ export function SchoolConsole({ children }: { children: React.ReactNode }) {
         title={me.data?.school.name ?? 'ASMS'}
         nav="school"
         capabilities={me.data?.capabilities ?? []}
+        capacities={me.data?.capacities ?? []}
         topBarEnd={
           me.data && (
             <div className="flex min-w-0 items-center gap-3">

@@ -5,10 +5,12 @@ import { deleteOutboxFile, deleteOutboxFilesExcept } from '../media/files';
 import { registerNaturalKey } from '../outbox/coalesce';
 import {
   buildAttachmentBody,
+  buildClaimBody,
   buildDiaryBody,
   buildExpenseBody,
   buildRegisterBody,
   buildRemarkBody,
+  type ClaimInput,
   type DiaryInput,
   type ExpenseInput,
   type RegisterMarkInput,
@@ -787,13 +789,25 @@ export async function listLocalRemarks(studentId: string): Promise<LocalRemark[]
 
 // --- Expenses and their receipts (Phase 3 slice 23, §3.9) -----------------------------------
 
+/** The owner row a waiting file is queued behind: its server id, and its child for a claim. */
+type FileOwner = { serverId: string; studentId: string | null };
+
 /** Each owner table of local_files: the lane that sends its file, and the PATCH path. */
 const FILE_LANES = {
   local_expenses: {
     lane: 'expense_receipt',
-    path: (serverId: string) => `/api/v1/expenses/${serverId}/receipt`,
+    path: ({ serverId }: FileOwner) => `/api/v1/expenses/${serverId}/receipt`,
   },
-} as const satisfies Record<string, { lane: keyof typeof LANES; path: (id: string) => string }>;
+  // Slice 21: a deposit slip, PATCHed onto its claim (R243).
+  local_claims: {
+    lane: 'payment_claim_image',
+    path: ({ serverId, studentId }: FileOwner) =>
+      `/api/v1/me/children/${studentId ?? ''}/payment-claims/${serverId}`,
+  },
+} as const satisfies Record<
+  string,
+  { lane: keyof typeof LANES; path: (owner: FileOwner) => string }
+>;
 
 type FileOwnerTable = keyof typeof FILE_LANES;
 
@@ -896,7 +910,7 @@ async function queueWaitingFiles(
   txn: Db,
   ownerTable: FileOwnerTable,
   ownerId: string,
-  serverId: string,
+  owner: FileOwner,
   now: Date,
 ): Promise<number> {
   const { lane, path } = FILE_LANES[ownerTable];
@@ -911,7 +925,7 @@ async function queueWaitingFiles(
       {
         lane,
         method: LANES[lane].method,
-        path: path(serverId),
+        path: path(owner),
         body: buildAttachmentBody(id),
         domainTable: LANES[lane].domainTable,
         domainId: id,
@@ -950,13 +964,19 @@ export async function markExpenseSaved(
       [server?.id ?? null, server?.expenseNo ?? null, server?.status ?? null, stamp, stamp, expense.id],
     );
     if (server !== null) {
-      queued = await queueWaitingFiles(txn, 'local_expenses', expense.id, server.id, now);
+      queued = await queueWaitingFiles(
+        txn,
+        'local_expenses',
+        expense.id,
+        { serverId: server.id, studentId: null },
+        now,
+      );
     }
   });
   return queued;
 }
 
-/** Startup: a receipt still waiting whose expense already has a server id is queued. */
+/** Startup: a receipt or a slip still waiting whose owner already has a server id is queued. */
 async function recoverWaitingFiles(txn: Db, now: Date): Promise<number> {
   let queued = 0;
   const owners = await txn.getAllAsync<{ id: string; server_id: string }>(
@@ -965,7 +985,27 @@ async function recoverWaitingFiles(txn: Db, now: Date): Promise<number> {
       WHERE f.state = 'waiting' AND f.outbox_id IS NULL AND e.server_id IS NOT NULL`,
   );
   for (const owner of owners) {
-    queued += await queueWaitingFiles(txn, 'local_expenses', owner.id, owner.server_id, now);
+    queued += await queueWaitingFiles(
+      txn,
+      'local_expenses',
+      owner.id,
+      { serverId: owner.server_id, studentId: null },
+      now,
+    );
+  }
+  const claims = await txn.getAllAsync<{ id: string; server_id: string; student_id: string }>(
+    `SELECT DISTINCT c.id, c.server_id, c.student_id FROM local_claims c
+       JOIN local_files f ON f.owner_table = 'local_claims' AND f.owner_id = c.id
+      WHERE f.state = 'waiting' AND f.outbox_id IS NULL AND c.server_id IS NOT NULL`,
+  );
+  for (const claim of claims) {
+    queued += await queueWaitingFiles(
+      txn,
+      'local_claims',
+      claim.id,
+      { serverId: claim.server_id, studentId: claim.student_id },
+      now,
+    );
   }
   return queued;
 }
@@ -1017,6 +1057,169 @@ export async function listLocalExpenses(): Promise<LocalExpense[]> {
   return expenses;
 }
 
+// --- Deposit claims and their slips (Phase 3 slice 21, §3.9) -----------------------------------
+
+export type LocalClaim = {
+  id: string;
+  studentId: string;
+  method: string;
+  claimedAmount: number;
+  paidOn: string;
+  reference: string | null;
+  serverId: string | null;
+  savedOnServerAt: string | null;
+  state: 'queued' | 'done' | 'failed' | 'discarded';
+  outbox: OutboxView | null;
+  slip: (UploadFile & { outbox: OutboxView | null }) | null;
+};
+
+const ClaimRow = z.object({
+  id: z.string(),
+  student_id: z.string(),
+  method: z.string(),
+  claimed_amount: z.number(),
+  paid_on: z.string(),
+  reference: z.string().nullable(),
+  server_id: z.string().nullable(),
+  saved_on_server_at: z.string().nullable(),
+  state: z.enum(['queued', 'done', 'failed', 'discarded']),
+});
+
+/**
+ * Saves a deposit claim on the device (R199): the local row, the outbox row (its id is the
+ * Idempotency-Key) and the slip's file row in state `waiting`, all in one transaction. The slip
+ * is queued once the claim has a server id, and deleted from the phone once the server has it.
+ */
+export async function saveClaim(
+  studentId: string,
+  input: ClaimInput,
+  slip: LocalPhoto,
+  now: Date = new Date(),
+): Promise<{ localClaimId: string; outboxId: string }> {
+  const body = buildClaimBody(input);
+  const stamp = now.toISOString();
+  const localClaimId = newIdempotencyKey();
+  let outboxId = '';
+  await ownedTransaction(async (txn) => {
+    outboxId = await enqueueIn(
+      txn,
+      {
+        lane: 'payment_claim',
+        method: LANES.payment_claim.method,
+        path: LANES.payment_claim.path.replace(':id', studentId),
+        body,
+        domainTable: LANES.payment_claim.domainTable,
+        domainId: localClaimId,
+      },
+      now,
+    );
+    await txn.runAsync(
+      `INSERT INTO local_claims (id, student_id, method, claimed_amount, paid_on, reference, note,
+         outbox_id, state, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?)`,
+      [
+        localClaimId,
+        studentId,
+        body.method,
+        body.claimedAmount,
+        body.paidOn,
+        body.reference ?? null,
+        body.note ?? null,
+        outboxId,
+        stamp,
+        stamp,
+      ],
+    );
+    await txn.runAsync(
+      `INSERT INTO local_files (id, owner_table, owner_id, file_path, mime, size_bytes, state,
+         created_at, updated_at) VALUES (?, 'local_claims', ?, ?, ?, ?, 'waiting', ?, ?)`,
+      [slip.id, localClaimId, slip.fileName, slip.mime, slip.sizeBytes, stamp, stamp],
+    );
+  });
+  return { localClaimId, outboxId };
+}
+
+/**
+ * The follow-up of a claim's 2xx: the server's id is written and the waiting slip is queued in
+ * the same transaction. Returns how many files were queued.
+ */
+export async function markClaimSaved(
+  outboxId: string,
+  server: { id: string } | null,
+  now: Date = new Date(),
+): Promise<number> {
+  let queued = 0;
+  await inExclusiveTransaction(async (txn) => {
+    const claim = await txn.getFirstAsync<{ id: string; student_id: string }>(
+      'SELECT id, student_id FROM local_claims WHERE outbox_id = ?',
+      [outboxId],
+    );
+    if (claim === null) return;
+    const stamp = now.toISOString();
+    await txn.runAsync(
+      `UPDATE local_claims SET server_id = COALESCE(?, server_id), saved_on_server_at = ?,
+         state = 'done', updated_at = ? WHERE id = ?`,
+      [server?.id ?? null, stamp, stamp, claim.id],
+    );
+    if (server !== null) {
+      queued = await queueWaitingFiles(
+        txn,
+        'local_claims',
+        claim.id,
+        { serverId: server.id, studentId: claim.student_id },
+        now,
+      );
+    }
+  });
+  return queued;
+}
+
+/** A child's claims on this phone (not yet, or only just, on the server), newest first. */
+export async function listLocalClaims(studentId: string): Promise<LocalClaim[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<unknown>(
+    `SELECT c.id, c.student_id, c.method, c.claimed_amount, c.paid_on, c.reference, c.server_id,
+       c.saved_on_server_at, c.state, ${OUTBOX_COLUMNS}
+     FROM local_claims c LEFT JOIN outbox o ON o.id = c.outbox_id
+     WHERE c.student_id = ? AND c.state != 'discarded' ORDER BY c.created_at DESC`,
+    [studentId],
+  );
+  const claims: LocalClaim[] = [];
+  for (const raw of rows) {
+    const c = ClaimRow.parse(raw);
+    const fileRaw = await db.getFirstAsync<{ id: string }>(
+      `SELECT f.id FROM local_files f
+        WHERE f.owner_table = 'local_claims' AND f.owner_id = ? AND f.state != 'discarded'
+        ORDER BY f.created_at DESC LIMIT 1`,
+      [c.id],
+    );
+    const file = fileRaw === null ? null : await getUploadFile('local_files', fileRaw.id);
+    const fileOutboxRaw =
+      file?.outboxId == null
+        ? null
+        : await db.getFirstAsync<unknown>(`SELECT ${OUTBOX_COLUMNS} FROM outbox o WHERE o.id = ?`, [
+            file.outboxId,
+          ]);
+    claims.push({
+      id: c.id,
+      studentId: c.student_id,
+      method: c.method,
+      claimedAmount: c.claimed_amount,
+      paidOn: c.paid_on,
+      reference: c.reference,
+      serverId: c.server_id,
+      savedOnServerAt: c.saved_on_server_at,
+      state: c.state,
+      outbox: outboxOf(raw),
+      slip:
+        file === null
+          ? null
+          : { ...file, outbox: fileOutboxRaw === null ? null : outboxOf(fileOutboxRaw) },
+    });
+  }
+  return claims;
+}
+
 // --- Discard, remedies and residue ----------------------------------------------------------
 
 /**
@@ -1031,11 +1234,17 @@ export async function discardItem(outboxId: string): Promise<void> {
          JOIN local_diary_entries e ON e.id = a.local_entry_id WHERE e.outbox_id = ?)`,
       [outboxId],
     );
-    // Receipts queued behind a discarded expense go with it.
+    // Receipts queued behind a discarded expense go with it, and slips behind a discarded claim.
     await txn.runAsync(
       `DELETE FROM outbox WHERE id IN (SELECT f.outbox_id FROM local_files f
          JOIN local_expenses e ON f.owner_table = 'local_expenses' AND e.id = f.owner_id
         WHERE e.outbox_id = ?)`,
+      [outboxId],
+    );
+    await txn.runAsync(
+      `DELETE FROM outbox WHERE id IN (SELECT f.outbox_id FROM local_files f
+         JOIN local_claims c ON f.owner_table = 'local_claims' AND c.id = f.owner_id
+        WHERE c.outbox_id = ?)`,
       [outboxId],
     );
     await txn.runAsync('DELETE FROM outbox WHERE id = ?', [outboxId]);
@@ -1049,6 +1258,13 @@ export async function discardItem(outboxId: string): Promise<void> {
       [outboxId],
     );
     await txn.runAsync('DELETE FROM local_expenses WHERE outbox_id = ?', [outboxId]);
+    // A discarded claim takes its slip.
+    await txn.runAsync(
+      `DELETE FROM local_files WHERE owner_table = 'local_claims'
+         AND owner_id IN (SELECT id FROM local_claims WHERE outbox_id = ?)`,
+      [outboxId],
+    );
+    await txn.runAsync('DELETE FROM local_claims WHERE outbox_id = ?', [outboxId]);
     await txn.runAsync('DELETE FROM local_files WHERE outbox_id = ?', [outboxId]);
     await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
   });
@@ -1155,6 +1371,7 @@ const LOCAL_TABLES = new Set([
   'local_remarks',
   'local_expenses',
   'local_files',
+  'local_claims',
 ]);
 
 /**

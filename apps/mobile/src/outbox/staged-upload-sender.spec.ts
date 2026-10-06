@@ -4,9 +4,12 @@ import {
   discardItem,
   getAttachment,
   getUploadFile,
+  listLocalClaims,
   listLocalExpenses,
+  markClaimSaved,
   markDiarySaved,
   markExpenseSaved,
+  saveClaim,
   saveDiaryEntry,
   saveExpense,
   setStagedUpload,
@@ -342,4 +345,113 @@ test('a discarded expense takes its waiting receipt and the file', async () => {
   expect(await listLocalExpenses()).toEqual([]);
   expect(await getUploadFile('local_files', 'r1')).toBeNull();
   expect(fileExists(RECEIPT)).toBe(false);
+});
+
+// --- Phase 3 slice 21 (§3.9, R199, R243): a guardian's deposit claim and its slip --------------
+
+const SLIP = `${DOCUMENT}outbox/s1.jpg`;
+const claimInput = { method: 'jazzcash', claimedAmount: 3000, paidOn: TODAY, reference: 'JC-4411' } as const;
+const savedClaim = { id: '77', studentId: '501', status: 'pending', hasImage: false };
+const slipUpload = (reply: Handler = () => ({ status: 201, body: staged('s9') })) => ({
+  'POST /api/v1/me/uploads': reply,
+});
+
+/** A deposit claim with its photographed slip, saved on the phone (airplane mode). */
+async function claimWithSlip(): Promise<string> {
+  putFile(SLIP, 150_000);
+  const { outboxId } = await saveClaim(
+    '501',
+    claimInput,
+    { id: 's1', fileName: 's1.jpg', mime: 'image/jpeg', sizeBytes: 150_000 },
+    NOW,
+  );
+  return outboxId;
+}
+
+test('a claim is sent under its outbox id; its slip waits, then goes to /me/uploads and is PATCHed onto the claim', async () => {
+  jest.spyOn(outboxWorker, 'trigger').mockResolvedValue();
+  const outboxId = await claimWithSlip();
+  expect((await listByState('pending')).map((i) => i.lane)).toEqual(['payment_claim']);
+  expect(await getUploadFile('local_files', 's1')).toMatchObject({ state: 'waiting', outboxId: null });
+  const [onPhone] = await listLocalClaims('501');
+  expect(onPhone).toMatchObject({ claimedAmount: 3000, serverId: null, slip: { state: 'waiting' } });
+
+  const fake = installFakeApi({
+    'POST /api/v1/me/children/501/payment-claims': () => ({ status: 201, body: savedClaim }),
+    ...slipUpload(),
+    'PATCH /api/v1/me/children/501/payment-claims/77': () => ({ status: 200, body: { ...savedClaim, hasImage: true } }),
+  });
+  await drain();
+  await drain();
+  expect(fake.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+    'POST /api/v1/me/children/501/payment-claims',
+    'POST /api/v1/me/uploads',
+    'PATCH /api/v1/me/children/501/payment-claims/77',
+  ]);
+  expect(fake.calls[0]!.headers.get('Idempotency-Key')).toBe(outboxId);
+  expect(fake.calls[0]!.body).toEqual({ ...claimInput });
+  expect(fake.calls[2]!.body).toEqual({ stagedUploadId: 's9' });
+  // R199: the phone deletes the slip once the server has it.
+  expect(fileExists(SLIP)).toBe(false);
+  expect(await getUploadFile('local_files', 's1')).toMatchObject({ state: 'done' });
+  const [local] = await listLocalClaims('501');
+  expect(local).toMatchObject({ serverId: '77', state: 'done', slip: { state: 'done' } });
+});
+
+test('CLAIM_IMAGE_EXISTS after a re-upload means an earlier send landed: done, the slip deleted', async () => {
+  jest.spyOn(outboxWorker, 'trigger').mockResolvedValue();
+  const outboxId = await claimWithSlip();
+  const item = (await findItem(outboxId))!;
+  await saveItem({ ...item, state: 'done' });
+  await markClaimSaved(outboxId, savedClaim, NOW);
+  installFakeApi({
+    ...slipUpload(),
+    'PATCH /api/v1/me/children/501/payment-claims/77': () => ({
+      status: 409,
+      body: errorBody('CLAIM_IMAGE_EXISTS', 'This claim already has its slip.'),
+    }),
+  });
+  await drain();
+  expect(fileExists(SLIP)).toBe(false);
+  expect(await getUploadFile('local_files', 's1')).toMatchObject({ state: 'done' });
+  expect((await listByState('failed')).length).toBe(0);
+});
+
+test('CLAIM_NOT_PENDING (withdrawn, expired, decided) is shown and discarded with its slip', async () => {
+  const outboxId = await claimWithSlip();
+  const item = (await findItem(outboxId))!;
+  await saveItem({ ...item, state: 'done' });
+  await markClaimSaved(outboxId, savedClaim, NOW);
+  installFakeApi({
+    ...slipUpload(),
+    'PATCH /api/v1/me/children/501/payment-claims/77': () => ({
+      status: 409,
+      body: errorBody('CLAIM_NOT_PENDING', 'This claim has already been decided.'),
+    }),
+  });
+  await drain();
+  const [failed] = await listByState('failed');
+  expect(failed).toMatchObject({ lane: 'payment_claim_image', responseCode: 'CLAIM_NOT_PENDING' });
+  expect(remedyFor(failed!.lane, failed!.responseCode)).toBe('discard');
+  await discardItem(failed!.id);
+  expect(await getUploadFile('local_files', 's1')).toBeNull();
+  expect(fileExists(SLIP)).toBe(false);
+});
+
+test('a refused claim (CLAIM_LIMIT_REACHED) is discarded with its waiting slip', async () => {
+  const outboxId = await claimWithSlip();
+  installFakeApi({
+    'POST /api/v1/me/children/501/payment-claims': () => ({
+      status: 409,
+      body: errorBody('CLAIM_LIMIT_REACHED', 'At most 10 deposit slips a day.'),
+    }),
+  });
+  await drain();
+  const [failed] = await listByState('failed');
+  expect(failed).toMatchObject({ id: outboxId, lane: 'payment_claim', responseCode: 'CLAIM_LIMIT_REACHED' });
+  expect(remedyFor('payment_claim', 'CLAIM_LIMIT_REACHED')).toBe('discard');
+  await discardItem(outboxId);
+  expect(await listLocalClaims('501')).toEqual([]);
+  expect(await getUploadFile('local_files', 's1')).toBeNull();
+  expect(fileExists(SLIP)).toBe(false);
 });

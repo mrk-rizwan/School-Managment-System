@@ -33,6 +33,8 @@ const TABS: readonly { href: string; label: string; keys: readonly Capability[] 
   { href: '/fees/counter', label: 'Counter', keys: [Capability.PAYMENT_RECORD] },
   { href: '/fees/payments', label: 'Payments', keys: [Capability.PAYMENT_RECORD, Capability.FEE_STATEMENT_VIEW] },
   { href: '/fees/handovers', label: 'Cash handovers', keys: [Capability.PAYMENT_RECORD, Capability.COLLECTION_HANDOVER_CONFIRM] },
+  // Slice 21: the parents' deposit slips to verify.
+  { href: '/fees/claims', label: 'Deposit slips', keys: [Capability.PAYMENT_VERIFY] },
 ];
 
 export function FeesTabs() {

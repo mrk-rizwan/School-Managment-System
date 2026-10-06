@@ -69,3 +69,12 @@ export type CreateMyLeaveRequestDto = Schemas['CreateMyLeaveRequestDto'];
 // Phase 3 slice 25: My payslips (online read, rendered natively).
 export type PayslipDto = Schemas['PayslipDto'];
 export type MySalaryStructureDto = Schemas['MySalaryStructureDto'];
+
+// Phase 3 slice 21: the guardian's Fees (dues, receipts, deposit claims; §3.9).
+export type MyDuesDto = Schemas['MyDuesDto'];
+export type MyChargeDto = Schemas['MyChargeDto'];
+export type MyReceiptDto = Schemas['MyReceiptDto'];
+export type MyClaimDto = Schemas['MyClaimDto'];
+export type CreateClaimDto = Schemas['CreateClaimDto'];
+export type DepositMethod = Schemas['DepositMethod'];
+export type MyPaymentAccountDto = Schemas['MyPaymentAccountDto'];

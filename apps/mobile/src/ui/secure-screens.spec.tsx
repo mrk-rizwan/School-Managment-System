@@ -22,6 +22,9 @@ const SECURE: Record<string, boolean> = {
   'children/[studentId]/attendance.tsx': true,
   'children/[studentId]/diary.tsx': true,
   'children/[studentId]/remarks.tsx': true,
+  // Phase 3 slice 21: a child's fees and the deposit-slip form (the child's name in the title)
+  'children/[studentId]/fees.tsx': true,
+  'children/[studentId]/deposit-slip.tsx': true,
   // Student (§5.5)
   'student/index.tsx': true,
   'student/attendance.tsx': true,

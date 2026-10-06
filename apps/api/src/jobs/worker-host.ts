@@ -47,6 +47,10 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   // Phase 3 slice 25 (§3.7): daily at 03:00 school time; on its pay day a school gets the previous
   // month's draft payroll run.
   { job: JOB.payrollPrepare, pattern: '0 0 3 * * *' },
+  // Phase 3 slice 22 (§3.7): the fee reminders at 09:00 school time.
+  { job: JOB.feeReminder, pattern: '0 0 9 * * *' },
+  // Phase 3 slice 21 (§3.7, R200): image-less deposit claims older than 24 h expire, at 02:15.
+  { job: JOB.claimImageSweep, pattern: '0 15 2 * * *' },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */

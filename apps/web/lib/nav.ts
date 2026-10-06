@@ -22,11 +22,13 @@ import {
   ReceiptIcon,
   WalletIcon,
   FileTextIcon,
+  ChartColumnIcon,
   MegaphoneIcon,
   MessageSquareIcon,
   InboxIcon,
   SlidersHorizontalIcon,
   UsersRoundIcon,
+  WalletCardsIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -41,6 +43,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   capability: Capability | readonly Capability[] | null;
+  /** Shown only to a session holding this capacity (a guardian's own pages, slice 21). */
+  capacity?: 'guardian';
 };
 
 export const schoolNav: NavItem[] = [
@@ -91,8 +95,10 @@ export const schoolNav: NavItem[] = [
     href: '/fees',
     label: 'Fees',
     icon: BanknoteIcon,
-    capability: ['fee_head.manage', 'charge.create', 'fee.statement.view', 'payment.record'],
+    capability: ['fee_head.manage', 'charge.create', 'fee.statement.view', 'payment.record', 'payment.verify'],
   },
+  // Phase 3 slice 21: a guardian's children's fees, receipts and deposit slips (/me/*).
+  { href: '/my-children', label: "Children's fees", icon: WalletCardsIcon, capability: null, capacity: 'guardian' },
   // Recorders, approvers and report readers (phase-3-financial.md slice 23).
   {
     href: '/expenses',
@@ -104,6 +110,8 @@ export const schoolNav: NavItem[] = [
   // member's own payslips (@RequireStaff).
   { href: '/payroll', label: 'Payroll', icon: WalletIcon, capability: ['payroll.view', 'payroll.run'] },
   { href: '/my-payslips', label: 'My payslips', icon: FileTextIcon, capability: null },
+  // Phase 3 slice 22
+  { href: '/reports', label: 'Finance reports', icon: ChartColumnIcon, capability: 'finance.report.view' },
   {
     href: '/users',
     label: 'User accounts',
@@ -147,8 +155,13 @@ export const platformNav: NavItem[] = [
   { href: '/platform/settings', label: 'Platform settings', icon: SlidersHorizontalIcon, capability: null },
 ];
 
-export function visibleNav(items: NavItem[], capabilities: ReadonlySet<string>): NavItem[] {
+export function visibleNav(
+  items: NavItem[],
+  capabilities: ReadonlySet<string>,
+  capacities: ReadonlySet<string> = new Set(),
+): NavItem[] {
   return items.filter((item) => {
+    if (item.capacity !== undefined && !capacities.has(item.capacity)) return false;
     if (item.capability === null) return true;
     const any: readonly string[] = typeof item.capability === 'string' ? [item.capability] : item.capability;
     return any.some((capability) => capabilities.has(capability));

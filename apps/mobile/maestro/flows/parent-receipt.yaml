@@ -1,0 +1,30 @@
+# Phase 3 slice 21 (R196, R198) — CI only, after ci-run.sh verified the parent's claim as the
+# principal: the slip shows as verified and the receipt it issued is on the Fees screen, rendered
+# natively with a Share button (no WebView, no PDF).
+# Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${GUARDIAN_CNIC}
+- tapOn:
+    id: 'tabs.children'
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.fees'
+- extendedWaitUntil:
+    visible:
+      text: 'Verified'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      text: 'Receipt .*'
+    timeout: 30000
+- tapOn:
+    text: 'Receipt .*'
+- extendedWaitUntil:
+    visible:
+      id: 'fees.receipt.share'
+    timeout: 20000

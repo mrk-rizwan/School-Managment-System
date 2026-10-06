@@ -100,8 +100,22 @@ export interface TemplateVarsMap {
     readonly children: readonly string[];
     readonly dueOn: Date;
   };
-  fee_due_reminder: Record<string, never>;
-  fee_overdue: Record<string, never>;
+  /**
+   * Slice 22 (R201): once per fee-paying guardian per due month, naming every owing child and the
+   * family's total outstanding. WhatsApp and SMS keep the amount; the push body is the title only
+   * (R238, TITLE_ONLY_PUSH).
+   */
+  fee_due_reminder: {
+    readonly total: number;
+    readonly children: readonly string[];
+    readonly dueOn: Date;
+  };
+  /** Slice 22 (R202): the overdue amount, the children owing it and the oldest due date. */
+  fee_overdue: {
+    readonly overdue: number;
+    readonly children: readonly string[];
+    readonly since: Date;
+  };
   /**
    * Slice 20 (contracts/slice-20.md §6): to the paid children's fee-payer guardians. WhatsApp and
    * SMS keep the amounts; the push body is the title only (R238, TITLE_ONLY_PUSH). Never a link.
@@ -115,11 +129,26 @@ export interface TemplateVarsMap {
     /** What the named children still owe in the year after this payment. */
     readonly balance: number;
   };
-  payment_claim_rejected: Record<string, never>;
-  payment_claim_submitted: Record<string, never>;
+  /**
+   * Slice 21 (contracts/slice-21.md §5): to the submitting guardian. WhatsApp and SMS keep the
+   * amount and the office's reason (validated free of identity and phone numbers); the push body
+   * is the title only (R238, TITLE_ONLY_PUSH).
+   */
+  payment_claim_rejected: {
+    readonly studentName: string;
+    readonly amount: number;
+    readonly paidOn: Date;
+    readonly reason: string;
+  };
+  /** Slice 21: push and email to the payment.verify holders, once, when the slip lands; no amount. */
+  payment_claim_submitted: { readonly studentName: string };
   /** Slice 20: push and email to the principals; no amount (read on the handovers page). */
   handover_shortfall: { readonly collectorName: string };
-  reminder_sms_capped: Record<string, never>;
+  /**
+   * Slice 22 (R250): to the principals, once per run, when the SMS allowance ran out part-way
+   * through the reminders; how many families went by WhatsApp or the app instead. No amount.
+   */
+  reminder_sms_capped: { readonly families: number };
   /** Slice 19: to the principals, push and email only; no amount (R238), read on the queue. */
   concession_requested: { readonly studentName: string; readonly requesterName: string };
   /** Slice 19: to the requester; the decision only. */

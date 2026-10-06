@@ -156,6 +156,27 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX local_expenses_created ON local_expenses (created_at);
   CREATE INDEX local_files_owner ON local_files (owner_table, owner_id);
   `,
+  // 5 — Phase 3 slice 21 (§3.9): a guardian's deposit claim captured offline; its slip waits in
+  // local_files (owner_table 'local_claims') for the claim's server id. Ids and typed text only:
+  // never the child's name (the screen reads it from /me).
+  `
+  CREATE TABLE local_claims (
+    id TEXT PRIMARY KEY NOT NULL,
+    student_id TEXT NOT NULL,
+    method TEXT NOT NULL,
+    claimed_amount INTEGER NOT NULL,
+    paid_on TEXT NOT NULL,
+    reference TEXT NULL,
+    note TEXT NULL,
+    outbox_id TEXT NULL,
+    server_id TEXT NULL,
+    saved_on_server_at TEXT NULL,
+    state TEXT NOT NULL CHECK (state IN ('queued', 'done', 'failed', 'discarded')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX local_claims_student ON local_claims (student_id, created_at);
+  `,
 ];
 
 /**
@@ -184,11 +205,19 @@ export const PURGE_ORPHAN_LOCAL_ROWS = `
       OR (outbox_id IS NULL AND owner_table = 'local_expenses' AND owner_id IN (
             SELECT e.id FROM local_expenses e
              WHERE e.server_id IS NULL
-               AND (e.outbox_id IS NULL OR e.outbox_id NOT IN (SELECT id FROM outbox))));
+               AND (e.outbox_id IS NULL OR e.outbox_id NOT IN (SELECT id FROM outbox))))
+      OR (outbox_id IS NULL AND owner_table = 'local_claims' AND owner_id IN (
+            SELECT c.id FROM local_claims c
+             WHERE c.server_id IS NULL
+               AND (c.outbox_id IS NULL OR c.outbox_id NOT IN (SELECT id FROM outbox))));
   DELETE FROM local_expenses
    WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
      AND NOT EXISTS (SELECT 1 FROM local_files f
                       WHERE f.owner_table = 'local_expenses' AND f.owner_id = local_expenses.id);
+  DELETE FROM local_claims
+   WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
+     AND NOT EXISTS (SELECT 1 FROM local_files f
+                      WHERE f.owner_table = 'local_claims' AND f.owner_id = local_claims.id);
 `;
 
 /** Created before any migration runs, so the version can be read. */

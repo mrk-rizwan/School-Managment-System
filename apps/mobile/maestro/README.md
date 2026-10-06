@@ -14,6 +14,8 @@ emulator.
 | `flows/parent-child.yaml`           | API, worker, object storage     | after the worker's rollup, the parent's card says "Absent"; the month opens; the seeded diary photo's thumbnail loads on a tap; the inbox opens |
 | `flows/principal-today.yaml`        | API and worker                  | Today lists the unrecorded 5 B register; "Record now" records it pre-filled; the row leaves Today; `ci-run.sh` checks over `curl` that the server has it |
 | `flows/principal-announce.yaml`     | API and worker                  | a short notice to 5 A shows "Reaches … · SMS …" before sending, appears on the list, and is in the guardian's inbox |
+| `flows/parent-deposit-slip.yaml`    | API, worker, object storage     | (Phase 3 slice 21) a parent saves a deposit slip in airplane mode (the image added to the gallery with `addMedia`, `assets/deposit-slip.png`); claim and slip reach the school when the connection returns; `ci-run.sh` then verifies the claim over `curl` as the principal (adding a payment account first if the seed has none) |
+| `flows/parent-receipt.yaml`         | API and worker                  | (slice 21) the verified slip and the receipt it issued appear on the child's Fees screen, rendered natively with Share |
 
 They read `SCHOOL_CODE`, `PRINCIPAL_CNIC`, `TEACHER_CNIC` and `GUARDIAN_CNIC` (the seeded people;
 each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the

@@ -38,19 +38,21 @@ const COMMON = [401, 403, 429];
 /**
  * Streams stored content with the §6.2 headers: an attachment the browser must neither sniff nor
  * render with script. Never a presigned URL (R43). Also the diary's attachments and thumbnails
- * (contracts/slice-13.md §4.5), whose body may be bytes made on demand.
+ * (contracts/slice-13.md §4.5), whose body may be bytes made on demand. `inline` only where a
+ * route opts in (a deposit slip image, slice 21); the same nosniff and sandbox headers either way.
  */
 export function sendAttachment(
   res: Response,
   body: Readable | Buffer,
   file: { mime: string; sizeBytes: number; filename: string },
+  disposition: 'attachment' | 'inline' = 'attachment',
 ): StreamableFile {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', 'sandbox');
   const options = {
     type: file.mime,
     length: file.sizeBytes,
-    disposition: `attachment; filename="${file.filename}"`,
+    disposition: `${disposition}; filename="${file.filename}"`,
   };
   return Buffer.isBuffer(body) ? new StreamableFile(body, options) : new StreamableFile(body, options);
 }

@@ -29,6 +29,8 @@ export interface PaymentRecord {
   verifiedAt: Date;
   handoverId: bigint | null;
   advanceForStudentId: bigint | null;
+  /** The deposit claim whose verification recorded it (slice 21); kept after a void. */
+  claimId: bigint | null;
   status: PaymentStatus;
   voidedAt: Date | null;
 }
@@ -50,6 +52,7 @@ const SELECT = {
   verifiedAt: true,
   handoverId: true,
   advanceForStudentId: true,
+  claimId: true,
   status: true,
   voidedAt: true,
 } satisfies Prisma.PaymentSelect;
@@ -66,6 +69,8 @@ export interface NewPayment {
   /** The office path: the recorder verifies at recording (rule 25, R187). */
   recordedBy: bigint;
   advanceForStudentId: bigint | null;
+  /** Slice 21: the claim a verification records this payment for; set at insert, never changed. */
+  claimId?: bigint | null;
 }
 
 export interface PaymentListQuery {
@@ -274,6 +279,16 @@ export class PaymentRepository {
   }
 
   // ------------------------------------------------------------------- reads for the counter
+
+  /**
+   * Slice 21 (R199): a row lock on the guardian, so their claims of one day are counted and
+   * written one at a time (the daily cap holds under concurrency). False when absent.
+   */
+  async lockGuardian(schoolId: SchoolId, guardianId: bigint): Promise<boolean> {
+    const rows = await this.txHost.tx.$queryRaw<{ id: bigint }[]>`
+      SELECT id FROM guardians WHERE school_id = ${schoolId} AND id = ${guardianId} FOR UPDATE`;
+    return rows.length === 1;
+  }
 
   /** A guardian as the counter needs it; null when absent from this school. */
   findGuardian(schoolId: SchoolId, id: bigint): Promise<{ id: bigint; fullName: string; mergedIntoId: bigint | null } | null> {

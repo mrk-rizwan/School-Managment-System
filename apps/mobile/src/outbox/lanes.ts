@@ -35,6 +35,11 @@ export type Lane = {
    * (`staged_upload_patch`, staged-upload-sender.ts): the file row lives in `domainTable`.
    */
   sender: 'json' | 'staged_upload_patch';
+  /**
+   * `staged_upload_patch` only: where the file is uploaded. Default `/api/v1/uploads` (staff); a
+   * guardian's deposit slip goes to `/api/v1/me/uploads` (slice 21, R78, R199).
+   */
+  uploadPath?: string;
   /** The local table written in the item's transaction (slice-16 §8); null when none. */
   domainTable: string | null;
   /** What the sync sheet calls the lane. */
@@ -144,6 +149,34 @@ export const LANES = {
     sender: 'staged_upload_patch',
     domainTable: 'local_files',
     label: 'Expense receipt',
+    remedies: { [ErrorCode.REFERENCE_NOT_FOUND]: 'retry' },
+  },
+  // Phase 3 slice 21 (§3.9, R199): a guardian's deposit claim captured offline, then its slip.
+  payment_claim: {
+    method: 'POST',
+    path: '/api/v1/me/children/:id/payment-claims',
+    // Idempotency-Key = the outbox id (endpoint payment_claims, path id the student).
+    idempotencyHeader: true,
+    coalesces: false,
+    sender: 'json',
+    domainTable: 'local_claims',
+    label: 'Deposit slip',
+    // CLAIMS_NOT_ACCEPTED, CLAIM_LIMIT_REACHED and a refused field are shown and discarded: the
+    // parent sends a new slip from the Fees screen.
+    remedies: {},
+  },
+  payment_claim_image: {
+    method: 'PATCH',
+    path: '/api/v1/me/children/:id/payment-claims/:claimId',
+    // Retry-safe by state (R243): the same staged upload sent again answers 200; CLAIM_IMAGE_EXISTS
+    // after a re-upload means an earlier send landed (the sender reads it as done); CLAIM_NOT_PENDING
+    // (withdrawn, expired, decided) is shown and discarded.
+    idempotencyHeader: false,
+    coalesces: false,
+    sender: 'staged_upload_patch',
+    uploadPath: '/api/v1/me/uploads',
+    domainTable: 'local_files',
+    label: 'Deposit slip photo',
     remedies: { [ErrorCode.REFERENCE_NOT_FOUND]: 'retry' },
   },
 } as const satisfies Record<string, Lane>;

@@ -118,6 +118,28 @@ export class ReceiptRepository {
     return this.withLines(schoolId, rows);
   }
 
+  /**
+   * Slice 21 (R198): the receipts with a line for any of these children (a guardian's live login
+   * children), newest first, with all their lines; the caller shows only its own children's.
+   */
+  async listForStudents(
+    schoolId: SchoolId,
+    studentIds: readonly bigint[],
+    page: { skip: number; take: number },
+  ): Promise<{ rows: ReceiptRecord[]; total: number }> {
+    if (studentIds.length === 0) return { rows: [], total: 0 };
+    const where = { schoolId, lines: { some: { schoolId, studentId: { in: [...new Set(studentIds)] } } } };
+    const rows = await this.txHost.tx.receipt.findMany({
+      where,
+      select: SELECT,
+      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
+      skip: page.skip,
+      take: page.take,
+    });
+    const total = await this.txHost.tx.receipt.count({ where });
+    return { rows: await this.withLines(schoolId, rows), total };
+  }
+
   private async withLines(schoolId: SchoolId, rows: readonly Omit<ReceiptRecord, 'lines'>[]): Promise<ReceiptRecord[]> {
     if (rows.length === 0) return [];
     const lines = await this.txHost.tx.receiptLine.findMany({
