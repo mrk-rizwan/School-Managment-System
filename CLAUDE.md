@@ -94,7 +94,9 @@ per-school settings the school can change; the rest are rules.
     so one payment can cover several children). A student who joins after a cut-off day is not
     charged that month; one who leaves is charged the leaving month in full (cut-off *default* the
     15th). Late fee: off by *default*; when a school turns it on it is a fixed amount charged
-    automatically after a grace day, and only the principal may waive it. Fee types are FEE_HEAD rows
+    automatically after a grace day, and only the principal may waive it (one exception, built in
+    Phase 3: verifying a deposit claim whose paid date is inside the grace waives the late fee when
+    that payment settles the charge in full). Fee types are FEE_HEAD rows
     (rule 8) seeded with tuition (monthly), admission (once), annual charges (yearly), exam (per
     term) and fine (ad hoc); the school edits them. Every receipt carries a number sequential per
     school per academic year, and is printable and sent by WhatsApp or SMS by the usual routing.
@@ -104,7 +106,8 @@ per-school settings the school can change; the rest are rules.
     assumption below), ends with the academic year, and is approved by the principal (the office may
     request one).
 20. **Leaving and suspension.** Unpaid dues block a leaving certificate unless the principal overrides,
-    with a reason, audited. Fees paid in advance for months not yet started are refundable through a
+    with a reason, audited (never for the principal's own child, even a sole principal; the override
+    lapses if the amount owed later rises). Fees paid in advance for months not yet started are refundable through a
     principal-approved refund (a new row referencing the payment, rule 4); the admission fee is never
     refunded. A suspended student is still enrolled: still charged, and the family still receives
     announcements.
@@ -233,7 +236,8 @@ module that may each import one platform repository are listed in ESLint `NAMED_
 3. **The scheduler fan-out and job payloads** (widened in Phase 2). Fan-out:
    `SchoolFanOutRepository.listAllForFanOut()` lists every school whatever its status (the
    staged-upload sweep, R41/R90); `listLiveForFanOut()` lists schools that are not terminated (the
-   messaging housekeeping jobs). Sites: `src/jobs/job-runner.ts`,
+   messaging housekeeping jobs and, since Phase 3, the fee, payroll, claim, billing-notice and
+   metrics jobs). Sites: `src/jobs/job-runner.ts`,
    `src/modules/documents/staged-upload.sweep.ts`. Job payloads: a job carries ids, never a
    tenant; `QueueTenancy.fromQueuePayload` (`src/tenancy/queue.mint.ts`, importable only from
    `src/jobs/**`) validates the payload with a strict schema, reads the school through
@@ -275,7 +279,8 @@ commit.
 Since Phase 2: a request transaction times out at **15 s** (`TRANSACTION_TIMEOUT_MS`,
 `src/tenancy/tenancy.module.ts`). **A request never fans out to recipients**: send-now and holiday
 publish set the announcement to `sending` and the `announcement-send` job delivers it under its
-own 120 s limit (`JOB_TRANSACTION_TIMEOUT_MS`), returning the row to `draft` with `send_failed_at`
+own 120 s limit (`JOB_TRANSACTION_TIMEOUT_MS`; the fee-reminder job uses 60 s,
+`REMINDER_JOB_TIMEOUT_MS`), returning the row to `draft` with `send_failed_at`
 after five failed attempts. Jobs are enqueued only after commit, through `OutboxDispatcher`; a
 processor's first statement is a scoped conditional claim (R105). BullMQ job ids use `-`, never
 `:` (BullMQ refuses a custom id with `:` unless it has exactly three parts).
@@ -362,7 +367,7 @@ Built-in `/security-review`, `/code-review` and `/simplify` cover similar ground
 
 Branch `master`, remote `origin` on GitHub (`mrk-rizwan/School-Managment-System`). `core.hooksPath` is set to `.githooks` — **the pre-commit guard is live.** A fresh clone must run `git config core.hooksPath .githooks` once. `.gitattributes` forces LF on hooks and shell scripts so Windows checkouts cannot break them.
 
-The hook blocks: `.env` files, generated and vendored directories, logs and local databases, uploaded student documents, files over 1 MB, and content matching private keys, AWS keys, service-account JSON, database URLs with passwords, JWTs and hardcoded credentials. It scans added lines only and handles file names with spaces or non-ASCII characters (verified 2026-10-01).
+The hook blocks: `.env` files, generated and vendored directories, logs and local databases, uploaded student documents, files over 1 MB (5 MB for the generated OpenAPI document and the generated web and mobile clients, which CI requires to be committed), and content matching private keys, AWS keys, service-account JSON, database URLs with passwords, JWTs and hardcoded credentials. It scans added lines only and handles file names with spaces or non-ASCII characters (verified 2026-10-01).
 
 Keep file names short and ASCII. A 100-character name with an em dash once broke a deep clone on Windows and silently escaped the hook.
 
@@ -425,14 +430,14 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 
 **This is the only list.** Other documents may mirror it; where they disagree, this wins.
 
-### Blocks Phase 1 — nothing blocks; one question is open
+### Blocks Phase 1 — nothing blocks; nothing is open
 
 > **Phase 1 was unblocked on 2026-10-01.** Numbers are never reused.
 > `docs/decisions-pending-confirmation.md` keeps only the implementation recommendations (Part 2).
 
 | # | Decision | Status |
 |---|---|---|
-| ~~30~~ | **Closed 2026-10-05 → rule 24.** ~~Privileged capabilities on a default password.~~ A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Open, raised by the security review 2026-10-02. Recommended: yes. Not built; it is a one-line check in the capability guard, so it does not block Phase 1 |
+| ~~30~~ | **Closed 2026-10-05 → rule 24.** ~~Privileged capabilities on a default password.~~ A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Closed 2026-10-05 → rule 24; built in Phase 3 slice 18 (`403 DEFAULT_PASSWORD_BLOCKS_ACTION`, `blockedCapabilities` on `/me`; in-service overrides read `holdsNominally`) |
 
 Closed 2026-10-05: 7, 8, 9, 10 → rules 18-19 · 11 → rule 20 · 12 (leave) → rule 22 · 13 (grace, retention) → rule 23 · 16 → rule 25 · 18 → rule 23 · 24 → rule 18 · 25 → rule 21 · 30 → rule 24.
 Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
@@ -467,4 +472,4 @@ Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 ·
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).
+These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **guardian merge** (no verb yet; money paths already resolve `merged_into_id`; payer identity on past payments, the fee-payer flag and reminder dedupe are unspecified) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).

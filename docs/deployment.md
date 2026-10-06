@@ -1,6 +1,6 @@
 # Deploying ASMS
 
-Production requirements created by Phase 1 and Phase 2. Each one is something the code assumes and
+Production requirements created by Phases 1-3. Each one is something the code assumes and
 cannot enforce on its own. Sources: `docs/plans/phase-2-daily-operations.md` §3 and §9,
 `docs/plans/contracts/slice-9.md`, `apps/api/src/config/env.ts`, `apps/api/src/bootstrap.ts`,
 `apps/api/src/jobs/worker-host.ts`.
@@ -29,8 +29,9 @@ The worker consumes every queue and owns every repeatable job; the HTTP process 
 starting the new one**, never overlap them:
 
 - The `scheduled` queue runs with concurrency 1 on the assumption that it is the only consumer. The
-  sweeps (outbox, register deadline, WhatsApp health, SMS poll, session purge, staged uploads) are
-  written to run one at a time; a second worker would run two of them at once over the same rows.
+  jobs (every entry of `SCHEDULES` in `src/jobs/worker-host.ts`: since Phase 3 also charge
+  generation, the late-fee sweep, payroll preparation, fee reminders, the claim-image sweep,
+  platform billing, billing notices and the school-metrics rollup) are written to run one at a time; a second worker would run two of them at once over the same rows.
 - Every worker boot upserts the repeatable-job list (`SCHEDULES`). Two versions running side by
   side would keep rewriting each other's schedule.
 - The claim model (R105: a processor's first statement is a scoped conditional
@@ -157,6 +158,13 @@ Secrets live only in the deployment environment: not in the repository, not in a
 laptop. Development, staging and production have separate databases, Redis, buckets and
 credentials; development never points at production data. Remove `PLATFORM_ADMIN_PASSWORD` from
 the server once the seed has run.
+
+## Before the first platform billing run
+
+No price tiers are seeded (Phase 3 R219). Until the platform admin enters the student-count bands
+with their monthly price and SMS allowance (`POST /platform/plans`, the platform console's plans
+screen), the monthly run on the 1st skips every school and emails `billing_tier_missing` to
+`PLATFORM_ALERT_EMAIL`. Enter the tiers before the first 1st of the month in production.
 
 ## Backups
 

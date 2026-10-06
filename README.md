@@ -37,7 +37,8 @@ directory, say) pushes paths inside `node_modules` past Windows' 260-character l
 
 The last line is **required once per clone**. It enables the pre-commit guard in `.githooks/`,
 which refuses commits containing `.env` files, credentials, private keys, build output, logs,
-uploaded student documents or files over 1 MB. Git does not enable repository hooks on its own.
+uploaded student documents or files over 1 MB (5 MB for the generated OpenAPI document and the
+generated web and mobile clients, which CI requires to be committed). Git does not enable repository hooks on its own.
 
 ### Environment
 
@@ -164,7 +165,7 @@ the dev database, so the real-API specs would fail at their first sign-in.
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request: install, Prisma generate,
 lint, typecheck, migrations, API tests, a check that the committed OpenAPI document and web
-client are not stale, the web build and Playwright. A second job, `mobile`, builds the Android
+and mobile clients are not stale, the web build and Playwright. A second job, `mobile`, builds the Android
 app and runs the Maestro flows on an emulator. A red build blocks the slice.
 
 After changing an API contract, regenerate and commit both generated files:
@@ -236,7 +237,7 @@ recorded from it with `ASMS_SCHOOL=<code> ASMS_TEACHER_USERNAME=<teacher digits>
 | `apps/web` | Next.js web admin |
 | `apps/mobile` | Expo / React Native Android app |
 | `packages/shared` | Code shared by the API, web and mobile (build it before the apps) |
-| `docs/plans` | Build plans per phase; `phase-2-daily-operations.md` is the current one, contracts in `contracts/` |
+| `docs/plans` | Build plans per phase; `phase-3-financial.md` is the current one, contracts in `contracts/` |
 | `docs/WORKLOG.md` | Session handover log — what is done, in progress and next |
 | `CLAUDE.md` | Settled architecture rules, open decisions, working rules |
 | `.githooks` | The pre-commit guard |

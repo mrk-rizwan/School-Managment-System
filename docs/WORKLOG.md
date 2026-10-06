@@ -35,8 +35,8 @@ writes the production code.** Do not start application code in a planning sessio
   from this machine with `gh run list` / `gh run view <id> --log-failed`. **CI green on `4dc5819` (run 37143282348, every step including Playwright) — Phase 1 formally closed, 2026-10-03.**
 - **Stack changed on 2026-10-02** to NestJS + PostgreSQL/Prisma + Next.js + React Native (see the
   2026-10-02 entries below and `CLAUDE.md`). Settled rules 1–17 and the register are unchanged.
-- **Phase 1 is unblocked** on decisions. One question is open and does not block: register
-  item 30.
+- **No register item blocks a phase.** Item 30 closed 2026-10-05 as CLAUDE.md rule 24 and was
+  built in Phase 3 slice 18.
 - **`docs/plans/phase-1-foundation.md`** was the approved Phase 1 plan (30 days, nine slices,
   rules R1–R104) and is now complete; every rule except R15 has a named test.
 - Tenant isolation: application-layer scoping, RLS dropped (2026-10-02 final entry), now with
@@ -104,9 +104,7 @@ slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice
    (c) issue-login reason optional with a fixed fallback;
    (d) identity-probe budget 30/min, 300/h per user (about 50 admissions an hour per clerk);
    (e) object storage on Chainguard's MinIO image (chosen by the owner 2026-10-03 — recorded).
-5. Product owner, open questions: register item 30 (privileged capabilities inert on a default
-   password — security review recommends yes, with an "add and verify email, then change password"
-   path); one-time random password for principals (closes the default-password residual);
+5. Product owner, open questions (item 30 closed → rule 24, built in slice 18): one-time random password for principals (closes the default-password residual);
    admission/readmission/change-class dates outside the academic year; a former student whose
    CNIC equals their B-Form (review recommends an audited "retire student login" action, never a
    link); a guardian whose children have all left (part of 11); CNIC correction after a login
