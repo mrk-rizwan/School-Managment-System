@@ -21,7 +21,8 @@ writes the production code.** Do not start application code in a planning sessio
   (the owner accepted every main-thread recommendation → CLAUDE.md rules 26-31; register items
   14, 15, 21 closed); the plan `docs/plans/phase-4-academic.md` is written and reviewed by
   `business-rules`, `data-architect`, `security-reviewer` and `api-designer` (every finding folded
-  in; 33 days, slices 29-36, R254-R300) and **awaits the owner's approval before any code**.
+  in; 33 days, slices 29-36, R254-R300) and **was approved by the owner on 2026-10-07**
+  ("proceed code", every default as written). **Building: wave M (groundwork + slice 29).**
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -61,7 +62,7 @@ them when each phase is planned, and say so in the report.
 | 1 Foundation | slices 0–8 (plan §5) | 30 |
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
 | 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised twice, approved 2026-10-06) | 38.5 |
-| 4 Academic | slices 29-36 (plan `phase-4-academic.md`, reviewed 2026-10-07; awaiting approval) | 33 |
+| 4 Academic | slices 29-36 (plan `phase-4-academic.md`, reviewed and approved 2026-10-07) | 33 |
 | 5 Extended | biometric, advanced reporting, transport | 20 |
 | **Total** | | **163.5** |
 

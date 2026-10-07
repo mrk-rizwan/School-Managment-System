@@ -10,8 +10,8 @@ complete; nothing from them is restated unless Phase 4 changes it. **Reviewed** 
 finding is folded in. The first draft's enrolment-keyed composition, whole-class exams, single
 own-child flag, lazy sheet creation, `PUT` routes, `Idempotency-Key` on the marks grid, grade-band
 table, null-means-final class link, sequential roll numbers at promotion, and position by total
-marks were all changed. **Status:** revised after four reviews; awaiting the owner's approval for
-execution. The owner's decisions (rules 26–31) are settled; §1.2 lists what stays open.
+marks were all changed. **Status:** revised after four reviews; **approved by the owner for execution
+on 2026-10-07** ("proceed code"), with every §1.1 default and §1.2 stance as written. The owner's decisions (rules 26–31) are settled; §1.2 lists what stays open.
 
 Phase 4 delivers the academic record the school was sold: subjects per class; the terms of a
 year; class tests a teacher creates and marks from the phone, offline; the term exam the principal
