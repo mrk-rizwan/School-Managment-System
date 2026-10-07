@@ -177,6 +177,9 @@ model School {
   termSkips                     TermSkip[]                     @ignore
   resultSettings                ResultSettings[]               @ignore
   classSubjects                 ClassSubject[]                 @ignore
+  assessments                   Assessment[]                   @ignore
+  marks                         Mark[]                         @ignore
+  certificates                  Certificate[]                  @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -398,6 +401,7 @@ model AcademicYear {
   payments        Payment[]
   terms           AcademicTerm[]
   resultSettings  ResultSettings?
+  certificates    Certificate[]
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -432,6 +436,7 @@ model Class {
   previousClasses         Class[]                  @relation("NextClass")
   subjects                ClassSubject[]
   termSkips               TermSkip[]
+  assessments             Assessment[]
   sections                Section[]
   teacherAssignments      TeacherAssignment[]
   enrolments              Enrolment[]
@@ -473,6 +478,7 @@ model Section {
   diaryEntries            DiaryEntry[]
   announcementAudiences   AnnouncementAudience[]
   chargeCampaignAudiences ChargeCampaignAudience[]
+  assessments             Assessment[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -826,6 +832,12 @@ model User {
   termSkipsEnded            TermSkip[]              @relation("TermSkipEndedBy")
   resultSettingsUpdated     ResultSettings[]
   classSubjectsArchived     ClassSubject[]
+  assessmentsCreated        Assessment[]            @relation("AssessmentCreatedBy")
+  assessmentsVoided         Assessment[]            @relation("AssessmentVoidedBy")
+  marksEntered              Mark[]                  @relation("MarkEnteredBy")
+  marksDecided              Mark[]                  @relation("MarkDecidedBy")
+  certificatesIssued        Certificate[]           @relation("CertificateIssuedBy")
+  certificatesVoided        Certificate[]           @relation("CertificateVoidedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1053,6 +1065,7 @@ model Student {
   advancePayments               Payment[]
   receiptLines                  ReceiptLine[]
   paymentClaims                 PaymentClaim[]
+  certificates                  Certificate[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -1151,6 +1164,7 @@ model Enrolment {
   remarks               Remark[]
   concessions           Concession[]
   charges               Charge[]
+  marks                 Mark[]
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -4166,6 +4180,7 @@ model AcademicTerm {
   academicYear  AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   createdByUser User?        @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   skips         TermSkip[]
+  assessments   Assessment[]
 
   @@unique([schoolId, id], map: "academic_terms_school_id_id_key")
   /// Target of (school_id, term_id, academic_year_id) FKs: a row naming a term names its year.
@@ -4259,10 +4274,11 @@ model ClassSubject {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school         School  @relation(fields: [schoolId], references: [id], map: "class_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  class          Class   @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_subjects_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  subject        Subject @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "class_subjects_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  archivedByUser User?   @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school         School       @relation(fields: [schoolId], references: [id], map: "class_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class          Class        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_subjects_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  subject        Subject      @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "class_subjects_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  archivedByUser User?        @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assessments    Assessment[]
 
   @@unique([schoolId, id], map: "class_subjects_school_id_id_key")
   /// Target of (school_id, class_subject_id, class_id) FKs: a row naming a class-subject names its class.
@@ -4271,4 +4287,230 @@ model ClassSubject {
   @@index([schoolId, subjectId], map: "class_subjects_school_id_subject_id_idx")
   @@index([schoolId, archivedBy], map: "class_subjects_school_id_archived_by_idx")
   @@map("class_subjects")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 wave N (phase-4-academic.md §3.2, §4 "Slice 30", "Slice 34"): assessments, marks and
+// certificates. Hand-written CHECKs, triggers and partial indexes are in migration
+// 20261007160000_wave_n_assessments_certificates and listed in test/guardrails/schema-checks.ts
+// (WAVE_N_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// A teacher's `test` (any number) or the term's `exam` (one per class-subject per section).
+enum AssessmentKind {
+  test
+  exam
+
+  @@map("assessment_kind")
+}
+
+/// A label on a test; no behaviour (§1.1).
+enum TestType {
+  daily
+  weekly
+  monthly
+  other
+
+  @@map("test_type")
+}
+
+/// marks.status: a mark is never edited; a change is a new row (§0.25).
+enum AssessmentMarkStatus {
+  live
+  pending
+  superseded
+  rejected
+
+  @@map("assessment_mark_status")
+}
+
+/// Rule 29.
+enum CertificateType {
+  leaving
+  character
+  academic
+  completion
+  other
+
+  @@map("certificate_type")
+}
+
+/// How a certificate stood against the dues check (rule 20): only `leaving` is gated.
+enum DuesStatus {
+  not_required
+  cleared
+  override
+
+  @@map("dues_status")
+}
+
+/// Tenant: a class test or a term exam of one section (§3.2 "Assessments"). One live exam per
+/// section, class-subject and term (assessments_exam_key). `held_on` lies inside the term (trigger
+/// assessments_held_on_in_term); `name`, `held_on` and `max_marks` change only while no mark exists
+/// (trigger assessments_edit_guard; `max_marks` also by the marks FK ON UPDATE RESTRICT). A test is
+/// locked by setting `locked_at` once; an exam is locked by its section-term sheet (wave O). Voided,
+/// never deleted.
+model Assessment {
+  id             BigInt         @id(map: "assessments_pkey") @default(autoincrement())
+  schoolId       BigInt         @map("school_id")
+  academicYearId BigInt         @map("academic_year_id")
+  termId         BigInt         @map("term_id")
+  classId        BigInt         @map("class_id")
+  sectionId      BigInt         @map("section_id")
+  classSubjectId BigInt         @map("class_subject_id")
+  kind           AssessmentKind
+  /// Set on a test, null on an exam (CHECK assessments_test_type_check).
+  testType       TestType?      @map("test_type")
+  name           String         @db.VarChar(80)
+  /// 1-1000.
+  maxMarks       Int            @map("max_marks") @db.SmallInt
+  heldOn         DateTime       @map("held_on") @db.Date
+  createdBy      BigInt         @map("created_by")
+  /// Tests only; set once when the section-term sheet is submitted.
+  lockedAt       DateTime?      @map("locked_at") @db.Timestamptz(3)
+  voidedAt       DateTime?      @map("voided_at") @db.Timestamptz(3)
+  voidedBy       BigInt?        @map("voided_by")
+  voidReason     String?        @map("void_reason") @db.VarChar(500)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School       @relation(fields: [schoolId], references: [id], map: "assessments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  term          AcademicTerm @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class         Class        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section       Section      @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "assessments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  classSubject  ClassSubject @relation(fields: [schoolId, classSubjectId, classId], references: [schoolId, id, classId], map: "assessments_class_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User         @relation("AssessmentCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "assessments_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?        @relation("AssessmentVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "assessments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  marksOfYear   Mark[]       @relation("MarkAssessmentYear")
+  marksOfMax    Mark[]       @relation("MarkAssessmentMax")
+
+  @@unique([schoolId, id], map: "assessments_school_id_id_key")
+  /// Target of marks (school_id, assessment_id, academic_year_id): a mark names its year.
+  @@unique([schoolId, id, academicYearId], map: "assessments_school_id_id_academic_year_id_key")
+  /// Target of marks (school_id, assessment_id, max_marks) ON UPDATE RESTRICT: max freezes with a mark.
+  @@unique([schoolId, id, maxMarks], map: "assessments_school_id_id_max_marks_key")
+  /// The section's assessments of a term, by kind (the grid and sheet reads).
+  @@index([schoolId, sectionId, termId, kind], map: "assessments_school_id_section_id_term_id_kind_idx")
+  /// A term's assessments of a class-subject (set-up, the subject report).
+  @@index([schoolId, termId, classSubjectId], map: "assessments_school_id_term_id_class_subject_id_idx")
+  @@index([schoolId, termId, academicYearId], map: "assessments_school_id_term_id_academic_year_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "assessments_school_id_class_id_academic_year_id_idx")
+  @@index([schoolId, sectionId, classId], map: "assessments_school_id_section_id_class_id_idx")
+  @@index([schoolId, classSubjectId, classId], map: "assessments_school_id_class_subject_id_class_id_idx")
+  @@index([schoolId, createdBy], map: "assessments_school_id_created_by_idx")
+  @@index([schoolId, voidedBy], map: "assessments_school_id_voided_by_idx")
+  @@map("assessments")
+}
+
+/// Tenant: one student's mark on one assessment (§0.25, §3.2 "Marks"). Never edited: a changed
+/// mark, an excusal or a correction is a new row superseding the old one (`supersedes_id`, same
+/// assessment and enrolment). Only `status`, `superseded_at` and `decided_by/at` ever change. One
+/// live and one pending row per assessment and enrolment (marks_live_key, marks_pending_key);
+/// `client_entry_key` makes a phone's resend idempotent. `max_marks` is the assessment's, by FK.
+model Mark {
+  id               BigInt               @id(map: "marks_pkey") @default(autoincrement())
+  schoolId         BigInt               @map("school_id")
+  assessmentId     BigInt               @map("assessment_id")
+  enrolmentId      BigInt               @map("enrolment_id")
+  studentId        BigInt               @map("student_id")
+  academicYearId   BigInt               @map("academic_year_id")
+  /// The assessment's max_marks (FK marks_assessment_max_fkey); obtained lies in 0..max.
+  maxMarks         Int                  @map("max_marks") @db.SmallInt
+  /// Null exactly when absent.
+  obtained         Int?                 @db.SmallInt
+  absent           Boolean              @default(false)
+  /// Only on an absence; written by the approver as a superseding row.
+  excused          Boolean              @default(false)
+  status           AssessmentMarkStatus
+  supersedesId     BigInt?              @map("supersedes_id")
+  /// Required on a correction (pending) and an excusal; only on a superseding row.
+  correctionReason String?              @map("correction_reason") @db.VarChar(500)
+  enteredBy        BigInt               @map("entered_by")
+  enteredAt        DateTime             @default(now()) @map("entered_at") @db.Timestamptz(3)
+  /// The phone's per-entry key (^[A-Za-z0-9_-]{16,64}$); null for rows written by a decision.
+  clientEntryKey   String?              @map("client_entry_key") @db.VarChar(64)
+  decidedBy        BigInt?              @map("decided_by")
+  decidedAt        DateTime?            @map("decided_at") @db.Timestamptz(3)
+  supersededAt     DateTime?            @map("superseded_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School     @relation(fields: [schoolId], references: [id], map: "marks_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  assessment    Assessment @relation("MarkAssessmentYear", fields: [schoolId, assessmentId, academicYearId], references: [schoolId, id, academicYearId], map: "marks_assessment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assessmentMax Assessment @relation("MarkAssessmentMax", fields: [schoolId, assessmentId, maxMarks], references: [schoolId, id, maxMarks], map: "marks_assessment_max_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment     Enrolment  @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "marks_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedes    Mark?      @relation("MarkSupersedes", fields: [schoolId, supersedesId, assessmentId, enrolmentId], references: [schoolId, id, assessmentId, enrolmentId], map: "marks_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersededBy  Mark[]     @relation("MarkSupersedes")
+  enteredByUser User       @relation("MarkEnteredBy", fields: [schoolId, enteredBy], references: [schoolId, id], map: "marks_entered_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser User?      @relation("MarkDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "marks_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "marks_school_id_id_key")
+  /// Target of supersedes_id: a mark supersedes only a mark of the same assessment and enrolment.
+  @@unique([schoolId, id, assessmentId, enrolmentId], map: "marks_school_id_id_assessment_id_enrolment_id_key")
+  /// A phone's resend of the same entry finds the row it wrote (R262).
+  @@unique([schoolId, assessmentId, enrolmentId, clientEntryKey], map: "marks_client_entry_key")
+  @@index([schoolId, assessmentId, academicYearId], map: "marks_school_id_assessment_id_academic_year_id_idx")
+  @@index([schoolId, assessmentId, maxMarks], map: "marks_school_id_assessment_id_max_marks_idx")
+  @@index([schoolId, enrolmentId, studentId, academicYearId], map: "marks_school_id_enrolment_id_idx")
+  /// A student's marks of a year (composition across enrolments, §0.25; the family views).
+  @@index([schoolId, studentId, academicYearId], map: "marks_school_id_student_id_academic_year_id_idx")
+  @@index([schoolId, supersedesId, assessmentId, enrolmentId], map: "marks_school_id_supersedes_id_idx")
+  @@index([schoolId, enteredBy], map: "marks_school_id_entered_by_idx")
+  @@index([schoolId, decidedBy], map: "marks_school_id_decided_by_idx")
+  @@map("marks")
+}
+
+/// Tenant: an issued certificate (rule 29, §3.2 "Certificates"). `number` comes from the school
+/// counter `cert_<type>` and is never reused; a reissue is a new row with the same type and
+/// number, `issue_no` + 1, naming the row it reissues. The body never holds an identity number
+/// (CHECK certificates_body_no_id_check). After insert only `printed_count` and the void trio
+/// change (triggers certificates_columns_immutable, certificates_voided_frozen).
+model Certificate {
+  id             BigInt          @id(map: "certificates_pkey") @default(autoincrement())
+  schoolId       BigInt          @map("school_id")
+  studentId      BigInt          @map("student_id")
+  type           CertificateType
+  /// From school_counters cert_<type>; printed with the type's prefix (LC-0001).
+  number         Int
+  /// 1 for the original; a reissue is the next number.
+  issueNo        Int             @default(1) @map("issue_no") @db.SmallInt
+  reissueOfId    BigInt?         @map("reissue_of_id")
+  /// Null only on an `other` certificate.
+  academicYearId BigInt?         @map("academic_year_id")
+  /// Required on an `other` certificate.
+  title          String?         @db.VarChar(80)
+  /// Built by the certificate body builder; a JSON object.
+  body           Json
+  /// The override reason (dues) or the reissue reason.
+  reason         String?         @db.VarChar(500)
+  duesStatus     DuesStatus      @map("dues_status")
+  issuedBy       BigInt          @map("issued_by")
+  issuedOn       DateTime        @map("issued_on") @db.Date
+  printedCount   Int             @default(0) @map("printed_count")
+  voidedAt       DateTime?       @map("voided_at") @db.Timestamptz(3)
+  voidedBy       BigInt?         @map("voided_by")
+  voidReason     String?         @map("void_reason") @db.VarChar(500)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school       School        @relation(fields: [schoolId], references: [id], map: "certificates_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  student      Student       @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "certificates_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  academicYear AcademicYear? @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "certificates_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  reissueOf    Certificate?  @relation("CertificateReissue", fields: [schoolId, reissueOfId, type, number], references: [schoolId, id, type, number], map: "certificates_reissue_of_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  reissues     Certificate[] @relation("CertificateReissue")
+  issuedByUser User          @relation("CertificateIssuedBy", fields: [schoolId, issuedBy], references: [schoolId, id], map: "certificates_issued_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser User?         @relation("CertificateVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "certificates_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "certificates_school_id_id_key")
+  /// Target of reissue_of_id: a reissue carries the original's type and number.
+  @@unique([schoolId, id, type, number], map: "certificates_school_id_id_type_number_key")
+  @@unique([schoolId, type, number, issueNo], map: "certificates_school_id_type_number_issue_no_key")
+  @@index([schoolId, studentId], map: "certificates_school_id_student_id_idx")
+  /// The register by type and date.
+  @@index([schoolId, type, issuedOn], map: "certificates_school_id_type_issued_on_idx")
+  @@index([schoolId, issuedOn], map: "certificates_school_id_issued_on_idx")
+  @@index([schoolId, academicYearId], map: "certificates_school_id_academic_year_id_idx")
+  @@index([schoolId, reissueOfId, type, number], map: "certificates_school_id_reissue_of_id_idx")
+  @@index([schoolId, issuedBy], map: "certificates_school_id_issued_by_idx")
+  @@index([schoolId, voidedBy], map: "certificates_school_id_voided_by_idx")
+  @@map("certificates")
 }

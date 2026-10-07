@@ -1050,6 +1050,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...PHASE_3_CLOSE_OBJECTS(),
   ...PHASE_4_GROUNDWORK_OBJECTS(),
   ...PHASE_4_BAND_VALUES_OBJECTS(),
+  ...WAVE_N_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -2967,5 +2968,81 @@ function PHASE_4_GROUNDWORK_OBJECTS(): ExpectedObject[] {
 function PHASE_4_BAND_VALUES_OBJECTS(): ExpectedObject[] {
   return [
     { kind: 'constraint', table: 'result_settings', name: 'result_settings_band_values_check', definition: `CHECK (((jsonb_typeof(bands) <> 'array'::text) OR (NOT jsonb_path_exists(bands, '$[*]?((((((((@.type() != "object" || !(exists (@."grade"))) || !(exists (@."minPercent"))) || @."grade".type() != "string") || @."minPercent".type() != "number") || !(@."grade" like_regex "^[A-Za-z0-9+-]{1,4}$")) || @."minPercent" < 0) || @."minPercent" > 100) || @."minPercent".floor() != @."minPercent")'::jsonpath))))` },
+  ];
+}
+
+/**
+ * Wave N (migration 20261007160000_wave_n_assessments_certificates, phase-4-academic.md §3.2,
+ * §4 "Slice 30" and "Slice 34"): assessments, marks and certificates, and wave M's deferred
+ * TERM_IN_USE and CLASS_SUBJECT_IN_USE locks. The exam half of the mark lock arrives with
+ * result_sheets (wave O). Definitions copied from the migrated catalog.
+ */
+function WAVE_N_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_assessment_held_on_in_term', definition: "DETAIL = 'constraint: assessments_held_on_in_term'" },
+    { kind: 'function', name: 'asms_assessment_held_on_in_term', definition: 'NEW.held_on BETWEEN t.starts_on AND t.ends_on' },
+    { kind: 'function', name: 'asms_assessment_edit_guard', definition: "v_refusal := 'assessments_voided_frozen'" },
+    { kind: 'function', name: 'asms_assessment_edit_guard', definition: "v_refusal := 'assessments_has_marks'" },
+    { kind: 'function', name: 'asms_mark_insert_guard', definition: "v_refusal := 'marks_born_live_or_pending'" },
+    { kind: 'function', name: 'asms_mark_insert_guard', definition: "v_refusal := 'marks_assessment_voided'" },
+    { kind: 'function', name: 'asms_mark_insert_guard', definition: "v_refusal := 'marks_assessment_locked'" },
+    { kind: 'function', name: 'asms_mark_insert_guard', definition: "NEW.status = 'live' AND NOT NEW.excused AND v_locked_at IS NOT NULL" },
+    { kind: 'function', name: 'asms_academic_term_in_use', definition: "DETAIL = 'constraint: academic_terms_in_use'" },
+    { kind: 'function', name: 'asms_academic_term_in_use', definition: 'a.voided_at IS NULL' },
+    { kind: 'function', name: 'asms_class_subject_in_use', definition: "DETAIL = 'constraint: class_subjects_in_use'" },
+    { kind: 'function', name: 'asms_class_subject_in_use', definition: "m.status = 'live'" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_locked_check', definition: "CHECK (((kind = 'test'::assessment_kind) OR (locked_at IS NULL)))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_max_marks_check', definition: 'CHECK (((max_marks >= 1) AND (max_marks <= 1000)))' },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_name_check', definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_name_no_id_check', definition: "CHECK ((((name)::text !~ '[0-9]{13}'::text) AND ((name)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_test_type_check', definition: "CHECK (((kind = 'test'::assessment_kind) = (test_type IS NOT NULL)))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_void_reason_check', definition: "CHECK (((void_reason IS NULL) OR (((void_reason)::text = btrim((void_reason)::text)) AND ((void_reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_void_reason_no_id_check', definition: "CHECK ((((void_reason)::text !~ '[0-9]{13}'::text) AND ((void_reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'assessments', name: 'assessments_voided_check', definition: 'CHECK ((((voided_at IS NULL) = (voided_by IS NULL)) AND ((voided_at IS NULL) = (void_reason IS NULL))))' },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_academic_year_check', definition: "CHECK (((type = 'other'::certificate_type) OR (academic_year_id IS NOT NULL)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_body_check', definition: "CHECK ((jsonb_typeof(body) = 'object'::text))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_body_no_id_check', definition: "CHECK ((((body)::text !~ '[0-9]{13}'::text) AND ((body)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_dues_check', definition: "CHECK ((((type = 'leaving'::certificate_type) = (dues_status <> 'not_required'::dues_status)) AND ((dues_status <> 'override'::dues_status) OR (reason IS NOT NULL))))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_issue_no_check', definition: 'CHECK (((issue_no >= 1) AND ((issue_no > 1) = (reissue_of_id IS NOT NULL))))' },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_number_check', definition: 'CHECK ((number >= 1))' },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_printed_count_check', definition: 'CHECK ((printed_count >= 0))' },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_reason_check', definition: "CHECK (((reason IS NULL) OR (((reason)::text = btrim((reason)::text)) AND ((reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_reason_no_id_check', definition: "CHECK ((((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_reissue_reason_check', definition: 'CHECK (((issue_no = 1) OR (reason IS NOT NULL)))' },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_title_check', definition: "CHECK (((title IS NULL) OR (((title)::text = btrim((title)::text)) AND ((title)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_title_no_id_check', definition: "CHECK ((((title)::text !~ '[0-9]{13}'::text) AND ((title)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_title_required_check', definition: "CHECK (((type <> 'other'::certificate_type) OR (title IS NOT NULL)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_void_reason_check', definition: "CHECK (((void_reason IS NULL) OR (((void_reason)::text = btrim((void_reason)::text)) AND ((void_reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_void_reason_no_id_check', definition: "CHECK ((((void_reason)::text !~ '[0-9]{13}'::text) AND ((void_reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_voided_check', definition: 'CHECK ((((voided_at IS NULL) = (voided_by IS NULL)) AND ((voided_at IS NULL) = (void_reason IS NULL))))' },
+    { kind: 'constraint', table: 'marks', name: 'marks_absent_check', definition: 'CHECK (((obtained IS NULL) = absent))' },
+    { kind: 'constraint', table: 'marks', name: 'marks_client_entry_key_check', definition: "CHECK (((client_entry_key IS NULL) OR (((client_entry_key)::text ~ '^[A-Za-z0-9_-]{16,64}$'::text) AND ((client_entry_key)::text !~ '[0-9]{13}'::text))))" },
+    { kind: 'constraint', table: 'marks', name: 'marks_correction_check', definition: "CHECK ((((correction_reason IS NULL) OR (supersedes_id IS NOT NULL)) AND ((status <> ALL (ARRAY['pending'::assessment_mark_status, 'rejected'::assessment_mark_status])) OR (correction_reason IS NOT NULL)) AND ((NOT excused) OR (correction_reason IS NOT NULL))))" },
+    { kind: 'constraint', table: 'marks', name: 'marks_correction_reason_check', definition: "CHECK (((correction_reason IS NULL) OR (((correction_reason)::text = btrim((correction_reason)::text)) AND ((correction_reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'marks', name: 'marks_correction_reason_no_id_check', definition: "CHECK ((((correction_reason)::text !~ '[0-9]{13}'::text) AND ((correction_reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'marks', name: 'marks_decided_check', definition: "CHECK ((((decided_at IS NULL) = (decided_by IS NULL)) AND ((status <> 'pending'::assessment_mark_status) OR (decided_at IS NULL)) AND ((status <> 'rejected'::assessment_mark_status) OR (decided_at IS NOT NULL)) AND ((decided_at IS NULL) OR (correction_reason IS NOT NULL))))" },
+    { kind: 'constraint', table: 'marks', name: 'marks_excused_check', definition: 'CHECK (((NOT excused) OR absent))' },
+    { kind: 'constraint', table: 'marks', name: 'marks_obtained_check', definition: 'CHECK (((obtained IS NULL) OR ((obtained >= 0) AND (obtained <= max_marks))))' },
+    { kind: 'constraint', table: 'marks', name: 'marks_superseded_check', definition: "CHECK (((status = 'superseded'::assessment_mark_status) = (superseded_at IS NOT NULL)))" },
+    { kind: 'index', table: 'assessments', name: 'assessments_exam_key', definition: "ON public.assessments USING btree (school_id, section_id, class_subject_id, term_id) WHERE ((kind = 'exam'::assessment_kind) AND (voided_at IS NULL))" },
+    { kind: 'index', table: 'marks', name: 'marks_live_key', definition: "ON public.marks USING btree (school_id, assessment_id, enrolment_id) WHERE (status = 'live'::assessment_mark_status)" },
+    { kind: 'index', table: 'marks', name: 'marks_pending_key', definition: "ON public.marks USING btree (school_id, assessment_id, enrolment_id) WHERE (status = 'pending'::assessment_mark_status)" },
+    { kind: 'index', table: 'marks', name: 'marks_supersedes_key', definition: "ON public.marks USING btree (school_id, supersedes_id) WHERE ((supersedes_id IS NOT NULL) AND (status = ANY (ARRAY['live'::assessment_mark_status, 'superseded'::assessment_mark_status])))" },
+    { kind: 'trigger', table: 'academic_terms', name: 'academic_terms_in_use', definition: 'BEFORE UPDATE OF starts_on, ends_on, weight ON public.academic_terms FOR EACH ROW EXECUTE FUNCTION asms_academic_term_in_use()' },
+    { kind: 'trigger', table: 'assessments', name: 'assessments_columns_immutable', definition: "BEFORE UPDATE ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'class_subject_id', 'kind', 'test_type', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'assessments', name: 'assessments_edit_guard', definition: 'BEFORE UPDATE OF name, held_on, max_marks ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_assessment_edit_guard()' },
+    { kind: 'trigger', table: 'assessments', name: 'assessments_held_on_in_term', definition: 'BEFORE INSERT OR UPDATE OF held_on ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_assessment_held_on_in_term()' },
+    { kind: 'trigger', table: 'assessments', name: 'assessments_locked_frozen', definition: "BEFORE UPDATE ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('locked_at')" },
+    { kind: 'trigger', table: 'assessments', name: 'assessments_voided_frozen', definition: "BEFORE UPDATE ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
+    { kind: 'trigger', table: 'certificates', name: 'certificates_columns_immutable', definition: "BEFORE UPDATE ON public.certificates FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'type', 'number', 'issue_no', 'reissue_of_id', 'academic_year_id', 'title', 'body', 'reason', 'dues_status', 'issued_by', 'issued_on', 'created_at')" },
+    { kind: 'trigger', table: 'certificates', name: 'certificates_voided_frozen', definition: "BEFORE UPDATE ON public.certificates FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
+    { kind: 'trigger', table: 'class_subjects', name: 'class_subjects_in_use', definition: 'BEFORE UPDATE OF archived_at ON public.class_subjects FOR EACH ROW EXECUTE FUNCTION asms_class_subject_in_use()' },
+    { kind: 'trigger', table: 'marks', name: 'marks_columns_immutable', definition: "BEFORE UPDATE ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('assessment_id', 'enrolment_id', 'student_id', 'academic_year_id', 'max_marks', 'obtained', 'absent', 'excused', 'supersedes_id', 'correction_reason', 'entered_by', 'entered_at', 'client_entry_key')" },
+    { kind: 'trigger', table: 'marks', name: 'marks_decided_frozen', definition: "BEFORE UPDATE ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('decided_at', 'decided_by')" },
+    { kind: 'trigger', table: 'marks', name: 'marks_insert_guard', definition: 'BEFORE INSERT ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_mark_insert_guard()' },
+    { kind: 'trigger', table: 'marks', name: 'marks_status_transition', definition: "BEFORE UPDATE ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_status_transition('pending:live', 'pending:rejected', 'live:superseded')" },
+    { kind: 'trigger', table: 'marks', name: 'marks_superseded_frozen', definition: "BEFORE UPDATE ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('superseded_at')" },
+    ...noDeleteTriggers('assessments', 'marks', 'certificates'),
   ];
 }

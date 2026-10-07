@@ -30,5 +30,10 @@ export const SLICE_29_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   term_skips_class_id_fkey: yearImmutable,
   classes_next_class_check: fieldInvalid('nextClassId', 'A final class has no next class, and a class is not its own next class'),
   result_settings_weights_check: fieldInvalid('testWeight', 'testWeight and examWeight are whole percents summing to 100'),
+  // Wave N (migration 20261007160000_wave_n_assessments_certificates): wave M's deferred locks.
+  academic_terms_in_use: () =>
+    new ApiException(409, ErrorCode.TERM_IN_USE, 'The term has assessments; its dates and weight can no longer change.', { termId: null }),
+  class_subjects_in_use: () =>
+    new ApiException(409, ErrorCode.CLASS_SUBJECT_IN_USE, 'This subject has marks and cannot be removed from the class.', { classSubjectId: null }),
   result_settings_band_values_check: fieldInvalid('bands', 'Each grade is 1-4 letters, digits, + or -, and each minimum a whole percent from 0 to 100'),
 };

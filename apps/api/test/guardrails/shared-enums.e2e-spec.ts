@@ -72,6 +72,11 @@ import {
   PAYSLIP_STATUSES,
   PAYSLIP_LINE_KINDS,
   PASS_RULES,
+  ASSESSMENT_KINDS,
+  TEST_TYPES,
+  ASSESSMENT_MARK_STATUSES,
+  CERTIFICATE_TYPES,
+  DUES_STATUSES,
 } from '@asms/shared';
 import { Client } from 'pg';
 
@@ -150,6 +155,12 @@ const PAIRS: [string, readonly string[]][] = [
   ['payslip_line_kind', PAYSLIP_LINE_KINDS],
   // Phase 4 groundwork; the other Phase 4 value sets join with their tables (waves N-P).
   ['pass_rule', PASS_RULES],
+  // Wave N (slices 30, 34).
+  ['assessment_kind', ASSESSMENT_KINDS],
+  ['test_type', TEST_TYPES],
+  ['assessment_mark_status', ASSESSMENT_MARK_STATUSES],
+  ['certificate_type', CERTIFICATE_TYPES],
+  ['dues_status', DUES_STATUSES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

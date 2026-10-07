@@ -4,6 +4,7 @@ import type { SchoolId } from '../../src/tenancy/school-id';
 import { expectIsolated } from '../support/isolation';
 import { createSchoolUser } from '../support/school-session';
 import { closeTestDb, createTwoSchools, testDb } from '../support/schools';
+import { createAssessment, createCertificate, createMark, createMarksFixture } from './assessment-fixture';
 import { createAcademics, tag, type Academics } from './support';
 
 describe('academic structure tenant isolation', () => {
@@ -245,6 +246,122 @@ describe('academic structure tenant isolation', () => {
     const owner = await newClass(a.id);
     await expect(
       academics.sectionRepo.create(b.id, { classId: owner.id, name: 'X', capacity: null }),
+    ).rejects.toMatchObject({ code: 'P2003' });
+  });
+
+  // ---- Phase 4 wave N (phase-4-academic.md §3.2): assessments, marks, certificates. The wave N
+  // repositories do not exist yet (the slice 30 and 34 build agents add them); until they do, the
+  // probes go through the guarded client with the tenant predicate, and each build agent replaces
+  // its table's probe with its repository's read, list and write methods.
+
+  it('assessments', async () => {
+    const schools = await createTwoSchools();
+    const f = await createMarksFixture(schools.a);
+    const db = testDb();
+    await expectIsolated(schools, {
+      create: async () => (await createAssessment(f)).id,
+      read: (schoolId, id) => db.assessment.findFirst({ where: { schoolId, id } }),
+      list: (schoolId) => db.assessment.findMany({ where: { schoolId, sectionId: f.sectionId } }),
+      write: async (schoolId, id) =>
+        (await db.assessment.updateMany({ where: { schoolId, id }, data: { name: 'Taken over' } })).count,
+      snapshot: nameOf,
+    });
+  });
+
+  it('marks', async () => {
+    const schools = await createTwoSchools();
+    const f = await createMarksFixture(schools.a);
+    const assessment = await createAssessment(f);
+    const db = testDb();
+    await expectIsolated(schools, {
+      create: async () => (await createMark(f, assessment)).id,
+      read: (schoolId, id) => db.mark.findFirst({ where: { schoolId, id } }),
+      list: (schoolId) => db.mark.findMany({ where: { schoolId, assessmentId: assessment.id } }),
+      write: async (schoolId, id) =>
+        (
+          await db.mark.updateMany({
+            where: { schoolId, id },
+            data: { status: 'superseded', supersededAt: new Date() },
+          })
+        ).count,
+      snapshot: (row) => (row as { status: string } | null)?.status ?? null,
+    });
+  });
+
+  it('certificates', async () => {
+    const schools = await createTwoSchools();
+    const f = await createMarksFixture(schools.a);
+    const db = testDb();
+    let number = 0;
+    await expectIsolated(schools, {
+      create: async () => (await createCertificate(f, ++number)).id,
+      read: (schoolId, id) => db.certificate.findFirst({ where: { schoolId, id } }),
+      list: (schoolId) => db.certificate.findMany({ where: { schoolId, studentId: f.studentId } }),
+      write: async (schoolId, id) =>
+        (await db.certificate.updateMany({ where: { schoolId, id }, data: { printedCount: { increment: 1 } } })).count,
+      snapshot: (row) => (row as { printedCount: number } | null)?.printedCount ?? null,
+    });
+  });
+
+  it('refuses an assessment, mark or certificate in school B naming school A’s rows (composite foreign keys)', async () => {
+    const { a, b } = await createTwoSchools();
+    const f = await createMarksFixture(a);
+    const bUser = await createSchoolUser(testDb(), b, { systemRole: 'principal' });
+    const assessment = await createAssessment(f);
+    const original = await createCertificate(f, 1);
+    const db = testDb();
+    // School B's own term and year, school A's class, section and subject: the composite keys refuse it.
+    const fB = await createMarksFixture(b);
+    await expect(
+      db.assessment.create({
+        data: {
+          schoolId: b.id,
+          academicYearId: fB.yearId,
+          termId: fB.midTermId,
+          classId: f.classId,
+          sectionId: f.sectionId,
+          classSubjectId: f.classSubjectId,
+          kind: 'test',
+          testType: 'daily',
+          name: 'Foreign',
+          maxMarks: 10,
+          heldOn: new Date('2026-05-10T00:00:00Z'),
+          createdBy: bUser.userId,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'P2003' });
+    await expect(
+      db.mark.create({
+        data: {
+          schoolId: b.id,
+          assessmentId: assessment.id,
+          enrolmentId: f.enrolmentId,
+          studentId: f.studentId,
+          academicYearId: f.yearId,
+          maxMarks: assessment.maxMarks,
+          obtained: 5,
+          status: 'live',
+          enteredBy: bUser.userId,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'P2003' });
+    await expect(
+      db.certificate.create({
+        data: {
+          schoolId: b.id,
+          studentId: f.studentId,
+          type: 'other',
+          number: 1,
+          issueNo: 2,
+          reissueOfId: original.id,
+          title: 'Foreign',
+          body: {},
+          reason: 'Foreign',
+          duesStatus: 'not_required',
+          issuedBy: bUser.userId,
+          issuedOn: new Date('2026-06-01T00:00:00Z'),
+        },
+      }),
     ).rejects.toMatchObject({ code: 'P2003' });
   });
 });
