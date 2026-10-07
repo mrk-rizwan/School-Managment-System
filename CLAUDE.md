@@ -6,7 +6,7 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. Phases 1-3 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, see `docs/WORKLOG.md`); Phase 4 has no plan yet, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
+- `docs/plans/` — build plans per phase. `phase-4-academic.md` is the current one (rules 26-31). Phases 1-3 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, see `docs/WORKLOG.md`), and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
@@ -132,6 +132,58 @@ per-school settings the school can change; the rest are rules.
 25. **Accounting basis** (was deferrable item 16): every money row stores both the date a charge
     falls due and the date a payment was verified, so reports can show either view; the default
     report view is decided with the reports.
+
+Confirmed by the product owner on 2026-10-07, who accepted the main-thread recommendations for
+Phase 4 (previously open decisions 14, 15, 21 and client questions 4, 10, 11, 17). Values marked
+*default* are per-school (or per-year) settings the school can change; the rest are rules.
+
+26. **Exam structure and composition.** The principal defines the **terms** of each academic year
+    (*default* two: Mid-term and Annual). Every assessment is a `test` (daily, weekly, monthly or
+    other, any size, created by the teacher) or the term's `exam` (one per class-subject per term,
+    set up by the principal). Per subject, a term result = class-test aggregate × W₁ + exam × W₂,
+    the tests averaged as percentages so a 10-mark quiz and a 50-mark test count equally; weights
+    are a per-year table (*default* 20 / 80). The **final result** combines the terms by per-term
+    weights (*default* equal) and is what promotion reads. Grade bands are a per-year table
+    (*default* A+ ≥ 90, A 80, B 70, C 60, D 50, E 40, F below) with a *default* pass mark of 40 %
+    per subject. Absence from an assessment counts 0 and prints "Ab"; the principal may excuse it,
+    and the subject is then composed from what was taken. Nothing is ever added up by hand or
+    stored twice: composition is one pure function.
+27. **Results are approved per section per term** (closes item 21). The class teacher submits the
+    section's result sheet once every subject's marks are in; the principal approves or returns it
+    with a reason from the Approvals inbox. **Approval publishes** when the approver also holds
+    `result.publish` (the principal does by default; a school that grants approval alone gets a
+    two-step). Guardians and the student are told by the usual routing, SMS allowed by *default*.
+    Class-test marks are visible in the app as soon as entered and not notified (*default*). A
+    correction after publication is a **revised result row referencing the original**, approved
+    again per student, which reissues the report card and notifies the guardian. Marks for a
+    teacher's own child are allowed but flagged on the sheet; the approver is never the submitter
+    (*main-thread default, open to correction:* a sole principal may, recorded `self_approved`, as
+    rule 21 of the Phase 3 plan allows for money).
+28. **Report card.** One standard layout: school, student, per-subject marks and grade, total,
+    percentage, overall grade, position in class (*default* on; ties share the position), the
+    term's attendance percentage from the Phase 2 attendance record, the class teacher's term
+    remark, signature lines. Rendered natively in the app, printed from the web (scriptless HTML,
+    no PDF), and printed for keypad-phone families. A school may **withhold the card until dues
+    are cleared** (*default* off); the result message still goes out, and the principal may
+    override through the same dues endpoint certificates use.
+29. **Certificates.** Types: leaving, character, academic (marks transcript), completion, other
+    (free title). One sequential number per school per type, never reset; issued by
+    `certificate.issue` holders (office staff by default); **only the leaving certificate is
+    dues-gated** (rule 20) and it needs the student already withdrawn or transferred; a reissue
+    keeps the number, is a new row with a reason, and prints "Duplicate"; the authorising officer
+    printed is the issuer, with the principal's name from school settings. Issued from the stored
+    record years after the student left.
+30. **Promotion and year end** (closes item 15). Per section, once the final result is approved,
+    the principal opens a promotion sheet with a proposed outcome per student (final result at or
+    above the pass mark → promote, otherwise → detain), overridable per student with a reason.
+    Outcomes: promoted (new enrolment in the next class), detained (new enrolment in the same class
+    next year), completed (the final class → alumni), not continuing (withdrawn). The section
+    defaults to the same name in the next class. **Unpaid fees never block promotion**: arrears
+    stay in their year, reminders continue and the sheet flags them; the leaving certificate stays
+    blocked by rule 20. An academic year closes only when every section's promotion sheet is done.
+31. **Scope held back from Phase 4:** the period timetable (which teacher, period and room; it
+    tightens period attendance, not results), events and PTM, and the import of past results all
+    go to Phase 5. Phase 4 adds only the list of subjects each class takes, per year.
 
 ## How tenant isolation is implemented — the mechanism behind rule 2
 
@@ -440,13 +492,14 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 | ~~30~~ | **Closed 2026-10-05 → rule 24.** ~~Privileged capabilities on a default password.~~ A principal's default password is their CNIC, which colleagues may know. Should `role.manage` and `user.account.manage` be inert until that user has changed their password? Everything else would still work, so this does not contradict "prompt, do not force" | Closed 2026-10-05 → rule 24; built in Phase 3 slice 18 (`403 DEFAULT_PASSWORD_BLOCKS_ACTION`, `blockedCapabilities` on `/me`; in-service overrides read `holdsNominally`) |
 
 Closed 2026-10-05: 7, 8, 9, 10 → rules 18-19 · 11 → rule 20 · 12 (leave) → rule 22 · 13 (grace, retention) → rule 23 · 16 → rule 25 · 18 → rule 23 · 24 → rule 18 · 25 → rule 21 · 30 → rule 24.
+Closed 2026-10-07: 14 → rule 26 · 15 → rule 30 · 21 → rule 27.
 Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 
 ### Blocks the schema freeze — feature is later, the shape is now
 
 | # | Decision |
 |---|---|
-| 21 | **Results approval unit** — does the principal approve a term result per class or per student? Raised in the architecture doc's approvals inbox |
+| ~~21~~ | **Closed 2026-10-07 → rule 27** (per section per term). ~~Results approval unit~~ |
 | 22 | **Which message types may reach SMS at all** — SMS costs per message; the routing rule needs a per-type allow list. Raised in the architecture doc's delivery notes. *Built with a default the owner tunes:* a per-school SMS allow list with a platform default |
 | 23 | **Late arrival** — counts as present, half day, or absent past a cut-off time; affects the attendance percentage. Presentation slide 24. *Built with a default the owner tunes:* `late_counts_as` = present |
 | 26 | **Default remark visibility** — are teacher remarks pushed to guardians or visible on enquiry only. Presentation slide 24. *Built with a default the owner tunes:* visible to guardians, not notified |
@@ -455,22 +508,22 @@ Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 ·
 
 | # | Decision | Condition |
 |---|---|---|
-| 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns. Client docs say "before results are built"; that is this condition, not Phase 1 |
-| 15 | Promotion rules at year rollover | Enrolment already close-old/open-new; needed before first year-end |
+| ~~14~~ | **Closed 2026-10-07 → rule 26.** Weights and grade bands are per-year tables, as the condition required |
+| ~~15~~ | **Closed 2026-10-07 → rule 30** |
 | 20 | Transport module | Phase 5 |
 | 31 | **Rule 24's reach** (raised by the Phase 3 plan §1.2, 2026-10-06): should a user still on the default password also be blocked from money-out verbs (payee and payment-account changes, refunds, payroll finalise), and should a default-password principal lose the in-service override on staff status (today checked against nominal holdings)? | Either is a small change in the capability guard; no schema change |
 
 ### Assumed unless corrected
 
 - Timezone is Asia/Karachi for every school
-- Class-test marks reach parents immediately; term and annual results wait for principal approval
+- Class-test marks reach parents immediately; term and annual results wait for principal approval (now rule 27)
 - Fines are not concession-eligible
 - Attendance percentage is computed against teaching days in the school calendar, excluding declared holidays (stated to the client in the presentation)
-- Certificates carry a sequential number, issue date, academic year and authorising officer; reissues are recorded (stated to the client in the presentation)
+- Certificates carry a sequential number, issue date, academic year and authorising officer; reissues are recorded (stated to the client in the presentation; now rule 29)
 - Platform support access to a school's data is governed by agreement and logged (stated to the client in the presentation)
 
 ---
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports) · **certificates** (whether dues block one; numbering is assumed above) · **subjects and timetable** (the diary, tests and report cards all depend on it) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **guardian merge** (no verb yet; money paths already resolve `merged_into_id`; payer identity on past payments, the fee-payer flag and reminder dedupe are unspecified) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).
+These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports; Phase 5 by rule 31) · **period timetable** (teacher, period, room; Phase 5 by rule 31 — certificates and the class-subject list are specified by rules 26-31) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **guardian merge** (no verb yet; money paths already resolve `merged_into_id`; payer identity on past payments, the fee-payer flag and reminder dedupe are unspecified) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).

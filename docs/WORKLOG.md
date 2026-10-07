@@ -17,7 +17,11 @@ writes the production code.** Do not start application code in a planning sessio
   Playwright 338, mobile 582, all ten Maestro flows), and the gate re-run on `0af67a9` found
   nothing else unmet. Project = 110.5 / 160.5 days = 69 %. **Next: Phase 4 (Academic) needs a
   plan** (`docs/plans/phase-4-academic.md`, not written). The real-driver proof stays a hard
-  precondition of the first production deployment.
+  precondition of the first production deployment. **Phase 4 decisions were taken on 2026-10-07**
+  (the owner accepted every main-thread recommendation → CLAUDE.md rules 26-31; register items
+  14, 15, 21 closed); the plan `docs/plans/phase-4-academic.md` is written and reviewed by
+  `business-rules`, `data-architect`, `security-reviewer` and `api-designer` (every finding folded
+  in; 33 days, slices 29-36, R254-R300) and **awaits the owner's approval before any code**.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -57,16 +61,17 @@ them when each phase is planned, and say so in the report.
 | 1 Foundation | slices 0–8 (plan §5) | 30 |
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
 | 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised twice, approved 2026-10-06) | 38.5 |
-| 4 Academic | assessments, results, report cards, certificates, promotion | 30 |
+| 4 Academic | slices 29-36 (plan `phase-4-academic.md`, reviewed 2026-10-07; awaiting approval) | 33 |
 | 5 Extended | biometric, advanced reporting, transport | 20 |
-| **Total** | | **160.5** |
+| **Total** | | **163.5** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
-slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
+slice in progress counts half. **Project % = days done ÷ 163.5** (Phase 4 planned at 33 on 2026-10-07; Phase 3's 110.5 done days = 68 %). Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
 11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Phase 3 slice sizes (plan §5):
 18 = 2.5 · 19 = 7 · 20 = 6 · 21 = 4 · 22 = 3 · 23 = 2 · 24 = 2.5 · 25 = 4.5 · 26 = 3 · 27 = 2 ·
-28 = 1.5 (the plan's total is 38.5). Planning and reviews done before slice 0 are not counted.
+28 = 1.5 (the plan's total is 38.5). Phase 4 slice sizes (plan §5): 29 = 3 · 30 = 6 · 31 = 6.5 · 32 = 4 ·
+33 = 3 · 34 = 4 · 35 = 5 · 36 = 1.5. Planning and reviews done before slice 0 are not counted.
 
 ## Left to do (ordered)
 
