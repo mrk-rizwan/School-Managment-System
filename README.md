@@ -237,7 +237,7 @@ recorded from it with `ASMS_SCHOOL=<code> ASMS_TEACHER_USERNAME=<teacher digits>
 | `apps/web` | Next.js web admin |
 | `apps/mobile` | Expo / React Native Android app |
 | `packages/shared` | Code shared by the API, web and mobile (build it before the apps) |
-| `docs/plans` | Build plans per phase; `phase-3-financial.md` is the current one, contracts in `contracts/` |
+| `docs/plans` | Build plans per phase; Phases 1-3 complete (`phase-3-financial.md` the latest), contracts in `contracts/` |
 | `docs/WORKLOG.md` | Session handover log — what is done, in progress and next |
 | `CLAUDE.md` | Settled architecture rules, open decisions, working rules |
 | `.githooks` | The pre-commit guard |

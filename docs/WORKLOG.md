@@ -11,14 +11,13 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phases 1 and 2 complete and closed (Phase 2 gate PASS on `e4494b2`, 2026-10-05).
-  **Phase 3 (Financial): all code is done and CI is fully green** (run 37639293912 on `0af67a9`,
-  2026-10-07: API 2,285 tests, Playwright 338, mobile 582, all ten Maestro flows). **The phase
-  gate re-run on `0af67a9` FAILED on one item only, the owner-blocked real-driver proof** ("Left to
-  do" item 1); it found nothing the team can fix. Phase 3 = 37.75 / 38.5 days = 98 % (slice 28
-  counts half until the gate passes); project = 109.75 / 160.5 days = 68 %. **Next: the owner's
-  Sendpk account and WAHA host → the proof on staging → `phase-gate` again → Phase 3 closed.
-  Phase 4 needs a plan** (`docs/plans/phase-4-academic.md`, not written; it can be planned now).
+- **Phase:** **Phases 1, 2 and 3 are complete and closed.** Phase 3 (Financial) closed on
+  2026-10-07 **by the owner's decision, with the real-driver proof deferred** (see "Left to do"
+  item 1): all code is done and CI is fully green (run 37639293912 on `0af67a9`: API 2,285 tests,
+  Playwright 338, mobile 582, all ten Maestro flows), and the gate re-run on `0af67a9` found
+  nothing else unmet. Project = 110.5 / 160.5 days = 69 %. **Next: Phase 4 (Academic) needs a
+  plan** (`docs/plans/phase-4-academic.md`, not written). The real-driver proof stays a hard
+  precondition of the first production deployment.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -71,8 +70,9 @@ slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice
 
 ## Left to do (ordered)
 
-1. **Real-driver proof — a hard precondition of the first production deployment and of the
-   Phase 3 gate** (phase gate, 2026-10-05; deferred from Phase 2 because it is owner-blocked).
+1. **Real-driver proof — a hard precondition of the first production deployment** (deferred
+   again by the owner on 2026-10-07 at the Phase 3 close; it no longer blocks a phase gate, only
+   go-live) (phase gate, 2026-10-05; deferred from Phase 2 because it is owner-blocked).
    One WhatsApp message through WAHA and one SMS through Sendpk on staging, delivery rows
    `delivered`, plus WAHA's first real start (uid 1000, read-only root) and the 7-day purge
    decision (GOWS vs WEBJS, `docs/deployment.md`). **Owner action, requested 2026-10-03:** the
@@ -295,6 +295,18 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-07 (evening) — Phase 3 closed by the owner, real-driver proof deferred (main thread)
+
+The owner asked to defer both outstanding owner items, the Sendpk account (with its PTA sender
+registration) and the WAHA host, and to close Phase 3 on the code side: "can we defer this both?
+is code side is done? we can check later". Phase 3 is therefore **closed with the real-driver
+proof deferred**, exactly as Phase 2 deferred it. The `phase-gate` re-run on `0af67a9` had found
+that proof to be the only unmet item. It remains a **hard precondition of the first production
+deployment**: no school goes live on real messaging until one WhatsApp through WAHA and one SMS
+through Sendpk show `delivered` on staging. The two skipped API tests are the real-provider
+tests, and they run when the credentials exist. Before any further phase is called production
+ready, `phase-gate` should be re-run once the proof is done.
 
 ## 2026-10-07 (afternoon) — CI green, Phase 3 gate re-run (main thread) — gate FAIL on the real-driver proof only
 
