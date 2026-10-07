@@ -62,23 +62,32 @@ export const illegalTransition = (message: string): ApiException =>
 const isConcurrent = (error: unknown): boolean =>
   (error instanceof ApiException ? error : mapDatabaseError(error))?.code === ErrorCode.CONCURRENT_UPDATE;
 
+/** Attempts after the first for a service's own stale read; a database-caused failure gets one. */
+const STALE_READ_RETRIES = 3;
+
 /**
  * §3.2: a counter race the increment CHECKs refused (23514 → CONCURRENT_UPDATE) is retried once,
- * in a fresh transaction that recomputes under its locks; a second failure reaches the caller.
+ * in a fresh transaction that recomputes under its locks; a second failure reaches the caller. A
+ * service's own stale read is retried up to STALE_READ_RETRIES times: under a burst of writes on
+ * one family (R236's interleaving on CI) the re-read can lose the race again, and each attempt
+ * re-reads under its locks, so a retry is always safe.
  */
 export async function onceMore<T>(run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    if (!isConcurrent(error)) throw error;
-    onceMoreRetries.count += 1;
-    // 'stale_read': a service's own re-check under its locks saw a row move between its unlocked
-    // read and its lock (by design, retried); anything else came from the database: an increment
-    // CHECK under a race, or a deadlock, which R236's lock order must make impossible.
-    const cause = error instanceof ApiException ? 'stale_read' : (summariseDatabaseError(error)?.constraint ?? 'deadlock');
-    onceMoreRetries.causes.push(cause);
-    retryLog.warn({ retries: onceMoreRetries.count, cause }, 'money write retried after a concurrent update');
-    return run();
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isConcurrent(error)) throw error;
+      // 'stale_read': a service's own re-check under its locks saw a row move between its unlocked
+      // read and its lock (by design, retried); anything else came from the database: an increment
+      // CHECK under a race, or a deadlock, which R236's lock order must make impossible.
+      const staleRead = error instanceof ApiException;
+      if (attempt > (staleRead ? STALE_READ_RETRIES : 1)) throw error;
+      onceMoreRetries.count += 1;
+      const cause = staleRead ? 'stale_read' : (summariseDatabaseError(error)?.constraint ?? 'deadlock');
+      onceMoreRetries.causes.push(cause);
+      retryLog.warn({ retries: onceMoreRetries.count, cause }, 'money write retried after a concurrent update');
+    }
   }
 }
 

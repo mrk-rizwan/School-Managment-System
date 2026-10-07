@@ -31,10 +31,18 @@ appId: pk.asms.app.dev
 - setAirplaneMode: enabled
 - tapOn:
     id: 'depositSlip.method.jazzcash'
+- scrollUntilVisible:
+    element:
+      id: 'depositSlip.amount'
+    direction: DOWN
 - tapOn:
     id: 'depositSlip.amount'
 - inputText: '500'
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'depositSlip.library'
+    direction: DOWN
 - tapOn:
     id: 'depositSlip.library'
 # The system photo picker: the one image in the gallery.
@@ -45,20 +53,27 @@ appId: pk.asms.app.dev
     optional: true
 - tapOn:
     point: '20%,35%'
+# The slip preview sits below the fields once chosen; scroll to it before waiting.
+- scrollUntilVisible:
+    element:
+      id: 'depositSlip.chosen'
+    direction: DOWN
 - extendedWaitUntil:
     visible:
       id: 'depositSlip.chosen'
     timeout: 20000
 - tapOn:
     id: 'depositSlip.save'
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: 'Slip: waits for the claim to reach the school'
+    direction: DOWN
     timeout: 20000
 - assertVisible:
     text: '.*Saved on device.*'
 - setAirplaneMode: disabled
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: 'Slip: with the school'
+    direction: DOWN
     timeout: 60000
