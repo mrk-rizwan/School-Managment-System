@@ -12,14 +12,16 @@ writes the production code.** Do not start application code in a planning sessio
 ## Current state (keep this section accurate)
 
 - **Phase:** Phases 1 and 2 complete and closed (Phase 2 gate PASS on `e4494b2`, 2026-10-05).
-  **Phase 3 (Financial): every slice (18-27) is built, reviewed and committed, and the slice-28
-  close work is done — but the phase gate FAILED on 2026-10-07** (run on `4dd29c1`; see the
-  2026-10-07 gate entry). Two owner-blocked items keep it from passing: the real-driver proof
-  ("Left to do" item 1) and **GitHub Actions, which stopped starting jobs** (item 1b). The
-  team-fixable gate items were fixed after the gate (same entry); they still need one green CI
-  run. Phase 3 = 37.75 / 38.5 days = 98 % (slice 28 counts half until the gate passes); project =
-  109.75 / 160.5 days = 68 %. **Next: the owner's two items, then one green CI run, then re-run
-  `phase-gate`. Phase 4 needs a plan** (`docs/plans/phase-4-academic.md`, not written).
+  **Phase 3 (Financial): all code is done and CI is fully green** (run 37639293912 on `0af67a9`,
+  2026-10-07: API 2,285 tests, Playwright 338, mobile 582, all ten Maestro flows). **The phase
+  gate re-run on `0af67a9` FAILED on one item only, the owner-blocked real-driver proof** ("Left to
+  do" item 1); it found nothing the team can fix. Phase 3 = 37.75 / 38.5 days = 98 % (slice 28
+  counts half until the gate passes); project = 109.75 / 160.5 days = 68 %. **Next: the owner's
+  Sendpk account and WAHA host → the proof on staging → `phase-gate` again → Phase 3 closed.
+  Phase 4 needs a plan** (`docs/plans/phase-4-academic.md`, not written; it can be planned now).
+- **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
+  without billing; the full history was scanned for secrets first and was clean). Treat every
+  commit as published: the pre-commit hook stays the guard.
 - **pnpm does not start on this machine** since 2026-10-06 (corepack's `pnpm-native.exe` fails to
   spawn). Run tools directly: API Jest `node --experimental-vm-modules node_modules/jest/bin/jest.js`,
   mobile Jest with `NODE_PATH=<repo>/node_modules/.pnpm/node_modules`, `npx nest build` +
@@ -82,12 +84,10 @@ slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice
    relaxed, the deferral lapses. It becomes a FAIL if the accounts exist, or a school is
    scheduled to go live, before the proof is done. **The Phase 3 gate (2026-10-07) failed on it,
    as the plan said it would; the deferral has expired.**
-1b. **GitHub Actions stopped starting jobs (owner action, found 2026-10-07).** Runs 37581773638
-   and 37583973273 (`f852e1b`, `4dd29c1`) never started: "The job was not started because recent
-   account payments have failed or your spending limit needs to be increased." Fix the billing
-   or spending limit in the GitHub account settings; then push (or re-run) so HEAD gets one green
-   run. Nothing after `2f43cb5` has run on CI. The last full CI result: `2f43cb5` (run
-   37571084037) `ci` green, `mobile` red on the deposit-slip flow (fixed since, unproven).
+1b. ~~GitHub Actions stopped starting jobs~~ **Resolved 2026-10-07:** the account's Actions billing
+   failed ("recent account payments have failed or your spending limit needs to be increased");
+   the owner made the repository public, where hosted runners are free. CI ran again from run
+   37586567674 and is green from run 37639293912 (`0af67a9`).
 2. **Phase 3 (Financial) decisions settled 2026-10-05:** the owner accepted the main-thread
    recommendations; recorded as CLAUDE.md rules 18-25 (register items 7-13, 16, 18, 24, 25, 30
    closed). Defaults the main thread chose where it had made no recommendation (late fee off,
@@ -295,6 +295,37 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-07 (afternoon) — CI green, Phase 3 gate re-run (main thread) — gate FAIL on the real-driver proof only
+
+**CI back:** the repository went public and run 37586567674 started. Its API job failed on two
+`TRUNCATE` guard tests that waited 30 s for a table lock behind the 12-month reports load
+(`c781196`: `lock_timeout` 5 s, and a busy table proves the refusal from `pg_trigger` /
+`pg_constraint`). The phone flows failed only on scrolling and on a screenshot path:
+- `parent-deposit-slip` passed for the first time on CI;
+- `parent-receipt` and `principal-approvals` were made to scroll to their targets (`30ef03d`);
+- the screenshot is written to Maestro's own output folder (`0af67a9`).
+
+**Run 37639293912 on `0af67a9`: green on both jobs.** The claim-sheet capture under FLAG_SECURE
+measured 703 bytes (a black frame), which is the evidence for slice 27's security finding.
+`b7c5b53` keeps it on green runs: `upload-artifact` skipped the hidden `.maestro` folder.
+
+**Review verdicts on record for Phase 3:**
+- per-slice `security-reviewer` and `code-auditor` on every wave;
+- whole-phase `security-reviewer` **PASS** (three lows: two fixed, one an owner decision, rule 24
+  nominal holding, register item 31);
+- `performance-engineer`: one index and a chunked late-fee insert;
+- `business-rules`: gaps G1-G3 and G6 fixed, R228 widened;
+- `code-quality`: the tidy-up in `f852e1b`;
+- `docs-maintainer` sweep: fixed in `0bbfdfb`;
+- `code-auditor` on the close fix round: fixed in `4dd29c1`;
+- `phase-gate` twice: FAIL on `4dd29c1` (team items fixed since), then FAIL on `0af67a9` on the
+  real-driver proof alone.
+
+**The gate's verdict on `0af67a9`:** every Definition-of-Done item is met — CI green, tests,
+database and isolation, permissions, security, docs and git clean — except the plan's
+precondition. "Re-gate only after the owner's real-driver proof; nothing else stands between this
+phase and PASS."
 
 ## 2026-10-07 — Phase 3 wave L (slice 27), the phase gate, and the fixes after it (main thread) — gate FAIL
 
