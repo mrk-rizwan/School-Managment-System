@@ -458,6 +458,7 @@ Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 ·
 | 14 | Result weighting and grading scale | Only if `ASSESSMENT_WEIGHT` is its own table, not columns. Client docs say "before results are built"; that is this condition, not Phase 1 |
 | 15 | Promotion rules at year rollover | Enrolment already close-old/open-new; needed before first year-end |
 | 20 | Transport module | Phase 5 |
+| 31 | **Rule 24's reach** (raised by the Phase 3 plan §1.2, 2026-10-06): should a user still on the default password also be blocked from money-out verbs (payee and payment-account changes, refunds, payroll finalise), and should a default-password principal lose the in-service override on staff status (today checked against nominal holdings)? | Either is a small change in the capability guard; no schema change |
 
 ### Assumed unless corrected
 

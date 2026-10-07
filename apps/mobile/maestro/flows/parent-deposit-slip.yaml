@@ -1,7 +1,7 @@
 # Phase 3 slice 21 (§3.9, R199) — CI only. A parent who paid by wallet photographs nothing new: the
 # slip image is put in the emulator's gallery (addMedia) and chosen from there, in airplane mode.
 # The phone says the claim and the slip are saved on the device; when the connection returns both
-# reach the school ("Slip: with the school"). ci-run.sh then verifies the claim over curl as the
+# reach the school (the server lists the claim, "Waiting for the office", and the on-phone section goes). ci-run.sh then verifies the claim over curl as the
 # principal (payment.verify), and parent-receipt.yaml shows the receipt that verification issued.
 # Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
 appId: pk.asms.app.dev
@@ -72,8 +72,15 @@ appId: pk.asms.app.dev
 - assertVisible:
     text: '.*Saved on device.*'
 - setAirplaneMode: disabled
+# Once the claim and its slip are on the server the phone stops listing it under "on this phone"
+# (the server's row takes over), so "Slip: with the school" shows only for a moment: wait for the
+# server's row, then for the on-phone section to go.
 - scrollUntilVisible:
     element:
-      text: 'Slip: with the school'
+      text: 'Waiting for the office'
     direction: DOWN
+    timeout: 60000
+- extendedWaitUntil:
+    notVisible:
+      id: 'fees.local'
     timeout: 60000

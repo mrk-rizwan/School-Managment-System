@@ -1,6 +1,6 @@
 import { expect as baseExpect, test } from '@playwright/test';
 import type { ChargeDto } from '../lib/api/school-charges-contract';
-import type { GuardianDuesDto, HandoverDto, PaymentDto, PaymentPreviewDto } from '../lib/api/school-payments-contract';
+import type { GuardianDuesDto, HandoverDto, PaymentDto, PaymentPreviewDto, ReversalDto } from '../lib/api/school-payments-contract';
 import { OFFICE_ME, PRINCIPAL_ME, STAMP, TABLET, calls, errorBody, expectNoSidewaysScroll, mockSchoolApi, open, page1 } from './support/wave-e';
 
 // Payments (phase-3-financial.md slice 20) against a mocked API: the counter (find the guardian,
@@ -125,6 +125,24 @@ const payment = (extra: Partial<PaymentDto> = {}): PaymentDto => ({
   ...extra,
 });
 
+const carry: ReversalDto = {
+  id: 'rv1',
+  paymentId: 'p1',
+  academicYearId: 'y1',
+  kind: 'carried_forward',
+  amount: 1000,
+  reason: 'Moving to the new session',
+  reversesId: null,
+  carriedToPaymentId: 'p2',
+  refundMethod: null,
+  refundReference: null,
+  requestedByUserId: 'u-office',
+  requestedByName: 'Bilal Office',
+  approvedByUserId: null,
+  reversed: false,
+  createdAt: STAMP,
+};
+
 const handover = (extra: Partial<HandoverDto> = {}): HandoverDto => ({
   id: 'h1',
   collector: { userId: 'u-office', staffId: 'st-o', name: 'Bilal Office' },
@@ -228,6 +246,55 @@ test.describe('payments', () => {
     await page.getByRole('button', { name: 'Void payment' }).click();
     await expect(page.getByText('Payment of Rs 5,000 voided.')).toBeVisible();
     expect(calls(requests, 'POST', '/payments/p1/void')[0]?.postDataJSON()).toEqual({ reason: 'Wrong family' });
+  });
+
+  test('the office undoes a carry-forward with a reason and a key; a spent carry is refused', async ({ page }) => {
+    const carried = payment({
+      amount: 6000,
+      allocatedAmount: 5000,
+      advanceForStudentId: 'st1',
+      reversals: [carry],
+    });
+    const { requests } = await mockSchoolApi(page, {
+      me: OFFICE_ME,
+      replies: {
+        'POST /payments/p1/carry-forward/undo': [
+          { status: 201, body: { ...carry, id: 'rv2', kind: 'carry_forward_reversal', reversesId: 'rv1', carriedToPaymentId: null, reason: 'Wrong year' } },
+          {
+            status: 409,
+            body: errorBody(
+              'ILLEGAL_STATUS_TRANSITION',
+              'The carried advance has already been used or refunded in the new year, so this carry-forward cannot be undone.',
+              { reason: 'carried_spent', carriedPaymentId: 'p2' },
+            ),
+          },
+        ],
+      },
+      handler: ({ method, path }) => (method === 'GET' && path === '/payments' ? { status: 200, body: page1([carried]) } : undefined),
+    });
+    await open(page, '/fees/payments');
+    await page.getByRole('button', { name: /actions/i }).first().click();
+    // The office holds payment.record but not payment.void: no void, but the undo is offered.
+    await expect(page.getByRole('menuitem', { name: 'Void' })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: 'Undo carry-forward of Rs 1,000' }).click();
+    await expect(page.getByRole('dialog', { name: 'Undo this carry-forward' })).toBeVisible();
+    await page.getByLabel(/reason/i).fill('Wrong year');
+    await page.getByRole('button', { name: 'Undo carry-forward' }).click();
+    await expect(page.getByText('Carry-forward of Rs 1,000 undone.')).toBeVisible();
+    const undone = calls(requests, 'POST', '/payments/p1/carry-forward/undo')[0];
+    expect(undone?.headers()['idempotency-key']).toMatch(KEY);
+    expect(undone?.postDataJSON()).toEqual({ reversalId: 'rv1', reason: 'Wrong year' });
+
+    // The second attempt is refused (the carried advance was spent): the API's sentence is shown.
+    await page.getByRole('button', { name: /actions/i }).first().click();
+    await page.getByRole('menuitem', { name: 'Undo carry-forward of Rs 1,000' }).click();
+    await page.getByLabel(/reason/i).fill('Wrong year');
+    await page.getByRole('button', { name: 'Undo carry-forward' }).click();
+    await expect(page.getByText(/already been used or refunded in the new year/)).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Undo this carry-forward' })).toHaveCount(0);
+    const keys = calls(requests, 'POST', '/payments/p1/carry-forward/undo').map((r) => r.headers()['idempotency-key']);
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   test('an empty list, and no sideways scroll at tablet width', async ({ page }) => {

@@ -291,6 +291,15 @@ const PHONE = /(\+?92[\s-]?|(?<![0-9])0)3[0-9]{2}[\s-]?[0-9]{3}[\s-]?[0-9]{4}(?!
 const leaks = (text: string) => PATTERN.test(text) || PHONE.test(text);
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
+/** PATTERN and PHONE as Postgres regular expressions, for the whole-table scans. */
+const ID_SQL = '[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]';
+const PHONE_SQL = '(\\+?92[ -]?|(^|[^0-9])0)3[0-9]{2}[ -]?[0-9]{3}[ -]?[0-9]{4}([^0-9]|$)';
+/** The rows of `table` (every school) whose `text` expression matches either pattern. */
+async function leakingRows(pg: Client, table: string, text: string): Promise<number> {
+  const res = await pg.query<{ n: string }>(`SELECT count(*)::text AS n FROM ${table} t WHERE ${text} ~ $1 OR ${text} ~ $2`, [ID_SQL, PHONE_SQL]);
+  return Number(res.rows[0]?.n);
+}
+
 describe('R16 (slice 17): every message template, rendered with realistic values', () => {
   const SCHOOL = 'Government Girls High School Number 2 Gulshan-e-Iqbal Karachi';
   const ctx = (subjectType: MessageSubjectType, body?: string): RenderContext => ({
@@ -666,20 +675,10 @@ describe('R16 (slice 17): messages, delivery rows, push payloads and the worker 
   it('R16: no stored message text, delivery row or announcement, whole tables, matches either pattern', async () => {
     // Every school any suite wrote (tests never truncate). subject_id is a polymorphic id (an
     // audit row, YYYYMM, a holiday), not text, so messages are scanned by their text columns.
-    const ID_SQL = '[0-9]{13}|[0-9]{5}-[0-9]{7}-[0-9]';
-    const PHONE_SQL = '(\\+?92[ -]?|(^|[^0-9])0)3[0-9]{2}[ -]?[0-9]{3}[ -]?[0-9]{4}([^0-9]|$)';
     const pg = new Client({ connectionString: process.env.DATABASE_URL });
     await pg.connect();
     try {
-      const count = async (table: string, text: string) =>
-        Number(
-          (
-            await pg.query<{ n: string }>(
-              `SELECT count(*)::text AS n FROM ${table} t WHERE ${text} ~ $1 OR ${text} ~ $2`,
-              [ID_SQL, PHONE_SQL],
-            )
-          ).rows[0]?.n,
-        );
+      const count = (table: string, text: string) => leakingRows(pg, table, text);
       expect(Number((await pg.query<{ n: string }>('SELECT count(*)::text AS n FROM messages')).rows[0]?.n)).toBeGreaterThan(0);
       expect(await count('messages', `concat_ws(' ', t.body, t.title, t.media_object_key)`)).toBe(0);
       expect(
@@ -692,5 +691,69 @@ describe('R16 (slice 17): messages, delivery rows, push payloads and the worker 
     } finally {
       await pg.end();
     }
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Phase 3 close (plan §5 slice 28, R16): the whole-table scan widened to every free-text column the
+// money tables carry: references, descriptions, payees, reasons, receipt and payslip text, claim
+// notes, names a school types. Object keys and MIME types are not free text (a ULID can hold a
+// digit run by chance). school_payment_accounts.account_no is left out: a wallet account is a
+// phone number by design, and its own CHECK refuses an identity-number shape
+// (school_payment_accounts_account_no_check, test/fees/money-guards.e2e-spec.ts).
+
+const PHASE_3_FREE_TEXT: Record<string, string[]> = {
+  fee_heads: ['name', 'archive_reason'],
+  fee_structures: ['reason'],
+  school_payment_accounts: ['title', 'bank_name', 'disable_reason'],
+  concessions: ['reason', 'decision_reason', 'end_reason'],
+  charge_runs: ['error_code', 'skipped_classes::text'],
+  charge_campaigns: ['name', 'description', 'cancel_reason'],
+  charges: ['description', 'void_reason', 'waive_reason'],
+  payments: ['payer_name', 'reference'],
+  payment_reversals: ['reason', 'refund_reference'],
+  receipt_lines: ['fee_head_name'],
+  cash_handovers: ['note', 'confirm_note', 'shortfall_resolution_reason'],
+  payment_claims: ['reference', 'note', 'decision_reason'],
+  expenses: ['description', 'payee', 'reference', 'decision_reason', 'void_reason'],
+  leave_types: ['name'],
+  leave_requests: ['reason', 'decision_reason', 'cancel_reason'],
+  salary_structures: ['reason'],
+  salary_structure_components: ['name'],
+  salary_advances: ['paid_reference', 'write_off_reason'],
+  payroll_runs: ['finalise_reason', 'skipped::text'],
+  payslips: ['paid_reference'],
+  payslip_lines: ['name', 'reason'],
+  platform_plans: ['name'],
+  platform_subscriptions: ['reason'],
+  platform_invoices: ['invoice_no', 'void_reason'],
+  platform_payments: ['reference'],
+};
+
+describe('R16 (Phase 3): the money tables free text, whole tables', () => {
+  let pg: Client;
+
+  beforeAll(async () => {
+    pg = new Client({ connectionString: process.env.DATABASE_URL });
+    await pg.connect();
+  });
+
+  afterAll(async () => {
+    await pg.end();
+  });
+
+  it('R16: the SQL patterns catch every written form (so a clean scan is not vacuous)', async () => {
+    const matches = async (text: string) => (await pg.query<{ hit: boolean }>('SELECT ($1 ~ $2 OR $1 ~ $3) AS hit', [text, ID_SQL, PHONE_SQL])).rows[0]?.hit;
+    for (const text of ['ref 3520212345671', 'CNIC 35202-1234567-1', 'call 03001234567', 'call 0300 123 4567', 'call 0300-123-4567', '+92 300 1234567', '+923001234567']) {
+      expect([text, await matches(text)]).toEqual([text, true]);
+    }
+    for (const text of ['Rs 12,500 for October', 'INV-2026-00042', 'TXN 202610051234', 'Receipt 1234/2026-27']) {
+      expect([text, await matches(text)]).toEqual([text, false]);
+    }
+  });
+
+  it.each(Object.entries(PHASE_3_FREE_TEXT))('R16: no row of %s holds an identity number or phone in its free text', async (table, columns) => {
+    const text = `concat_ws(' ', ${columns.map((c) => `t.${c}`).join(', ')})`;
+    expect(await leakingRows(pg, table, text)).toBe(0);
   });
 });

@@ -12,11 +12,14 @@ writes the production code.** Do not start application code in a planning sessio
 ## Current state (keep this section accurate)
 
 - **Phase:** Phases 1 and 2 complete and closed (Phase 2 gate PASS on `e4494b2`, 2026-10-05).
-  **Phase 3 (Financial) is being built** from the approved plan `docs/plans/phase-3-financial.md`
-  (2026-10-06). Slices 18-26 are built, reviewed and committed (waves H-K); **left: slice 27 (the
-  Approvals tab and page) and slice 28 (the phase close)**. Phase 3 = 35 / 38.5 days = 91 %;
-  project = 107 / 160.5 days = 67 %. The real-driver proof is still owner-blocked and is a hard
-  precondition of the Phase 3 gate and the first deployment ("Left to do" item 1).
+  **Phase 3 (Financial): every slice (18-27) is built, reviewed and committed, and the slice-28
+  close work is done — but the phase gate FAILED on 2026-10-07** (run on `4dd29c1`; see the
+  2026-10-07 gate entry). Two owner-blocked items keep it from passing: the real-driver proof
+  ("Left to do" item 1) and **GitHub Actions, which stopped starting jobs** (item 1b). The
+  team-fixable gate items were fixed after the gate (same entry); they still need one green CI
+  run. Phase 3 = 37.75 / 38.5 days = 98 % (slice 28 counts half until the gate passes); project =
+  109.75 / 160.5 days = 68 %. **Next: the owner's two items, then one green CI run, then re-run
+  `phase-gate`. Phase 4 needs a plan** (`docs/plans/phase-4-academic.md`, not written).
 - **pnpm does not start on this machine** since 2026-10-06 (corepack's `pnpm-native.exe` fails to
   spawn). Run tools directly: API Jest `node --experimental-vm-modules node_modules/jest/bin/jest.js`,
   mobile Jest with `NODE_PATH=<repo>/node_modules/.pnpm/node_modules`, `npx nest build` +
@@ -77,15 +80,21 @@ slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice
    `src/messaging/legs.spec.ts`, it is rework reviewed by `data-architect`. The deferral is safe
    only while R112 holds (a missing driver credential fails production boot); if that rule is
    relaxed, the deferral lapses. It becomes a FAIL if the accounts exist, or a school is
-   scheduled to go live, before the proof is done.
+   scheduled to go live, before the proof is done. **The Phase 3 gate (2026-10-07) failed on it,
+   as the plan said it would; the deferral has expired.**
+1b. **GitHub Actions stopped starting jobs (owner action, found 2026-10-07).** Runs 37581773638
+   and 37583973273 (`f852e1b`, `4dd29c1`) never started: "The job was not started because recent
+   account payments have failed or your spending limit needs to be increased." Fix the billing
+   or spending limit in the GitHub account settings; then push (or re-run) so HEAD gets one green
+   run. Nothing after `2f43cb5` has run on CI. The last full CI result: `2f43cb5` (run
+   37571084037) `ci` green, `mobile` red on the deposit-slip flow (fixed since, unproven).
 2. **Phase 3 (Financial) decisions settled 2026-10-05:** the owner accepted the main-thread
    recommendations; recorded as CLAUDE.md rules 18-25 (register items 7-13, 16, 18, 24, 25, 30
    closed). Defaults the main thread chose where it had made no recommendation (late fee off,
    both payment paths, seeded fee heads, receipts, expense threshold Rs 5,000, salary and leave
    defaults, platform billing tiers, 15-day grace, 12-month retention) are open to the owner's
-   correction. The plan is approved and slices 18-26 are built; **next: slice 27 (Approvals),
-   then slice 28 (phase close and gate)**. Owner items from the build are in the 2026-10-06/07
-   entry below.
+   correction. All slices are built; the gate result and the owner items from the build are in
+   the 2026-10-07 entries and "What Phase 4 inherits" below.
 3a. **Owner answered Phase 2 §1.2 on 2026-10-03** (recorded in the plan): the principal pairs
    the school's own WhatsApp number; the platform admin sets each school's SMS cap; **nothing is
    disturbed under suspension until termination** (this lifts Phase 1 R80's read-only rule —
@@ -116,6 +125,47 @@ slice in progress counts half. **Project % = days done ÷ 160.5.** Phase 2 slice
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## What Phase 4 inherits from Phase 3 (written at the Phase 3 close, 2026-10-07)
+
+**Built and standing:** fee heads and settings; charge generation (monthly, yearly, once,
+campaigns) with proration, late fees and concessions; payments with oldest-first allocation,
+advances, receipts numbered per school per year, voids, refunds and their reversals,
+carry-forward and its undo, cash custody and handovers; deposit-screenshot claims with office
+verification; fee reminders and seven finance reports; dues clearance with the principal's
+override; expenses with approval; staff leave with cover; salary structures, advances, the monthly
+payroll run and payslips; platform billing (plans by student-count tier, invoices, grace); the
+Approvals tab and page. Every money rule sits in database triggers as well as services; the R228
+scripted year asserts the §0.20 identities against the tables.
+
+**What Phase 4 must use rather than rebuild:**
+- **Certificates read `GET /students/:id/dues-clearance`** (rule 20): it says cleared or not and
+  carries the override. The override is refused for the principal's own child and lapses when the
+  amount owed rises. Phase 4 builds the certificate, its number and reissue; not the dues logic.
+- **Promotion at year end** (register item 15) will need "do arrears block promotion?" — ask the
+  owner; the same endpoint answers it. Carry-forward moves advances; arrears stay in their year.
+- **Exam fees** are the seeded `exam` head (per term, by campaign); results need no fee link.
+- Results approval (item 21) can reuse the Approvals page and `GET /me/approvals` by adding a
+  section, gated by its own capability.
+
+**Deferred, with the condition that brings each back:**
+- Real-driver proof and GitHub Actions billing — "Left to do" items 1 and 1b (owner).
+- A guardian who is not the fee payer gets no message when the office verifies their claim at a
+  lower amount or a corrected date (no message type; they see it in the app/web) — owner to decide.
+- Rule 24 checked against nominal holdings: a principal still on the default password keeps the
+  in-service override on staff status changes (whole-phase security low 2) — owner to decide; a
+  one-line change (`holds` instead of `holdsNominally`, `staff-status.service.ts`) if not wanted.
+- Rule 24 is not extended to money-out verbs (payee changes, refunds, payroll) — new register
+  question, CLAUDE.md "Blocks Phase 1" table.
+- Price tiers: none seeded; no platform invoice until the platform admin enters them
+  (`docs/deployment.md`, "Before the first platform billing run").
+- Accepted lows: a PDF deposit slip can be passed to the share sheet on the phone (temporary
+  file deleted after); TalkBack can reach controls behind an open sheet (touch cannot); the
+  cover picker loads full staff rows for a moment; the receipt prints "Sept", the payslip "Sep".
+- Guardian merge has no verb (CLAUDE.md "Not yet specified").
+- Not built by design (plan §6): refunds of allocated charges, partial platform payments,
+  bank reconciliation and a general ledger, data purge after retention, staff contracts, inbound
+  WhatsApp screenshots, an audit-log screen, iOS.
 
 ## What Phase 3 inherits from Phase 2 (written at the Phase 2 close, 2026-10-05)
 
@@ -246,7 +296,57 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
 
-## 2026-10-07 — Phase 3 close fix round (Opus 5.5, from the slice-28 reviews) — DONE, uncommitted
+## 2026-10-07 — Phase 3 wave L (slice 27), the phase gate, and the fixes after it (main thread) — gate FAIL
+
+**Slice 27, the Approvals tab and page** (`1eace86`): `GET /me/approvals` returns the first ten
+rows and the count of each queue the caller may act on (claims, handovers, expenses, leave), by
+calling each queue's own list method, so the counts equal the queues (R227). The web has an
+Approvals page plus the principal's dashboard tiles; the phone has an Approvals tab, second after
+Home, so a principal's Inbox moves under More, and its decisions are online only (R226).
+Review fixes:
+- sheets render inside the protected screen (an RN Modal is its own Android window, not covered
+  by FLAG_SECURE), and CI keeps the claim-sheet screenshot as evidence;
+- the self-approved tile counts by decision date (`decidedFrom`/`decidedTo` on `GET /expenses`);
+- "last 7 days" means seven days;
+- the cover picker says when staff exceed 50.
+
+**CI fixes** (`2f43cb5`): `onceMore` retries a service's own stale read up to three times (a
+database-caused failure still gets one), because under CI load R236's interleaving lost the race
+twice; the deposit-slip flow scrolls to its fields.
+
+**Close fix round** (`f852e1b`, `4dd29c1`): the entry below.
+
+**Phase gate on `4dd29c1`: FAIL.**
+- Owner-blocked (unchanged until the owner acts): the real-driver proof; GitHub Actions not
+  starting jobs.
+- Team-fixable, **fixed after the gate, in the commit after this entry:**
+  - (a) The deposit-slip Maestro flow had never passed. The API log of run 37571084037 shows the
+    claim, the upload and the slip PATCH all succeeded; the flow waited for "Slip: with the
+    school", which the phone shows only for a moment, because a claim the server lists with its
+    slip leaves the on-phone section. It now waits for the server's row, then for the on-phone
+    section to go. Until that flow passes, `parent-receipt` and slice 27's `principal-approvals`
+    have never run on CI.
+  - (b) This "Phase 4 inherits" section, the register row for rule 24's reach, and this state.
+  - (c) A Playwright test for "Undo carry-forward".
+  - (d) R16's whole-table scan widened to the Phase 3 free-text columns.
+- Met, per the gate:
+  - typecheck;
+  - 440 API tests in the guard, payment, fee, report and approval suites;
+  - 582 mobile tests;
+  - migrations and the schema guard;
+  - reviews on record;
+  - docs;
+  - git clean.
+
+**Watch:** the late-fee sweep timing in `generation-perf` (3 overdue months, 3,000 students, 9,000
+late fees) measured 3.4 s and later 4.9 s against its 5 s budget on this machine, whose test
+database now holds about 1.6 M charges. If it flakes on CI, the next lever is the charge side of
+the candidate query, which still scans the whole year (performance review, "secondary").
+
+**To re-gate:** the owner fixes the Actions billing; one green CI run on HEAD, including the three
+Maestro flows; the real-driver proof; then `phase-gate` again.
+
+## 2026-10-07 — Phase 3 close fix round (Opus 5.5, from the slice-28 reviews) — DONE, committed `f852e1b` and `4dd29c1`
 
 One agent, after slice 27 (`1eace86`, `2f43cb5`). Per item, what changed and its proof:
 
