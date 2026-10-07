@@ -528,6 +528,10 @@ function SettingsForm({ year, settings }: { year: AcademicYearDto; settings: Res
   const editable = can(Capability.ASSESSMENT_DEFINE) && year.status !== 'closed' && !settings.locked;
   const form = useForm<SettingsValues>({ resolver: zodResolver(settingsSchema), defaultValues: toValues(settings) });
   const bands = useFieldArray({ control: form.control, name: 'bands' });
+  // Read during render: react-hook-form tracks isDirty and dirtyFields only once the proxy has been
+  // read, and a field-array remove recomputes dirtyFields only while tracked, so removing a band
+  // alone sent an empty PATCH.
+  const { isDirty, dirtyFields } = form.formState;
 
   const save = useMutation({
     mutationFn: (values: SettingsValues) => {
@@ -537,7 +541,7 @@ function SettingsForm({ year, settings }: { year: AcademicYearDto; settings: Res
         ...(next.examWeight !== settings.examWeight && { examWeight: next.examWeight }),
         ...(next.passPercent !== settings.passPercent && { passPercent: next.passPercent }),
         ...(next.passRule !== settings.passRule && { passRule: next.passRule }),
-        ...(form.formState.dirtyFields.bands && { bands: toBands(values.bands) }),
+        ...(dirtyFields.bands && { bands: toBands(values.bands) }),
         ...Object.fromEntries(TOGGLES.filter((key) => next[key] !== settings[key]).map((key) => [key, next[key]])),
       };
       return unwrap(
@@ -559,7 +563,7 @@ function SettingsForm({ year, settings }: { year: AcademicYearDto; settings: Res
       noValidate
       className="grid gap-6"
       onSubmit={form.handleSubmit((values) => {
-        if (!form.formState.isDirty) return;
+        if (!isDirty) return;
         save.mutate(values);
       })}
     >
@@ -654,7 +658,7 @@ function SettingsForm({ year, settings }: { year: AcademicYearDto; settings: Res
       </fieldset>
       {editable && (
         <div className="flex justify-end">
-          <Button type="submit" disabled={save.isPending || !form.formState.isDirty}>
+          <Button type="submit" disabled={save.isPending || !isDirty}>
             {save.isPending ? 'Saving…' : 'Save result rules'}
           </Button>
         </div>

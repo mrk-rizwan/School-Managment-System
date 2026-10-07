@@ -222,6 +222,31 @@ test.describe('fee heads', () => {
     });
   });
 
+  test('an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+    const { requests } = await mockSchoolApi(page, {
+      me: PRINCIPAL_ME,
+      handler: feesHandler(),
+      replies: { 'PATCH /fee-heads/fh3': { status: 200, body: { ...EXAM, name: 'Term exam' } } },
+    });
+    await open(page, '/fees/heads');
+    const edit = async () => {
+      await page.getByRole('button', { name: 'Actions for Exam' }).click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
+      return page.getByRole('dialog', { name: 'Edit Exam' });
+    };
+
+    let dialog = await edit();
+    await dialog.getByRole('button', { name: 'Save changes' }).click();
+    await expect(dialog).toBeHidden();
+    expect(calls(requests, 'PATCH', '/fee-heads/fh3')).toHaveLength(0);
+
+    dialog = await edit();
+    await dialog.getByLabel('Name').fill('Term exam');
+    await dialog.getByRole('button', { name: 'Save changes' }).click();
+    await expect(dialog).toBeHidden();
+    expect(calls(requests, 'PATCH', '/fee-heads/fh3').map((r) => r.postDataJSON())).toEqual([{ name: 'Term exam' }]);
+  });
+
   test('a reader without fee_head.manage sees the heads read-only', async ({ page }) => {
     await mockSchoolApi(page, { me: OFFICE_ME, handler: feesHandler() });
     await open(page, '/fees/heads');

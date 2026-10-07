@@ -234,13 +234,16 @@ function SubjectForm({ subject, onDone }: { subject: SubjectDto | null; onDone: 
       applyApiError(form, error);
     },
   });
+  // Read during render: react-hook-form tracks isDirty only once the proxy has been read, so a
+  // first read inside the submit handler returned a stale false and an edit was never sent.
+  const { isDirty } = form.formState;
 
   return (
     <form
       noValidate
       className="grid gap-4"
       onSubmit={form.handleSubmit((values) => {
-        if (subject && !form.formState.isDirty) return onDone();
+        if (subject && !isDirty) return onDone();
         save.mutate(values);
       })}
     >

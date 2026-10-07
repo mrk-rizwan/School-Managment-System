@@ -116,6 +116,32 @@ test('plans: lists the bands, creates a plan, and shows an overlapping band on t
   expect(unmocked).toEqual([]);
 });
 
+test('plans: an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+  const { requests, unmocked } = await mockPlatform(page, {
+    'PATCH /plans/p1': [{ status: 200, body: { ...PLANS[0], monthlyPrice: 9000 } }],
+  });
+  await page.goto('/platform/plans');
+  const edit = async () => {
+    await page.getByRole('button', { name: 'Actions for Small school' }).click();
+    await page.getByRole('menuitem', { name: 'Edit' }).click();
+    return page.getByRole('dialog', { name: 'Edit Small school' });
+  };
+  const patches = () =>
+    requests.filter((r) => r.method() === 'PATCH' && new URL(r.url()).pathname === '/api/v1/platform/plans/p1').map((r) => r.postDataJSON());
+
+  let dialog = await edit();
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches()).toEqual([]);
+
+  dialog = await edit();
+  await dialog.getByLabel('Monthly price (Rs)').fill('9000');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches()).toEqual([{ monthlyPrice: 9000 }]);
+  expect(unmocked).toEqual([]);
+});
+
 test('invoices: the eligibility filter, a full payment, a void with its reason, and issuing a month', async ({ page }) => {
   const { requests, unmocked } = await mockPlatform(page, {
     'POST /invoices/i1/record-payment': [{ status: 200, body: { ...INVOICES[0], status: 'paid', paidAt: STAMP } }],

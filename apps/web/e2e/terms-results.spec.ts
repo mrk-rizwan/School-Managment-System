@@ -311,6 +311,20 @@ test('result rules: bands are checked whole before saving; only changed fields a
   ]);
 });
 
+test('result rules: removing a band alone sends the bands', async ({ page }) => {
+  const requests = await mockApi(page, { me: PRINCIPAL_ME });
+  await page.goto('/academics/terms');
+  await expect(page.getByLabel('Grade 2', { exact: true })).toHaveValue('A');
+  await page.getByRole('button', { name: 'Remove grade 2' }).click();
+  await page.getByRole('button', { name: 'Save result rules' }).click();
+  await expect(page.getByText('Result rules saved.')).toBeVisible();
+  expect(sent(requests, 'PATCH', '/result-settings')).toEqual([
+    {
+      bands: DEFAULT_GRADE_BANDS.filter((_, i) => i !== 1).map(({ grade, minPercent }) => ({ grade, minPercent })),
+    },
+  ]);
+});
+
 test('a teacher reads the terms and rules but cannot change them', async ({ page }) => {
   await mockApi(page, { me: TEACHER_ME });
   await page.goto('/academics/terms');

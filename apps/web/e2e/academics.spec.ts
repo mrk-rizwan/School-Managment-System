@@ -127,6 +127,15 @@ async function mockAcademicsApi(page: Page, state: MockState) {
     const canned = state.replies?.[`${method} ${path}`];
     if (canned) return json(canned.status, canned.body);
 
+    // An edit: merge the body into the row it names, whichever kind it is.
+    const patched = path.match(/^\/(academic-years|classes|sections|subjects)\/([^/]+)$/);
+    if (patched && method === 'PATCH') {
+      const rows: { id: string }[] = { 'academic-years': years, classes, sections, subjects }[patched[1]]!;
+      const found = rows.find((r) => r.id === patched[2]);
+      if (!found) return json(404, errorBody('NOT_FOUND', 'Not found.'));
+      return json(200, Object.assign(found, body()));
+    }
+
     if (method === 'GET' && path === '/me') return json(200, state.me);
 
     if (path === '/academic-years') {
@@ -191,6 +200,10 @@ async function mockAcademicsApi(page: Page, state: MockState) {
 
 const posts = (requests: Request[], suffix: string) =>
   requests.filter((r) => r.method() === 'POST' && new URL(r.url()).pathname.endsWith(suffix));
+const patches = (requests: Request[], suffix: string) =>
+  requests
+    .filter((r) => r.method() === 'PATCH' && new URL(r.url()).pathname.endsWith(suffix))
+    .map((r) => r.postDataJSON() as unknown);
 
 // ---- Academic years ----
 
@@ -440,4 +453,89 @@ test('subjects: a 422 from the API lands on its field', async ({ page }) => {
   await dialog.getByLabel('Code (optional)').fill('URDU');
   await dialog.getByRole('button', { name: 'Add subject' }).click();
   await expect(dialog.getByText('Use letters, digits or dashes.')).toBeVisible();
+});
+
+test('subjects: an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+  const requests = await mockAcademicsApi(page, { me: PRINCIPAL_ME, subjects: [subject('5', 'Mathematics', 'MATH')] });
+  await page.goto('/academics/subjects');
+  await page.getByRole('button', { name: 'Actions for Mathematics' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  let dialog = page.getByRole('dialog', { name: 'Edit Mathematics' });
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/subjects/5')).toEqual([]);
+
+  await page.getByRole('button', { name: 'Actions for Mathematics' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  dialog = page.getByRole('dialog', { name: 'Edit Mathematics' });
+  await dialog.getByLabel('Name').fill('Maths');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/subjects/5')).toEqual([{ name: 'Maths' }]);
+  await expect(page.getByRole('table').getByText('Maths', { exact: true })).toBeVisible();
+});
+
+// An edit dialog closed on "Save changes" without sending anything when react-hook-form's isDirty
+// was read only inside the submit handler. Each edit dialog: no change sends nothing, a change
+// sends exactly the changed field.
+async function editRow(page: Page, row: string, title: string) {
+  await page.getByRole('button', { name: `Actions for ${row}` }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  return page.getByRole('dialog', { name: title });
+}
+
+test('academic years: an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+  const requests = await mockAcademicsApi(page, { me: PRINCIPAL_ME, years: [year('1', '2026-27', 'planned')] });
+  await page.goto('/academics/years');
+  let dialog = await editRow(page, '2026-27', 'Edit 2026-27');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/academic-years/1')).toEqual([]);
+
+  dialog = await editRow(page, '2026-27', 'Edit 2026-27');
+  await dialog.getByLabel('Ends on').fill('2027-04-30');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/academic-years/1')).toEqual([{ endsOn: '2027-04-30' }]);
+});
+
+test('classes: an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+  const current = year('2', '2026-27', 'active');
+  const requests = await mockAcademicsApi(page, {
+    me: PRINCIPAL_ME,
+    years: [current],
+    classes: [klass('10', 'Class 1', current, 1)],
+  });
+  await page.goto('/academics/classes?year=2');
+  let dialog = await editRow(page, 'Class 1', 'Edit Class 1');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/classes/10')).toEqual([]);
+
+  dialog = await editRow(page, 'Class 1', 'Edit Class 1');
+  await dialog.getByLabel('Name').fill('Class One');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/classes/10')).toEqual([{ name: 'Class One' }]);
+});
+
+test('sections: an edit sends only the changed field; saving with no change sends nothing', async ({ page }) => {
+  const current = year('2', '2026-27', 'active');
+  const requests = await mockAcademicsApi(page, {
+    me: PRINCIPAL_ME,
+    years: [current],
+    classes: [klass('10', 'Class 1', current)],
+    sections: [section('20', '10', 'A')],
+  });
+  await page.goto('/academics/classes/10');
+  let dialog = await editRow(page, 'section A', 'Edit section A');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/sections/20')).toEqual([]);
+
+  dialog = await editRow(page, 'section A', 'Edit section A');
+  await dialog.getByLabel('Capacity (optional)').fill('40');
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog).toBeHidden();
+  expect(patches(requests, '/sections/20')).toEqual([{ capacity: 40 }]);
 });
