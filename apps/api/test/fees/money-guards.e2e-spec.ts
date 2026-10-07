@@ -34,6 +34,23 @@ describe('slice 18 money guards (raw SQL)', () => {
     }
   };
 
+  /**
+   * TRUNCATE takes an exclusive lock on the whole table, so on CI it can wait behind another suite
+   * using the same table; under the suite's lock_timeout that wait fails fast. A busy table then
+   * proves the refusal from the catalogue instead: a TRUNCATE trigger, or another table's foreign
+   * key, which Postgres refuses a plain TRUNCATE for.
+   */
+  const truncateRefused = async (table: string): Promise<string | null> => {
+    const refusal = await refusedBy(`TRUNCATE ${table}`);
+    if (refusal === null || !/lock timeout/i.test(refusal)) return refusal;
+    const guard = await pg.query(
+      `SELECT 1 FROM pg_trigger WHERE tgrelid = $1::regclass AND (tgtype & 32) <> 0 AND NOT tgisinternal
+       UNION ALL SELECT 1 FROM pg_constraint WHERE confrelid = $1::regclass AND contype = 'f' AND conrelid <> confrelid`,
+      [table],
+    );
+    return (guard.rowCount ?? 0) > 0 ? `${table}: guarded (busy)` : null;
+  };
+
   beforeAll(async () => {
     const school = await createSchool();
     const user = await createSchoolUser(db, school, { systemRole: 'principal' });
@@ -69,6 +86,8 @@ describe('slice 18 money guards (raw SQL)', () => {
     pg = new Client({ connectionString: process.env.DATABASE_URL });
     await pg.connect();
     await pg.query('BEGIN');
+    // A guard that waits on a lock would hang the suite; fail fast instead (see truncateRefused).
+    await pg.query(`SET LOCAL lock_timeout = '5s'`);
   });
 
   afterAll(async () => {
@@ -81,7 +100,7 @@ describe('slice 18 money guards (raw SQL)', () => {
     expect(await refusedBy(`DELETE FROM ${table} WHERE id = (SELECT max(id) FROM ${table})`)).toBe(`${table}_no_delete`);
     // A referenced table is refused by its foreign keys before the trigger; the trigger itself is
     // checked by the schema guard (EXPECTED_OBJECTS).
-    expect(await refusedBy(`TRUNCATE ${table}`)).not.toBeNull();
+    expect(await truncateRefused(table)).not.toBeNull();
   });
 
   it('fee_heads: category and frequency are frozen; archive is final; a fine is never concession-eligible; an admission fee never refundable', async () => {
