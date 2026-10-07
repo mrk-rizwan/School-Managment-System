@@ -1,17 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
+import type { AuditMetadataValue } from '../audit-metadata';
 import type { PrismaTxAdapter } from '../prisma';
-
-/**
- * A metadata value: JSON without arrays. Ids and timestamps go in as strings (the table's CHECK
- * refuses any run of 13 digits, so epoch milliseconds and identity numbers cannot land here).
- */
-export type AuditMetadataValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { readonly [key: string]: AuditMetadataValue };
 
 export interface PlatformAuditEntry {
   /** Null only for the seed and login_failure_spike rows (CHECK platform_audit_log_actor_check). */

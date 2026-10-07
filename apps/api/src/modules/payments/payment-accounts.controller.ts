@@ -8,7 +8,7 @@ import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
 import { NoQueryDto } from '../../common/validation';
 import { FINANCE_READERS } from '../access/money-gates';
-import { ReasonDto } from '../fees/fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
 import {
   CreatePaymentAccountDto,

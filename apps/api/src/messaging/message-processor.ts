@@ -65,6 +65,9 @@ const TITLE_ONLY_PUSH: ReadonlySet<MessageType> = new Set<MessageType>([
   'payslip_ready',
 ]);
 
+/** The push body of a message: its title for a money type (R238), else its body. */
+export const pushBodyOf = (type: MessageType, title: string, body: string): string => (TITLE_ONLY_PUSH.has(type) ? title : body);
+
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */
 type AttemptContact = Pick<Contact, 'userId' | 'userHasStaff' | 'phone' | 'email'>;
 
@@ -237,7 +240,7 @@ export class MessageProcessor {
       devices.map((d) => d.pushToken),
       {
         title: titleFor(message, settings.name),
-        body: TITLE_ONLY_PUSH.has(message.type) ? titleFor(message, settings.name) : message.body,
+        body: pushBodyOf(message.type, titleFor(message, settings.name), message.body),
         // R173: ids only.
         data: {
           type: message.type,

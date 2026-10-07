@@ -198,7 +198,7 @@ export class PermissionsService {
 
   /**
    * R232: the actor's user is a guardian (merge-resolved) with a live link to the student. Every
-   * money verb on a student refuses it with ownChild() (money-gates.ts), the sole principal
+   * money verb on a student refuses it with ownChild() (common/errors/api-exception.ts), the sole principal
    * excepted where §3.1 says so.
    */
   actorIsGuardianOf(schoolId: SchoolId, actorUserId: bigint, studentId: bigint): Promise<boolean> {

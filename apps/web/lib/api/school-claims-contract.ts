@@ -24,14 +24,7 @@ export type MyDuesDto = Schemas['MyDuesDto'];
 export type MyChargeDto = Schemas['MyChargeDto'];
 export type MyReceiptDto = Schemas['MyReceiptDto'];
 export type MyClaimDto = Schemas['MyClaimDto'];
-export type CreateClaimBody = Schemas['CreateClaimDto'];
 export type StagedUploadDto = Schemas['StagedUploadDto'];
-
-export const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
 
 export const CLAIM_STATUS_LABELS: Record<ClaimStatus, string> = {
   pending: 'Waiting for the office',

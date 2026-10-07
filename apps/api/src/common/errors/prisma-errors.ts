@@ -8,6 +8,7 @@
 // the constraint name leave this file.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
+import { fieldInvalid } from './constraints.shared';
 import { SLICE_19_CONSTRAINTS } from './constraints-charges';
 import { SLICE_23_CONSTRAINTS } from './constraints-expenses';
 import { SLICE_24_CONSTRAINTS } from './constraints-leave';
@@ -93,11 +94,6 @@ export async function recoverConstraint<T>(
   }
 }
 
-const fieldInvalid = (path: string, message: string) =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
-  });
-
 /** A 409 refusal naming the field it concerns. */
 const taken = (code: ErrorCode, field: string, message: string) =>
   new ApiException(409, code, message, { field });
@@ -115,12 +111,11 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
       'A school short code cannot be changed.',
       { field: 'shortCode' },
     ),
-  school_settings_fee_due_day_check: () =>
-    fieldInvalid('feeDueDay', 'feeDueDay must be between 1 and 28'),
+  school_settings_fee_due_day_check: fieldInvalid('feeDueDay', 'feeDueDay must be between 1 and 28'),
   // Slice 3 (contracts/slice-3.md §6).
   academic_years_school_id_name_key: () =>
     taken(ErrorCode.ACADEMIC_YEAR_NAME_TAKEN, 'name', 'That academic year name is already in use.'),
-  academic_years_dates_check: () => fieldInvalid('endsOn', 'endsOn must be after startsOn'),
+  academic_years_dates_check: fieldInvalid('endsOn', 'endsOn must be after startsOn'),
   classes_school_id_academic_year_id_name_key: () =>
     taken(ErrorCode.CLASS_NAME_TAKEN, 'name', 'That year already has a class of that name.'),
   // The trigger refusing a year change on a class with sections. Slices 4 and 6 add their
@@ -218,8 +213,7 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
       'academicYearId',
       'The academic year of a class cannot change once fees are set for it.',
     ),
-  school_settings_late_fee_enabled_check: () =>
-    fieldInvalid('lateFeeAmount', 'lateFeeAmount is required while late fees are enabled'),
+  school_settings_late_fee_enabled_check: fieldInvalid('lateFeeAmount', 'lateFeeAmount is required while late fees are enabled'),
   ...SLICE_19_CONSTRAINTS,
   ...SLICE_23_CONSTRAINTS,
   ...SLICE_24_CONSTRAINTS,

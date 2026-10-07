@@ -246,6 +246,67 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
 
+## 2026-10-07 — Phase 3 close fix round (Opus 5.5, from the slice-28 reviews) — DONE, uncommitted
+
+One agent, after slice 27 (`1eace86`, `2f43cb5`). Per item, what changed and its proof:
+
+- **Performance.** Migration `20261007090000_phase3_close_indexes`: `enrolments (school_id, student_id,
+  academic_year_id)` (the old `(school_id, student_id)` index stays). Collections-by-class now looks
+  up the enrolment once per child and year (CTE), not once per receipt line: 0.46 s → 0.24 s at
+  75,600 lines. `reports-perf` loads a realistic year (12 months × 3 heads = 108,000 charges, 9 months
+  settled through real `payment_allocations` and receipt lines, one family in five two months
+  behind); `generation-perf` adds a late-fee sweep over 3 overdue months (9,000 late fees, 3.5 s,
+  budget 5 s). **The sweep found a real bug:** `insertLateFees` bound 12 parameters a row in one
+  statement, so a large school's first sweep over several months passed Postgres's 65,535-parameter
+  limit and failed; it now inserts in chunks of 2,000. Load note: the allocations' FK check on
+  payments picks a range index on stale statistics (2 ms a row), so the test ANALYZEs first.
+- **G1 carry-forward undo.** `POST /payments/:id/carry-forward/undo { reversalId, reason }`
+  (`payment.record`, keyed, own child refused, audited `payment.carry_forward_reversed`): a new
+  reversal kind `carry_forward_reversal` on the source payment names the carry-forward; the trigger
+  raises the source's advance back and voids the carried payment. Allowed only while the carried
+  payment is live and wholly unallocated with no refund or carry of its own (service, and the
+  database: `payment_reversals_carried_spent`). Migrations `20261007090100_carry_forward_undo_kind`
+  (the enum value alone) and `20261007090200_carry_forward_undo`; `payment_reversals_reverses_check`
+  widened; a void nets the undo. Web: "Undo carry-forward" on the payments list. Contract slice-20
+  §1.3a, plan route table, R57 and R68 tables. Test: payments.e2e "G1".
+- **G2** in-grace waiver dry run allocates over every open charge except the late fees being waived
+  (a fixed point), so an older open late fee takes its share first. Test: claims.e2e "G2".
+- **G3** regenerating a voided past month applies a concession ended after the period began
+  (`ended_at > periodStartsAt`, the school's timezone). Test: generation.e2e "G3".
+- **G6** an approval asked to apply but finding nothing open says "no open charge to reduce" on the
+  web (the response's empty `adjustments` already carried it; no contract change). Test: charges.e2e
+  R239 (paid in full, then approved: `adjustments: []`, audited 0).
+- **R228** scripted year: an admission through `POST /admissions` after the cut-off with its fee, an
+  advance consumed by a newly generated month (R189), and the report-only lines checked against the
+  tables (Σ reversals by kind, handover counted − expected and its cash_shortfall expense, concessions
+  from charges, payroll Σ net and Σ paid). Header comment lists what is still written directly.
+- **Security lows.** Tenant repositories may no longer import platform, billing or own-invoice
+  repositories (lint; `AuditMetadataValue` moved to `repositories/audit-metadata.ts`; two new refuse
+  fixtures). `src/messaging/push-money.spec.ts`: every money type rendered with amounts, the push
+  body never holds a rupee figure (family money types are title-only; staff and platform money types
+  carry no amount, so they stay out of TITLE_ONLY_PUSH).
+- **Quality moves.** `PAYMENT_METHOD_LABELS` and `DEPOSIT_METHODS` in `@asms/shared` (eight copies
+  gone, the slice-27 mobile approvals one included); `monthLabel`/`shortMonthLabel` in shared
+  (payslip-compute's `shortDay` and the Intl-based ones untouched); `fieldInvalid`/`noIdentity`/
+  `refusal` in `common/errors/constraints.shared.ts`, `ownChild` in `api-exception.ts`; `isPrincipal`
+  in money-gates (three copies gone; web expense list and payment accounts use `useIsPrincipal`);
+  `userNames` in `repositories/name-reads.ts` (finance reports no longer import PaymentRepository);
+  one `ReasonDto` in `common/reason.dto.ts` for the `@Reason()` copies (`LeaveReasonDto` folded in:
+  the schema name `ReasonDto` is unchanged, `LeaveReasonDto` is referenced by no client; the roles
+  and users ReasonDtos validate differently and stay); 26 unused schema-alias types deleted from the
+  Phase 3 web contracts (the six hand-written refusal-detail shapes kept as documentation);
+  `plusDays` gone; `SEEDED_LEAVE_TYPES` compared with the seeded rows (seeds.e2e).
+
+**Runs:** API tsc and eslint clean; full API suite 2,246 passed, 2 skipped, 13 failed: every failure
+a timeout while Playwright and the dev server shared the machine (billing.e2e 1,452 s, lint-boundaries
+1,804 s, the two perf suites); each of the four suites then passed alone. Measured alone: reports
+load 83 s, defaulters 57 ms, collections worst 269 ms (by class); generation 1st 9.5 s, catch-up
+0.5 s, late-fee sweep 3.4 s (budget 5 s; it needs `ANALYZE enrolments` after the bulk load, without
+it the candidate lookup is a 10 s scan). reports-perf's timeout is now 600 s. Web tsc and eslint
+clean; mocked Playwright 321 passed and 12 timed out under the same load, all 63 tests of those four
+spec files then passed alone. Mobile tsc, eslint and jest (582) clean. The web "Undo carry-forward"
+action has no Playwright test yet.
+
 ## 2026-10-06/07 — Phase 3 waves H-K: slices 18-26 (Opus 5.5 builds, Fable 5.1 reviews) — DONE
 
 Built overnight at the owner's request ("complete Phase 3 this night"). Process as in Phase 2:

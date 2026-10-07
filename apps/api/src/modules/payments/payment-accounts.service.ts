@@ -11,7 +11,7 @@ import {
   type PaymentAccountRecord,
 } from '../../repositories/payment-account.repository';
 import { requirePrincipal } from '../access/money-gates';
-import type { ReasonDto } from '../fees/fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import type {
   CreatePaymentAccountDto,
   ListPaymentAccountsQueryDto,

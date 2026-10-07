@@ -37,7 +37,7 @@ import {
 } from './charges.dto';
 import { ChargesService } from './charges.service';
 import { ConcessionsService } from './concessions.service';
-import { ReasonDto } from './fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 
 // phase-3-financial.md slice 19 (contracts/slice-19.md §1). Common to every route: 401 AUTH_REQUIRED,
 // 403 PERMISSION_DENIED / ORIGIN_REJECTED, 429. Teachers reach none of it (R234).

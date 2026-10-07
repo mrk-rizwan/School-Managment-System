@@ -33,6 +33,7 @@ already reads the merge family (`asms_guardian_merge_family`). When a merge verb
 | `POST /payments/:id/refund` | `payment.void` + `requirePrincipal` + key (`payment_reversals`, path id the payment) | `{ amount ≥ 1, reason, method (counter methods), reference? }` → `201 ReversalDto`; `REFUND_EXCEEDS_UNALLOCATED { paymentId, unallocated }`, `PAYMENT_VOIDED`, own child |
 | `POST /payments/:id/reverse-refund` | same | `{ reversalId, reason }` → `201 ReversalDto` (`refund_reversal`, the refund's amount); `422 reversalId` unless a refund of this payment; a second reversal `409 ILLEGAL_STATUS_TRANSITION` |
 | `POST /payments/:id/carry-forward` | `payment.record` + key (`payment_reversals`, path id the payment) | **New route (R251; the plan named the verb, not the route).** §1.3 |
+| `POST /payments/:id/carry-forward/undo` | same | **Added at the Phase 3 close (G1).** `{ reversalId, reason }` → `201 ReversalDto` (`carry_forward_reversal`, the carry-forward's amount). §1.3a |
 | `GET /me/staff/custody` | `@RequireStaff()` | `{ cashInHand, paymentCount, since }` of the session's user |
 | `GET /me/staff/cash-handovers` | `@RequireStaff()` | the session user's handovers as collector, newest first |
 | `POST /me/staff/cash-handovers` | `payment.record` | `{ note? }`; §1.4 |
@@ -77,6 +78,20 @@ or a child with no enrolment in the target year; own child. Writes the `carried_
 child), links the reversal to it, applies the child's advance there (§3), audits `payment.carried_forward`. Replies
 `201 { reversal, payment }`. **No receipt**: no money was received, and a receipt would put it in collections (§0.20).
 
+### 1.3a Carry-forward undone (Phase 3 close, G1)
+
+Body `{ reversalId (a carry-forward of this payment), reason }`, path id the **source** payment. `422 reversalId` unless a
+`carried_forward` reversal of this payment; a second undo `409 ILLEGAL_STATUS_TRANSITION`; `PAYMENT_VOIDED`. Locks the
+source and the carried payment in id order (R236). Allowed only while the carried payment is live and **wholly
+unallocated** with no refund or carry-forward of its own standing; otherwise `409 ILLEGAL_STATUS_TRANSITION
+{ reason: 'carried_spent', carriedPaymentId }` (the database refuses the same: `payment_reversals_carried_spent`). Writes a
+`carry_forward_reversal` row on the source naming the carry-forward (`reverses_id`, once: `payment_reversals_reverses_key`);
+the trigger raises the source's `unallocated_amount` back and **voids the carried payment** (it never had a receipt or an
+allocation). Nothing is edited or deleted (rule 4). The restored advance then pays the child's open charges in its own year
+(§3, A5). Own child refused, as the carry-forward. Audits `payment.carry_forward_reversed` (`reversalId`,
+`carryForwardId`, `carriedPaymentId`, `amount`, `fromAcademicYearId`, `toAcademicYearId`, `studentId`, `applied`). The
+carry-forward's `ReversalDto.reversed` becomes true. A void of the source nets the undo against the carry-forward.
+
 ### 1.4 Handover open (R193)
 
 Refuses `HANDOVER_OPEN { handoverId }` while the collector has one open; locks the collector's live, unhanded cash payments
@@ -86,6 +101,7 @@ payments (checked at commit), audits `cash_handover.opened` (`onBehalf`).
 ## 2. Audit actions (R57, R230)
 
 `payment.recorded`, `payment.voided`, `payment.refunded`, `payment.refund_reversed`, `payment.carried_forward`,
+`payment.carry_forward_reversed` (Phase 3 close),
 `cash_handover.opened`, `cash_handover.confirmed`, `cash_handover.shortfall_resolved`; `charge.adjusted` gains `deallocated`;
 `charge.created` gains `advanceApplied`. A job's advance application is the system actor's `charge.advance_applied`
 (subject none; `job: charge-generate | campaign-generate | late-fee-sweep`, `academicYearId`, `allocations`, `students`,

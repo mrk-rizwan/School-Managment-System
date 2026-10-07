@@ -4,12 +4,9 @@ import { ErrorCode, type Capability } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiException } from '../../common/errors/api-exception';
 import type { SchoolId } from '../../tenancy/school-id';
-import { ownChild } from '../access/money-gates';
+import { ownChild } from '../../common/errors/api-exception';
+import { isPrincipal } from '../access/money-gates';
 import type { PermissionsService } from '../access/permissions.service';
-
-/** A system principal with staff capacity (requirePrincipal's predicate, as a value). */
-export const isPrincipal = (session: SchoolSessionContext): boolean =>
-  session.access.capacities.staff && session.access.systemRoles.includes('principal');
 
 /** 403 unless the caller holds `capability` (a verb whose route admits more than one key). */
 export function requireHeld(session: SchoolSessionContext, capability: Capability): void {

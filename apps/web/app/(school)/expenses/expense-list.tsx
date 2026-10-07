@@ -2,12 +2,14 @@
 
 import {
   Capability,
+  COUNTER_PAYMENT_METHODS,
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_STATUSES,
   RECORDABLE_EXPENSE_CATEGORIES,
   formatRupees,
   newIdempotencyKey,
+  PAYMENT_METHOD_LABELS,
 } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,7 +39,6 @@ import { unwrap } from '@/lib/api/client';
 import { toApiError, toastApiError } from '@/lib/api/errors';
 import {
   expensesApi,
-  type CounterPaymentMethod,
   type ExpenseCategory,
   type ExpenseDto,
   type ExpenseListQuery,
@@ -48,6 +49,7 @@ import {
 import { formatDay, todayInSchool } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { useIsPrincipal } from '../fees/_lib/fees-ui';
 import { nameSchema } from '@/lib/validation';
 import { ACCEPT_ATTRIBUTE, ACCEPTED_TYPES, MAX_UPLOAD_BYTES, saveBlob, uploadFile } from '../students/_lib/documents';
 
@@ -59,12 +61,6 @@ import { ACCEPT_ATTRIBUTE, ACCEPTED_TYPES, MAX_UPLOAD_BYTES, saveBlob, uploadFil
 const LIMIT = 25;
 const expensesKey = ['expenses'] as const;
 
-const METHOD_LABELS: Record<CounterPaymentMethod, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
 const STATUS_LABELS: Record<ExpenseStatus, string> = {
   recorded: 'Recorded',
   pending_approval: 'Waiting for approval',
@@ -80,7 +76,7 @@ export function ExpenseList() {
   const me = useSchoolMe().data;
   const canRecord = can(Capability.EXPENSE_RECORD);
   const canApprove = can(Capability.EXPENSE_APPROVE);
-  const isPrincipal = me?.roles.includes('principal') ?? false;
+  const isPrincipal = useIsPrincipal();
   const [status, setStatus] = useState<ExpenseStatus | ''>('');
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
   const [editing, setEditing] = useState<ExpenseDto | 'new' | null>(null);
@@ -412,7 +408,7 @@ function changesOf(values: ExpenseValues, expense: ExpenseDto): UpdateExpenseBod
 }
 
 const CATEGORY_OPTIONS = RECORDABLE_EXPENSE_CATEGORIES.map((value) => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
-const METHOD_OPTIONS = (Object.keys(METHOD_LABELS) as CounterPaymentMethod[]).map((value) => ({ value, label: METHOD_LABELS[value] }));
+const METHOD_OPTIONS = COUNTER_PAYMENT_METHODS.map((value) => ({ value, label: PAYMENT_METHOD_LABELS[value] }));
 
 function ExpenseForm({ expense, onDone }: { expense: ExpenseDto | null; onDone: () => void }) {
   const queryClient = useQueryClient();

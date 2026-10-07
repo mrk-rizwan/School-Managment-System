@@ -200,6 +200,7 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/payments/:id/refund': 'capability: payment.void',
   'POST /api/v1/payments/:id/reverse-refund': 'capability: payment.void',
   'POST /api/v1/payments/:id/carry-forward': 'capability: payment.record',
+  'POST /api/v1/payments/:id/carry-forward/undo': 'capability: payment.record',
   'GET /api/v1/receipts/:id': 'capability: payment.record | fee.statement.view',
   'GET /api/v1/receipts/:id/print': 'capability: payment.record | fee.statement.view',
   'GET /api/v1/me/staff/custody': 'staff',

@@ -10,7 +10,7 @@ import { PaymentClaimRepository } from '../../src/repositories/payment-claim.rep
 import { PaymentRepository } from '../../src/repositories/payment.repository';
 import { createTestApp } from '../core/app';
 import { pdf, png } from '../documents/fixtures';
-import { karachi, lateFees, db } from '../fees/charges-support';
+import { karachi, lateFees, db, runMonth } from '../fees/charges-support';
 import { asSchool, tx } from '../messaging/support';
 import { expectIsolated } from '../support/isolation';
 import {
@@ -438,6 +438,43 @@ describe('slice 21: deposit claims and the guardian view over HTTP (e2e)', () =>
     expect(bFee?.status).toBe('open');
     const waived = await audits(w.school, 'charge.waived');
     expect(waived.map((r) => [r.subjectId, r.reason, (r.metadata as { claimId: string }).claimId])).toEqual([[aFee?.id, 'paid_on_time_verified_late', claim.id]]);
+  });
+
+  it('G2: the waiver dry run sees an older open late fee the payment will pay first', async () => {
+    // August paid at the counter but not its late fee; September's paid date is inside its grace.
+    const setup = async () => {
+      const w = await claimWorld();
+      await runMonth(app, w.school, w.year, '2026-08', karachi('2026-08-01'));
+      await db().schoolSettings.updateMany({
+        where: { schoolId: w.school.id },
+        data: { lateFeeEnabled: true, lateFeeAmount: 300, lateFeeGraceDays: 7, lateFeeEnabledAt: karachi('2026-08-01') },
+      });
+      expect(await lateFees(app, w.school, karachi('2026-08-20'))).toBe(2);
+      await h.pay(w, w.office, { studentIds: [w.a.studentId], amount: 3000 });
+      await lateFees(app, w.school, karachi('2026-09-20'));
+      const fee = async (period: string) =>
+        db().charge.findFirstOrThrow({ where: { schoolId: w.school.id, kind: 'late_fee', studentId: w.a.studentId, period } });
+      expect([(await fee('2026-08')).status, (await fee('2026-08')).allocatedAmount, (await fee('2026-09')).status]).toEqual(['open', 0, 'open']);
+      return { w, fee };
+    };
+
+    // 3,000 pays August's late fee first (the write allocates oldest due first), so September's
+    // tuition is left 300 short: its late fee stands.
+    const short = await setup();
+    const claim = await submit(short.w, short.w.a.studentId, { stagedUploadId: await stage(short.w.father), paidOn: '2026-09-15', claimedAmount: 3000 });
+    await post(`/payment-claims/${claim.id}/verify`, {}, short.w.clerk).expect(200);
+    expect([(await short.fee('2026-08')).status, (await short.fee('2026-09')).status, (await short.fee('2026-09')).waiveReason]).toEqual(['settled', 'open', null]);
+    expect(await audits(short.w.school, 'charge.waived')).toEqual([]);
+
+    // 3,300 covers both: September's late fee is waived, August's (outside any grace) is paid.
+    const enough = await setup();
+    const full = await submit(enough.w, enough.w.a.studentId, { stagedUploadId: await stage(enough.w.father), paidOn: '2026-09-15', claimedAmount: 3300 });
+    await post(`/payment-claims/${full.id}/verify`, {}, enough.w.clerk).expect(200);
+    expect([(await enough.fee('2026-08')).status, (await enough.fee('2026-09')).status]).toEqual(['settled', 'waived']);
+    const sept = await db().charge.findFirstOrThrow({
+      where: { schoolId: enough.w.school.id, studentId: enough.w.a.studentId, period: '2026-09', kind: 'generated' },
+    });
+    expect(sept.status).toBe('settled');
   });
 
   it('slice 19 rule: a token deposit inside the grace that does not settle the charge waives nothing', async () => {

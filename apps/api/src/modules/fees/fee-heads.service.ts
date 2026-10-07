@@ -12,9 +12,9 @@ import type {
   CreateFeeHeadDto,
   FeeHeadDto,
   ListFeeHeadsQueryDto,
-  ReasonDto,
   UpdateFeeHeadDto,
 } from './fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 
 const SUBJECT = 'fee_head';
 

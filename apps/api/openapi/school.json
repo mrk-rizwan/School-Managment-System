@@ -7086,19 +7086,6 @@
         ],
         "type": "object"
       },
-      "LeaveReasonDto": {
-        "properties": {
-          "reason": {
-            "maxLength": 500,
-            "minLength": 3,
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "type": "object"
-      },
       "LeaveRequestDto": {
         "properties": {
           "cancelReason": {
@@ -10947,7 +10934,8 @@
           "void",
           "refund",
           "refund_reversal",
-          "carried_forward"
+          "carried_forward",
+          "carry_forward_reversal"
         ],
         "type": "string"
       },
@@ -13559,6 +13547,25 @@
           "teachingDays",
           "weeklyOffDays",
           "holidays"
+        ],
+        "type": "object"
+      },
+      "UndoCarryForwardDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "reversalId": {
+            "description": "The carry-forward of this payment to undo",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reversalId",
+          "reason"
         ],
         "type": "object"
       },
@@ -29245,7 +29252,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaveReasonDto"
+                "$ref": "#/components/schemas/ReasonDto"
               }
             }
           },
@@ -29574,7 +29581,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaveReasonDto"
+                "$ref": "#/components/schemas/ReasonDto"
               }
             }
           },
@@ -33444,7 +33451,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaveReasonDto"
+                "$ref": "#/components/schemas/ReasonDto"
               }
             }
           },
@@ -36681,6 +36688,136 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CarryForwardResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{id}/carry-forward/undo": {
+      "post": {
+        "operationId": "PaymentsController_undoCarryForward",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UndoCarryForwardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
+                }
+              }
+            },
+            "description": "Replay of a committed undo"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversalDto"
                 }
               }
             },

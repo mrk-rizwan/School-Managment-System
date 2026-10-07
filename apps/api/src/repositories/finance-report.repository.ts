@@ -4,6 +4,7 @@ import type { ContactCapability, MessageChannel, MessagePriority } from '@asms/s
 import type { SchoolId } from '../tenancy/school-id';
 import { sqlDate } from './attendance-sql';
 import { Prisma } from './generated/prisma/client';
+import { userNames } from './name-reads';
 import type { PrismaTxAdapter } from './prisma';
 
 // Slice 22 (phase-3-financial.md slice 22, §0.20, §7.2; R201-R205, R228, R250): the finance
@@ -151,6 +152,11 @@ export interface ReminderMessageRow {
 @Injectable()
 export class FinanceReportRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
+
+  /** Users' display names (the collectors and confirmers of the daily cash, an override's actor). */
+  userNames(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
+    return userNames(this.txHost.tx, schoolId, ids);
+  }
 
   // ---------------------------------------------------------------------------- defaulters
 
@@ -353,19 +359,29 @@ export class FinanceReportRepository {
            GROUP BY 1, 2 ORDER BY 3 DESC, 1`;
         break;
       case 'class':
+        // Each line's class is the child's latest enrolment in the line's year, looked up once per
+        // child and year (enrolments_school_id_student_id_academic_year_id_idx), not once per line:
+        // 0.46 s -> 0.24 s at 75,000 lines (phase close, 2026-10-07).
         rows = await this.txHost.tx.$queryRaw`
+          WITH lines AS (
+            SELECT p.id AS payment_id, rl.student_id, rl.academic_year_id, rl.amount
+              FROM payments p
+              JOIN receipts r ON r.school_id = p.school_id AND r.payment_id = p.id
+              JOIN receipt_lines rl ON rl.school_id = r.school_id AND rl.receipt_id = r.id
+             WHERE p.school_id = ${schoolId} AND p.status = 'verified' AND p.method <> 'carried_forward'
+               AND ${this.basisRange(w)}
+          ), cur AS (
+            SELECT DISTINCT ON (e.student_id, e.academic_year_id) e.student_id, e.academic_year_id, e.class_id
+              FROM enrolments e
+             WHERE e.school_id = ${schoolId}
+               AND (e.student_id, e.academic_year_id) IN (SELECT student_id, academic_year_id FROM lines)
+             ORDER BY e.student_id, e.academic_year_id, e.started_on DESC, e.id DESC
+          )
           SELECT COALESCE(cl.id::text, 'none') AS key, COALESCE(cl.name, 'No class') AS label,
-                 SUM(rl.amount)::int AS amount, COUNT(DISTINCT p.id)::int AS count
-            FROM payments p
-            JOIN receipts r ON r.school_id = p.school_id AND r.payment_id = p.id
-            JOIN receipt_lines rl ON rl.school_id = r.school_id AND rl.receipt_id = r.id
-            LEFT JOIN LATERAL (
-              SELECT e.class_id FROM enrolments e
-               WHERE e.school_id = ${schoolId} AND e.student_id = rl.student_id AND e.academic_year_id = rl.academic_year_id
-               ORDER BY e.started_on DESC, e.id DESC LIMIT 1) cur ON TRUE
+                 SUM(l.amount)::int AS amount, COUNT(DISTINCT l.payment_id)::int AS count
+            FROM lines l
+            LEFT JOIN cur ON cur.student_id = l.student_id AND cur.academic_year_id = l.academic_year_id
             LEFT JOIN classes cl ON cl.school_id = ${schoolId} AND cl.id = cur.class_id
-           WHERE p.school_id = ${schoolId} AND p.status = 'verified' AND p.method <> 'carried_forward'
-             AND ${this.basisRange(w)}
            GROUP BY 1, 2, cl.sort_order ORDER BY cl.sort_order NULLS LAST, 2`;
         break;
     }

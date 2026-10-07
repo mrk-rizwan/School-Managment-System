@@ -10,7 +10,8 @@ import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { NoQueryDto } from '../../../common/validation';
 import { GuardianLinksService } from './guardian-links.service';
-import { GuardianLinkDto, ReasonDto, UpdateGuardianLinkDto } from './students.dto';
+import { GuardianLinkDto, UpdateGuardianLinkDto } from './students.dto';
+import { ReasonDto } from '../../../common/reason.dto';
 
 // contracts/slice-6.md §4 (R28-R30). All `guardian.manage`, scoped through the student.
 const COMMON = [401, 403, 404, 429];

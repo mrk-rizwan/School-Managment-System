@@ -52,6 +52,7 @@ export interface Reversal {
   id: string;
   kind: string;
   amount: number;
+  paymentId: string;
   reversesId: string | null;
   carriedToPaymentId: string | null;
   reversed: boolean;

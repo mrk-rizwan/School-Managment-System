@@ -29,14 +29,9 @@ export type StaffLeaveRequestDto = Schemas['StaffLeaveRequestDto'];
 // ---- Queries ----
 
 export type LeaveRequestListQuery = Query<'LeaveRequestsController_list'>;
-export type LeaveTypeListQuery = Query<'LeaveTypesController_list'>;
 
 // ---- Bodies ----
 
-export type CreateLeaveTypeBody = Schemas['CreateLeaveTypeDto'];
-export type CreateMyLeaveRequestBody = Schemas['CreateMyLeaveRequestDto'];
-export type CreateLeaveRequestBody = Schemas['CreateLeaveRequestDto'];
-export type ApproveLeaveRequestBody = Schemas['ApproveLeaveRequestDto'];
 
 // ---- `details` of this slice's refusals; error details are not in the OpenAPI document ----
 

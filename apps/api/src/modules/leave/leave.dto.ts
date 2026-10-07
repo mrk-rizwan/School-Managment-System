@@ -79,12 +79,6 @@ export class CreateLeaveTypeDto {
   paid: boolean;
 }
 
-export class LeaveReasonDto {
-  @ApiProperty({ minLength: 3, maxLength: 500 })
-  @Reason()
-  reason: string;
-}
-
 // ---------------------------------------------------------------------------- leave balance
 
 export class LeaveBalanceQueryDto {

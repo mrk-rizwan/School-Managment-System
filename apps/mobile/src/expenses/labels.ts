@@ -1,5 +1,7 @@
 import {
+  COUNTER_PAYMENT_METHODS,
   EXPENSE_CATEGORY_LABELS,
+  PAYMENT_METHOD_LABELS,
   RECORDABLE_EXPENSE_CATEGORIES,
   type RecordableExpenseCategory,
 } from '@asms/shared';
@@ -12,12 +14,11 @@ import type { CounterPaymentMethod } from '../api/contracts';
 export const CATEGORY_OPTIONS: readonly { value: RecordableExpenseCategory; label: string }[] =
   RECORDABLE_EXPENSE_CATEGORIES.map((value) => ({ value, label: EXPENSE_CATEGORY_LABELS[value] }));
 
-export const METHOD_LABELS: Readonly<Record<CounterPaymentMethod, string>> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
+/** The counter methods with their shared labels, in the shared order. */
+export const METHOD_OPTIONS: readonly { value: CounterPaymentMethod; label: string }[] = COUNTER_PAYMENT_METHODS.map((value) => ({
+  value,
+  label: PAYMENT_METHOD_LABELS[value],
+}));
 
 /** The server's status, as the phone shows it after the expense reached the server. */
 export function serverStatusLabel(status: string | null): string | null {

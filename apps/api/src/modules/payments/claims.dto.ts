@@ -4,11 +4,13 @@ import {
   CHARGE_KINDS,
   CHARGE_STATUSES,
   CLAIM_STATUSES,
+  DEPOSIT_METHODS,
   MAX_RUPEES,
   PAYMENT_METHODS,
   type ChargeKind,
   type ChargeStatus,
   type ClaimStatus,
+  type DepositMethod,
   type PaymentMethod,
 } from '@asms/shared';
 import { IfPresent, IsCalendarDate, NoPhoneNumber, QueryBoolean, Reason, Rupees, TextField } from '../../common/fields';
@@ -27,9 +29,6 @@ const DATE = { type: String, format: 'date' } as const;
 const DATE_TIME = { type: String, format: 'date-time' } as const;
 const RUPEES = { type: Number, minimum: 0, maximum: MAX_RUPEES, description: 'Whole rupees' } as const;
 
-/** Rule 21: a claim is a bank or wallet deposit; cash is paid at the counter (CHECK payment_claims_method_check). */
-export const DEPOSIT_METHODS = ['bank_transfer', 'jazzcash', 'easypaisa'] as const satisfies readonly PaymentMethod[];
-export type DepositMethod = (typeof DEPOSIT_METHODS)[number];
 const DEPOSIT_METHOD = { enum: DEPOSIT_METHODS, enumName: 'DepositMethod' } as const;
 const CLAIM_STATUS = { enum: CLAIM_STATUSES, enumName: 'ClaimStatus' } as const;
 

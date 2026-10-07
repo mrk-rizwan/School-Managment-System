@@ -13,7 +13,7 @@ import { createTestApp } from '../core/app';
 import { createSchoolUser } from '../support/school-session';
 import { closeTestDb } from '../support/schools';
 import { day, randomPhone } from '../support/students';
-import { db, daily, financeSchool, karachi, session2026 } from './charges-support';
+import { db, daily, financeSchool, karachi, lateFees, session2026 } from './charges-support';
 
 const STUDENTS = 3000;
 const CLASSES = 30;
@@ -112,16 +112,47 @@ describe('§7.2: charge generation at 3,000 students (performance)', () => {
     const run = await db().chargeRun.findFirstOrThrow({ where: { schoolId } });
     expect([run.status, run.chargesInserted, run.studentsCharged]).toEqual(['done', STUDENTS * 3, STUDENTS]);
 
-    // The 1st wrote 9,000 rows into charges; autovacuum analyzes a table that grew this much
-    // before the next night, so the catch-up is measured on current statistics, as it runs live.
-    await db().$executeRaw`ANALYZE charges`;
+    // The 1st wrote 9,000 rows into charges and the load 3,000 enrolments; autovacuum analyzes a
+    // table that grew this much before the next night, so the catch-up is measured on current
+    // statistics, as it runs live (stale enrolments statistics turn the late-fee lookup into a
+    // 10 s scan).
+    await db().$executeRaw`ANALYZE charges, enrolments`;
     const catchUpStarted = Date.now();
     await daily(app, school, karachi('2026-10-02', 1));
     const catchUpMs = Date.now() - catchUpStarted;
     expect(await db().chargeRun.count({ where: { schoolId } })).toBe(1);
 
-    console.log(`charge-generate at ${STUDENTS} students x 3 heads: the 1st ${firstMs} ms (${familyCount} messages); empty catch-up ${catchUpMs} ms`);
+    // The late-fee sweep (R185) with three overdue months: August and September written in bulk
+    // beside October's generated charges, late fees enabled since August, swept on 20 October
+    // (October's due day, the 10th, plus 7 days of grace has passed). One late fee per student and
+    // period: 9,000. The candidates read each charge's enrolment in its year
+    // (enrolments_school_id_student_id_academic_year_id_idx: 4.1 s -> 69 ms for the query).
+    for (const period of ['2026-08', '2026-09']) {
+      await db().$executeRaw`
+        INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id, head_frequency, kind,
+                             period, gross_amount, concession_amount, amount, description, due_on, status)
+        SELECT c.school_id, c.enrolment_id, c.student_id, c.academic_year_id, c.fee_head_id, 'monthly', 'generated',
+               ${period}, c.gross_amount, c.concession_amount, c.amount, ${`Fee ${period}`}, ${`${period}-10`}::date, 'open'
+          FROM charges c
+         WHERE c.school_id = ${schoolId}::bigint AND c.period = '2026-10' AND c.kind = 'generated'`;
+    }
+    await db().schoolSettings.updateMany({
+      where: { schoolId },
+      data: { lateFeeEnabled: true, lateFeeAmount: 500, lateFeeGraceDays: 7, lateFeeEnabledAt: karachi('2026-08-01') },
+    });
+    await db().$executeRaw`ANALYZE charges, enrolments`;
+    const sweepStarted = Date.now();
+    const lateFeesWritten = await lateFees(app, school, karachi('2026-10-20'));
+    const sweepMs = Date.now() - sweepStarted;
+    expect(lateFeesWritten).toBe(STUDENTS * 3);
+    expect(await db().charge.count({ where: { schoolId, kind: 'late_fee' } })).toBe(STUDENTS * 3);
+
+    console.log(
+      `charge-generate at ${STUDENTS} students x 3 heads: the 1st ${firstMs} ms (${familyCount} messages); empty catch-up ${catchUpMs} ms; ` +
+        `late-fee sweep over 3 overdue months ${sweepMs} ms (${lateFeesWritten} late fees)`,
+    );
     expect(firstMs).toBeLessThan(30_000);
     expect(catchUpMs).toBeLessThan(5_000);
+    expect(sweepMs).toBeLessThan(5_000);
   }, 180_000);
 });

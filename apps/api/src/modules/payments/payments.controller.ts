@@ -12,7 +12,7 @@ import { sendPrintView } from '../../common/print-view';
 import { perUserThrottle } from '../../common/rate-limit';
 import { SchoolClock } from '../../common/school-clock';
 import { NoQueryDto } from '../../common/validation';
-import { ReasonDto } from '../fees/fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 import { CashHandoversService } from './cash-handovers.service';
 import { PaymentReversalsService } from './payment-reversals.service';
 import {
@@ -35,6 +35,7 @@ import {
   ResolveShortfallDto,
   ReversalDto,
   ReverseRefundDto,
+  UndoCarryForwardDto,
 } from './payments.dto';
 import { PaymentsService } from './payments.service';
 import { receiptPage } from './receipt-print';
@@ -187,6 +188,27 @@ export class PaymentsController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<CarryForwardResultDto> {
     const outcome = await this.reversals.carryForward(id, body, req.header(IDEMPOTENCY_HEADER));
+    replayed(res, outcome);
+    return outcome.value;
+  }
+
+  /** Phase close G1: undo a carry-forward of this payment while its carried payment is untouched. */
+  @Post(':id/carry-forward/undo')
+  @RequireCapability(Capability.PAYMENT_RECORD)
+  @UseGuards(IdempotencyKeyGuard)
+  @ApiHeader(IDEMPOTENCY_HEADER_DOC)
+  @ApiIdParam()
+  @ApiCreatedResponse({ type: ReversalDto })
+  @ApiOkResponse({ type: ReversalDto, description: 'Replay of a committed undo' })
+  @ApiErrors(...COMMON, 404, 409, 422)
+  async undoCarryForward(
+    @IdParam() id: bigint,
+    @Body() body: UndoCarryForwardDto,
+    @Query() _query: NoQueryDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ReversalDto> {
+    const outcome = await this.reversals.undoCarryForward(id, body, req.header(IDEMPOTENCY_HEADER));
     replayed(res, outcome);
     return outcome.value;
   }

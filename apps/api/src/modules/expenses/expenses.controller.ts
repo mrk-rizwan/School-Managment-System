@@ -24,7 +24,7 @@ import { perUserThrottle } from '../../common/rate-limit';
 import { NoQueryDto } from '../../common/validation';
 import { binaryOf, IDEMPOTENCY_HEADER_DOC } from '../diary/diary.controller';
 import { sendAttachment } from '../documents/documents.controller';
-import { ReasonDto } from '../fees/fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 import {
   ApproveExpenseDto,
   CreateExpenseDto,

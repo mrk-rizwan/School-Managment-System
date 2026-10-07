@@ -37,7 +37,8 @@ import { OPTIONS_LIMIT, unwrap } from '@/lib/api/client';
 import { ApiError, refusalMessage, toastApiError, type RefusalMessages } from '@/lib/api/errors';
 import { feesApi, type PaymentAccountDto } from '@/lib/api/school-fees-contract';
 import { formatDate } from '@/lib/format';
-import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { useCapabilities } from '@/lib/school-session';
+import { useIsPrincipal } from '../fees/_lib/fees-ui';
 import { nameSchema } from '@/lib/validation';
 
 // The school's payment accounts (phase-3-financial.md slice 18, rule 21). Read with any finance
@@ -52,9 +53,9 @@ const REFUSALS: RefusalMessages = {
 
 export function PaymentAccountsCard() {
   const queryClient = useQueryClient();
-  const me = useSchoolMe();
   const { can } = useCapabilities();
-  const canChange = can(Capability.SCHOOL_SETTINGS_MANAGE) && (me.data?.roles.includes('principal') ?? false);
+  const principal = useIsPrincipal();
+  const canChange = can(Capability.SCHOOL_SETTINGS_MANAGE) && principal;
   const [adding, setAdding] = useState(false);
   const [disabling, setDisabling] = useState<PaymentAccountDto | null>(null);
 

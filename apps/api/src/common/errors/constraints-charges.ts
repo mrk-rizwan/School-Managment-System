@@ -10,25 +10,14 @@
 // skipped_classes, the target FK by kind) are deliberately left unmapped: a 500 says "bug", where
 // a 4xx would hide one (the prisma-errors.ts rule).
 import { ErrorCode } from '@asms/shared';
-import { ApiException, concurrentUpdate } from './api-exception';
-
-const ownChild = (): ApiException =>
-  new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot do this for your own child. Ask a colleague.', {
-    reason: 'own_child',
-  });
+import { ApiException, concurrentUpdate, ownChild } from './api-exception';
+import { fieldInvalid, noIdentity } from './constraints.shared';
 
 const illegal = (message: string) => (): ApiException =>
   new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, message);
 
 const chargeNotOpen = (): ApiException =>
   new ApiException(409, ErrorCode.CHARGE_NOT_OPEN, 'This charge is no longer open.');
-
-const fieldInvalid = (path: string, message: string) => (): ApiException =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
-  });
-
-const noIdentity = (path: string) => fieldInvalid(path, `${path} must not contain an identity number`);
 
 export const SLICE_19_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = {
   // ---- concessions (R182, R183, R232, R253)

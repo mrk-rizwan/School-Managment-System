@@ -456,12 +456,6 @@ export class UpdateGuardianLinkDto {
   canLogin?: boolean;
 }
 
-export class ReasonDto {
-  @ApiProperty({ minLength: 3, maxLength: 500 })
-  @Reason()
-  reason: string;
-}
-
 /** `rollNo` is required; null clears it. */
 export class UpdateEnrolmentDto {
   @ApiProperty({ type: Number, nullable: true, minimum: 1, maximum: 9999 })

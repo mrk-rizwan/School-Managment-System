@@ -1047,6 +1047,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_I_OBJECTS(),
   ...WAVE_J_OBJECTS(),
   ...WAVE_K_OBJECTS(),
+  ...PHASE_3_CLOSE_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -2691,7 +2692,6 @@ function WAVE_J_OBJECTS(): ExpectedObject[] {
     { kind: 'constraint', table: 'payment_reversals', name: 'payment_reversals_refund_method_check', definition: "CHECK ((((kind = 'refund'::reversal_kind) = (refund_method IS NOT NULL)) AND ((refund_method IS NULL) OR (refund_method <> 'carried_forward'::payment_method)) AND ((kind = 'refund'::reversal_kind) OR (refund_reference IS NULL))))" },
     { kind: 'constraint', table: 'payment_reversals', name: 'payment_reversals_refund_reference_check', definition: "CHECK (((refund_reference IS NULL) OR (((refund_reference)::text = btrim((refund_reference)::text)) AND ((refund_reference)::text <> ''::text))))" },
     { kind: 'constraint', table: 'payment_reversals', name: 'payment_reversals_refund_reference_no_id_check', definition: "CHECK ((((refund_reference)::text !~ '[0-9]{13}'::text) AND ((refund_reference)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
-    { kind: 'constraint', table: 'payment_reversals', name: 'payment_reversals_reverses_check', definition: "CHECK (((kind = 'refund_reversal'::reversal_kind) = (reverses_id IS NOT NULL)))" },
     { kind: 'index', table: 'payment_reversals', name: 'payment_reversals_carried_to_key', definition: "ON public.payment_reversals USING btree (school_id, carried_to_payment_id) WHERE (carried_to_payment_id IS NOT NULL)" },
     { kind: 'index', table: 'payment_reversals', name: 'payment_reversals_reverses_key', definition: "ON public.payment_reversals USING btree (school_id, reverses_id) WHERE (reverses_id IS NOT NULL)" },
     { kind: 'index', table: 'payment_reversals', name: 'payment_reversals_void_key', definition: "ON public.payment_reversals USING btree (school_id, payment_id) WHERE (kind = 'void'::reversal_kind)" },
@@ -2893,5 +2893,19 @@ function WAVE_K_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_payment_matches', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_payment_claim_payment_matches()' },
     { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_school_id_immutable', definition: 'BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()' },
     { kind: 'trigger', table: 'payment_claims', name: 'payment_claims_status_transition', definition: "BEFORE UPDATE ON public.payment_claims FOR EACH ROW EXECUTE FUNCTION asms_status_transition('pending:verified', 'pending:rejected', 'pending:withdrawn', 'pending:expired', 'verified:pending:asms.reversing_payment')" },
+  ];
+}
+
+/**
+ * Phase 3 close (migration 20261007090200_carry_forward_undo): the carry-forward reversal (G1).
+ * payment_reversals_reverses_check replaces wave J's definition. The enrolments index of
+ * 20261007090000_phase3_close_indexes is declared in schema.prisma, so the schema guard covers it.
+ */
+function PHASE_3_CLOSE_OBJECTS(): ExpectedObject[] {
+  return [
+    { kind: 'constraint', table: 'payment_reversals', name: 'payment_reversals_reverses_check', definition: "CHECK (((kind = ANY (ARRAY['refund_reversal'::reversal_kind, 'carry_forward_reversal'::reversal_kind])) = (reverses_id IS NOT NULL)))" },
+    { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_reverses_carry_forward'" },
+    { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_carried_spent'" },
+    { kind: 'function', name: 'asms_payment_reversal_apply', definition: "IF NEW.kind = 'carry_forward_reversal' THEN" },
   ];
 }

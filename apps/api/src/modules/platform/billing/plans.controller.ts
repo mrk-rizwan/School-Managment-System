@@ -9,7 +9,8 @@ import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { ApiPaginated, type Page } from '../../../common/pagination';
 import { NoQueryDto } from '../../../common/validation';
-import { CreatePlanDto, ListPlansQueryDto, PlanDto, ReasonDto, UpdatePlanDto } from './billing.dto';
+import { CreatePlanDto, ListPlansQueryDto, PlanDto, UpdatePlanDto } from './billing.dto';
+import { ReasonDto } from '../../../common/reason.dto';
 import { PlansService } from './plans.service';
 
 const COMMON = [401, 403, 429];

@@ -13,24 +13,18 @@ export const principalRequired = (): ApiException =>
     reason: 'principal_required',
   });
 
-/** 409: the actor is a guardian of the student this money row is for (R232). */
-export const ownChild = (): ApiException =>
-  new ApiException(
-    409,
-    ErrorCode.SELF_ACTION_FORBIDDEN,
-    'You cannot do this for your own child. Ask a colleague.',
-    { reason: 'own_child' },
-  );
-
 /**
  * R233: the one principal gate. Reads the system role only, so a grant of the verb's key or a
  * custom role holding it never satisfies it; the principal must also hold staff capacity (an
  * active staff record), as every capability does (R59).
  */
 export function requirePrincipal(session: SchoolSessionContext): void {
-  const { access } = session;
-  if (!access.capacities.staff || !access.systemRoles.includes('principal')) throw principalRequired();
+  if (!isPrincipal(session)) throw principalRequired();
 }
+
+/** R233's reading of the role: a live principal system role on a staff member, never a grant. */
+export const isPrincipal = (session: SchoolSessionContext): boolean =>
+  session.access.capacities.staff && session.access.systemRoles.includes('principal');
 
 /**
  * Who may read fee heads, fee structures and payment accounts (§3.1): the finance key holders.

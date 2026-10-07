@@ -1,3 +1,4 @@
+import type { ReasonDto } from '../../common/reason.dto';
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import {
@@ -40,7 +41,6 @@ import type {
   CreateMyLeaveRequestDto,
   EndLeaveEarlyDto,
   LeaveBalanceDto,
-  LeaveReasonDto,
   LeaveRequestDto,
   ListLeaveRequestsQueryDto,
   ListMyLeaveRequestsQueryDto,
@@ -338,7 +338,7 @@ export class LeaveRequestsService {
 
   /** Own: pending, or approved before it starts (LEAVE_STARTED otherwise); ends its cover (R212). */
   @Transactional()
-  async cancel(session: SchoolSessionContext, id: bigint, dto: LeaveReasonDto): Promise<LeaveRequestDto> {
+  async cancel(session: SchoolSessionContext, id: bigint, dto: ReasonDto): Promise<LeaveRequestDto> {
     const { schoolId, userId } = this.context.actor();
     const staffId = this.ownStaffId(session);
     const row = await this.lock(schoolId, id);
@@ -415,7 +415,7 @@ export class LeaveRequestsService {
 
   /** staff.leave.approve; never one's own, whoever (R210). */
   @Transactional()
-  async reject(session: SchoolSessionContext, id: bigint, dto: LeaveReasonDto): Promise<LeaveRequestDto> {
+  async reject(session: SchoolSessionContext, id: bigint, dto: ReasonDto): Promise<LeaveRequestDto> {
     const { schoolId, userId } = this.context.actor();
     const row = await this.lock(schoolId, id);
     if (row.status !== 'pending') throw notPending(row.status);

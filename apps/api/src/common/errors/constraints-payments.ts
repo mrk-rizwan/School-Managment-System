@@ -9,21 +9,8 @@
 // amount, the stamps travelling together, the receipt line's shape, a written-off shortfall
 // without its expense, frozen columns) stay unmapped: a 500 says "bug", where a 4xx would hide one.
 import { ErrorCode } from '@asms/shared';
-import { ApiException, concurrentUpdate } from './api-exception';
-
-const fieldInvalid = (path: string, message: string) => (): ApiException =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
-  });
-
-const noIdentity = (path: string) => fieldInvalid(path, `${path} must not contain an identity number`);
-
-const ownChild = (): ApiException =>
-  new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot do this for your own child. Ask a colleague.', {
-    reason: 'own_child',
-  });
-
-const refusal = (code: ErrorCode, message: string) => (): ApiException => new ApiException(409, code, message);
+import { ApiException, concurrentUpdate, ownChild } from './api-exception';
+import { fieldInvalid, noIdentity, refusal } from './constraints.shared';
 
 const paymentVoided = refusal(ErrorCode.PAYMENT_VOIDED, 'This payment has been voided.');
 const handoverNotOpen = refusal(ErrorCode.HANDOVER_NOT_OPEN, 'This handover has already been confirmed.');
@@ -78,8 +65,17 @@ export const SLICE_20_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   payment_reversals_carried_forward_void: () =>
     new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'A carried-forward payment is not voided; refund or carry its advance instead.'),
   payment_reversals_reverses_key: () =>
-    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'This refund has already been reversed.'),
+    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'This refund or carry-forward has already been reversed.'),
   payment_reversals_reverses_refund: fieldInvalid('reversalId', 'Name a refund of this payment, reversed in full'),
+  // Phase close G1 (migration 20261007090200_carry_forward_undo).
+  payment_reversals_reverses_carry_forward: fieldInvalid('reversalId', 'Name a carry-forward of this payment, undone in full'),
+  payment_reversals_carried_spent: () =>
+    new ApiException(
+      409,
+      ErrorCode.ILLEGAL_STATUS_TRANSITION,
+      'The carried advance has already been used or refunded in the new year, so this carry-forward cannot be undone.',
+      { reason: 'carried_spent' },
+    ),
   payment_reversals_carried_to_key: concurrentUpdate,
   payment_reversals_carried_to_payment_id_frozen: concurrentUpdate,
   payment_reversals_carry_forward_linked: concurrentUpdate,

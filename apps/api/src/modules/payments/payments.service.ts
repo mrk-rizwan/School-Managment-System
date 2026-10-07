@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { allocate, ErrorCode, outstanding, type ExistingAdvance, type PaymentMethod } from '@asms/shared';
-import { fieldRefused, notFound } from '../../common/errors/api-exception';
+import { fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { toPage, type Page } from '../../common/pagination';
 import { SchoolClock } from '../../common/school-clock';
@@ -15,7 +15,6 @@ import { PaymentReversalRepository } from '../../repositories/payment-reversal.r
 import { PaymentRepository, type PaymentRecord } from '../../repositories/payment.repository';
 import { ReceiptRepository, type NewReceiptLine, type ReceiptRecord } from '../../repositories/receipt.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import { ownChild } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import type { StatementPaymentDto } from '../fees/charges.dto';

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { dayOfPeriod, dueOn as dueOnOf, lateFeeTarget, type LateFeeCandidate } from '@asms/shared';
+import { addDaysTo, dayOfPeriod, dueOn as dueOnOf, lateFeeTarget, monthLabel, type LateFeeCandidate } from '@asms/shared';
 import { failureLog } from '../../common/errors/failure-log';
-import { todayIn } from '../../common/school-clock';
+import { dayStart, todayIn } from '../../common/school-clock';
 import { NotificationService } from '../../messaging/notification.service';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChargeCampaignRepository } from '../../repositories/charge-campaign.repository';
@@ -21,7 +21,7 @@ import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import { Advances } from '../payments/advances';
 import { campaignAudienceRows } from './campaign-audiences';
-import { chargeGrace, monthLabel, periodBounds, periodOf, plusDays } from './charges.shared';
+import { chargeGrace, periodBounds, periodOf } from './charges.shared';
 
 // The worker side of charge generation (phase-3-financial.md §3.7, §5 slice 19, A1, R179-R185,
 // R240-R242, R252). Runs inside QueueTenancy.runAsSchool (src/jobs/job-runner.ts). Generation is
@@ -273,6 +273,7 @@ export class ChargeGeneration {
       period,
       periodStart: bounds.start,
       periodEnd: bounds.end,
+      periodStartsAt: dayStart(await this.timezone(schoolId), fromDateString(bounds.start)),
       cutoffDate: dayOfPeriod(period, settings.feeCutoffDay),
       dueOn: dueOnOf(period, settings.feeDueDay, today, chargeGrace(settings)),
       regenerateVoided,
@@ -324,7 +325,7 @@ export class ChargeGeneration {
     const today = await this.today(schoolId, now);
     const nominal = toDateString(campaign.dueOn);
     // R240: a campaign charge created after its due date is due `grace` days after creation.
-    const dueOn = today > nominal ? plusDays(today, chargeGrace(settings)) : nominal;
+    const dueOn = today > nominal ? addDaysTo(today, chargeGrace(settings)) : nominal;
     const targets = await this.campaigns.targetEnrolments(schoolId, campaign.academicYearId, campaignAudienceRows(campaign));
     const result = await this.insertCampaign(schoolId, {
       campaignId: campaign.id,
@@ -380,7 +381,7 @@ export class ChargeGeneration {
     const enabledOn = toDateString(todayIn(timezone, settings.lateFeeEnabledAt));
     const candidates = await this.generation.lateFeeCandidates(schoolId, {
       enabledOn,
-      overdueBefore: plusDays(today, -settings.lateFeeGraceDays),
+      overdueBefore: addDaysTo(today, -settings.lateFeeGraceDays),
       today,
     });
     const byStudent = new Map<bigint, typeof candidates>();

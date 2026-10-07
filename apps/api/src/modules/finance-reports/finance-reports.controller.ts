@@ -8,7 +8,7 @@ import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, type Page } from '../../common/pagination';
 import { perUserThrottle } from '../../common/rate-limit';
 import { NoQueryDto } from '../../common/validation';
-import { ReasonDto } from '../fees/fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 import {
   CollectionsQueryDto,
   CollectionsReportDto,

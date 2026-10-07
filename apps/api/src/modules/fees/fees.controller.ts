@@ -21,9 +21,9 @@ import {
   FeeStructureDto,
   ListFeeHeadsQueryDto,
   ListFeeStructuresQueryDto,
-  ReasonDto,
   UpdateFeeHeadDto,
 } from './fees.dto';
+import { ReasonDto } from '../../common/reason.dto';
 
 // Common to every route: 401 AUTH_REQUIRED, 403 PERMISSION_DENIED / ORIGIN_REJECTED, 429.
 const COMMON = [401, 403, 429];

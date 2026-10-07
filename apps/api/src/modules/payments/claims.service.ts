@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { allocate, Capability, ErrorCode, outstanding, type ExistingAdvance, type PaymentMethod } from '@asms/shared';
+import { allocate, Capability, ErrorCode, outstanding, type DepositMethod, type ExistingAdvance, type PaymentMethod } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
+import { ApiException, fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { readLocked } from '../../common/locking';
 import { toPage, type Page } from '../../common/pagination';
@@ -21,7 +21,6 @@ import { UserRepository } from '../../repositories/user.repository';
 import { AfterCommit } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
-import { ownChild } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { AttachmentFiles, type AttachedFile } from '../documents/attachment-files.service';
 import { stagedUploadUnusable } from '../documents/documents.service';
@@ -30,7 +29,6 @@ import type {
   ClaimDto,
   ClaimImageDto,
   CreateClaimDto,
-  DepositMethod,
   ListClaimsQueryDto,
   MyClaimDto,
   RejectClaimDto,
@@ -540,8 +538,11 @@ export class ClaimsService {
    * so the payment never pays it, only when the paid date is inside its target charge's grace **and
    * this payment settles that charge in full**. Whether it does is a dry run of the allocation the
    * write performs (the child's advances first, then this payment's money, oldest due first) over
-   * the child's open charges without their late fees. A token deposit inside the grace waives
-   * nothing. Runs under the charge locks of the payment.
+   * the same charges the write will see: every open charge except the late fees being waived, so an
+   * older late fee that stays open takes its share first (phase close G2). The waived set starts
+   * as every in-grace late fee and drops each whose target the dry run leaves short, until it holds
+   * (it only shrinks). A token deposit inside the grace waives nothing. Runs under the charge locks
+   * of the payment.
    */
   private async waiveInGrace(
     actor: Actor,
@@ -553,21 +554,33 @@ export class ClaimsService {
     graceDays: number,
   ): Promise<bigint[]> {
     const { schoolId, userId } = actor;
-    const lateFees = open.filter(
-      (c) => c.kind === 'late_fee' && c.studentId === claim.studentId && c.allocatedAmount === 0 && c.lateFeeForChargeId !== null,
-    );
-    if (lateFees.length === 0) return [];
-    const others = open.filter((c) => c.kind !== 'late_fee');
-    const paid = new Map<bigint, number>();
-    for (const a of allocate(amount, [claim.studentId], others.map(openCharge), advances).allocations) {
-      paid.set(a.chargeId, (paid.get(a.chargeId) ?? 0) + a.amount);
+    const targetOf = (fee: ChargeRecord): ChargeRecord | undefined =>
+      // A target that is not open in this payment's year is not settled by this payment.
+      open.find((c) => c.id === fee.lateFeeForChargeId && c.kind !== 'late_fee');
+    let candidates = open.filter((c) => {
+      if (c.kind !== 'late_fee' || c.studentId !== claim.studentId || c.allocatedAmount !== 0 || c.lateFeeForChargeId === null) return false;
+      const target = targetOf(c);
+      return target !== undefined && paidOn <= addDays(target.dueOn, graceDays);
+    });
+    // The fixed point: dry-run over what stays open, drop each candidate left short, repeat.
+    for (;;) {
+      const waiving = new Set(candidates.map((c) => c.id));
+      const paid = new Map<bigint, number>();
+      const seen = open.filter((c) => !waiving.has(c.id)).map(openCharge);
+      for (const a of allocate(amount, [claim.studentId], seen, advances).allocations) {
+        paid.set(a.chargeId, (paid.get(a.chargeId) ?? 0) + a.amount);
+      }
+      const settled = candidates.filter((fee) => {
+        const target = targetOf(fee);
+        return target !== undefined && outstanding(target) - (paid.get(target.id) ?? 0) === 0;
+      });
+      if (settled.length === candidates.length) break;
+      candidates = settled;
     }
     const waived: bigint[] = [];
-    for (const fee of lateFees) {
-      // A target that is not open in this payment's year is not settled by this payment.
-      const target = others.find((c) => c.id === fee.lateFeeForChargeId);
-      if (!target || paidOn > addDays(target.dueOn, graceDays)) continue;
-      if (outstanding(target) - (paid.get(target.id) ?? 0) !== 0) continue;
+    for (const fee of candidates) {
+      const target = targetOf(fee);
+      if (!target) continue;
       if ((await this.charges.waive(schoolId, fee.id, userId, IN_GRACE_WAIVE_REASON, new Date())) !== 1) continue;
       waived.push(fee.id);
       await this.audit.record(schoolId, {

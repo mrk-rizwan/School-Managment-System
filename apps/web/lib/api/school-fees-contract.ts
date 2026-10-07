@@ -34,15 +34,10 @@ export type PaymentAccountDto = Schemas['PaymentAccountDto'];
 export type FeeHeadListQuery = Query<'FeeHeadsController_list'>;
 export type FeeHeadSort = Schemas['FeeHeadSort'];
 export type FeeStructureListQuery = Query<'FeeStructuresController_list'>;
-export type PaymentAccountListQuery = Query<'PaymentAccountsController_list'>;
 
 // ---- Bodies ----
 
-export type CreateFeeHeadBody = Schemas['CreateFeeHeadDto'];
 export type UpdateFeeHeadBody = Schemas['UpdateFeeHeadDto'];
-export type CreateFeeStructureBody = Schemas['CreateFeeStructureDto'];
-export type CopyFeeStructuresBody = Schemas['CopyFeeStructuresDto'];
-export type CreatePaymentAccountBody = Schemas['CreatePaymentAccountDto'];
 
 // ---- `details` of this slice's refusals; error details are not in the OpenAPI document ----
 

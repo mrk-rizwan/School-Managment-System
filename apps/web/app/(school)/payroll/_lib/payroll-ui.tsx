@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import type { RefusalMessages } from '@/lib/api/errors';
 import type {
   AdvanceStatus,
-  CounterPaymentMethod,
   PayrollRunStatus,
   PayslipDto,
   PayslipStatus,
@@ -22,19 +21,6 @@ export const payrollKeys = {
   structures: (staffId: string) => ['school', 'payroll', 'structures', staffId] as const,
   mine: ['school', 'payroll', 'mine'] as const,
 };
-
-export const METHOD_LABELS: Record<CounterPaymentMethod, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** `2026-09` → "September 2026". */
-export const monthLabel = (yearMonth: string): string =>
-  `${MONTHS[Number(yearMonth.slice(5, 7)) - 1] ?? ''} ${yearMonth.slice(0, 4)}`;
 
 export const SKIP_LABELS: Record<string, string> = {
   suspended: 'Suspended',

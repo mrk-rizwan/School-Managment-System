@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, EXPENSE_CATEGORY_LABELS, formatRupees, yearMonthOf } from '@asms/shared';
+import { Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, yearMonthOf } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -10,7 +10,6 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
 import { approvalsApi, type ApprovalsDto } from '@/lib/api/school-approvals-contract';
-import { DEPOSIT_METHOD_LABELS } from '@/lib/api/school-claims-contract';
 import { formatDate, formatDateTime, todayInSchool } from '@/lib/format';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { weekAgo } from '../fees/_lib/fees-ui';
@@ -217,7 +216,7 @@ function Queues({ approvals }: { approvals: ApprovalsDto }) {
             <Row
               key={c.id}
               title={`${c.studentName} · ${c.className}`}
-              detail={`${DEPOSIT_METHOD_LABELS[c.method]}, from ${c.guardianName}, sent ${formatDateTime(c.createdAt)}`}
+              detail={`${PAYMENT_METHOD_LABELS[c.method]}, from ${c.guardianName}, sent ${formatDateTime(c.createdAt)}`}
               amount={formatRupees(c.claimedAmount)}
               badge={c.possibleDuplicate ? 'possible duplicate' : undefined}
             />

@@ -119,7 +119,17 @@ const IMPORTS = {
   },
 };
 
-// Exempt in the repository layer, which owns the client and the ambient transaction.
+// Exempt in a tenant repository (src/repositories/** outside platform/), which owns the client and
+// the ambient transaction but reads no platform or billing table (phase close, security low).
+const TENANT_REPOSITORY_IMPORTS = [
+  'prisma',
+  'repositoryInternals',
+  'announcementRepositories',
+  'transactionHost',
+  'transactionalAdapter',
+];
+
+// Exempt in the platform repositories (src/repositories/platform/**, the named-exception block below).
 const REPOSITORY_IMPORTS = [
   'prisma',
   'repositoryInternals',
@@ -572,7 +582,7 @@ export default tseslint.config(
   {
     // The repository layer: Prisma lives here. Tenant repositories receive a SchoolId; they never mint one.
     files: ['src/repositories/**/*.ts'],
-    rules: restrictImports({ exempt: REPOSITORY_IMPORTS }),
+    rules: restrictImports({ exempt: TENANT_REPOSITORY_IMPORTS }),
   },
   {
     files: ['src/repositories/**/*.ts'],
@@ -582,7 +592,7 @@ export default tseslint.config(
   {
     // Repository tests drive the ambient transaction directly.
     files: ['src/repositories/**/*.spec.ts'],
-    rules: restrictImports({ exempt: [...REPOSITORY_IMPORTS, 'cls'] }),
+    rules: restrictImports({ exempt: [...TENANT_REPOSITORY_IMPORTS, 'cls'] }),
   },
   {
     // The one place a PrismaClient is built: createGuardedClient wraps it in the query guard.

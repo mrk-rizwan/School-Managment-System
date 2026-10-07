@@ -14,9 +14,9 @@ import {
   IssueMonthDto,
   IssueMonthResultDto,
   ListInvoicesQueryDto,
-  ReasonDto,
   RecordPlatformPaymentDto,
 } from './billing.dto';
+import { ReasonDto } from '../../../common/reason.dto';
 import { InvoicesService } from './invoices.service';
 
 const COMMON = [401, 403, 429];

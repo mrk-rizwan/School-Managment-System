@@ -8,13 +8,7 @@
 // without its kind's shape) stay unmapped: a 500 says "bug", where a 4xx would hide one.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
-
-const fieldInvalid = (path: string, message: string) => (): ApiException =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
-  });
-
-const noIdentityNumber = (path: string) => fieldInvalid(path, `${path} must not contain an identity number`);
+import { fieldInvalid, noIdentity } from './constraints.shared';
 
 const selfForbidden = (reason: string, message: string) => (): ApiException =>
   new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, message, { reason });
@@ -45,16 +39,16 @@ export const SLICE_25_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   salary_structures_ended_on_frozen: concurrentUpdate,
   salary_structures_superseded_at_frozen: concurrentUpdate,
   salary_structures_status_frozen: concurrentUpdate,
-  salary_structures_reason_no_id_check: noIdentityNumber('reason'),
+  salary_structures_reason_no_id_check: noIdentity('reason'),
   salary_structure_components_name_key: fieldInvalid('components', 'two components of one kind share a name'),
-  salary_structure_components_name_no_id_check: noIdentityNumber('components'),
+  salary_structure_components_name_no_id_check: noIdentity('components'),
 
   // Advances (R215, R235, R247).
   salary_advances_not_self: selfForbidden('own_advance', 'You cannot grant or write off your own salary advance. Ask a colleague.'),
   salary_advances_instalment_amount_check: fieldInvalid('instalmentAmount', 'instalmentAmount must be at most the amount'),
   salary_advances_recover_from_check: fieldInvalid('recoverFrom', 'recoverFrom must be a month in the form YYYY-MM'),
-  salary_advances_paid_reference_no_id_check: noIdentityNumber('paidReference'),
-  salary_advances_write_off_reason_no_id_check: noIdentityNumber('reason'),
+  salary_advances_paid_reference_no_id_check: noIdentity('paidReference'),
+  salary_advances_write_off_reason_no_id_check: noIdentity('reason'),
   salary_advances_status_transition: advanceNotOpen,
   salary_advances_written_off_at_frozen: advanceNotOpen,
   // Two finalises recovering from one advance at once: the second sees the first's counter.
@@ -67,17 +61,17 @@ export const SLICE_25_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
     new ApiException(409, ErrorCode.PAYROLL_RUN_EXISTS, 'This month already has a payroll run.'),
   payroll_runs_status_transition: runFinalised,
   ...Object.fromEntries([...RUN_CONTENT, ...RUN_FINALISE].map((column) => [`payroll_runs_${column}_frozen`, runFinalised])),
-  payroll_runs_finalise_reason_no_id_check: noIdentityNumber('reason'),
+  payroll_runs_finalise_reason_no_id_check: noIdentity('reason'),
 
   // Payslips and lines (R216-R218).
   payslips_run_finalised: runFinalised,
   payslips_run_staff_key: concurrentUpdate,
   payslips_status_transition: payslipPaid,
   ...Object.fromEntries(PAYSLIP_PAID.map((column) => [`payslips_${column}_frozen`, payslipPaid])),
-  payslips_paid_reference_no_id_check: noIdentityNumber('paidReference'),
+  payslips_paid_reference_no_id_check: noIdentity('paidReference'),
   payslip_lines_draft_only: runFinalised,
   payslip_lines_adjusts_finalised: fieldInvalid('adjustsPayslipId', 'only a payslip of a finalised run is corrected'),
   payslip_adjust_not_self: selfForbidden('own_payslip', 'You cannot adjust your own payslip. Ask a colleague.'),
-  payslip_lines_name_no_id_check: noIdentityNumber('name'),
-  payslip_lines_reason_no_id_check: noIdentityNumber('reason'),
+  payslip_lines_name_no_id_check: noIdentity('name'),
+  payslip_lines_reason_no_id_check: noIdentity('reason'),
 };

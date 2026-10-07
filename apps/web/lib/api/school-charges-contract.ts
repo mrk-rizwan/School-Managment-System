@@ -40,11 +40,6 @@ export type CampaignListQuery = Query<'CampaignsController_list'>;
 
 // ---- Bodies ----
 
-export type CreateChargeBody = Schemas['CreateChargeDto'];
-export type AdjustChargeBody = Schemas['AdjustChargeDto'];
-export type GenerateMonthBody = Schemas['GenerateMonthDto'];
-export type CreateConcessionBody = Schemas['CreateConcessionDto'];
-export type CreateCampaignBody = Schemas['CreateCampaignDto'];
 export type CampaignAudience = Schemas['CampaignAudienceDto'];
 
 // ---- `details` of this slice's refusals; error details are not in the OpenAPI document ----

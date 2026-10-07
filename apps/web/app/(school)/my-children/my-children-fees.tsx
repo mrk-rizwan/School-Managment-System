@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorCode, formatRupees, newIdempotencyKey } from '@asms/shared';
+import { DEPOSIT_METHODS, ErrorCode, formatRupees, newIdempotencyKey, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -20,7 +20,6 @@ import { ApiError, toastApiError } from '@/lib/api/errors';
 import {
   claimsApi,
   CLAIM_STATUS_LABELS,
-  DEPOSIT_METHOD_LABELS,
   myClaimImageUrl,
   uploadSlip,
   type DepositMethod,
@@ -181,7 +180,7 @@ function ClaimList({ studentId, claims }: { studentId: string; claims: MyClaimDt
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium tabular-nums">{formatRupees(c.verifiedAmount ?? c.claimedAmount)}</span>
               <span className="text-muted-foreground">
-                {DEPOSIT_METHOD_LABELS[c.method]}, paid {formatDate(c.verifiedPaidOn ?? c.paidOn)}
+                {PAYMENT_METHOD_LABELS[c.method]}, paid {formatDate(c.verifiedPaidOn ?? c.paidOn)}
               </span>
               <Badge variant={c.status === 'verified' ? 'default' : c.status === 'rejected' ? 'destructive' : 'secondary'}>{CLAIM_STATUS_LABELS[c.status]}</Badge>
             </div>
@@ -206,7 +205,7 @@ function ClaimList({ studentId, claims }: { studentId: string; claims: MyClaimDt
   );
 }
 
-const METHODS = Object.keys(DEPOSIT_METHOD_LABELS) as DepositMethod[];
+const METHODS = DEPOSIT_METHODS;
 
 function SlipForm({ studentId, onClose }: { studentId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -268,7 +267,7 @@ function SlipForm({ studentId, onClose }: { studentId: string; onClose: () => vo
           <NativeSelect id={`slip-method-${studentId}`} value={method} onChange={(e) => setMethod(e.target.value as DepositMethod)}>
             {METHODS.map((m) => (
               <option key={m} value={m}>
-                {DEPOSIT_METHOD_LABELS[m]}
+                {PAYMENT_METHOD_LABELS[m]}
               </option>
             ))}
           </NativeSelect>

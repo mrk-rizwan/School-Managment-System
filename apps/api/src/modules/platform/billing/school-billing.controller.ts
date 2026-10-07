@@ -8,7 +8,8 @@ import { PlatformSession } from '../../../common/auth/route-access';
 import { ApiIdParam, IdParam } from '../../../common/ids';
 import { ApiErrors } from '../../../common/openapi';
 import { NoQueryDto } from '../../../common/validation';
-import { AssignPlanDto, ReasonDto, SchoolBillingDto, SubscriptionDto } from './billing.dto';
+import { AssignPlanDto, SchoolBillingDto, SubscriptionDto } from './billing.dto';
+import { ReasonDto } from '../../../common/reason.dto';
 import { SchoolBillingService } from './school-billing.service';
 
 const COMMON = [401, 403, 429];

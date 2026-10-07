@@ -10,13 +10,7 @@
 // hide one.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate, fieldRefused, notFound } from './api-exception';
-
-const fieldInvalid = (path: string, message: string) => (): ApiException =>
-  fieldRefused(path, ErrorCode.INVALID_VALUE, message);
-
-const noIdentity = (path: string) => fieldInvalid(path, `${path} must not contain an identity number`);
-
-const refusal = (code: ErrorCode, message: string) => (): ApiException => new ApiException(409, code, message);
+import { fieldInvalid, noIdentity, refusal } from './constraints.shared';
 
 const claimNotPending = refusal(ErrorCode.CLAIM_NOT_PENDING, 'This claim has already been decided.');
 

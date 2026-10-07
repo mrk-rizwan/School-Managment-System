@@ -455,6 +455,75 @@ describe('slice 20: payments, receipts, reversals over HTTP (e2e)', () => {
     await post(`/payments/${second.id}/void`, { reason: 'Mistyped' }, w.principal).expect(200);
   });
 
+  it('G1: a carry-forward is undone while its carried payment is untouched; never once it has paid a charge', async () => {
+    const w = await h.world();
+    const last = await createAcademicYear(db(), w.school, { name: '2025-26', startsOn: '2025-04-01', endsOn: '2026-03-31', status: 'active' });
+    const old = await classWithSection(w.school, last, 'Class 4');
+    await enrol(db(), w.school, { id: w.a.studentId }, old.section, { startedOn: '2025-04-01', status: 'left', endedOn: '2026-03-31' });
+    await db().academicYear.updateMany({ where: { schoolId: w.school.id, id: last.id }, data: { status: 'closed' } });
+    const advance = (await post(
+      '/payments',
+      { ...intent(w, [w.a.studentId], 2500), academicYearId: last.id.toString(), method: 'cash', receivedOn: isoDay(0), advanceForStudentId: w.a.studentId.toString() },
+      w.office,
+      newIdempotencyKey(),
+    ).expect(201)).body as Payment;
+    expect(advance.unallocatedAmount).toBe(2500);
+    // A owes nothing in 2026-27, so the carried payment stays wholly unallocated.
+    await pay(w, w.office, { studentIds: [w.a.studentId], amount: 6000 });
+    const carried = (await post(`/payments/${advance.id}/carry-forward`, { academicYearId: w.year.id.toString(), reason: 'Year end' }, w.office, newIdempotencyKey()).expect(201))
+      .body as { reversal: Reversal; payment: Payment };
+    expect([carried.payment.allocatedAmount, carried.payment.unallocatedAmount]).toEqual([0, 2500]);
+
+    // A reversal id that is not a carry-forward of this payment.
+    const wrong = await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: '999999999', reason: 'Mistake' }, w.office, newIdempotencyKey());
+    expect([wrong.status, err(wrong).error.code]).toEqual([422, ErrorCode.VALIDATION_FAILED]);
+    // payment.record, as the carry-forward: a teacher is refused.
+    const teacher = await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: carried.reversal.id, reason: 'Mistake' }, w.teacher, newIdempotencyKey());
+    expect(teacher.status).toBe(403);
+
+    const key = newIdempotencyKey();
+    const undone = (await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: carried.reversal.id, reason: 'Carried into the wrong year' }, w.office, key).expect(201))
+      .body as Reversal;
+    expect([undone.kind, undone.reversesId, undone.amount, undone.paymentId]).toEqual(['carry_forward_reversal', carried.reversal.id, 2500, advance.id]);
+    // The advance is back in its year; the carried payment is voided; every row stays (rule 4).
+    expect((await get(`/payments/${advance.id}`, w.office).expect(200)).body).toMatchObject({ unallocatedAmount: 2500, status: 'verified' });
+    expect((await get(`/payments/${carried.payment.id}`, w.office).expect(200)).body).toMatchObject({ status: 'voided', unallocatedAmount: 2500 });
+    const source = (await get(`/payments/${advance.id}`, w.office).expect(200)).body as Payment;
+    expect(source.reversals.map((r) => [r.kind, r.reversed])).toEqual([
+      ['carried_forward', true],
+      ['carry_forward_reversal', false],
+    ]);
+    // A replay answers the same row; a second undo is refused.
+    const replay = await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: carried.reversal.id, reason: 'Carried into the wrong year' }, w.office, key).expect(200);
+    expect((replay.body as Reversal).id).toBe(undone.id);
+    const again = await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: carried.reversal.id, reason: 'Again' }, w.office, newIdempotencyKey());
+    expect([again.status, err(again).error.code]).toEqual([409, ErrorCode.ILLEGAL_STATUS_TRANSITION]);
+    expect((await h.audit(w.school, 'payment.carry_forward_reversed')).map((r) => [r.actorUserId, (r.metadata as { carriedPaymentId: string }).carriedPaymentId])).toEqual([
+      [w.office.user.userId, carried.payment.id],
+    ]);
+
+    // Carried again; November's tuition is generated and the carried advance pays it: no undo now.
+    const second = (await post(`/payments/${advance.id}/carry-forward`, { academicYearId: w.year.id.toString(), reason: 'Year end' }, w.office, newIdempotencyKey()).expect(201))
+      .body as { reversal: Reversal; payment: Payment };
+    await runMonth(app, w.school, w.year, '2026-11', karachi('2026-11-01'));
+    expect((await get(`/payments/${second.payment.id}`, w.office).expect(200)).body).toMatchObject({ unallocatedAmount: 0 });
+    const spent = await post(`/payments/${advance.id}/carry-forward/undo`, { reversalId: second.reversal.id, reason: 'Too late' }, w.office, newIdempotencyKey());
+    expect([spent.status, err(spent).error.code, (err(spent).error.details as { reason: string }).reason]).toEqual([
+      409,
+      ErrorCode.ILLEGAL_STATUS_TRANSITION,
+      'carried_spent',
+    ]);
+    // The database refuses it too, whatever the service checks (payment_reversals_carried_spent).
+    await expect(
+      db().paymentReversal.create({
+        data: {
+          schoolId: w.school.id, paymentId: BigInt(advance.id), academicYearId: last.id, kind: 'carry_forward_reversal',
+          reversesId: BigInt(second.reversal.id), amount: 2500, reason: 'Direct', requestedBy: w.office.user.userId,
+        },
+      }),
+    ).rejects.toThrow(/payment_reversals_carried_spent/);
+  });
+
   // ------------------------------------------------------------------------ identities
 
   it('R228 (§0.20): after a scripted day every payment balances and the cash reconciles', async () => {

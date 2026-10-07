@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
 import type { PrismaTxAdapter } from './prisma';
-import type { AuditMetadataValue } from './platform/platform-audit.repository';
+import type { AuditMetadataValue } from './audit-metadata';
 
 export interface AuditEntry {
   /** The school user acting. Null only when a platform admin acts (actorPlatformUserId set). */

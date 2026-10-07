@@ -19,7 +19,6 @@ export type CounterPaymentMethod = Schemas['CounterPaymentMethod'];
 export type ExpenseDto = Schemas['ExpenseDto'];
 export type ExpenseListQuery = Query<'ExpensesController_list'>;
 
-export type CreateExpenseBody = Schemas['CreateExpenseDto'];
 export type UpdateExpenseBody = Schemas['UpdateExpenseDto'];
 
 /** 409 EXPENSE_NOT_OPEN, EXPENSE_NOT_PENDING, EXPENSE_RECEIPT_EXISTS. */

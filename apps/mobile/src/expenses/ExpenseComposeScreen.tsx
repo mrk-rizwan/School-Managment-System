@@ -18,7 +18,7 @@ import { ListRow } from '../ui/ListRow';
 import { Screen } from '../ui/Screen';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
 import { colors, fontSize, space } from '../ui/theme';
-import { CATEGORY_OPTIONS, METHOD_LABELS } from './labels';
+import { CATEGORY_OPTIONS, METHOD_OPTIONS } from './labels';
 
 // A new expense — /home/expenses/new (phase-3-financial.md §3.9, R207). Saved on the device in
 // one transaction with its outbox row (the outbox id is the Idempotency-Key); a photographed
@@ -166,10 +166,7 @@ export function ExpenseComposeScreen({ resend = null }: { resend?: string | null
       />
       <SegmentedPicker
         label="Paid by"
-        options={Object.entries(METHOD_LABELS).map(([value, label]) => ({
-          value: value as CounterPaymentMethod,
-          label,
-        }))}
+        options={METHOD_OPTIONS}
         value={method}
         onChange={setMethod}
         testID="expenseCompose.method"

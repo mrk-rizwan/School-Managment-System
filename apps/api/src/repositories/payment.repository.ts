@@ -3,6 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import type { PaymentMethod, PaymentStatus } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import { Prisma } from './generated/prisma/client';
+import { userNames } from './name-reads';
 import type { PrismaTxAdapter } from './prisma';
 
 // Payments (tenant table payments, phase-3-financial.md §3.2, §3.4, §4 "Payments", R187-R195).
@@ -401,26 +402,8 @@ export class PaymentRepository {
   }
 
   /** Users' display names: the staff record's name, else the guardian's. */
-  async userNames(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
-    if (ids.length === 0) return new Map();
-    const users = await this.txHost.tx.user.findMany({
-      where: { schoolId, id: { in: [...new Set(ids)] } },
-      select: { id: true, staffId: true, guardianId: true },
-    });
-    const staff = await this.txHost.tx.staff.findMany({
-      where: { schoolId, id: { in: users.flatMap((u) => (u.staffId === null ? [] : [u.staffId])) } },
-      select: { id: true, fullName: true },
-    });
-    const guardians = await this.guardianNames(schoolId, users.flatMap((u) => (u.guardianId === null ? [] : [u.guardianId])));
-    const staffName = new Map(staff.map((s) => [s.id, s.fullName]));
-    return new Map(
-      users.map((u) => [
-        u.id,
-        (u.staffId === null ? undefined : staffName.get(u.staffId)) ??
-          (u.guardianId === null ? undefined : guardians.get(u.guardianId)) ??
-          '',
-      ]),
-    );
+  userNames(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
+    return userNames(this.txHost.tx, schoolId, ids);
   }
 
   async guardianNames(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {

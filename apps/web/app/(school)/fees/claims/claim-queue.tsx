@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, ErrorCode, formatRupees } from '@asms/shared';
+import { Capability, ErrorCode, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { ExternalLinkIcon, PrinterIcon } from 'lucide-react';
@@ -23,7 +23,6 @@ import {
   claimImageUrl,
   claimsApi,
   CLAIM_STATUS_LABELS,
-  DEPOSIT_METHOD_LABELS,
   type ClaimDto,
   type ClaimListQuery,
   type ClaimStatus,
@@ -77,7 +76,7 @@ export function ClaimQueue() {
         header: 'Paid by',
         cell: (info) => (
           <span>
-            {DEPOSIT_METHOD_LABELS[info.getValue()]}
+            {PAYMENT_METHOD_LABELS[info.getValue()]}
             {info.row.original.possibleDuplicate && (
               <Badge variant="destructive" className="ml-1">
                 possible duplicate
@@ -168,7 +167,7 @@ function ClaimReview({ claimId, onDecided }: { claimId: string; onDecided: () =>
                 <dt className="text-muted-foreground">Status</dt>
                 <dd>{CLAIM_STATUS_LABELS[c.status]}</dd>
                 <dt className="text-muted-foreground">Paid by</dt>
-                <dd>{DEPOSIT_METHOD_LABELS[c.method]}</dd>
+                <dd>{PAYMENT_METHOD_LABELS[c.method]}</dd>
                 <dt className="text-muted-foreground">Paid on (parent)</dt>
                 <dd>{formatDate(c.paidOn)}</dd>
                 <dt className="text-muted-foreground">Reference</dt>

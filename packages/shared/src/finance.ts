@@ -110,10 +110,23 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const COUNTER_PAYMENT_METHODS = ['cash', 'bank_transfer', 'jazzcash', 'easypaisa'] as const satisfies readonly PaymentMethod[];
 export type CounterPaymentMethod = (typeof COUNTER_PAYMENT_METHODS)[number];
 
+/** Rule 21: a claim is a bank or wallet deposit; cash is paid at the counter (CHECK payment_claims_method_check). */
+export const DEPOSIT_METHODS = ['bank_transfer', 'jazzcash', 'easypaisa'] as const satisfies readonly PaymentMethod[];
+export type DepositMethod = (typeof DEPOSIT_METHODS)[number];
+
+/** Display words for every method, shared by the API's print views, the web and the app. */
+export const PAYMENT_METHOD_LABELS: Readonly<Record<PaymentMethod, string>> = {
+  cash: 'Cash',
+  bank_transfer: 'Bank transfer',
+  jazzcash: 'JazzCash',
+  easypaisa: 'Easypaisa',
+  carried_forward: 'Carried forward',
+};
+
 export const PAYMENT_STATUSES = ['verified', 'voided'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const REVERSAL_KINDS = ['void', 'refund', 'refund_reversal', 'carried_forward'] as const;
+export const REVERSAL_KINDS = ['void', 'refund', 'refund_reversal', 'carried_forward', 'carry_forward_reversal'] as const;
 export type ReversalKind = (typeof REVERSAL_KINDS)[number];
 
 export const CLAIM_STATUSES = ['pending', 'verified', 'rejected', 'withdrawn', 'expired'] as const;

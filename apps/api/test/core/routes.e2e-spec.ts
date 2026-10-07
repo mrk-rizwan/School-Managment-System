@@ -393,6 +393,7 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/payments/:id/refund': ['payment.refunded'],
   'POST /api/v1/payments/:id/reverse-refund': ['payment.refund_reversed'],
   'POST /api/v1/payments/:id/carry-forward': ['payment.carried_forward'],
+  'POST /api/v1/payments/:id/carry-forward/undo': ['payment.carry_forward_reversed'],
   'POST /api/v1/me/staff/cash-handovers': ['cash_handover.opened'],
   'POST /api/v1/cash-handovers': ['cash_handover.opened'],
   'POST /api/v1/cash-handovers/:id/confirm': ['cash_handover.confirmed'],

@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDay, formatRupees } from '@asms/shared';
+import { formatDay, formatRupees, monthLabel } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/app-shell';
 import { EmptyState, ErrorState, LoadingState } from '@/components/page-states';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
 import { payrollApi, type SalaryStructureDto } from '@/lib/api/school-payroll-contract';
 import { useListPage } from '@/lib/hooks';
-import { PayslipBreakdown, PayslipStatusBadge, PrintLink, monthLabel, payrollKeys } from '../payroll/_lib/payroll-ui';
+import { PayslipBreakdown, PayslipStatusBadge, PrintLink, payrollKeys } from '../payroll/_lib/payroll-ui';
 
 // A staff member's own salary and payslips (phase-3-financial.md slice 25, R217): the staff id is
 // the session's; only payslips of finalised runs are shown.

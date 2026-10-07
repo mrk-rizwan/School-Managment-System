@@ -1,6 +1,6 @@
 // Slice 19's shared pieces: the refusals of §5.1 with their details, the DTO mappers, and the
 // calendar arithmetic of a period (phase-3-financial.md §3.3, R180, R240).
-import { addDaysTo, dayOfPeriod, ErrorCode, outstanding } from '@asms/shared';
+import { dayOfPeriod, ErrorCode, outstanding } from '@asms/shared';
 import { ApiException } from '../../common/errors/api-exception';
 import type { ChargeCreate, ChargeRecord } from '../../repositories/charge.repository';
 import type { ChargeRunRecord, SkippedClass } from '../../repositories/charge-run.repository';
@@ -193,28 +193,8 @@ export function toChargeRunDto(row: ChargeRunRecord, classNames: ReadonlyMap<str
 
 // ------------------------------------------------------------------------------- periods
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
 /** `YYYY-MM` of a DATE value. */
 export const periodOf = (day: Date): string => day.toISOString().slice(0, 7);
-
-/** `October 2026`. */
-export function monthLabel(period: string): string {
-  return `${MONTH_NAMES[Number(period.slice(5, 7)) - 1] ?? period} ${period.slice(0, 4)}`;
-}
 
 /** The period's first and last days, `YYYY-MM-DD`. */
 export function periodBounds(period: string): { start: string; end: string } {
@@ -236,9 +216,6 @@ export const yearMonths = (year: { startsOn: Date; endsOn: Date }): { from: stri
  */
 export const chargeGrace = (settings: Pick<SchoolSettingsRecord, 'lateFeeEnabled' | 'lateFeeGraceDays'>): number =>
   settings.lateFeeEnabled ? settings.lateFeeGraceDays : 7;
-
-/** `YYYY-MM-DD` `days` after `day`. */
-export const plusDays = (day: string, days: number): string => addDaysTo(day, days);
 
 /** A credit row against `row` (R186, A6): settled, never owed, same child, year and head. */
 export function adjustmentOf(

@@ -4,7 +4,7 @@
 // its receipt counter when it is created (and existing years from the backfill).
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { receiptCounterName, SEEDED_FEE_HEADS } from '@asms/shared';
+import { receiptCounterName, SEEDED_FEE_HEADS, SEEDED_LEAVE_TYPES } from '@asms/shared';
 import { createTestApp } from '../core/app';
 import { signedInPlatformAdmin } from '../support/platform';
 import { createSchoolSession, createSchoolUser } from '../support/school-session';
@@ -17,6 +17,14 @@ const seededHeads = (schoolId: bigint) =>
   db().feeHead.findMany({
     where: { schoolId, createdBy: null },
     select: { name: true, category: true, frequency: true, concessionEligible: true, refundable: true },
+    orderBy: { id: 'asc' },
+  });
+
+// Slice 24: the three leave types, seeded by the same function (SEEDED_LEAVE_TYPES says what it writes).
+const seededLeaveTypes = (schoolId: bigint) =>
+  db().leaveType.findMany({
+    where: { schoolId, createdBy: null },
+    select: { name: true, code: true, daysPerYear: true, paid: true },
     orderBy: { id: 'asc' },
   });
 
@@ -42,6 +50,7 @@ describe('finance seeds (R176, §3.5)', () => {
       .expect(201);
     const schoolId = BigInt((res.body as { id: string }).id);
     expect(await seededHeads(schoolId)).toEqual(SEEDED_FEE_HEADS.map((h) => ({ ...h })));
+    expect(await seededLeaveTypes(schoolId)).toEqual(SEEDED_LEAVE_TYPES.map((t) => ({ ...t })));
     const counters = await db().schoolCounter.findMany({ where: { schoolId }, select: { name: true, value: true }, orderBy: { name: 'asc' } });
     expect(counters).toEqual([
       { name: 'admission_no', value: 0n },
@@ -55,6 +64,7 @@ describe('finance seeds (R176, §3.5)', () => {
     await db().$executeRaw`SELECT asms_seed_school_finance(${school.id}::bigint)`;
     await db().$executeRaw`SELECT asms_seed_school_finance(${school.id}::bigint)`;
     expect(await seededHeads(school.id)).toEqual(SEEDED_FEE_HEADS.map((h) => ({ ...h })));
+    expect(await seededLeaveTypes(school.id)).toEqual(SEEDED_LEAVE_TYPES.map((t) => ({ ...t })));
     expect(await db().schoolCounter.count({ where: { schoolId: school.id, name: 'expense_no' } })).toBe(1);
     // Another school is untouched.
     const other = await createSchool();

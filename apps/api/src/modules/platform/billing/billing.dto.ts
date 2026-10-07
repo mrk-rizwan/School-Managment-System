@@ -122,12 +122,6 @@ export class UpdatePlanDto {
   smsAllowance?: number;
 }
 
-export class ReasonDto {
-  @ApiProperty({ minLength: 3, maxLength: 500 })
-  @Reason()
-  reason: string;
-}
-
 // ----------------------------------------------------------------------------- subscriptions
 
 export class SubscriptionDto {

@@ -23,7 +23,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { PermissionsService } from '../access/permissions.service';
 import { fromDateString, yearClosed } from '../academics/academics.shared';
 import { feeHeadArchived } from './fee-heads.service';
-import type { ReasonDto } from './fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import type {
   AdjustChargeDto,
   ChargeDto,

@@ -3,6 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import type { LeaveStatus } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import type { Prisma } from './generated/prisma/client';
+import { staffNames } from './name-reads';
 import type { PrismaTxAdapter } from './prisma';
 
 export interface LeaveRequestRecord {
@@ -305,12 +306,11 @@ export class LeaveRequestRepository {
 
   /** Staff full names by staff id. */
   async staffNames(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
-    if (ids.length === 0) return new Map();
-    const rows = await this.txHost.tx.staff.findMany({
-      where: { schoolId, id: { in: [...new Set(ids)] } },
-      select: { id: true, fullName: true },
-    });
-    return new Map(rows.map((r) => [r.id, r.fullName]));
+    const nameOf = await staffNames(this.txHost.tx, schoolId, ids);
+    return new Map(ids.flatMap((id) => {
+      const name = nameOf(id);
+      return name === undefined ? [] : [[id, name] as const];
+    }));
   }
 
   /** The staff full name behind each user id (the decider). */

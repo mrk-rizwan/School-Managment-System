@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, formatRupees, newIdempotencyKey, todayInSchool } from '@asms/shared';
+import { Capability, COUNTER_PAYMENT_METHODS, formatRupees, monthLabel, newIdempotencyKey, PAYMENT_METHOD_LABELS, todayInSchool } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import Link from 'next/link';
@@ -22,7 +22,7 @@ import { formatDay } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
-import { AdvanceStatusBadge, METHOD_LABELS, PAYROLL_REFUSALS, RunStatusBadge, monthLabel, payrollKeys } from './_lib/payroll-ui';
+import { AdvanceStatusBadge, PAYROLL_REFUSALS, RunStatusBadge, payrollKeys } from './_lib/payroll-ui';
 
 // Payroll (phase-3-financial.md slice 25): the monthly runs (prepare → review → finalise → mark
 // paid, on the run's own page) and salary advances (granted and written off by a principal).
@@ -347,9 +347,9 @@ function GrantDialog({ onClose, onDone }: { onClose: () => void; onDone: () => v
             <div className="grid gap-1.5">
               <Label htmlFor={ids.method}>Paid by</Label>
               <NativeSelect id={ids.method} value={form.paidMethod} onChange={(e) => set({ paidMethod: e.target.value as CounterPaymentMethod })}>
-                {Object.entries(METHOD_LABELS).map(([value, label]) => (
+                {COUNTER_PAYMENT_METHODS.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {PAYMENT_METHOD_LABELS[value]}
                   </option>
                 ))}
               </NativeSelect>

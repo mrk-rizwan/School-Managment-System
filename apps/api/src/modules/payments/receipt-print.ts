@@ -1,17 +1,9 @@
 // The receipt's print view (phase-3-financial.md §3.5, R190, R237): a scriptless, auto-escaped
 // page sent only through sendPrintView. Every value comes from the receipt's snapshot and the
 // payment; nothing is a link.
-import { formatRupees } from '@asms/shared';
+import { formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { html, printPage, type SafeHtml } from '../../common/print-view';
 import type { PaymentDto, ReceiptDto } from './payments.dto';
-
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-  carried_forward: 'Carried forward',
-};
 
 const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const monthName = (period: string): string =>
@@ -40,7 +32,7 @@ ${receipt.voidedAt === null ? html`` : html`<p><strong>VOIDED</strong> on ${DAY.
 <table>
   <tr><th>Received on</th><td>${DAY.format(new Date(`${payment.receivedOn}T00:00:00Z`))}</td></tr>
   <tr><th>Received from</th><td>${payment.payerName}</td></tr>
-  <tr><th>Method</th><td>${METHOD_LABELS[payment.method] ?? payment.method}${payment.reference === null ? '' : `, reference ${payment.reference}`}</td></tr>
+  <tr><th>Method</th><td>${PAYMENT_METHOD_LABELS[payment.method]}${payment.reference === null ? '' : `, reference ${payment.reference}`}</td></tr>
   <tr><th>Issued</th><td>${issued} by ${receipt.issuedByName}</td></tr>
 </table>
 <h3>Paid towards</h3>

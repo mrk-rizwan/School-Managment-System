@@ -19,7 +19,7 @@ import { requirePrincipal } from '../access/money-gates';
 import { staffNotActive } from '../people/staff/staff.errors';
 import { toAdvanceDto } from './payroll.mappers';
 import type { AdvanceDto, CreateAdvanceDto, ListAdvancesQueryDto } from './payroll.dto';
-import type { ReasonDto } from '../fees/fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 
 // phase-3-financial.md slice 25 (R215, R235, R247); contracts/slice-25.md §3. Grant and write-off
 // are the principal's (R233) and never for their own staff row (no sole-principal exception: cash).

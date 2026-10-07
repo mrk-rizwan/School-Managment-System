@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, formatDay, formatRupees, newIdempotencyKey, todayInSchool } from '@asms/shared';
+import { Capability, COUNTER_PAYMENT_METHODS, formatDay, formatRupees, monthLabel, newIdempotencyKey, PAYMENT_METHOD_LABELS, todayInSchool } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { useId, useMemo, useState } from 'react';
@@ -21,14 +21,12 @@ import { payrollApi, type CounterPaymentMethod, type PayrollRunDto, type Payslip
 import { useListPage } from '@/lib/hooks';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import {
-  METHOD_LABELS,
   PAYROLL_REFUSALS,
   PayslipBreakdown,
   PayslipStatusBadge,
   PrintLink,
   RunStatusBadge,
   SKIP_LABELS,
-  monthLabel,
   payrollKeys,
   signedRupees,
 } from '../_lib/payroll-ui';
@@ -383,9 +381,9 @@ function MarkPaidDialog({ slip, onClose, onDone }: { slip: PayslipDto; onClose: 
             <div className="grid gap-1.5">
               <Label htmlFor={ids.method}>Method</Label>
               <NativeSelect id={ids.method} value={form.paidMethod} onChange={(e) => set({ paidMethod: e.target.value as CounterPaymentMethod })}>
-                {Object.entries(METHOD_LABELS).map(([value, label]) => (
+                {COUNTER_PAYMENT_METHODS.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {PAYMENT_METHOD_LABELS[value]}
                   </option>
                 ))}
               </NativeSelect>

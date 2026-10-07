@@ -26,10 +26,11 @@ import { AfterCommit } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import { capabilityNotHeld } from '../access/access.errors';
+import { isPrincipal } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { AttachmentFiles, type AttachedFile } from '../documents/attachment-files.service';
 import { stagedUploadUnusable } from '../documents/documents.service';
-import type { ReasonDto } from '../fees/fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import type {
   ApproveExpenseDto,
   CreateExpenseDto,
@@ -87,10 +88,6 @@ export const expenseReceiptExists = expenseRefusal(
   ErrorCode.EXPENSE_RECEIPT_EXISTS,
   'This expense already has a receipt.',
 );
-
-/** R233's reading of the role: a live principal system role on a staff member, never a grant. */
-const isPrincipal = (session: SchoolSessionContext): boolean =>
-  session.access.capacities.staff && session.access.systemRoles.includes('principal');
 
 export function toExpenseDto(row: ExpenseRecord): ExpenseDto {
   return {

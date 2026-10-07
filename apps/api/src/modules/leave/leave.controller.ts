@@ -1,3 +1,4 @@
+import { ReasonDto } from '../../common/reason.dto';
 import { Body, Controller, Get, HttpCode, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
@@ -18,7 +19,6 @@ import {
   EndLeaveEarlyDto,
   LeaveBalanceDto,
   LeaveBalanceQueryDto,
-  LeaveReasonDto,
   LeaveRequestDto,
   LeaveTypeDto,
   ListLeaveRequestsQueryDto,
@@ -76,7 +76,7 @@ export class LeaveTypesController {
   @ApiIdParam()
   @ApiOkResponse({ type: LeaveTypeDto })
   @ApiErrors(...COMMON, 404, 422)
-  archive(@IdParam() id: bigint, @Body() body: LeaveReasonDto, @Query() _query: NoQueryDto): Promise<LeaveTypeDto> {
+  archive(@IdParam() id: bigint, @Body() body: ReasonDto, @Query() _query: NoQueryDto): Promise<LeaveTypeDto> {
     return this.types.archive(id, body);
   }
 }
@@ -152,7 +152,7 @@ export class MyLeaveController {
   cancel(
     @CurrentSchoolSession() session: SchoolSessionContext,
     @IdParam() id: bigint,
-    @Body() body: LeaveReasonDto,
+    @Body() body: ReasonDto,
     @Query() _query: NoQueryDto,
   ): Promise<LeaveRequestDto> {
     return this.requests.cancel(session, id, body);
@@ -225,7 +225,7 @@ export class LeaveRequestsController {
   reject(
     @CurrentSchoolSession() session: SchoolSessionContext,
     @IdParam() id: bigint,
-    @Body() body: LeaveReasonDto,
+    @Body() body: ReasonDto,
     @Query() _query: NoQueryDto,
   ): Promise<LeaveRequestDto> {
     return this.requests.reject(session, id, body);

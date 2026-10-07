@@ -141,6 +141,9 @@ describe('lint boundaries (R61)', () => {
     ['own-invoices-import.ts', 'src/modules/fees/fee-heads.service.ts'],
     ['own-invoices-import.ts', 'src/modules/platform/billing/plans.service.ts'],
     ['own-invoices-import.ts', 'src/jobs/platform-billing.ts'],
+    // Phase close: a tenant repository reads no billing table, nor a school's invoices.
+    ['billing-repository-import.ts', 'src/repositories/student.repository.ts'],
+    ['own-invoices-import.ts', 'src/repositories/student.repository.ts'],
   ])('refuses %s at %s (Phase 3 billing)', async (fixture, virtualPath) => {
     // A billing path also matches the platform-repositories pattern: one report per pattern.
     expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);

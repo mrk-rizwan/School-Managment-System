@@ -27,6 +27,15 @@ export const fieldRefused = (path: string, code: ErrorCode, message: string): Ap
     fields: [{ path, code, message }],
   });
 
+/** 409: the actor is a guardian of the student this money row is for (R232). */
+export const ownChild = (): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.SELF_ACTION_FORBIDDEN,
+    'You cannot do this for your own child. Ask a colleague.',
+    { reason: 'own_child' },
+  );
+
 /** 404 for a row absent from the caller's school: never "exists elsewhere" (tenant isolation). */
 export const notFound = (): ApiException =>
   new ApiException(404, ErrorCode.NOT_FOUND, 'Not found.');

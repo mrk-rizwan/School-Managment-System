@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { fieldRefused, notFound } from '../../common/errors/api-exception';
+import { fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
 import { addDays, assertRange, dayStart, SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
@@ -10,13 +10,12 @@ import { AcademicYearRepository } from '../../repositories/academic-year.reposit
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChargeRepository } from '../../repositories/charge.repository';
 import { FinanceReportRepository, type CollectionWindow } from '../../repositories/finance-report.repository';
-import { PaymentRepository } from '../../repositories/payment.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
-import { ownChild, requirePrincipal } from '../access/money-gates';
+import { requirePrincipal } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { toChargeDto } from '../fees/charges.shared';
-import type { ReasonDto } from '../fees/fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import { FeeReminders } from './fee-reminders';
 import type {
   CollectionsQueryDto,
@@ -59,7 +58,6 @@ export class FinanceReportsService {
     private readonly reports: FinanceReportRepository,
     private readonly years: AcademicYearRepository,
     private readonly charges: ChargeRepository,
-    private readonly payments: PaymentRepository,
     private readonly reminders: FeeReminders,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
@@ -160,7 +158,7 @@ export class FinanceReportsService {
     const timezone = await this.clock.timezone(schoolId);
     const day = fromDateString(query.date);
     const facts = await this.reports.dailyCash(schoolId, day, dayStart(timezone, day), dayStart(timezone, addDays(day, 1)));
-    const names = await this.payments.userNames(schoolId, [
+    const names = await this.reports.userNames(schoolId, [
       ...facts.withCollectors.map((c) => c.userId),
       ...facts.handedOver.flatMap((h) => (h.confirmedBy === null ? [h.collectorUserId] : [h.collectorUserId, h.confirmedBy])),
     ]);
@@ -367,7 +365,7 @@ export class FinanceReportsService {
       dues.outstanding <= latest.outstanding
         ? latest
         : null;
-    const byName = valid === null ? '' : ((await this.payments.userNames(schoolId, [valid.actorUserId])).get(valid.actorUserId) ?? '');
+    const byName = valid === null ? '' : ((await this.reports.userNames(schoolId, [valid.actorUserId])).get(valid.actorUserId) ?? '');
     return {
       studentId: studentId.toString(),
       outstanding: dues.outstanding,

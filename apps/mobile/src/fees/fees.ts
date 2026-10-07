@@ -1,6 +1,6 @@
-import { formatDay, formatRupees, type ClaimStatus } from '@asms/shared';
+import { formatDay, formatRupees, PAYMENT_METHOD_LABELS, shortMonthLabel, type ClaimStatus } from '@asms/shared';
 import { api, unwrap, unwrapWithDate } from '../api/client';
-import type { DepositMethod, MyClaimDto, MyDuesDto, MyReceiptDto } from '../api/contracts';
+import type { MyClaimDto, MyDuesDto, MyReceiptDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 
 // A child's Fees (phase-3-financial.md slice 21, §3.9, R198): dues, the deposit slips sent and the
@@ -12,12 +12,6 @@ type Page<T> = { data: T[]; page: number; limit: number; total: number };
 
 export const FEES_CLAIMS_LIMIT = 10;
 export const FEES_RECEIPTS_LIMIT = 10;
-
-export const DEPOSIT_METHOD_LABELS: Record<DepositMethod, string> = {
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
 
 export const CLAIM_STATUS_LABELS: Record<ClaimStatus, string> = {
   pending: 'Waiting for the office',
@@ -65,22 +59,16 @@ export function receiptsRead(studentId: string) {
 export const fetchAccounts = () =>
   unwrap(api.GET('/api/v1/me/payment-accounts', { params: { query: { page: 1, limit: 50 } } }));
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** `2026-09` → "Sep 2026". */
-export const shortMonth = (yearMonth: string): string =>
-  `${MONTHS[Number(yearMonth.slice(5, 7)) - 1] ?? ''} ${yearMonth.slice(0, 4)}`;
-
 /** What a charge or a receipt line is for: "Tuition Sep 2026", or the advance line. */
 export function forWhat(line: { feeHeadName: string | null; period: string | null }): string {
   if (line.feeHeadName === null) return 'Advance (kept for later fees)';
-  return line.period === null ? line.feeHeadName : `${line.feeHeadName} ${shortMonth(line.period)}`;
+  return line.period === null ? line.feeHeadName : `${line.feeHeadName} ${shortMonthLabel(line.period)}`;
 }
 
 /** A claim's line on the Fees screen: what it says and what became of it. */
 export function claimLine(claim: MyClaimDto): string {
   const amount = formatRupees(claim.verifiedAmount ?? claim.claimedAmount);
-  return `${amount} · ${DEPOSIT_METHOD_LABELS[claim.method]} · paid ${formatDay(claim.verifiedPaidOn ?? claim.paidOn)}`;
+  return `${amount} · ${PAYMENT_METHOD_LABELS[claim.method]} · paid ${formatDay(claim.verifiedPaidOn ?? claim.paidOn)}`;
 }
 
 /** The receipt as plain text for the share sheet: the caller's own children's lines only. */

@@ -1,5 +1,7 @@
 // Calendar-day helpers. Days are YYYY-MM-DD strings computed in UTC, so no zone moves them.
 
+import { monthLabel } from '@asms/shared';
+
 const DAY_MS = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const ms = (date: string) => Date.parse(`${date}T00:00:00Z`);
@@ -43,21 +45,6 @@ export const monthToDate = (date: string) => ({ dateFrom: `${date.slice(0, 8)}01
 export const lastDays = (today: string, days = 30): string[] =>
   Array.from({ length: days + 1 }, (_, back) => addDays(today, -back));
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
 /** The month `offset` months from the school's current month: its first and last day. */
 export function monthRange(
   today: string,
@@ -69,7 +56,7 @@ export function monthRange(
   return {
     dateFrom: iso(first.getTime()),
     dateTo: iso(last.getTime()),
-    title: `${MONTH_NAMES[first.getUTCMonth()]} ${first.getUTCFullYear()}`,
+    title: monthLabel(iso(first.getTime()).slice(0, 7)),
   };
 }
 

@@ -15,6 +15,9 @@ import type { PrismaTxAdapter } from './prisma';
 // in SQL, so a 3,000-student month stays one statement per class (§7.2); generation.spec checks
 // the two agree on every rounding case.
 
+/** Late fees per INSERT: 12 bound parameters a row, well under Postgres's 65,535. */
+const LATE_FEE_CHUNK = 2000;
+
 /** One new charge a statement inserted. */
 export interface InsertedCharge {
   id: bigint;
@@ -37,6 +40,8 @@ export interface ClassGeneration {
   /** `YYYY-MM-DD`: the period's first and last days, and its fee cut-off day (R180). */
   periodStart: string;
   periodEnd: string;
+  /** The instant `periodStart` begins in the school's timezone: a concession ended after it was in force for the period. */
+  periodStartsAt: Date;
   cutoffDate: string;
   /** Appended to the head's name: `October 2026` (monthly) or the year's name (yearly). */
   label: string;
@@ -74,15 +79,27 @@ const conceded = (gross: Prisma.Sql): Prisma.Sql => Prisma.sql`
        WHEN con.kind = 'percentage' THEN ((${gross})::bigint * con.value / 100)::int
        ELSE LEAST(con.value, ${gross}) END`;
 
-/** The approved concession of `studentExpr` on head `h` in force for `period` (R182). */
-const concessionJoin = (schoolId: SchoolId, yearId: bigint, studentExpr: Prisma.Sql, period: string): Prisma.Sql => Prisma.sql`
+/**
+ * The concession of `studentExpr` on head `h` in force for `period` (R182): approved, or — given
+ * `periodStartsAt` — ended after the period began, so a voided past month regenerated later is
+ * conceded as it was first charged (phase close G3).
+ */
+const concessionJoin = (
+  schoolId: SchoolId,
+  yearId: bigint,
+  studentExpr: Prisma.Sql,
+  period: string,
+  periodStartsAt: Date | null,
+): Prisma.Sql => Prisma.sql`
   LEFT JOIN LATERAL (
     SELECT co.id, co.kind, co.value
       FROM concessions co
       JOIN concession_heads ch
         ON ch.school_id = co.school_id AND ch.concession_id = co.id AND ch.fee_head_id = h.id
      WHERE co.school_id = ${schoolId} AND co.student_id = ${studentExpr}
-       AND co.academic_year_id = ${yearId} AND co.status = 'approved'
+       AND co.academic_year_id = ${yearId}
+       AND (co.status = 'approved'
+            ${periodStartsAt === null ? Prisma.empty : Prisma.sql`OR (co.status = 'ended' AND co.ended_at > ${periodStartsAt})`})
        AND co.effective_from <= ${period}::text AND h.concession_eligible
      ORDER BY co.id
      LIMIT 1) con ON TRUE`;
@@ -240,7 +257,7 @@ export class ChargeGenerationRepository {
                AND s.status = 'active' AND s.effective_from <= ${g.period}::text
              ORDER BY s.effective_from DESC, s.id DESC
              LIMIT 1) fs ON TRUE
-          ${concessionJoin(schoolId, g.academicYearId, Prisma.sql`t.student_id`, g.period)}
+          ${concessionJoin(schoolId, g.academicYearId, Prisma.sql`t.student_id`, g.period, g.periodStartsAt)}
          WHERE fs.amount > 0
       ), ins AS (
         INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id,
@@ -296,7 +313,7 @@ export class ChargeGenerationRepository {
                CASE WHEN ${c.applyConcessions}::boolean THEN ${conceded(Prisma.sql`${c.amount}::int`)} ELSE 0 END AS conceded
           FROM targets t
           JOIN fee_heads h ON h.school_id = ${schoolId} AND h.id = ${c.feeHeadId}
-          ${concessionJoin(schoolId, c.academicYearId, Prisma.sql`t.student_id`, c.period)}
+          ${concessionJoin(schoolId, c.academicYearId, Prisma.sql`t.student_id`, c.period, null)}
       ), ins AS (
         INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id,
                              head_frequency, kind, period, campaign_id, concession_id, gross_amount,
@@ -379,14 +396,30 @@ export class ChargeGenerationRepository {
     today: string,
     labels: ReadonlyMap<string, string>,
   ): Promise<(InsertedCharge & { period: string })[]> {
-    if (fees.length === 0) return [];
+    const rows: (InsertedCharge & { period: string })[] = [];
+    // Postgres binds at most 65,535 parameters a statement (12 a row here): a large school's first
+    // sweep over several overdue months writes thousands of rows (phase close, 2026-10-07).
+    for (let i = 0; i < fees.length; i += LATE_FEE_CHUNK) {
+      rows.push(...(await this.insertLateFeeChunk(schoolId, fees.slice(i, i + LATE_FEE_CHUNK), head, amount, today, labels)));
+    }
+    return rows;
+  }
+
+  private async insertLateFeeChunk(
+    schoolId: SchoolId,
+    fees: readonly NewLateFee[],
+    head: { id: bigint; frequency: FeeFrequency },
+    amount: number,
+    today: string,
+    labels: ReadonlyMap<string, string>,
+  ): Promise<(InsertedCharge & { period: string })[]> {
     const values = fees.map(
       (f) => Prisma.sql`(${schoolId}, ${f.enrolmentId}, ${f.studentId}, ${f.academicYearId}, ${head.id},
         ${head.frequency}::fee_frequency, 'late_fee'::charge_kind, ${f.period}, ${f.targetId},
         ${amount}::int, 0, ${amount}::int, ${`Late fee ${labels.get(f.period) ?? f.period}`}::text,
         ${today}::date, 'open'::charge_status, NULL::bigint)`,
     );
-    const rows = await this.txHost.tx.$queryRaw<{ id: bigint; studentId: bigint; amount: number; period: string }[]>`
+    return this.txHost.tx.$queryRaw<(InsertedCharge & { period: string })[]>`
       INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id,
                            head_frequency, kind, period, late_fee_for_charge_id, gross_amount,
                            concession_amount, amount, description, due_on, status, created_by)
@@ -394,7 +427,6 @@ export class ChargeGenerationRepository {
       ON CONFLICT (school_id, student_id, period) WHERE kind = 'late_fee' AND status <> 'voided'
         DO NOTHING
       RETURNING id, student_id AS "studentId", amount, period::text AS period`;
-    return rows;
   }
 
   /**

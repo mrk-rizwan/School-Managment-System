@@ -147,7 +147,7 @@ export class ReversalDto {
   @ApiProperty(NULLABLE_ID) approvedByUserId: string | null;
   @ApiProperty({ ...METHOD, nullable: true }) refundMethod: PaymentMethod | null;
   @ApiProperty({ type: String, nullable: true }) refundReference: string | null;
-  /** True once a refund reversal undid this refund. */
+  /** True once a refund reversal undid this refund, or a carry-forward reversal this carry-forward. */
   @ApiProperty() reversed: boolean;
   @ApiProperty(DATE_TIME) createdAt: Date;
 }
@@ -256,6 +256,17 @@ export class CarryForwardDto {
   @IfPresent()
   @Rupees(1)
   amount?: number;
+
+  @ApiProperty({ minLength: 3, maxLength: 500 })
+  @Reason()
+  reason: string;
+}
+
+/** Phase close G1: a carry-forward undone while its carried payment is wholly unallocated. */
+export class UndoCarryForwardDto {
+  @ApiProperty({ ...ID, description: 'The carry-forward of this payment to undo' })
+  @IsIdString()
+  reversalId: string;
 
   @ApiProperty({ minLength: 3, maxLength: 500 })
   @Reason()

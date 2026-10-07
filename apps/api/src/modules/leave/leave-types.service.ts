@@ -1,3 +1,4 @@
+import type { ReasonDto } from '../../common/reason.dto';
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
@@ -7,7 +8,7 @@ import { toPage, type Page } from '../../common/pagination';
 import { SchoolContext } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { LeaveTypeRepository, type LeaveTypeRecord } from '../../repositories/leave-type.repository';
-import type { CreateLeaveTypeDto, LeaveReasonDto, LeaveTypeDto, ListLeaveTypesQueryDto } from './leave.dto';
+import type { CreateLeaveTypeDto, LeaveTypeDto, ListLeaveTypesQueryDto } from './leave.dto';
 
 const SUBJECT = 'leave_type';
 
@@ -78,7 +79,7 @@ export class LeaveTypesService {
 
   /** Final. Requests keep their type; a new request naming it is LEAVE_TYPE_ARCHIVED. A repeat is a no-op. */
   @Transactional()
-  async archive(id: bigint, dto: LeaveReasonDto): Promise<LeaveTypeDto> {
+  async archive(id: bigint, dto: ReasonDto): Promise<LeaveTypeDto> {
     const { schoolId, userId } = this.context.actor();
     const row = await readLocked(
       () => this.types.findById(schoolId, id),

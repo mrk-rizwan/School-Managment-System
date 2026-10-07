@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, COUNTER_PAYMENT_METHODS, formatRupees, newIdempotencyKey } from '@asms/shared';
+import { Capability, COUNTER_PAYMENT_METHODS, formatRupees, newIdempotencyKey, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
@@ -28,7 +28,6 @@ import { useListPage } from '@/lib/hooks';
 import { useCapabilities } from '@/lib/school-session';
 import { useYears } from '../../academics/_lib/options';
 import { digitsOnly, feesKeys, useIsPrincipal } from '../_lib/fees-ui';
-import { METHOD_LABELS } from '../counter/fee-counter';
 
 const LIMIT = 25;
 
@@ -36,12 +35,14 @@ type Dialog =
   | { kind: 'void'; payment: PaymentDto }
   | { kind: 'refund'; payment: PaymentDto }
   | { kind: 'reverse'; payment: PaymentDto; refund: ReversalDto }
-  | { kind: 'carry'; payment: PaymentDto };
+  | { kind: 'carry'; payment: PaymentDto }
+  | { kind: 'undoCarry'; payment: PaymentDto; carry: ReversalDto };
 
 /**
  * Payments (slice 20, R190-R192, R251): every payment newest first with its receipt to print, and
  * the corrections each role may make: void (payment.void, never one's own), refund and its
- * reversal (payment.void and the principal), carry an advance into another year (payment.record).
+ * reversal (payment.void and the principal), carry an advance into another year and undo that
+ * while the carried payment is untouched (payment.record).
  */
 export function PaymentList() {
   const queryClient = useQueryClient();
@@ -97,6 +98,17 @@ export function PaymentList() {
     onSuccess: (r) => done(`Refund of ${formatRupees(r.amount)} reversed.`),
     onError: failed,
   });
+  const undoCarry = useMutation({
+    mutationFn: ({ id, reversalId, reason }: { id: string; reversalId: string; reason: string }) =>
+      unwrap(
+        paymentsApi.POST('/api/v1/payments/{id}/carry-forward/undo', {
+          params: { path: { id }, header: { 'Idempotency-Key': newIdempotencyKey() } },
+          body: { reversalId, reason },
+        }),
+      ),
+    onSuccess: (r) => done(`Carry-forward of ${formatRupees(r.amount)} undone.`),
+    onError: failed,
+  });
 
   const columns = useMemo(() => {
     const column = createColumnHelper<DataTableFeatures, PaymentDto>();
@@ -127,7 +139,7 @@ export function PaymentList() {
         header: 'Method',
         cell: (info) => (
           <span>
-            {METHOD_LABELS[info.getValue()]}
+            {PAYMENT_METHOD_LABELS[info.getValue()]}
             {info.row.original.possibleDuplicate && (
               <Badge variant="destructive" className="ml-1">
                 possible duplicate
@@ -164,6 +176,9 @@ export function PaymentList() {
               if (canVoid && principal) actions.push({ label: `Reverse refund of ${formatRupees(r.amount)}`, onSelect: () => setDialog({ kind: 'reverse', payment: p, refund: r }) });
             }
             if (canRecord && p.unallocatedAmount > 0) actions.push({ label: 'Carry advance forward…', onSelect: () => setDialog({ kind: 'carry', payment: p }) });
+            for (const r of p.reversals.filter((x) => x.kind === 'carried_forward' && !x.reversed)) {
+              if (canRecord) actions.push({ label: `Undo carry-forward of ${formatRupees(r.amount)}`, onSelect: () => setDialog({ kind: 'undoCarry', payment: p, carry: r }) });
+            }
           }
           return <RowActions label={`Payment ${p.receipt?.receiptLabel ?? p.id}`} actions={actions} />;
         },
@@ -221,6 +236,18 @@ export function PaymentList() {
           dialog?.kind === 'reverse' && reverse.mutate({ id: dialog.payment.id, reversalId: dialog.refund.id, reason })
         }
       />
+      <ConfirmWithReasonDialog
+        open={dialog?.kind === 'undoCarry'}
+        onOpenChange={(open) => !open && setDialog(null)}
+        title="Undo this carry-forward"
+        description="The advance comes back to this payment and the carried payment in the new year is voided. Refused once the carried advance has paid a charge or been refunded."
+        confirmLabel="Undo carry-forward"
+        minLength={3}
+        pending={undoCarry.isPending}
+        onConfirm={(reason) =>
+          dialog?.kind === 'undoCarry' && undoCarry.mutate({ id: dialog.payment.id, reversalId: dialog.carry.id, reason })
+        }
+      />
       {dialog?.kind === 'refund' && <RefundDialog payment={dialog.payment} onDone={done} onError={failed} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'carry' && <CarryDialog payment={dialog.payment} onDone={done} onError={failed} onClose={() => setDialog(null)} />}
     </>
@@ -265,7 +292,7 @@ function RefundDialog({ payment, onDone, onError, onClose }: ActionDialogProps) 
         <NativeSelect id="refund-method" value={method} onChange={(e) => setMethod(e.target.value as CounterPaymentMethod)}>
           {COUNTER_PAYMENT_METHODS.map((m) => (
             <option key={m} value={m}>
-              {METHOD_LABELS[m]}
+              {PAYMENT_METHOD_LABELS[m]}
             </option>
           ))}
         </NativeSelect>

@@ -1,6 +1,6 @@
 'use client';
 
-import { COUNTER_PAYMENT_METHODS, ErrorCode, formatRupees, newIdempotencyKey } from '@asms/shared';
+import { COUNTER_PAYMENT_METHODS, ErrorCode, formatRupees, newIdempotencyKey, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PrinterIcon, SearchIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -28,14 +28,6 @@ import {
 import { formatDate, todayInSchool } from '@/lib/format';
 import { useDebounced } from '@/lib/hooks';
 import { digitsOnly, feesKeys, formatMonth } from '../_lib/fees-ui';
-
-export const METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-  carried_forward: 'Carried forward',
-};
 
 /**
  * The counter (slice 20, R187-R190): find the guardian, see the family's dues grouped by academic
@@ -326,7 +318,7 @@ function PaymentForm({ guardianId, rows, onDone }: { guardianId: string; rows: G
           >
             {COUNTER_PAYMENT_METHODS.map((m) => (
               <option key={m} value={m}>
-                {METHOD_LABELS[m]}
+                {PAYMENT_METHOD_LABELS[m]}
               </option>
             ))}
           </NativeSelect>

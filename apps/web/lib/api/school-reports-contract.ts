@@ -41,7 +41,6 @@ export type PayrollMonthDto = Schemas['PayrollMonthDto'];
 export type PayrollReportQuery = Query<'FinanceReportsController_payroll'>;
 
 export type ReminderKind = Schemas['ReminderKind'];
-export type SendRemindersBody = Schemas['SendRemindersDto'];
 export type RemindersSentDto = Schemas['RemindersSentDto'];
 
 export type DuesClearanceDto = Schemas['DuesClearanceDto'];

@@ -1,4 +1,4 @@
-import { formatDay, todayInSchool } from '@asms/shared';
+import { DEPOSIT_METHODS, formatDay, PAYMENT_METHOD_LABELS, todayInSchool } from '@asms/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -21,7 +21,7 @@ import { Screen } from '../ui/Screen';
 import { SegmentedPicker } from '../ui/SegmentedPicker';
 import { Sheet } from '../ui/Sheet';
 import { colors, fontSize, space } from '../ui/theme';
-import { DEPOSIT_METHOD_LABELS, fetchAccounts } from './fees';
+import { fetchAccounts } from './fees';
 
 // Upload deposit slip — /children/[studentId]/deposit-slip (phase-3-financial.md §3.9, R199): saved
 // on the device in one transaction with its outbox row (the outbox id is the Idempotency-Key) and
@@ -30,9 +30,9 @@ import { DEPOSIT_METHOD_LABELS, fetchAccounts } from './fees';
 
 /** The server's bound on an amount (MAX_RUPEES). */
 const MAX_AMOUNT = 10_000_000;
-const METHOD_OPTIONS = (Object.keys(DEPOSIT_METHOD_LABELS) as DepositMethod[]).map((value) => ({
+const METHOD_OPTIONS = DEPOSIT_METHODS.map((value) => ({
   value,
-  label: DEPOSIT_METHOD_LABELS[value],
+  label: PAYMENT_METHOD_LABELS[value],
 }));
 
 export function DepositSlipScreen({ studentId, secure }: { studentId: string; secure?: boolean }) {

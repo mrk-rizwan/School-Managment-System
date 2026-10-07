@@ -29,8 +29,3 @@ export type PayslipDto = Schemas['PayslipDto'];
 
 // ---- Bodies ----
 
-export type CreateSalaryStructureBody = Schemas['CreateSalaryStructureDto'];
-export type SalaryComponentBody = Schemas['SalaryComponentDto'];
-export type CreateAdvanceBody = Schemas['CreateAdvanceDto'];
-export type AdjustPayslipBody = Schemas['AdjustPayslipDto'];
-export type MarkPayslipPaidBody = Schemas['MarkPayslipPaidDto'];

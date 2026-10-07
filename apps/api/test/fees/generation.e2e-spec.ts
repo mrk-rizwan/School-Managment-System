@@ -195,6 +195,46 @@ describe('slice 19: charge generation, late fees and the stale sweep (e2e)', () 
     expect((await tuitionOf(s, p.studentId, '2026-10')).map((c) => c.status)).toEqual(['voided', 'open']);
   });
 
+  it('G3: a voided past month regenerated after its concession ended is conceded as it was in force then', async () => {
+    const s = await setup();
+    const kept = await pupil(s.school, s.section, { startedOn: '2026-04-01' });
+    const late = await pupil(s.school, s.section, { startedOn: '2026-04-01' });
+    const concede = async (p: typeof kept, endedAt: Date | null) => {
+      const concession = await db().concession.create({
+        data: {
+          schoolId: s.school.id, studentId: p.studentId, academicYearId: s.year.id, enrolmentId: p.enrolmentId,
+          kind: 'percentage', value: 50, effectiveFrom: '2026-09', reason: 'Need-based support', requestedBy: s.principal.userId,
+          status: 'approved', decidedBy: s.principal.userId, decidedAt: new Date(),
+        },
+      });
+      await db().concessionHead.create({ data: { schoolId: s.school.id, concessionId: concession.id, feeHeadId: s.heads.tuition } });
+      return { concession, endedAt };
+    };
+    // Kept's concession ends on 20 October (after October began); Late's ended on 30 September.
+    const a = await concede(kept, karachi('2026-10-20'));
+    const b = await concede(late, karachi('2026-09-30'));
+    await runMonth(app, s.school, s.year, '2026-10', karachi('2026-10-01'));
+    for (const c of [a, b]) {
+      await db().concession.updateMany({
+        where: { schoolId: s.school.id, id: c.concession.id },
+        data: { status: 'ended', endedAt: c.endedAt, endedBy: s.principal.userId, endReason: 'Circumstances changed' },
+      });
+    }
+    // October is voided for both and regenerated in November.
+    await db().charge.updateMany({
+      where: { schoolId: s.school.id, feeHeadId: s.heads.tuition, period: '2026-10', kind: 'generated' },
+      data: { status: 'voided', voidedAt: new Date(), voidedBy: s.principal.userId, voidReason: 'Wrong amount' },
+    });
+    await runMonth(app, s.school, s.year, '2026-10', karachi('2026-11-02'), { regenerateVoided: true, triggeredBy: s.principal.userId });
+    const live = async (p: typeof kept) => (await tuitionOf(s, p.studentId, '2026-10')).find((c) => c.status !== 'voided');
+    expect([(await live(kept))?.concessionAmount, (await live(kept))?.concessionId]).toEqual([1500, a.concession.id]);
+    // Late's concession had ended before October began (the test backdates ended_at; the rule reads it).
+    expect([(await live(late))?.concessionAmount, (await live(late))?.concessionId]).toEqual([0, null]);
+    // November, generated now, sees neither ended concession.
+    await runMonth(app, s.school, s.year, '2026-11', karachi('2026-11-02'));
+    expect((await tuitionOf(s, kept.studentId, '2026-11')).map((c) => c.concessionAmount)).toEqual([0]);
+  });
+
   it('R182: percentage rounds down, fixed is capped at gross and settles at 0; the amount is stored; the SQL agrees with concessionAmount', async () => {
     const s = await setup();
     const odd = await classWithSection(s.school, s.year);

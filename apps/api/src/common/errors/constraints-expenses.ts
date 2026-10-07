@@ -9,13 +9,7 @@
 // 500 says "bug", where a 4xx would hide one (the prisma-errors.ts rule).
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
-
-const fieldInvalid = (path: string, message: string) => (): ApiException =>
-  new ApiException(422, ErrorCode.VALIDATION_FAILED, 'Some fields are invalid.', {
-    fields: [{ path, code: ErrorCode.INVALID_VALUE, message }],
-  });
-
-const noIdentityNumber = (path: string) => fieldInvalid(path, `${path} must not contain an identity number`);
+import { fieldInvalid, noIdentity } from './constraints.shared';
 
 const notOpen = (): ApiException =>
   new ApiException(
@@ -37,11 +31,11 @@ export const SLICE_23_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   expenses_payee_check: fieldInvalid('payee', 'payee must not be blank'),
   expenses_reference_check: fieldInvalid('reference', 'reference must not be blank'),
   // R208.
-  expenses_description_no_id_check: noIdentityNumber('description'),
-  expenses_payee_no_id_check: noIdentityNumber('payee'),
-  expenses_reference_no_id_check: noIdentityNumber('reference'),
-  expenses_decision_reason_no_id_check: noIdentityNumber('reason'),
-  expenses_void_reason_no_id_check: noIdentityNumber('reason'),
+  expenses_description_no_id_check: noIdentity('description'),
+  expenses_payee_no_id_check: noIdentity('payee'),
+  expenses_reference_no_id_check: noIdentity('reference'),
+  expenses_decision_reason_no_id_check: noIdentity('reason'),
+  expenses_void_reason_no_id_check: noIdentity('reason'),
   // Two numbers taken at once cannot happen under the counter's row lock; retryable if it does.
   expenses_school_id_expense_no_key: concurrentUpdate,
   // A decision or void racing another: the row moved first.

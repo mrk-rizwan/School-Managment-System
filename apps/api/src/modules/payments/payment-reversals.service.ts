@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { concurrentUpdate, fieldRefused, notFound } from '../../common/errors/api-exception';
+import { ApiException, concurrentUpdate, fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { SchoolClock } from '../../common/school-clock';
 import { SchoolContext, type Actor } from '../../common/school-context';
@@ -13,11 +13,19 @@ import { PaymentAllocationRepository } from '../../repositories/payment-allocati
 import { PaymentReversalRepository, type ReversalRecord } from '../../repositories/payment-reversal.repository';
 import { PaymentRepository, type PaymentRecord } from '../../repositories/payment.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import { ownChild, requirePrincipal } from '../access/money-gates';
+import { requirePrincipal } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
-import type { ReasonDto } from '../fees/fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import { Advances } from './advances';
-import type { CarryForwardDto, CarryForwardResultDto, PaymentDto, RefundDto, ReversalDto, ReverseRefundDto } from './payments.dto';
+import type {
+  CarryForwardDto,
+  CarryForwardResultDto,
+  PaymentDto,
+  RefundDto,
+  ReversalDto,
+  ReverseRefundDto,
+  UndoCarryForwardDto,
+} from './payments.dto';
 import { PaymentsService } from './payments.service';
 import {
   illegalTransition,
@@ -357,6 +365,80 @@ export class PaymentReversalsService {
     return reversal.id;
   }
 
+  /**
+   * Phase close G1: a carry-forward undone, while the carried payment in the target year is still
+   * live and wholly unallocated (nothing paid from it, nothing refunded or carried on). A
+   * carry_forward_reversal row on the source payment names the carry-forward; the triggers raise
+   * the source's advance back and void the carried payment (rule 4: nothing is edited or
+   * deleted). The restored advance then pays the child's open charges in its year (A5), as the
+   * carry-forward does in the target. Same gate, key and own-child rule as the carry-forward.
+   */
+  async undoCarryForward(id: bigint, dto: UndoCarryForwardDto, rawKey: string | undefined): Promise<ReversalOutcome<ReversalDto>> {
+    return this.keyed(id, dto, rawKey, (actor, claim) => this.undoCarryInTransaction(actor, id, dto, claim));
+  }
+
+  @Transactional()
+  private async undoCarryInTransaction(actor: Actor, id: bigint, dto: UndoCarryForwardDto, claim: IdempotencyClaim): Promise<bigint> {
+    const { schoolId, userId } = actor;
+    const recordSubject = await this.idempotency.claim(actor, ENDPOINT, claim, 'payment_reversal');
+    await this.changeContext.setChangeContext(userId, null);
+    const carry = (await this.reversals.ofPayments(schoolId, [id])).find((r) => r.id === BigInt(dto.reversalId));
+    if (!carry || carry.kind !== 'carried_forward' || carry.carriedToPaymentId === null) {
+      throw fieldRefused('reversalId', ErrorCode.REFERENCE_NOT_FOUND, 'No such carry-forward of this payment');
+    }
+    const carriedId = carry.carriedToPaymentId;
+    // R236: the source and the carried payment, in id order.
+    await this.payments.lockForUpdate(schoolId, [id, carriedId]);
+    const row = await this.payments.findById(schoolId, id);
+    if (!row) throw notFound();
+    if (row.status === 'voided') throw paymentVoided({ paymentId: id.toString() });
+    const standing = await this.reversals.ofPayments(schoolId, [id, carriedId]);
+    if (standing.some((r) => r.reversesId === carry.id)) throw illegalTransition('This carry-forward has already been undone.');
+    const carried = await this.payments.findById(schoolId, carriedId);
+    const carriedReversed = netReversed(standing.filter((r) => r.paymentId === carriedId));
+    if (!carried || carried.status === 'voided' || carried.unallocatedAmount !== carried.amount || carriedReversed > 0) {
+      throw carriedSpent(carriedId);
+    }
+    if (row.advanceForStudentId === null) throw notFound();
+    await this.refuseOwnChild(schoolId, userId, row);
+    const reversal = await this.reversals.create(
+      schoolId,
+      {
+        paymentId: id,
+        academicYearId: row.academicYearId,
+        kind: 'carry_forward_reversal',
+        reversesId: carry.id,
+        amount: carry.amount,
+        reason: dto.reason,
+        requestedBy: userId,
+        approvedBy: null,
+        refundMethod: null,
+        refundReference: null,
+      },
+      new Date(),
+    );
+    const applied = await this.advances.applyTo(schoolId, row.academicYearId, [row.advanceForStudentId]);
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'payment.carry_forward_reversed',
+      subjectType: SUBJECT,
+      subjectId: id,
+      reason: dto.reason,
+      metadata: {
+        reversalId: reversal.id.toString(),
+        carryForwardId: carry.id.toString(),
+        carriedPaymentId: carriedId.toString(),
+        amount: carry.amount,
+        fromAcademicYearId: carried.academicYearId.toString(),
+        toAcademicYearId: row.academicYearId.toString(),
+        studentId: row.advanceForStudentId.toString(),
+        applied: applied.amount,
+      },
+    });
+    await recordSubject(reversal.id);
+    return reversal.id;
+  }
+
   // ------------------------------------------------------------------------------ helpers
 
   /** A keyed reversal (endpoint payment_reversals, path id the payment): the row as its DTO. */
@@ -407,10 +489,23 @@ export class PaymentReversalsService {
   }
 }
 
-/** Refunds and carry-forwards standing on a payment, net of refund reversals. */
+/** Refunds and carry-forwards standing on a payment, net of their reversals. */
 const netReversed = (rows: readonly ReversalRecord[]): number =>
   rows.reduce(
     (sum, r) =>
-      r.kind === 'refund' || r.kind === 'carried_forward' ? sum + r.amount : r.kind === 'refund_reversal' ? sum - r.amount : sum,
+      r.kind === 'refund' || r.kind === 'carried_forward'
+        ? sum + r.amount
+        : r.kind === 'refund_reversal' || r.kind === 'carry_forward_reversal'
+          ? sum - r.amount
+          : sum,
     0,
+  );
+
+/** Phase close G1: the carried payment paid something, or was refunded or carried on. */
+const carriedSpent = (carriedPaymentId: bigint) =>
+  new ApiException(
+    409,
+    ErrorCode.ILLEGAL_STATUS_TRANSITION,
+    'The carried advance has already been used or refunded in the new year, so this carry-forward cannot be undone.',
+    { reason: 'carried_spent', carriedPaymentId: carriedPaymentId.toString() },
   );

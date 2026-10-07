@@ -1,4 +1,4 @@
-import { formatDay, formatRupees } from '@asms/shared';
+import { formatDay, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -24,7 +24,6 @@ import {
   CLAIM_STATUS_LABELS,
   claimLine,
   claimsRead,
-  DEPOSIT_METHOD_LABELS,
   duesRead,
   forWhat,
   receiptsRead,
@@ -211,7 +210,7 @@ function LocalClaimRow({ claim, onDiscarded }: { claim: LocalClaim; onDiscarded:
   return (
     <View style={styles.local} testID={`fees.local.${claim.id}`}>
       <ListRow
-        title={`${formatRupees(claim.claimedAmount)} · ${DEPOSIT_METHOD_LABELS[claim.method as keyof typeof DEPOSIT_METHOD_LABELS] ?? claim.method}`}
+        title={`${formatRupees(claim.claimedAmount)} · ${PAYMENT_METHOD_LABELS[claim.method as keyof typeof PAYMENT_METHOD_LABELS] ?? claim.method}`}
         detail={`Paid ${formatDay(claim.paidOn)}`}
       />
       <StateLine state={localState(claim.outbox, claim.savedOnServerAt)} testID={`fees.local.${claim.id}.state`} />

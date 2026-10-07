@@ -23,9 +23,9 @@ import type {
   CreateGuardianLinkDto,
   GuardianLinkDto,
   ListGuardianLinksQueryDto,
-  ReasonDto,
   UpdateGuardianLinkDto,
 } from './students.dto';
+import type { ReasonDto } from '../../../common/reason.dto';
 import {
   feePayerRequired,
   primaryContactNeedsPhone,

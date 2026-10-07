@@ -137,6 +137,7 @@ describe('slice 19 tenant isolation (repositories and raw statements)', () => {
     const g = {
       academicYearId: w.year.id, classId: w.classId, period: '2026-11', periodStart: '2026-11-01', periodEnd: '2026-11-30',
       cutoffDate: '2026-11-15', label: 'November 2026', dueOn: '2026-11-10', regenerateVoided: true,
+      periodStartsAt: new Date('2026-10-31T19:00:00Z'),
     };
     const count = async () => (await db().charge.count({ where: { schoolId: w.a.school.id } })) + (await db().charge.count({ where: { schoolId: b.id } }));
     const before = await count();

@@ -122,13 +122,6 @@ export class UpdateFeeHeadDto {
   refundable?: boolean;
 }
 
-/** The body of every Phase 3 archive, disable and decision that needs a reason (@Reason). */
-export class ReasonDto {
-  @ApiProperty({ minLength: 3, maxLength: 500 })
-  @Reason()
-  reason: string;
-}
-
 // ---------------------------------------------------------------------------- fee structures
 
 export class FeeStructureDto {

@@ -18,7 +18,7 @@ import { SalaryStructureRepository } from '../../repositories/salary-structure.r
 import { StaffRepository } from '../../repositories/staff.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
-import { principalRequired } from '../access/money-gates';
+import { isPrincipal, principalRequired } from '../access/money-gates';
 import { isEmptySlip, monthBounds, PayrollEngine } from './payroll-engine';
 import { skippedOf, toPayrollRunDto, toPayslipDto } from './payroll.mappers';
 import { emptyPayslip, type PayslipDays } from './payslip-compute';
@@ -88,9 +88,6 @@ const ownPayslip = (): ApiException =>
   new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot adjust your own payslip. Ask a colleague.', {
     reason: 'own_payslip',
   });
-
-const isPrincipal = (session: SchoolSessionContext): boolean =>
-  session.access.capacities.staff && session.access.systemRoles.includes('principal');
 
 @Injectable()
 export class PayrollRunsService {

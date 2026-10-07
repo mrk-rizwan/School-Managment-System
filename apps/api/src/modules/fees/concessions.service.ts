@@ -16,12 +16,12 @@ import { FeeHeadRepository, type FeeHeadRecord } from '../../repositories/fee-he
 import { MessageRecipientRepository } from '../../repositories/message-recipient.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import { requirePrincipal } from '../access/money-gates';
+import { isPrincipal, requirePrincipal } from '../access/money-gates';
 import { Advances } from '../payments/advances';
 import { PermissionsService } from '../access/permissions.service';
 import { yearClosed } from '../academics/academics.shared';
 import { feeHeadArchived } from './fee-heads.service';
-import type { ReasonDto } from './fees.dto';
+import type { ReasonDto } from '../../common/reason.dto';
 import type {
   ApproveConcessionDto,
   ConcessionDecisionDto,
@@ -39,7 +39,7 @@ import {
   toConcessionDto,
   yearMonths,
 } from './charges.shared';
-import { isPrincipal, ownChildCheck } from './fee-gates';
+import { ownChildCheck } from './fee-gates';
 
 const ENDPOINT = 'concessions';
 const SUBJECT = 'concession';

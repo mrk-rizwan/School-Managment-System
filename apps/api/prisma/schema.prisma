@@ -1133,6 +1133,7 @@ model Enrolment {
   /// can never name a different child or year than its enrolment (phase-3-financial.md §4).
   @@unique([schoolId, id, studentId, academicYearId], map: "enrolments_school_id_id_student_id_academic_year_id_key")
   @@index([schoolId, studentId], map: "enrolments_school_id_student_id_idx")
+  @@index([schoolId, studentId, academicYearId], map: "enrolments_school_id_student_id_academic_year_id_idx")
   @@index([schoolId, status, studentId], map: "enrolments_school_id_status_student_id_idx")
   @@index([schoolId, sectionId, status], map: "enrolments_school_id_section_id_status_idx")
   @@index([schoolId, academicYearId, status], map: "enrolments_school_id_academic_year_id_status_idx")
@@ -3269,11 +3270,14 @@ enum PaymentStatus {
 }
 
 /// `carried_forward` moves an advance to another year (R251): a reversal plus a new payment.
+/// `carry_forward_reversal` undoes one on the source payment while the carried payment is wholly
+/// unallocated: the advance comes back and the carried payment is voided (phase close, G1).
 enum ReversalKind {
   void
   refund
   refund_reversal
   carried_forward
+  carry_forward_reversal
 
   @@map("reversal_kind")
 }

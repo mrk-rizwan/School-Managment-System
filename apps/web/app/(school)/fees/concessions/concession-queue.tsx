@@ -193,10 +193,14 @@ function ApproveDialog({ concession, onClose }: { concession: ConcessionDto | nu
       unwrap(chargesApi.POST('/api/v1/concessions/{id}/approve', { params: { path: { id: c.id } }, body: { applyToOpenCharges: apply } })),
     onSuccess: (decision) => {
       const credited = decision.adjustments.reduce((sum, a) => sum + a.amount, 0);
+      // Phase close G6: asked to apply but nothing was open (e.g. an admission fee already paid in
+      // full): say so, rather than implying a credit.
       toast.success(
         decision.adjustments.length > 0
           ? `Approved. ${formatRupees(credited)} credited on ${decision.adjustments.length} open charge(s).`
-          : 'Approved. It applies to charges raised from now on.',
+          : apply
+            ? 'Approved. There was no open charge to reduce; anything already paid is unchanged.'
+            : 'Approved. It applies to charges raised from now on.',
       );
       void queryClient.invalidateQueries({ queryKey: feesKeys.all });
       onClose();

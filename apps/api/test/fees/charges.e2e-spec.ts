@@ -555,6 +555,25 @@ describe('slice 19: charges, concessions, campaigns over HTTP (e2e)', () => {
     expect(charges.map((c) => [c.kind, c.grossAmount, c.concessionAmount, c.amount])).toEqual([['generated', 10000, 0, 10000]]);
     const requested = await db().concession.findMany({ where: { schoolId: w.school.id, status: 'requested' } });
     expect(requested.map((c) => [c.kind, c.value])).toEqual([['fixed', 4000]]);
+    // G6: the family pays the fee in full before the principal decides; approving with
+    // applyToOpenCharges then reduces nothing, says so (no adjustments) and audits 0.
+    const zainab = (partial.body as { student: { id: string } }).student.id;
+    await post(
+      '/payments',
+      {
+        academicYearId: w.year.id.toString(), payerGuardianId: w.child.guardianId.toString(), studentIds: [zainab],
+        amount: 10000, method: 'cash', receivedOn: isoDay(0),
+      },
+      w.office,
+      newIdempotencyKey(),
+    ).expect(201);
+    const decided = (await post(`/concessions/${requested[0]!.id}/approve`, { applyToOpenCharges: true }, w.principal).expect(200)).body as {
+      concession: { status: string };
+      adjustments: unknown[];
+    };
+    expect([decided.concession.status, decided.adjustments]).toEqual(['approved', []]);
+    expect((await audit(w.school, 'concession.approved')).map((r) => (r.metadata as { appliedToOpenCharges: number }).appliedToOpenCharges)).toEqual([0]);
+    expect((await db().charge.findFirstOrThrow({ where: { schoolId: w.school.id, studentId: BigInt(zainab) } })).status).toBe('settled');
 
     const free = await admit(w.principal, { decision: 'free' }, 'Maryam Akhtar', '2017-05-09').expect(201);
     expect((free.body as { charges: Charge[] }).charges.map((c) => [c.amount, c.status, c.concessionAmount])).toEqual([[0, 'settled', 10000]]);

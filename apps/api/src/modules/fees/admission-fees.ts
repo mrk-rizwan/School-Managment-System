@@ -12,13 +12,13 @@ import { ChargeGenerationRepository } from '../../repositories/charge-generation
 import { ConcessionRepository } from '../../repositories/concession.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import { FINANCE_READERS } from '../access/money-gates';
+import { FINANCE_READERS, isPrincipal } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { toDateString } from '../academics/academics.shared';
 import type { ChargeDto } from './charges.dto';
 import { chargeGrace, concessionExists, concessionHeadNotEligible, toChargeDto } from './charges.shared';
 import { ConcessionsService } from './concessions.service';
-import { isPrincipal, requireHeld } from './fee-gates';
+import { requireHeld } from './fee-gates';
 
 // R239 (phase-3-financial.md §1.1 "Once and yearly heads", slice 19): admission and readmission
 // charge the class's `once` heads in their own transaction, and the office's decision on the

@@ -1,4 +1,4 @@
-import { formatDay, formatRupees } from '@asms/shared';
+import { formatDay, formatRupees, monthLabel } from '@asms/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,7 +17,6 @@ import { colors, fontSize, space } from '../ui/theme';
 import {
   fetchPayslips,
   fetchSalary,
-  monthLabel,
   paidLine,
   PAYSLIP_LIMIT,
   payslipKeys,

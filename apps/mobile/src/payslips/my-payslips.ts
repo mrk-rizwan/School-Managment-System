@@ -1,4 +1,4 @@
-import { formatDay, formatRupees } from '@asms/shared';
+import { formatDay, formatRupees, monthLabel } from '@asms/shared';
 import { api, unwrap } from '../api/client';
 import type { MySalaryStructureDto, PayslipDto } from '../api/contracts';
 
@@ -20,12 +20,6 @@ export const fetchSalary = (): Promise<MySalaryStructureDto> => unwrap(api.GET('
 
 export const fetchPayslips = (page: number): Promise<Page<PayslipDto>> =>
   unwrap(api.GET('/api/v1/me/staff/payslips', { params: { query: { page, limit: PAYSLIP_LIMIT } } }));
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** `2026-09` → "September 2026". */
-export const monthLabel = (yearMonth: string): string =>
-  `${MONTHS[Number(yearMonth.slice(5, 7)) - 1] ?? ''} ${yearMonth.slice(0, 4)}`;
 
 export interface PayslipRow {
   label: string;

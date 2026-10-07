@@ -2676,6 +2676,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/{id}/carry-forward/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PaymentsController_undoCarryForward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/{id}/refund": {
         parameters: {
             query?: never;
@@ -5560,9 +5576,6 @@ export interface components {
             coverStaffId: string;
             sectionId: string;
         };
-        LeaveReasonDto: {
-            reason: string;
-        };
         LeaveRequestDto: {
             cancelReason: string | null;
             /** Format: date-time */
@@ -6501,7 +6514,7 @@ export interface components {
             reversesId: string | null;
         };
         /** @enum {string} */
-        ReversalKind: "void" | "refund" | "refund_reversal" | "carried_forward";
+        ReversalKind: "void" | "refund" | "refund_reversal" | "carried_forward" | "carry_forward_reversal";
         ReverseRefundDto: {
             reason: string;
             /** @description The refund of this payment to undo */
@@ -7176,6 +7189,11 @@ export interface components {
             teachingDays: number;
             /** @description Weekly-off days ascending, 0 = Sunday … 6 = Saturday */
             weeklyOffDays: number[];
+        };
+        UndoCarryForwardDto: {
+            reason: string;
+            /** @description The carry-forward of this payment to undo */
+            reversalId: string;
         };
         UpdateAcademicYearDto: {
             /** Format: date */
@@ -17111,7 +17129,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LeaveReasonDto"];
+                "application/json": components["schemas"]["ReasonDto"];
             };
         };
         responses: {
@@ -17331,7 +17349,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LeaveReasonDto"];
+                "application/json": components["schemas"]["ReasonDto"];
             };
         };
         responses: {
@@ -19906,7 +19924,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LeaveReasonDto"];
+                "application/json": components["schemas"]["ReasonDto"];
             };
         };
         responses: {
@@ -22077,6 +22095,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CarryForwardResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_undoCarryForward: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UndoCarryForwardDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed undo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReversalDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReversalDto"];
                 };
             };
             401: {

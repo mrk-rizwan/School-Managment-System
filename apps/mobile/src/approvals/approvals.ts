@@ -1,4 +1,4 @@
-import { ApiError, ErrorCode, formatDateTime, formatDay, formatRupees } from '@asms/shared';
+import { ApiError, ErrorCode, formatDateTime, formatDay, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { api, isNetworkError, unwrap } from '../api/client';
 import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto } from '../api/contracts';
 
@@ -29,16 +29,10 @@ export function decisionFailure(error: unknown): Failure {
 export const isNothingDue = (error: unknown): boolean =>
   error instanceof ApiError && error.code === ErrorCode.PAYMENT_NOTHING_DUE;
 
-const METHOD_WORDS: Record<ClaimDto['method'], string> = {
-  bank_transfer: 'Bank transfer',
-  jazzcash: 'JazzCash',
-  easypaisa: 'Easypaisa',
-};
-
 export const claimTitle = (c: ClaimDto): string => `${c.studentName} · ${formatRupees(c.claimedAmount)}`;
 export const claimLine = (c: ClaimDto): string =>
-  `${METHOD_WORDS[c.method]}, paid ${formatDay(c.paidOn)}, from ${c.guardianName}`;
-export const methodWord = (method: ClaimDto['method']): string => METHOD_WORDS[method];
+  `${PAYMENT_METHOD_LABELS[c.method]}, paid ${formatDay(c.paidOn)}, from ${c.guardianName}`;
+export const methodWord = (method: ClaimDto['method']): string => PAYMENT_METHOD_LABELS[method];
 
 export const handoverTitle = (h: HandoverDto): string => `${h.collector.name} · ${formatRupees(h.expectedAmount)}`;
 export const handoverLine = (h: HandoverDto): string =>
