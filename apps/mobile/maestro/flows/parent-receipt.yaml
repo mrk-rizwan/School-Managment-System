@@ -18,9 +18,11 @@ appId: pk.asms.app.dev
     visible:
       text: 'Verified'
     timeout: 30000
-- extendedWaitUntil:
-    visible:
+# The receipts sit at the bottom of the Fees screen, below the fold on the CI emulator.
+- scrollUntilVisible:
+    element:
       text: 'Receipt .*'
+    direction: DOWN
     timeout: 30000
 - tapOn:
     text: 'Receipt .*'
