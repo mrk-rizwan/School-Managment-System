@@ -133,6 +133,7 @@ export class FinanceReportsService {
       net: totals.total.amount - totals.refunds.amount + totals.refundReversals.amount,
       voided: totals.voided,
       carriedForward: totals.carriedForward,
+      carryForwardReversals: totals.carryForwardReversals,
     };
   }
 

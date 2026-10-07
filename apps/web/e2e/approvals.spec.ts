@@ -157,6 +157,7 @@ test.describe('Approvals', () => {
             net: 15500,
             voided: { amount: 0, count: 0 },
             carriedForward: { amount: 0, count: 0 },
+            carryForwardReversals: { amount: 0, count: 0 },
           },
         },
         'GET /finance-reports/outstanding': { status: 200, body: { asOf: TODAY, rows: [], total: 245000, adjustments: { amount: 0, count: 0 } } },

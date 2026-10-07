@@ -541,7 +541,7 @@ describe('slice 20: payments, receipts, reversals over HTTP (e2e)', () => {
     for (const p of payments.filter((x) => x.status === 'verified')) {
       const live = await db().paymentAllocation.aggregate({ where: { schoolId: w.school.id, paymentId: p.id, reversedAt: null }, _sum: { amount: true } });
       const rev = await db().paymentReversal.findMany({ where: { schoolId: w.school.id, paymentId: p.id } });
-      const net = rev.reduce((s, r) => s + (r.kind === 'refund_reversal' ? -r.amount : r.kind === 'void' ? 0 : r.amount), 0);
+      const net = rev.reduce((s, r) => s + (r.kind === 'refund_reversal' || r.kind === 'carry_forward_reversal' ? -r.amount : r.kind === 'void' ? 0 : r.amount), 0);
       expect([p.id, (live._sum.amount ?? 0) + net + p.unallocatedAmount]).toEqual([p.id, p.amount]);
     }
     // Outstanding = Σ amount − allocated − credited over open charges, one function everywhere.

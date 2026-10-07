@@ -387,8 +387,13 @@ export class PaymentReversalsService {
       throw fieldRefused('reversalId', ErrorCode.REFERENCE_NOT_FOUND, 'No such carry-forward of this payment');
     }
     const carriedId = carry.carriedToPaymentId;
-    // R236: the source and the carried payment, in id order.
-    await this.payments.lockForUpdate(schoolId, [id, carriedId]);
+    const source = await this.payments.findById(schoolId, id);
+    if (!source) throw notFound();
+    // R236: the source, the carried payment and the child's other advances in the source year (the
+    // restored advance pays alongside them), locked together in id order, before anything else.
+    const sourceAdvances =
+      source.advanceForStudentId === null ? [] : await this.payments.advances(schoolId, [source.advanceForStudentId], source.academicYearId);
+    await this.payments.lockForUpdate(schoolId, [id, carriedId, ...sourceAdvances.map((a) => a.paymentId)]);
     const row = await this.payments.findById(schoolId, id);
     if (!row) throw notFound();
     if (row.status === 'voided') throw paymentVoided({ paymentId: id.toString() });

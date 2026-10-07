@@ -101,6 +101,7 @@ export interface CollectionTotals {
   refunds: AmountCount;
   refundReversals: AmountCount;
   carriedForward: AmountCount;
+  carryForwardReversals: AmountCount;
 }
 
 // ------------------------------------------------------------------------------ daily cash
@@ -390,8 +391,8 @@ export class FinanceReportRepository {
 
   /**
    * The window's totals (R205, §0.20): collections, the voided receipts of the window (their own
-   * line, never in the total), and refunds, refund reversals and carry-forwards made inside it
-   * (dated by when they were made; never collections).
+   * line, never in the total), and refunds, refund reversals, carry-forwards and carry-forward
+   * undos made inside it (dated by when they were made; never collections).
    */
   async collectionTotals(schoolId: SchoolId, w: CollectionWindow): Promise<CollectionTotals> {
     const [payments] = await this.txHost.tx.$queryRaw<
@@ -407,7 +408,7 @@ export class FinanceReportRepository {
     const reversals = await this.txHost.tx.$queryRaw<{ kind: string; amount: number; count: number }[]>`
       SELECT pr.kind::text AS kind, SUM(pr.amount)::int AS amount, COUNT(*)::int AS count
         FROM payment_reversals pr
-       WHERE pr.school_id = ${schoolId} AND pr.kind IN ('refund', 'refund_reversal', 'carried_forward')
+       WHERE pr.school_id = ${schoolId} AND pr.kind IN ('refund', 'refund_reversal', 'carried_forward', 'carry_forward_reversal')
          AND pr.created_at >= ${w.startsAt} AND pr.created_at < ${w.endsBefore}
        GROUP BY pr.kind`;
     const of = (kind: string): AmountCount => {
@@ -420,6 +421,7 @@ export class FinanceReportRepository {
       refunds: of('refund'),
       refundReversals: of('refund_reversal'),
       carriedForward: of('carried_forward'),
+      carryForwardReversals: of('carry_forward_reversal'),
     };
   }
 

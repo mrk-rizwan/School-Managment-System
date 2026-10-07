@@ -36,8 +36,10 @@ category), a day or a month; `feeHead` collections key by the receipt line's sna
 - **Collections** read receipts of `verified` payments whose basis date is in the window: `received` =
   `received_on`, `verified` = the school day of `verified_at` (rule 25). A claim is not a payment and a
   carried-forward payment has no receipt, so neither is ever in `total`. `voided` = the window's receipts
-  since voided (never in `total`). `refunds`, `refundReversals` and `carriedForward` are the reversal rows
-  **made** in the window (dated by `created_at`). `net = total − refunds + refundReversals`.
+  since voided (never in `total`). `refunds`, `refundReversals`, `carriedForward` and
+  `carryForwardReversals` (carry-forwards undone, phase close G1) are the reversal rows **made** in the
+  window (dated by `created_at`); a carry-forward undone later stays in `carriedForward` of its own window,
+  and neither is ever in `total` or `net`. `net = total − refunds + refundReversals`.
   A refund of a carried payment is a refund in the target year (slice 20 §8): it appears wherever its row
   is dated, like any refund.
 - **Outstanding** = Σ `amount − allocated_amount − credited_amount` over the year's open charges
@@ -142,7 +144,7 @@ autovacuum's analyze, as live tables have.
 `reminders.e2e-spec.ts` (R201, R202, R250, the manual send), `clearance.e2e-spec.ts` (R204, R233, A7),
 `reconciliation.e2e-spec.ts` (**R228**: a scripted year through the APIs — admission after the cut-off, a
 concession applied to open charges, late fees and a waiver, sibling and partial payments, an advance, a
-void, a refund and its reversal, a carry-forward, a deposit claim verified 35 days after it was paid
+void, a refund and its reversal, a carry-forward and a second one undone, a deposit claim verified 35 days after it was paid
 through slice 21's verify, a handover shortfall written off, unpaid leave, a payroll run and its correction
 — then every §0.20 identity against the database and the reports), `isolation.e2e-spec.ts` (control 4 for
 the raw statements), `reports-perf.e2e-spec.ts` (§7.2); `src/modules/finance-reports/reminder-messages.spec.ts`

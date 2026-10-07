@@ -4433,6 +4433,7 @@ export interface components {
         CollectionsReportDto: {
             basis: components["schemas"]["CollectionBasis"];
             carriedForward: components["schemas"]["AmountCountDto"];
+            carryForwardReversals: components["schemas"]["AmountCountDto"];
             count: number;
             /** @description Whole rupees; may be negative */
             net: number;

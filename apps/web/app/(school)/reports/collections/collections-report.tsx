@@ -71,6 +71,7 @@ export function CollectionsReport() {
                 lines={[
                   { label: 'Voided', amount: data.voided.amount, note: plural(data.voided.count, 'payment') },
                   { label: 'Carried forward from another year', amount: data.carriedForward.amount, note: plural(data.carriedForward.count, 'advance') },
+                  { label: 'Carry-forwards undone', amount: data.carryForwardReversals.amount, note: plural(data.carryForwardReversals.count, 'advance') },
                 ]}
               />
             </div>

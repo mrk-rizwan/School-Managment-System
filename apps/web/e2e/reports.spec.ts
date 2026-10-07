@@ -106,10 +106,11 @@ const collections: CollectionsReportDto = {
   net: 9700,
   voided: { amount: 1500, count: 1 },
   carriedForward: { amount: 800, count: 1 },
+  carryForwardReversals: { amount: 300, count: 1 },
 };
 
 test.describe('collections', () => {
-  test('rows, total, and the refunds, reversals, net, voided and carried-forward lines', async ({ page }) => {
+  test('rows, total, and the refunds, reversals, net, voided, carried-forward and undone lines', async ({ page }) => {
     const { requests } = await mockSchoolApi(page, {
       me: PRINCIPAL_ME,
       handler: ({ method, path }) =>
@@ -124,6 +125,7 @@ test.describe('collections', () => {
     await expect(line('Net')).toContainText('Rs 9,700');
     await expect(line('Voided')).toContainText('Rs 1,500');
     await expect(line('Carried forward from another year')).toContainText('Rs 800');
+    await expect(line('Carry-forwards undone')).toContainText('Rs 300');
     const first = new URL(calls(requests, 'GET', '/finance-reports/collections')[0].url()).searchParams;
     expect(Object.fromEntries(first)).toEqual({ receivedFrom: '2026-09-07', receivedTo: '2026-10-06', groupBy: 'day', basis: 'received' });
 

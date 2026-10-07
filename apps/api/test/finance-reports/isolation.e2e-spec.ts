@@ -73,6 +73,7 @@ describe('slice 22 tenant isolation (finance-report.repository.ts)', () => {
       refunds: { amount: 0, count: 0 },
       refundReversals: { amount: 0, count: 0 },
       carriedForward: { amount: 0, count: 0 },
+      carryForwardReversals: { amount: 0, count: 0 },
     });
     for (const group of ['class', 'feeHead', 'period'] as const) {
       expect(await run(B, () => reports.outstanding(B, a.year.id, group))).toEqual([]);

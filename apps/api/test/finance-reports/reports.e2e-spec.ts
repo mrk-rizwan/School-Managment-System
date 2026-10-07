@@ -40,6 +40,7 @@ interface Collections {
   net: number;
   voided: { amount: number; count: number };
   carriedForward: { amount: number; count: number };
+  carryForwardReversals: { amount: number; count: number };
 }
 
 describe('slice 22: finance reports over HTTP (e2e)', () => {
@@ -124,7 +125,7 @@ describe('slice 22: finance reports over HTTP (e2e)', () => {
 
   // ---------------------------------------------------------------------------- collections
 
-  it('R205, §0.20: collections by basis and grouping; voids, refunds, refund reversals and carry-forwards apart', async () => {
+  it('R205, §0.20: collections by basis and grouping; voids, refunds, refund reversals, carry-forwards and their undos apart', async () => {
     const w = await h.world();
     // A deposit slip the office records weeks after the parent paid: received then, verified now.
     await h.pay(w, w.office, {
@@ -153,7 +154,8 @@ describe('slice 22: finance reports over HTTP (e2e)', () => {
       status: 'left',
       endedOn: isoDay(170),
     });
-    await post(`/payments/${family.id}/carry-forward`, { academicYearId: next.id.toString(), amount: 500, reason: 'Into next year' }, w.office, newIdempotencyKey()).expect(201);
+    const carry = (await post(`/payments/${family.id}/carry-forward`, { academicYearId: next.id.toString(), amount: 500, reason: 'Into next year' }, w.office, newIdempotencyKey()).expect(201))
+      .body as { reversal: { id: string } };
 
     const verified = (await window(w, 'method').expect(200)).body as Collections;
     expect(verified.basis).toBe('verified');
@@ -167,6 +169,13 @@ describe('slice 22: finance reports over HTTP (e2e)', () => {
     expect(verified.refundReversals).toEqual({ amount: 1000, count: 1 });
     expect(verified.net).toBe(11000);
     expect(verified.carriedForward).toEqual({ amount: 500, count: 1 });
+    expect(verified.carryForwardReversals).toEqual({ amount: 0, count: 0 });
+
+    // The carry-forward undone: it stays on its own line and the undo is the line beside it; the
+    // collections are untouched (no money moved either way).
+    await post(`/payments/${family.id}/carry-forward/undo`, { reversalId: carry.reversal.id, reason: 'Wrong year' }, w.office, newIdempotencyKey()).expect(201);
+    const undone = (await window(w, 'method').expect(200)).body as Collections;
+    expect([undone.total, undone.net, undone.carriedForward, undone.carryForwardReversals]).toEqual([11000, 11000, { amount: 500, count: 1 }, { amount: 500, count: 1 }]);
 
     // The same window on the received date: the slip falls 40 days back; a window of the last
     // week has only the counter's cash.

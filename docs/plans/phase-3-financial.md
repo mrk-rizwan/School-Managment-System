@@ -54,12 +54,13 @@ one full `phase-gate` at slice 28. Additions for Phase 3:
 20. **Only verification credits the ledger** (rule 10). A `payment_claims` row and an open cash
     custody never appear in collections. Reports reconcile (R228): collections = non-voided
     receipts, refunds as their own line, net; outstanding = Σ `amount − allocated_amount −
-    credited_amount` over open charges; Σ live allocations + Σ refunds + Σ carried forward +
-    `unallocated_amount` = `amount` on every non-voided payment at all times; cash payments −
+    credited_amount` over open charges; Σ live allocations + Σ refunds (net of their reversals) +
+    Σ carried forward (net of their reversals) + `unallocated_amount` = `amount` on every
+    non-voided payment at all times; cash payments −
     voids before handover (a void in custody, never inside an open handover) = with collectors +
     handed over; counted − expected = surplus − shortfall, and a shortfall is recovered, written
     off or explained by a later void; a carried-forward payment and its reversal are their own
-    report line and never collections. Each identity is a test over a scripted year.
+    report line and never collections, and so is a carry-forward undone. Each identity is a test over a scripted year.
 21. **Separation of duties is a database invariant** (rule 13): nobody verifies their own claim,
     confirms their own handover, approves their own leave or expense, writes their own salary
     structure, advance or payslip adjustment, or acts on money for their **own child**

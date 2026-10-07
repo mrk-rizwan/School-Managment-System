@@ -2632,6 +2632,9 @@
           "carriedForward": {
             "$ref": "#/components/schemas/AmountCountDto"
           },
+          "carryForwardReversals": {
+            "$ref": "#/components/schemas/AmountCountDto"
+          },
           "count": {
             "minimum": 0,
             "type": "number"
@@ -2671,7 +2674,8 @@
           "refundReversals",
           "net",
           "voided",
-          "carriedForward"
+          "carriedForward",
+          "carryForwardReversals"
         ],
         "type": "object"
       },

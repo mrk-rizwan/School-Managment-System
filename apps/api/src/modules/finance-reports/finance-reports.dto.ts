@@ -140,6 +140,8 @@ export class CollectionsReportDto {
   @ApiProperty({ type: () => AmountCountDto }) voided: AmountCountDto;
   /** Advances moved to another year in the window: no money moved, never collections. */
   @ApiProperty({ type: () => AmountCountDto }) carriedForward: AmountCountDto;
+  /** Carry-forwards undone in the window (the advance back in its source year): never collections. */
+  @ApiProperty({ type: () => AmountCountDto }) carryForwardReversals: AmountCountDto;
 }
 
 // ----------------------------------------------------------------------------- outstanding
