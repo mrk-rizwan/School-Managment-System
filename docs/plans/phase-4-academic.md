@@ -228,7 +228,7 @@ through `EnrolmentsService` and statuses only through `StudentStatusService.prom
 | Capability | Routes | Default holders |
 |---|---|---|
 | `assessment.define` | terms, result settings and bands, not-held, exam set-up, `PATCH`/void of any assessment, submit when no class teacher, promotion sheets and apply, year close with sheets | principal |
-| `class.manage` | class-subject list, `next_class_id`, `is_final` | principal, office |
+| `class.manage` | class-subject list, `next_class_id`, `is_final` | principal (Phase 1 role defaults; office by grant — corrected in wave M) |
 | `marks.enter` (`MarksScope`) | create a test, enter marks, request a correction; class teacher: remarks and submit | teacher (assignment scope); office by grant (`all`) |
 | `marks.view_all` | read every assessment, mark, sheet and result; the result reports; prints | principal; office by grant |
 | `result.approve` | approve or return a sheet, approve the final sheet, excuse, decide corrections | principal |

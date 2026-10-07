@@ -2531,7 +2531,21 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
           },
+          "isFinal": {
+            "description": "The last class: a passed student completes (alumni). Never with a next class",
+            "type": "boolean"
+          },
           "name": {
+            "type": "string"
+          },
+          "nextClassId": {
+            "description": "Phase 4 (rule 30): the class a passed student is promoted into, usually in the next year",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "nextClassName": {
+            "nullable": true,
             "type": "string"
           },
           "sortOrder": {
@@ -2557,6 +2571,9 @@
           "sortOrder",
           "attendanceMode",
           "status",
+          "nextClassId",
+          "nextClassName",
+          "isFinal",
           "createdAt",
           "updatedAt"
         ],
@@ -2575,6 +2592,82 @@
         "enum": [
           "active",
           "archived"
+        ],
+        "type": "string"
+      },
+      "ClassSubjectDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "examMaxMarks": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sortOrder": {
+            "maximum": 999,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subjectCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "classId",
+          "subjectId",
+          "subjectName",
+          "subjectCode",
+          "sortOrder",
+          "examMaxMarks"
+        ],
+        "type": "object"
+      },
+      "ClassSubjectEntryDto": {
+        "properties": {
+          "examMaxMarks": {
+            "default": 100,
+            "description": "The term exam's default max marks",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sortOrder": {
+            "description": "Print order",
+            "maximum": 999,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectId",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "ClassSubjectSort": {
+        "enum": [
+          "sortOrder",
+          "-sortOrder"
         ],
         "type": "string"
       },
@@ -4263,6 +4356,37 @@
         ],
         "type": "object"
       },
+      "CreateTermDto": {
+        "properties": {
+          "endsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "startsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "weight": {
+            "description": "Default: what the year's other terms leave of 100 (never below 0); their weights are unchanged",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "startsOn",
+          "endsOn"
+        ],
+        "type": "object"
+      },
       "CurrentInvoiceDto": {
         "properties": {
           "amount": {
@@ -5285,6 +5409,38 @@
           "PLAN_ARCHIVED",
           "PLAN_IN_USE",
           "INVOICE_NOT_ISSUED",
+          "TERM_OVERLAPS",
+          "TERM_OUTSIDE_YEAR",
+          "TERM_IN_USE",
+          "TERM_NAME_TAKEN",
+          "RESULT_SETTINGS_LOCKED",
+          "CLASS_SUBJECT_IN_USE",
+          "CLASS_SUBJECTS_FROZEN",
+          "EXAM_NOT_SET_UP",
+          "ASSESSMENT_LOCKED",
+          "ASSESSMENT_OUTSIDE_TERM",
+          "ASSESSMENT_VOIDED",
+          "ASSESSMENT_HAS_MARKS",
+          "MARK_EXCEEDS_MAX",
+          "MARKS_INCOMPLETE",
+          "RESULT_SHEET_NOT_DRAFT",
+          "RESULT_SHEET_NOT_SUBMITTED",
+          "RESULT_SHEET_NOT_APPROVED",
+          "RESULT_SHEET_PUBLISHED",
+          "RESULT_SHEET_VERSION_OPEN",
+          "RESULT_SHEET_TERMS_UNPUBLISHED",
+          "MARK_CORRECTION_NOT_PENDING",
+          "MARK_CORRECTION_SHEET_NOT_PUBLISHED",
+          "CERTIFICATE_DUES_BLOCK",
+          "CERTIFICATE_STUDENT_NOT_LEFT",
+          "CERTIFICATE_VOIDED",
+          "CERTIFICATE_NO_RESULT",
+          "PROMOTION_FINAL_NOT_APPROVED",
+          "PROMOTION_SHEET_OPEN",
+          "PROMOTION_SHEET_NOT_OPEN",
+          "PROMOTION_INCOMPLETE",
+          "PROMOTION_RESULT_SUPERSEDED",
+          "PROMOTION_TARGET_INVALID",
           "DEFAULT_PASSWORD_BLOCKS_ACTION",
           "UNEXPECTED_RESPONSE"
         ],
@@ -5845,6 +6001,28 @@
         "required": [
           "academicYearId",
           "period"
+        ],
+        "type": "object"
+      },
+      "GradeBandDto": {
+        "properties": {
+          "grade": {
+            "example": "A+",
+            "maxLength": 4,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9+-]{1,4}$",
+            "type": "string"
+          },
+          "minPercent": {
+            "description": "A percentage at or above it earns the grade",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "grade",
+          "minPercent"
         ],
         "type": "object"
       },
@@ -7836,7 +8014,9 @@
           "expense",
           "leave_request",
           "payslip",
-          "platform_invoice"
+          "platform_invoice",
+          "result",
+          "assessment"
         ],
         "type": "string"
       },
@@ -7872,7 +8052,10 @@
           "payslip_ready",
           "platform_invoice_issued",
           "platform_invoice_overdue",
-          "billing_tier_missing"
+          "billing_tier_missing",
+          "result_published",
+          "result_revised",
+          "test_marked"
         ],
         "type": "string"
       },
@@ -8820,6 +9003,13 @@
           "adjustments"
         ],
         "type": "object"
+      },
+      "PassRule": {
+        "enum": [
+          "all_subjects",
+          "overall"
+        ],
+        "type": "string"
       },
       "PaymentAccountDto": {
         "properties": {
@@ -10842,6 +11032,86 @@
         ],
         "type": "object"
       },
+      "ResultSettingsDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "bands": {
+            "description": "Descending minimums; the last at 0",
+            "items": {
+              "$ref": "#/components/schemas/GradeBandDto"
+            },
+            "type": "array"
+          },
+          "examWeight": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "locked": {
+            "description": "True once any result sheet of the year is approved: the settings are then frozen (from wave O; always false before)",
+            "type": "boolean"
+          },
+          "notifyClassTests": {
+            "description": "Tell the family by app when a class test is marked (never SMS)",
+            "type": "boolean"
+          },
+          "passPercent": {
+            "description": "The pass mark per subject, %",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "passRule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassRule"
+              }
+            ]
+          },
+          "showAttendance": {
+            "type": "boolean"
+          },
+          "showPosition": {
+            "type": "boolean"
+          },
+          "showRemark": {
+            "type": "boolean"
+          },
+          "testWeight": {
+            "description": "Class tests, %; with examWeight sums to 100",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "withholdCardForDues": {
+            "description": "Withhold the report card from the family until dues are cleared",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "testWeight",
+          "examWeight",
+          "passPercent",
+          "passRule",
+          "bands",
+          "showPosition",
+          "showAttendance",
+          "showRemark",
+          "withholdCardForDues",
+          "notifyClassTests",
+          "locked",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "ReversalDto": {
         "properties": {
           "academicYearId": {
@@ -11612,6 +11882,24 @@
           "explained_by_void"
         ],
         "type": "string"
+      },
+      "SkipClassDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "classId",
+          "reason"
+        ],
+        "type": "object"
       },
       "SkippedClassDto": {
         "properties": {
@@ -13554,6 +13842,108 @@
         ],
         "type": "object"
       },
+      "TermDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByUser": {
+            "description": "False for the two terms seeded with the year",
+            "type": "boolean"
+          },
+          "endsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "skippedClasses": {
+            "description": "Classes the term is not held for",
+            "items": {
+              "$ref": "#/components/schemas/TermSkipDto"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "description": "The rank by date in the year",
+            "maximum": 6,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "startsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "weight": {
+            "description": "The term's share of the final result, %",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "name",
+          "sortOrder",
+          "startsOn",
+          "endsOn",
+          "weight",
+          "createdByUser",
+          "skippedClasses",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "TermSkipDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classId",
+          "className",
+          "reason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "TermSort": {
+        "enum": [
+          "sortOrder",
+          "-sortOrder"
+        ],
+        "type": "string"
+      },
       "UndoCarryForwardDto": {
         "properties": {
           "reason": {
@@ -13702,15 +14092,39 @@
               }
             ]
           },
+          "isFinal": {
+            "description": "The last class: a passed student completes. A final class has no next class (422 otherwise)",
+            "type": "boolean"
+          },
           "name": {
             "maxLength": 50,
             "minLength": 1,
+            "type": "string"
+          },
+          "nextClassId": {
+            "description": "Another class of the school, not archived; null clears",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Required when the subject list archives a subject",
+            "maxLength": 500,
+            "minLength": 3,
             "type": "string"
           },
           "sortOrder": {
             "maximum": 999,
             "minimum": 0,
             "type": "integer"
+          },
+          "subjects": {
+            "description": "Phase 4: the whole subject list in print order. A live subject left out is archived and needs `reason`; refused (409 CLASS_SUBJECT_IN_USE) once it has marks or results, and the list is frozen (409 CLASS_SUBJECTS_FROZEN) while a result sheet of the class is submitted or approved (from waves N and O)",
+            "items": {
+              "$ref": "#/components/schemas/ClassSubjectEntryDto"
+            },
+            "maxItems": 40,
+            "type": "array"
           }
         },
         "type": "object"
@@ -13945,6 +14359,57 @@
         },
         "type": "object"
       },
+      "UpdateResultSettingsDto": {
+        "properties": {
+          "bands": {
+            "description": "The whole table: descending minimums, unique grades, the last at 0",
+            "items": {
+              "$ref": "#/components/schemas/GradeBandDto"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "type": "array"
+          },
+          "examWeight": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notifyClassTests": {
+            "type": "boolean"
+          },
+          "passPercent": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "passRule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassRule"
+              }
+            ]
+          },
+          "showAttendance": {
+            "type": "boolean"
+          },
+          "showPosition": {
+            "type": "boolean"
+          },
+          "showRemark": {
+            "type": "boolean"
+          },
+          "testWeight": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "withholdCardForDues": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "UpdateSchoolSettingsDto": {
         "properties": {
           "absenceAlertTime": {
@@ -14163,6 +14628,31 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTermDto": {
+        "properties": {
+          "endsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "startsOn": {
+            "example": "2026-04-01",
+            "format": "date",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -15434,6 +15924,463 @@
         },
         "tags": [
           "academic years"
+        ]
+      }
+    },
+    "/api/v1/academic-years/{id}/result-settings": {
+      "get": {
+        "operationId": "TermsController_getSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
+        ]
+      },
+      "patch": {
+        "operationId": "TermsController_updateSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResultSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
+        ]
+      }
+    },
+    "/api/v1/academic-years/{id}/terms": {
+      "get": {
+        "operationId": "TermsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TermSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TermDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
+        ]
+      },
+      "post": {
+        "operationId": "TermsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTermDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
         ]
       }
     },
@@ -21866,6 +22813,154 @@
         },
         "tags": [
           "sections"
+        ]
+      }
+    },
+    "/api/v1/classes/{id}/subjects": {
+      "get": {
+        "operationId": "ClassesController_listSubjects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ClassSubjectSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ClassSubjectDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "classes"
         ]
       }
     },
@@ -45298,6 +46393,339 @@
         },
         "tags": [
           "staff"
+        ]
+      }
+    },
+    "/api/v1/terms/{id}": {
+      "patch": {
+        "operationId": "TermsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTermDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
+        ]
+      }
+    },
+    "/api/v1/terms/{id}/skip-class": {
+      "post": {
+        "operationId": "TermsController_skipClass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipClassDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
+        ]
+      }
+    },
+    "/api/v1/terms/{id}/unskip-class": {
+      "post": {
+        "operationId": "TermsController_unskipClass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkipClassDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "terms and results"
         ]
       }
     },

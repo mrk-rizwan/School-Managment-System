@@ -103,6 +103,9 @@ const CLASS5: ClassDto = {
   attendanceMode: 'daily',
   sortOrder: 5,
   status: 'active',
+  nextClassId: null,
+  nextClassName: null,
+  isFinal: false,
   createdAt: STAMP,
   updatedAt: STAMP,
 };

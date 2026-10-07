@@ -21,3 +21,5 @@ export * from './format';
 export * from './attendance-calc';
 export * from './finance';
 export * from './money';
+export * from './academics';
+export * from './results';

@@ -161,6 +161,37 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Phase 4 (phase-4-academic.md §0.27, §5.1): MarksScope is minted only in scope.mint.ts and
+  // reached only through the permission service; the slice-29 set-up repositories belong to the
+  // academics module.
+  it.each([
+    ['marks-scope-mint-import.ts', 'src/modules/assessments/assessments.service.ts'],
+    ['marks-scope-mint-import.ts', 'src/repositories/mark.repository.ts'],
+    ['academic-setup-repository-import.ts', 'src/modules/fees/fee-heads.service.ts'],
+    ['academic-setup-repository-import.ts', 'src/modules/results/results.service.ts'],
+    ['academic-setup-repository-import.ts', 'src/jobs/charge-generate.ts'],
+  ])('refuses %s at %s (Phase 4)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['marks-scope-mint-import.ts', 'src/modules/access/permissions.service.ts'],
+    ['academic-setup-repository-import.ts', 'src/modules/academics/terms.service.ts'],
+    ['academic-setup-repository-import.ts', 'test/academics/terms.e2e-spec.ts'],
+  ])('allows %s at %s (Phase 4)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  it('refuses a MarksScope assertion (Phase 4)', async () => {
+    expect(
+      rules(await lintAs('marks-scope-cast.ts', 'src/modules/assessments/assessments.service.ts')),
+    ).toEqual([
+      '@typescript-eslint/no-unsafe-type-assertion',
+      'no-restricted-syntax',
+      'no-restricted-syntax',
+    ]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

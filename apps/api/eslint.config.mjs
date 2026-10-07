@@ -112,6 +112,14 @@ const IMPORTS = {
     message:
       'OwnInvoicesRepository is imported only from src/jobs/billing-notices.ts and the GET /school/billing-status controller.',
   },
+  // Phase 4 (phase-4-academic.md §5.1): the set-up repositories of slice 29 are the academics
+  // module's. A later wave that reads them (exams, sheets, promotion) is added to their block
+  // below as a recorded change.
+  academicSetupRepositories: {
+    regex: `(^|/)repositories/(academic-term|result-settings|class-subject)\\.repository${EXT}$`,
+    message:
+      'The term, result-settings and class-subject repositories are imported only from src/modules/academics/**.',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -277,6 +285,10 @@ const RAW_SQL_FILES = [
   // the one definition of a school's finance seeds; it writes only that school's rows
   // (test/fees/seeds.e2e-spec.ts).
   'src/repositories/fee-head.repository.ts',
+  // Phase 4 (R254): AcademicYearRepository.seedResults calls asms_seed_year_results(school_id,
+  // year_id), the one definition of a year's result settings and seeded terms; it writes only that
+  // school's rows (test/academics/terms.e2e-spec.ts).
+  'src/repositories/academic-year.repository.ts',
   // R232: StudentGuardianRepository.userIsLiveGuardianOf reads asms_guardian_merge_family; every
   // table filtered on school_id (test/fees/isolation.e2e-spec.ts).
   'src/repositories/student-guardian.repository.ts',
@@ -313,7 +325,7 @@ const RAW_UNSAFE = '/^\\$(queryRawUnsafe|executeRawUnsafe)$/';
 const RAW = '/^\\$(queryRaw|executeRaw)$/';
 
 // CreatedSchoolRow and PrincipalIssueSchoolRow are the brands fromPlatformSchool accepts (src/tenancy/school-id.ts).
-const BRAND = '/^(SchoolId|Scope|CreatedSchoolRow|PrincipalIssueSchoolRow)$/';
+const BRAND = '/^(SchoolId|Scope|MarksScope|CreatedSchoolRow|PrincipalIssueSchoolRow)$/';
 /** A reference to a brand by plain or qualified name (`SchoolId`, `ns.SchoolId`). */
 const brandRef = (name) =>
   `TSTypeReference:matches([typeName.name=${name}], [typeName.right.name=${name}])`;
@@ -358,6 +370,11 @@ const SYNTAX = {
     {
       selector: `${ASSERTION} ${brandRef('"Scope"')}`,
       message: 'Never assert a Scope. PermissionsService.can() returns it.',
+    },
+    {
+      // phase-4-academic.md §0.27: the subject-aware scope is minted only in src/tenancy/scope.mint.ts.
+      selector: `${ASSERTION} ${brandRef('"MarksScope"')}`,
+      message: 'Never assert a MarksScope. PermissionsService.marksScopeOf() returns it.',
     },
   ],
   // Type-correct ways to produce a brand without a cast. None is needed outside src/tenancy.
@@ -652,6 +669,11 @@ export default tseslint.config(
   {
     files: ANNOUNCEMENT_SITES,
     rules: restrictImports({ exempt: ['announcementRepositories'] }),
+  },
+  {
+    // Phase 4 (§5.1): the academics module owns the set-up repositories; its suites probe them.
+    files: ['src/modules/academics/**/*.ts', 'test/academics/**/*.ts'],
+    rules: restrictImports({ exempt: ['academicSetupRepositories'] }),
   },
   {
     // §5.1: the monthly platform billing run (non-tenant), the only job reading the billing tables.

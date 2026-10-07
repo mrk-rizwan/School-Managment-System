@@ -197,6 +197,27 @@ export interface TemplateVarsMap {
     readonly suspensionEligible: boolean;
   };
   billing_tier_missing: Record<string, never>;
+  /**
+   * Phase 4 (phase-4-academic.md §3.5): name, term, percentage and grade only, never the marks
+   * table, the position or the remark. SMS-allowed, so one segment; the push body is the title
+   * only (TITLE_ONLY_PUSH). `percentBp` and `grade` are null when nothing was assessed.
+   */
+  result_published: {
+    readonly studentName: string;
+    /** The term's name, or `Final` for the final result. */
+    readonly termName: string;
+    readonly percentBp: number | null;
+    readonly grade: string | null;
+  };
+  /** A corrected result (slice 32): the same figures, revised. */
+  result_revised: {
+    readonly studentName: string;
+    readonly termName: string;
+    readonly percentBp: number | null;
+    readonly grade: string | null;
+  };
+  /** Slice 30, only with notify_class_tests on: in-app and a title-only push; never the mark. */
+  test_marked: { readonly studentName: string; readonly testName: string };
 }
 
 export type TemplateVars<T extends MessageType> = TemplateVarsMap[T];

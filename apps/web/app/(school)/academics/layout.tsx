@@ -11,7 +11,7 @@ export default function AcademicsLayout({ children }: { children: React.ReactNod
     <>
       <PageHeader
         title="Academic structure"
-        description="Sessions, classes, sections and subjects."
+        description="Sessions, classes, sections, subjects, terms and result rules."
       />
       <AcademicsTabs />
       {children}

@@ -65,6 +65,10 @@ export const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   platform_invoice_issued: 'Subscription invoices',
   platform_invoice_overdue: 'Overdue subscription invoices',
   billing_tier_missing: 'Billing tier missing',
+  // Phase 4 (results).
+  result_published: 'Published term results',
+  result_revised: 'Revised term results',
+  test_marked: 'Marked class tests',
 };
 
 /** `HH:MM`, 00:00–23:59 (the API's pattern). */

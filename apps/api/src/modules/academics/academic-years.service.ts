@@ -6,6 +6,7 @@ import { readLocked } from '../../common/locking';
 import { daysBetween } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { toPage, type Page } from '../../common/pagination';
+import { AcademicTermRepository } from '../../repositories/academic-term.repository';
 import {
   AcademicYearRepository,
   type AcademicYearRecord,
@@ -14,7 +15,7 @@ import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SchoolCounterRepository } from '../../repositories/school-counter.repository';
 import type { SchoolId } from '../../tenancy/school-id';
-import { type Changes, fromDateString, toDateString, yearClosed } from './academics.shared';
+import { type Changes, fromDateString, termOutsideYear, toDateString, yearClosed } from './academics.shared';
 import type {
   AcademicYearDto,
   CreateAcademicYearDto,
@@ -69,6 +70,7 @@ export class AcademicYearsService {
     private readonly audit: AuditLogRepository,
     private readonly enrolments: EnrolmentRepository,
     private readonly counters: SchoolCounterRepository,
+    private readonly terms: AcademicTermRepository,
   ) {}
 
   async list(query: ListAcademicYearsQueryDto): Promise<Page<AcademicYearDto>> {
@@ -97,6 +99,8 @@ export class AcademicYearsService {
     const year = await this.years.create(schoolId, { name: dto.name, startsOn, endsOn });
     // Rule 18: one receipt sequence per school per year, created with the year (§3.5).
     await this.counters.create(schoolId, receiptCounterName(year.id));
+    // Phase 4 (R254): the year's result settings and its two terms, created with the year.
+    await this.years.seedResults(schoolId, year.id);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'academic_year.created',
@@ -129,7 +133,16 @@ export class AcademicYearsService {
       }
     }
     if (Object.keys(changes).length === 0) return toAcademicYearDto(year);
-    assertSpan(data.startsOn ?? year.startsOn, data.endsOn ?? year.endsOn);
+    const startsOn = data.startsOn ?? year.startsOn;
+    const endsOn = data.endsOn ?? year.endsOn;
+    assertSpan(startsOn, endsOn);
+    // Phase 4 (R254): the year's terms stay inside it (trigger academic_years_terms_inside too).
+    if (data.startsOn !== undefined || data.endsOn !== undefined) {
+      const outside = (await this.terms.allForYear(schoolId, id)).find(
+        (t) => t.startsOn < startsOn || t.endsOn > endsOn,
+      );
+      if (outside) throw termOutsideYear(outside.id);
+    }
 
     const updated = await this.years.update(schoolId, id, data);
     await this.audit.record(schoolId, {

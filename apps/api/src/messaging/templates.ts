@@ -5,7 +5,7 @@
 // paisa (R111); SMS text is normalised to GSM-7 and each templated body fits one segment with the
 // longest fixture values (R110, templates.spec.ts).
 import type { DayStatus, MessageSubjectType, MessageType, WhatsAppErrorCode } from '@asms/shared';
-import { formatRupees } from '@asms/shared';
+import { formatPercentBp, formatRupees } from '@asms/shared';
 import type { TemplateVarsMap } from './types';
 
 export interface Rendered {
@@ -164,6 +164,29 @@ function dayWords(status: DayStatus, arrivedAt: string | null): string {
   }
 }
 
+/** A term's name on a result message (terms are at most 40 characters). */
+const TERM_NAME_MAX = 40;
+/** A test's name on test_marked (assessments.name is at most 80). */
+const TEST_NAME_MAX = 80;
+
+/** result_published / result_revised: `<School>: <Child>'s <Term> result is published: 78.50 %, grade A. ...` */
+function resultBody(
+  vars: { studentName: string; termName: string; percentBp: number | null; grade: string | null },
+  ctx: RenderContext,
+  verb: 'published' | 'revised',
+): string {
+  const figures =
+    vars.percentBp === null || vars.grade === null
+      ? ''
+      : `: ${formatPercentBp(vars.percentBp)} %, grade ${vars.grade}`;
+  const term = cutWords(vars.termName, TERM_NAME_MAX);
+  return fitOneSegment(
+    cutWords(vars.studentName, STUDENT_NAME_MAX),
+    (name) =>
+      `${schoolLabel(ctx.schoolName)}: ${name}'s ${term} result is ${verb}${figures}. See the app or collect the report card.`,
+  );
+}
+
 // ------------------------------------------------------------------------------ templates
 
 /** Each type's body; its title comes from titleOf, the one table of titles. */
@@ -259,6 +282,14 @@ const RENDERERS: Renderers = {
       : `${schoolLabel(ctx.schoolName)}: ASMS subscription invoice ${vars.invoiceNo} for ${formatMonth(vars.yearMonth)} was due ${formatDay(vars.dueOn)} and is unpaid. See Settings for the amount.`,
   // A platform alert (no messages row): renderBillingTierMissing, sent by PlatformAlerts.
   billing_tier_missing: notWritten('billing_tier_missing'),
+  // Phase 4 (phase-4-academic.md §3.5): SMS-allowed, so one segment with the longest fixtures;
+  // the child's name and the term are cut to fit. Never the marks table, position or remark. The
+  // push body is the title (TITLE_ONLY_PUSH).
+  result_published: (vars, ctx) => resultBody(vars, ctx, 'published'),
+  result_revised: (vars, ctx) => resultBody(vars, ctx, 'revised'),
+  // Low priority, never SMS; never the mark itself.
+  test_marked: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ${cutWords(vars.studentName, STUDENT_NAME_MAX)}: ${cutWords(vars.testName, TEST_NAME_MAX)} marked. Open the app to see the mark.`,
 
   messaging_test: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: test message from ASMS, sent by ${vars.senderName} at ${formatTime(vars.time, ctx.timezone)}. No action needed.`,
@@ -462,6 +493,12 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'Subscription invoice';
     case 'platform_invoice_overdue':
       return 'Subscription invoice overdue';
+    case 'result_published':
+      return 'Term result published';
+    case 'result_revised':
+      return 'Term result revised';
+    case 'test_marked':
+      return 'Test marked';
     default:
       return schoolLabel(schoolName);
   }

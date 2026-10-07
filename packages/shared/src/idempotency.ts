@@ -22,6 +22,10 @@ export const IDEMPOTENT_ENDPOINTS = [
   'payslip_adjustments',
   'fee_structures',
   'leave_requests',
+  // Phase 4 (phase-4-academic.md §5.1). The marks grid uses per-row keys, not the header.
+  'assessments',
+  'certificates',
+  'promotion_sheets',
 ] as const;
 export type IdempotentEndpoint = (typeof IDEMPOTENT_ENDPOINTS)[number];
 

@@ -80,6 +80,16 @@ export class SubjectRepository {
     return this.txHost.tx.subject.findFirst({ where: { schoolId, id }, select: SELECT });
   }
 
+  /** Which of `ids` are live (not archived) subjects of the school: a class's subject list names only these. */
+  async liveIds(schoolId: SchoolId, ids: readonly bigint[]): Promise<Set<bigint>> {
+    if (ids.length === 0) return new Set();
+    const rows = await this.txHost.tx.subject.findMany({
+      where: { schoolId, id: { in: [...ids] }, deletedAt: null },
+      select: { id: true },
+    });
+    return new Set(rows.map((row) => row.id));
+  }
+
   /** A taken live name or code fails on its partial unique index. */
   create(schoolId: SchoolId, data: { name: string; code: string | null }): Promise<SubjectRecord> {
     return this.txHost.tx.subject.create({ data: { schoolId, ...data }, select: SELECT });

@@ -153,6 +153,9 @@ describe('school settings', () => {
         'fee_overdue',
         'receipt_issued',
         'payment_claim_rejected',
+        // Phase 4 (phase-4-academic.md §3.5): the result types, allowed by default.
+        'result_published',
+        'result_revised',
       ],
       remarkDefaultVisibility: 'guardian',
       remarkNotifyGuardians: false,

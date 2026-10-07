@@ -9,10 +9,12 @@ import { NoQueryDto } from '../../common/validation';
 import { ArchiveDto } from './academics.shared';
 import {
   ClassDto,
+  ClassSubjectDto,
   CopySectionsDto,
   CopySectionsResultDto,
   CreateClassDto,
   ListClassesQueryDto,
+  ListClassSubjectsQueryDto,
   UpdateClassDto,
 } from './classes.dto';
 import { ClassesService } from './classes.service';
@@ -49,6 +51,16 @@ export class ClassesController {
   @ApiErrors(...COMMON, 404, 422)
   get(@IdParam() id: bigint, @Query() _query: NoQueryDto): Promise<ClassDto> {
     return this.classes.get(id);
+  }
+
+  /** Phase 4 slice 29: the subjects the class takes, in print order (contracts/slice-29.md §4). */
+  @Get(':id/subjects')
+  @RequireStaff()
+  @ApiIdParam()
+  @ApiPaginated(ClassSubjectDto)
+  @ApiErrors(...COMMON, 404, 422)
+  listSubjects(@IdParam() id: bigint, @Query() query: ListClassSubjectsQueryDto): Promise<Page<ClassSubjectDto>> {
+    return this.classes.listSubjects(id, query);
   }
 
   @Patch(':id')

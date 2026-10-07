@@ -64,6 +64,9 @@ const klass = (id: string, name: string): ClassDto => ({
   sortOrder: 0,
   attendanceMode: 'daily',
   status: 'active',
+  nextClassId: null,
+  nextClassName: null,
+  isFinal: false,
   createdAt: STAMP,
   updatedAt: STAMP,
 });

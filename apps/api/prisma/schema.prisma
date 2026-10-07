@@ -173,6 +173,10 @@ model School {
   payslipLines                  PayslipLine[]                  @ignore
   salaryAdvanceRecoveries       SalaryAdvanceRecovery[]        @ignore
   paymentClaims                 PaymentClaim[]                 @ignore
+  academicTerms                 AcademicTerm[]                 @ignore
+  termSkips                     TermSkip[]                     @ignore
+  resultSettings                ResultSettings[]               @ignore
+  classSubjects                 ClassSubject[]                 @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -288,8 +292,9 @@ model SchoolSettings {
   lateCutoffTime            DateTime?        @map("late_cutoff_time") @db.Time(0)
   leaveCountsAs             LeaveCountsAs    @default(excused) @map("leave_counts_as")
   /// SMS-eligible types only; the default is register item 22's list, with Phase 3's four fee
-  /// types (phase-3-financial.md §1.1; backfilled into existing rows).
-  smsAllowedTypes           MessageType[]    @default([absence_alert, late_advice, attendance_corrected, announcement_urgent, holiday_notice, fee_due_reminder, fee_overdue, receipt_issued, payment_claim_rejected]) @map("sms_allowed_types")
+  /// types (phase-3-financial.md §1.1) and Phase 4's two result types (phase-4-academic.md §3.5),
+  /// each backfilled into existing rows.
+  smsAllowedTypes           MessageType[]    @default([absence_alert, late_advice, attendance_corrected, announcement_urgent, holiday_notice, fee_due_reminder, fee_overdue, receipt_issued, payment_claim_rejected, result_published, result_revised]) @map("sms_allowed_types")
   remarkDefaultVisibility   RemarkVisibility @default(guardian) @map("remark_default_visibility")
   remarkNotifyGuardians     Boolean          @default(false) @map("remark_notify_guardians")
   // Phase 3 (phase-3-financial.md §3.8). CHECKs school_settings_*_check in migration SQL.
@@ -311,6 +316,10 @@ model SchoolSettings {
   feeReminderDaysBefore     Int              @default(3) @map("fee_reminder_days_before") @db.SmallInt
   /// 7-30.
   overdueReminderEveryDays  Int              @default(14) @map("overdue_reminder_every_days") @db.SmallInt
+  // Phase 4 (phase-4-academic.md §3.7). The signatory printed on certificates (defaulted at first
+  // issue to the active principal's name); whether the leaving certificate prints the B-Form.
+  certificateSignatoryName  String?          @map("certificate_signatory_name") @db.VarChar(100)
+  certificateShowIdentityNo Boolean          @default(true) @map("certificate_show_identity_no")
   createdAt                 DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -387,6 +396,8 @@ model AcademicYear {
   chargeRuns      ChargeRun[]
   chargeCampaigns ChargeCampaign[]
   payments        Payment[]
+  terms           AcademicTerm[]
+  resultSettings  ResultSettings?
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -407,11 +418,20 @@ model Class {
   /// No default: the school chooses per class (rule 14, contract slice-3 §3.3).
   attendanceMode AttendanceMode @map("attendance_mode")
   status         ClassStatus    @default(active)
+  /// Phase 4 (rule 30): the class a passed student is promoted into, usually in the next year.
+  /// Never set on a final class (CHECK classes_next_class_check).
+  nextClassId    BigInt?        @map("next_class_id")
+  /// The school's last class: a passed student completes (alumni) instead of being promoted.
+  isFinal        Boolean        @default(false) @map("is_final")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   school                  School                   @relation(fields: [schoolId], references: [id], map: "classes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   academicYear            AcademicYear             @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "classes_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  nextClass               Class?                   @relation("NextClass", fields: [schoolId, nextClassId], references: [schoolId, id], map: "classes_next_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  previousClasses         Class[]                  @relation("NextClass")
+  subjects                ClassSubject[]
+  termSkips               TermSkip[]
   sections                Section[]
   teacherAssignments      TeacherAssignment[]
   enrolments              Enrolment[]
@@ -426,6 +446,7 @@ model Class {
   /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
   @@unique([schoolId, id, academicYearId], map: "classes_school_id_id_academic_year_id_key")
   @@unique([schoolId, academicYearId, name], map: "classes_school_id_academic_year_id_name_key")
+  @@index([schoolId, nextClassId], map: "classes_school_id_next_class_id_idx")
   @@map("classes")
 }
 
@@ -475,6 +496,7 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   diaryEntries       DiaryEntry[]
   remarks            Remark[]
+  classSubjects      ClassSubject[]
 
   @@unique([schoolId, id], map: "subjects_school_id_id_key")
   @@map("subjects")
@@ -799,6 +821,11 @@ model User {
   payslipsPaid              Payslip[]
   payslipLinesCreated       PayslipLine[]
   paymentClaimsDecided      PaymentClaim[]          @relation("PaymentClaimDecidedBy")
+  academicTermsCreated      AcademicTerm[]
+  termSkipsCreated          TermSkip[]              @relation("TermSkipCreatedBy")
+  termSkipsEnded            TermSkip[]              @relation("TermSkipEndedBy")
+  resultSettingsUpdated     ResultSettings[]
+  classSubjectsArchived     ClassSubject[]
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1361,6 +1388,10 @@ enum MessageType {
   platform_invoice_issued
   platform_invoice_overdue
   billing_tier_missing
+  // Phase 4 (phase-4-academic.md §3.5).
+  result_published
+  result_revised
+  test_marked
 
   @@map("message_type")
 }
@@ -4095,4 +4126,149 @@ model PlatformPayment {
   @@unique([invoiceId], map: "platform_payments_invoice_id_key")
   @@index([recordedBy], map: "platform_payments_recorded_by_idx")
   @@map("platform_payments")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 (phase-4-academic.md §3.2, §4). Hand-written CHECKs, triggers, the exclusion and the
+// expression and partial indexes are in the migrations and listed in
+// test/guardrails/schema-checks.ts.
+// ---------------------------------------------------------------------------------------------
+
+/// Rule 26 (§1.1): how a result's pass verdict is decided.
+enum PassRule {
+  all_subjects
+  overall
+
+  @@map("pass_rule")
+}
+
+/// Tenant: a term of an academic year (rule 26). Seeded two per year by asms_seed_year_results
+/// (created_by null); at most six. Never overlapping (EXCLUDE academic_terms_no_overlap), inside
+/// the year (trigger academic_terms_inside_year), names unique per year case-insensitively
+/// (academic_terms_name_key). `weight` (0-100) is the term's share of the final result; the held
+/// terms of a year sum to 100 (a service check).
+model AcademicTerm {
+  id             BigInt   @id(map: "academic_terms_pkey") @default(autoincrement())
+  schoolId       BigInt   @map("school_id")
+  academicYearId BigInt   @map("academic_year_id")
+  name           String   @db.VarChar(40)
+  /// 1-6: the term's rank by date in its year (at most six terms).
+  sortOrder      Int      @map("sort_order") @db.SmallInt
+  startsOn       DateTime @map("starts_on") @db.Date
+  endsOn         DateTime @map("ends_on") @db.Date
+  weight         Int      @db.SmallInt
+  /// Null for the seeded terms.
+  createdBy      BigInt?  @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School       @relation(fields: [schoolId], references: [id], map: "academic_terms_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear  AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User?        @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  skips         TermSkip[]
+
+  @@unique([schoolId, id], map: "academic_terms_school_id_id_key")
+  /// Target of (school_id, term_id, academic_year_id) FKs: a row naming a term names its year.
+  @@unique([schoolId, id, academicYearId], map: "academic_terms_school_id_id_academic_year_id_key")
+  /// The FK to the year, and the chronological listing. sort_order is the rank by starts_on, kept
+  /// by the service and unique per year through the deferred EXCLUDE academic_terms_sort_order_excl
+  /// (a renumbering moves several rows in one transaction).
+  @@index([schoolId, academicYearId, startsOn], map: "academic_terms_school_id_academic_year_id_starts_on_idx")
+  @@index([schoolId, createdBy], map: "academic_terms_school_id_created_by_idx")
+  @@map("academic_terms")
+}
+
+/// Tenant: a term not held for a class (§1.1, nursery has no mid-term). Lifted by setting
+/// ended_at, never deleted; at most one live row per term and class (term_skips_live_key). The
+/// class belongs to the term's year (both FKs carry academic_year_id).
+model TermSkip {
+  id             BigInt    @id(map: "term_skips_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  academicYearId BigInt    @map("academic_year_id")
+  termId         BigInt    @map("term_id")
+  classId        BigInt    @map("class_id")
+  reason         String    @db.VarChar(500)
+  createdBy      BigInt    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+  endedBy        BigInt?   @map("ended_by")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School       @relation(fields: [schoolId], references: [id], map: "term_skips_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  term          AcademicTerm @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "term_skips_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class         Class        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "term_skips_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User         @relation("TermSkipCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "term_skips_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser   User?        @relation("TermSkipEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "term_skips_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "term_skips_school_id_id_key")
+  @@index([schoolId, termId, academicYearId], map: "term_skips_school_id_term_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "term_skips_school_id_class_id_idx")
+  @@index([schoolId, createdBy], map: "term_skips_school_id_created_by_idx")
+  @@index([schoolId, endedBy], map: "term_skips_school_id_ended_by_idx")
+  @@map("term_skips")
+}
+
+/// Tenant: the result rules of one academic year (rule 26, §3.7), written with the year by
+/// asms_seed_year_results. `bands` is a JSON array of { grade, minPercent }, validated whole by
+/// packages/shared bandsProblem. Frozen once any sheet of the year is approved (wave O adds the
+/// trigger result_settings_locked with result_sheets); every sheet snapshots what it used.
+model ResultSettings {
+  id                  BigInt   @id(map: "result_settings_pkey") @default(autoincrement())
+  schoolId            BigInt   @map("school_id")
+  academicYearId      BigInt   @map("academic_year_id")
+  testWeight          Int      @default(20) @map("test_weight") @db.SmallInt
+  examWeight          Int      @default(80) @map("exam_weight") @db.SmallInt
+  passPercent         Int      @default(40) @map("pass_percent") @db.SmallInt
+  passRule            PassRule @default(all_subjects) @map("pass_rule")
+  bands               Json     @default("[{\"grade\": \"A+\", \"minPercent\": 90}, {\"grade\": \"A\", \"minPercent\": 80}, {\"grade\": \"B\", \"minPercent\": 70}, {\"grade\": \"C\", \"minPercent\": 60}, {\"grade\": \"D\", \"minPercent\": 50}, {\"grade\": \"E\", \"minPercent\": 40}, {\"grade\": \"F\", \"minPercent\": 0}]")
+  showPosition        Boolean  @default(true) @map("show_position")
+  showAttendance      Boolean  @default(true) @map("show_attendance")
+  showRemark          Boolean  @default(true) @map("show_remark")
+  withholdCardForDues Boolean  @default(false) @map("withhold_card_for_dues")
+  notifyClassTests    Boolean  @default(false) @map("notify_class_tests")
+  /// Null until first changed (the seeded row).
+  updatedBy           BigInt?  @map("updated_by")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School       @relation(fields: [schoolId], references: [id], map: "result_settings_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear  AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "result_settings_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  updatedByUser User?        @relation(fields: [schoolId, updatedBy], references: [schoolId, id], map: "result_settings_updated_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "result_settings_school_id_id_key")
+  @@unique([schoolId, academicYearId], map: "result_settings_school_id_academic_year_id_key")
+  @@index([schoolId, updatedBy], map: "result_settings_school_id_updated_by_idx")
+  @@map("result_settings")
+}
+
+/// Tenant: a subject a class takes in its year (rule 31, A1: the same for all its sections), in
+/// print order, with the exam's default max marks. Archived, never deleted; one live row per class
+/// and subject (class_subjects_live_key). Phase 5's timetable attaches here.
+model ClassSubject {
+  id             BigInt    @id(map: "class_subjects_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  academicYearId BigInt    @map("academic_year_id")
+  classId        BigInt    @map("class_id")
+  subjectId      BigInt    @map("subject_id")
+  /// Print order, 0-999.
+  sortOrder      Int       @map("sort_order") @db.SmallInt
+  /// 1-1000; an exam set up for the subject starts from it.
+  examMaxMarks   Int       @default(100) @map("exam_max_marks") @db.SmallInt
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(3)
+  archivedBy     BigInt?   @map("archived_by")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School  @relation(fields: [schoolId], references: [id], map: "class_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class          Class   @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_subjects_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  subject        Subject @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "class_subjects_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  archivedByUser User?   @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "class_subjects_school_id_id_key")
+  /// Target of (school_id, class_subject_id, class_id) FKs: a row naming a class-subject names its class.
+  @@unique([schoolId, id, classId], map: "class_subjects_school_id_id_class_id_key")
+  @@index([schoolId, classId, academicYearId], map: "class_subjects_school_id_class_id_idx")
+  @@index([schoolId, subjectId], map: "class_subjects_school_id_subject_id_idx")
+  @@index([schoolId, archivedBy], map: "class_subjects_school_id_archived_by_idx")
+  @@map("class_subjects")
 }

@@ -81,6 +81,15 @@ export class AcademicYearRepository {
   }
 
   /**
+   * The year's result settings and its two seeded terms (phase-4-academic.md §1.1, R254): one
+   * definition in the database (function asms_seed_year_results, migration
+   * 20261007120100_phase4_groundwork). Called in the year-creation transaction; idempotent.
+   */
+  async seedResults(schoolId: SchoolId, id: bigint): Promise<void> {
+    await this.txHost.tx.$executeRaw`SELECT asms_seed_year_results(${schoolId}::bigint, ${id}::bigint)`;
+  }
+
+  /**
    * Locks the row for the rest of the transaction, but only if it is unchanged since `year` was
    * read (same updated_at and status). Writes nothing visible. False: read again.
    */

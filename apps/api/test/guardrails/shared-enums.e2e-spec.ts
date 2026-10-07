@@ -1,4 +1,4 @@
-// The Phase 2 and 3 value sets are declared twice: as Postgres enums (the migrations) and in
+// The Phase 2, 3 and 4 value sets are declared twice: as Postgres enums (the migrations) and in
 // packages/shared (the API's DTOs and the clients). This reads the migrated catalog and fails on
 // any difference, so a value added on one side only cannot ship.
 import {
@@ -71,6 +71,7 @@ import {
   PAYROLL_RUN_STATUSES,
   PAYSLIP_STATUSES,
   PAYSLIP_LINE_KINDS,
+  PASS_RULES,
 } from '@asms/shared';
 import { Client } from 'pg';
 
@@ -147,6 +148,8 @@ const PAIRS: [string, readonly string[]][] = [
   ['payroll_run_status', PAYROLL_RUN_STATUSES],
   ['payslip_status', PAYSLIP_STATUSES],
   ['payslip_line_kind', PAYSLIP_LINE_KINDS],
+  // Phase 4 groundwork; the other Phase 4 value sets join with their tables (waves N-P).
+  ['pass_rule', PASS_RULES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

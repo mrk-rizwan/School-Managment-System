@@ -16,10 +16,12 @@ import { UserRepository, type UserStatusValue } from '../../repositories/user.re
 import { UserRoleRepository } from '../../repositories/user-role.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import type { DatedScope, Scope } from '../../tenancy/scope';
+import type { DatedScope, MarksMode, MarksScope, Scope } from '../../tenancy/scope';
 import {
   datedScopeAll,
   datedScopeSections,
+  marksScopeAll,
+  marksScopeSections,
   scopeAll,
   scopeSections,
   scopeStudents,
@@ -319,6 +321,50 @@ export class PermissionsService {
         ? new Map()
         : await this.assignments.sectionsOn(schoolId, access.staffId, on);
     return datedScopeSections(on, sections);
+  }
+
+  /**
+   * The subject-aware marks scope for **reading** (phase-4-academic.md §0.27, §7.1) on `on`:
+   * marks.enter or marks.view_all, any-of, so a school-wide marks.view_all widens a teacher's
+   * read to `all`. Never pass it where a write is scoped: the type refuses it (scope.ts).
+   */
+  marksReadScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'read'> | null> {
+    return this.marksScope(session, 'read', [Capability.MARKS_ENTER, Capability.MARKS_VIEW_ALL], on);
+  }
+
+  /**
+   * The subject-aware marks scope for **writing** on `on`: marks.enter only. marks.view_all never
+   * widens it, so a teacher granted view_all still writes only their own assignments' subjects
+   * (security review LOW-1, 2026-10-07).
+   */
+  marksWriteScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'write'> | null> {
+    return this.marksScope(session, 'write', [Capability.MARKS_ENTER], on);
+  }
+
+  /**
+   * The marks scope of any of `capabilities` on `on`: null when none is held (no staff capacity
+   * counts as not held, R59); `all` when a held key has a school-wide source (the principal's
+   * defaults, an office grant of marks.enter, a custom role); otherwise the sections the caller's
+   * teacher assignments reach on `on`, each with its subjects and whether the caller is its class
+   * teacher or cover (R175). An empty map means no rows. The assessment and mark repositories
+   * take it (wave N).
+   */
+  private async marksScope<M extends MarksMode>(
+    session: SchoolSessionContext,
+    mode: M,
+    capabilities: readonly Capability[],
+    on: Date,
+  ): Promise<MarksScope<M> | null> {
+    const { access, schoolId } = session;
+    if (!access.capacities.staff) return null;
+    const held = capabilities.filter((key) => access.capabilities.has(key));
+    if (held.length === 0) return null;
+    const teacherOnly = (key: Capability) =>
+      access.lines.some((line) => line.capability === key && line.scope === 'assigned_sections');
+    if (held.some((key) => !teacherOnly(key))) return marksScopeAll(mode, on);
+    const sections =
+      access.staffId === null ? new Map() : await this.assignments.sectionsOn(schoolId, access.staffId, on);
+    return marksScopeSections(mode, on, sections);
   }
 
   /**

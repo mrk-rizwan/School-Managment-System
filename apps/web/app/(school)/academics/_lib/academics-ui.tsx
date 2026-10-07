@@ -24,6 +24,10 @@ export const academicsKeys = {
   class: (id: string) => ['school', 'academics', 'classes', 'detail', id] as const,
   sections: (classId: string) => ['school', 'academics', 'sections', classId] as const,
   subjects: ['school', 'academics', 'subjects'] as const,
+  // Phase 4 slice 29.
+  terms: (yearId: string) => ['school', 'academics', 'terms', yearId] as const,
+  resultSettings: (yearId: string) => ['school', 'academics', 'result-settings', yearId] as const,
+  classSubjects: (classId: string) => ['school', 'academics', 'class-subjects', classId] as const,
 };
 
 export const YEAR_STATUS_LABELS: Record<AcademicYearStatus, string> = {
@@ -55,6 +59,7 @@ const TABS = [
   { href: '/academics/years', label: 'Academic years' },
   { href: '/academics/classes', label: 'Classes' },
   { href: '/academics/subjects', label: 'Subjects' },
+  { href: '/academics/terms', label: 'Terms and results' },
 ] as const;
 
 /** Sections live under their class (class detail), so they have no tab of their own. */

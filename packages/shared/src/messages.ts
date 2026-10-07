@@ -6,7 +6,7 @@
  * same name (migration 20261003183118_phase2_messaging).
  */
 
-/** Every kind of message the platform sends. Phases 3 and 4 add fee and result types here. */
+/** Every kind of message the platform sends. Phases 3 and 4 added the fee and result types. */
 export const MESSAGE_TYPES = [
   'absence_alert',
   'late_advice',
@@ -40,6 +40,10 @@ export const MESSAGE_TYPES = [
   'platform_invoice_issued',
   'platform_invoice_overdue',
   'billing_tier_missing',
+  // Phase 4 (phase-4-academic.md §3.5), appended in the order of the Postgres enum.
+  'result_published',
+  'result_revised',
+  'test_marked',
 ] as const;
 export type MessageType = (typeof MESSAGE_TYPES)[number];
 
@@ -144,6 +148,10 @@ export const MESSAGE_SUBJECT_TYPES = [
   'leave_request',
   'payslip',
   'platform_invoice',
+  // Phase 4 (§3.5): a published or revised result (id = results.id); a marked test (id =
+  // assessments.id).
+  'result',
+  'assessment',
 ] as const;
 export type MessageSubjectType = (typeof MESSAGE_SUBJECT_TYPES)[number];
 
@@ -161,6 +169,9 @@ export const MESSAGE_AUDIENCES = [
   // Phase 3 (§3.6): a student's fee-payer guardians; the holders of a named capability.
   'fee_payer_guardians',
   'capability_holders',
+  // Phase 4 (§1.1): a student's fee-payer guardians, else the primary contact, else every live
+  // guardian with a phone (the receipt rule), and the student's own login.
+  'result_recipients',
 ] as const;
 export type MessageAudience = (typeof MESSAGE_AUDIENCES)[number];
 
@@ -471,6 +482,37 @@ export const MESSAGE_TYPE_TABLE: Readonly<Record<MessageType, MessageTypeSpec>> 
     smsAllowedByDefault: false,
     subjectTypes: [],
     templateKey: 'billing_tier_missing',
+  },
+  // ---- Phase 4 (phase-4-academic.md §3.5). Name, term, percentage and grade only; the push body
+  // is the title only (TITLE_ONLY_PUSH) for all three.
+  result_published: {
+    priority: 'normal',
+    audience: 'result_recipients',
+    channels: ['whatsapp', 'sms', 'push'],
+    smsEligible: true,
+    smsAllowedByDefault: true,
+    subjectTypes: ['result'],
+    templateKey: 'result_published',
+  },
+  // A corrected result, to the corrected student's family and login only, once per correction.
+  result_revised: {
+    priority: 'normal',
+    audience: 'result_recipients',
+    channels: ['whatsapp', 'sms', 'push'],
+    smsEligible: true,
+    smsAllowedByDefault: true,
+    subjectTypes: ['result'],
+    templateKey: 'result_revised',
+  },
+  // Only with result_settings.notify_class_tests on (off by default); never SMS (R266).
+  test_marked: {
+    priority: 'low',
+    audience: 'student_guardians',
+    channels: ['push', 'in_app'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['assessment'],
+    templateKey: 'test_marked',
   },
 };
 

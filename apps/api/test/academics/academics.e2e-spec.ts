@@ -272,6 +272,10 @@ describe('academic structure (e2e)', () => {
         sortOrder: 1,
         attendanceMode: 'daily',
         status: 'active',
+        // Phase 4 (contracts/slice-29.md §4).
+        nextClassId: null,
+        nextClassName: null,
+        isFinal: false,
         createdAt: expect.stringMatching(ISO),
         updatedAt: expect.stringMatching(ISO),
       });

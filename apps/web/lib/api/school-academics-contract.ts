@@ -43,3 +43,17 @@ export type UpdateClassBody = Schemas['UpdateClassDto'];
 export type CopySectionsBody = Schemas['CopySectionsDto'];
 export type UpdateSectionBody = Schemas['UpdateSectionDto'];
 export type UpdateSubjectBody = Schemas['UpdateSubjectDto'];
+
+// ---- Phase 4 slice 29: terms, result settings, class subjects (contracts/slice-29.md) ----
+
+export type PassRule = Schemas['PassRule'];
+export type TermDto = Schemas['TermDto'];
+export type TermSkipDto = Schemas['TermSkipDto'];
+export type ResultSettingsDto = Schemas['ResultSettingsDto'];
+export type GradeBandDto = Schemas['GradeBandDto'];
+export type ClassSubjectDto = Schemas['ClassSubjectDto'];
+export type ClassSubjectEntry = Schemas['ClassSubjectEntryDto'];
+export type CreateTermBody = Schemas['CreateTermDto'];
+export type UpdateTermBody = Schemas['UpdateTermDto'];
+export type SkipClassBody = Schemas['SkipClassDto'];
+export type UpdateResultSettingsBody = Schemas['UpdateResultSettingsDto'];

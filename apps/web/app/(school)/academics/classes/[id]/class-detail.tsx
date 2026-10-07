@@ -50,10 +50,11 @@ import {
 } from '../../_lib/academics-ui';
 import { useYears } from '../../_lib/options';
 import { CopySectionsDialog } from '../class-dialogs';
+import { ClassSubjects } from './class-subjects';
 
 const LIMIT = 25;
 
-/** Class detail: its sections (contracts/slice-3.md §4, §8). */
+/** Class detail: its sections (contracts/slice-3.md §4, §8) and, since Phase 4, its subjects (slice-29.md §5). */
 export function ClassDetail({ id }: { id: string }) {
   const klass = useQuery({
     queryKey: academicsKeys.class(id),
@@ -229,6 +230,7 @@ function Sections({ klass }: { klass: ClassDto }) {
           void queryClient.invalidateQueries({ queryKey: academicsKeys.sections(klass.id) })
         }
       />
+      <ClassSubjects klass={klass} years={yearList} writable={writable} />
     </>
   );
 }

@@ -11,10 +11,13 @@ import { SchoolContext } from '../../src/common/school-context';
 import { ClassesService } from '../../src/modules/academics/classes.service';
 import { SectionsService } from '../../src/modules/academics/sections.service';
 import { SubjectsService } from '../../src/modules/academics/subjects.service';
+import { AcademicTermRepository } from '../../src/repositories/academic-term.repository';
 import { AcademicYearRepository } from '../../src/repositories/academic-year.repository';
 import { AuditLogRepository } from '../../src/repositories/audit-log.repository';
+import { ClassSubjectRepository } from '../../src/repositories/class-subject.repository';
 import { ClassRepository } from '../../src/repositories/class.repository';
 import { EnrolmentRepository } from '../../src/repositories/enrolment.repository';
+import { ResultSettingsRepository } from '../../src/repositories/result-settings.repository';
 import { SchoolCounterRepository } from '../../src/repositories/school-counter.repository';
 import { SectionRepository } from '../../src/repositories/section.repository';
 import { SubjectRepository } from '../../src/repositories/subject.repository';
@@ -40,6 +43,10 @@ export interface Academics {
   classRepo: ClassRepository;
   sectionRepo: SectionRepository;
   subjectRepo: SubjectRepository;
+  // Phase 4 slice 29.
+  termRepo: AcademicTermRepository;
+  settingsRepo: ResultSettingsRepository;
+  classSubjectRepo: ClassSubjectRepository;
   close: () => Promise<void>;
 }
 
@@ -61,6 +68,9 @@ export async function createAcademics(): Promise<Academics> {
       AuditLogRepository,
       EnrolmentRepository,
       SchoolCounterRepository,
+      AcademicTermRepository,
+      ResultSettingsRepository,
+      ClassSubjectRepository,
     ],
   })
     .overrideProvider(RequestContextService)
@@ -77,6 +87,9 @@ export async function createAcademics(): Promise<Academics> {
     classRepo: moduleRef.get(ClassRepository),
     sectionRepo: moduleRef.get(SectionRepository),
     subjectRepo: moduleRef.get(SubjectRepository),
+    termRepo: moduleRef.get(AcademicTermRepository),
+    settingsRepo: moduleRef.get(ResultSettingsRepository),
+    classSubjectRepo: moduleRef.get(ClassSubjectRepository),
     close: () => moduleRef.close(),
   };
 }

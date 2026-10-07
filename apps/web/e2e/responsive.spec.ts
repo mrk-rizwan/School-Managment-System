@@ -1,10 +1,17 @@
-import { Capability } from '@asms/shared';
+import { Capability, DEFAULT_GRADE_BANDS } from '@asms/shared';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import type { components as PlatformSchemas } from '../lib/api/platform';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
 import { BILLING_STATUS, INVOICES, PLANS, SCHOOL_BILLING } from './support/billing';
 import { FINANCE_SETTINGS } from './support/settings';
-import type { AcademicYearDto, ClassDto, SectionDto, SubjectDto } from '../lib/api/school-academics-contract';
+import type {
+  AcademicYearDto,
+  ClassDto,
+  ResultSettingsDto,
+  SectionDto,
+  SubjectDto,
+  TermDto,
+} from '../lib/api/school-academics-contract';
 import type {
   PlatformDeliveryHealthDto,
   PlatformSettingsDto,
@@ -75,6 +82,26 @@ const YEARS: AcademicYearDto[] = [
   { id: 'y2', name: '2026-27 (September)', startsOn: '2026-09-01', endsOn: '2027-08-31', status: 'planned', createdAt: STAMP, updatedAt: STAMP },
   { id: 'y0', name: '2025-26', startsOn: '2025-04-01', endsOn: '2026-03-31', status: 'closed', createdAt: STAMP, updatedAt: STAMP },
 ];
+// Phase 4 slice 29: the year's terms and result rules (Academics → Terms and results).
+const TERMS: TermDto[] = [
+  { id: 't1', academicYearId: 'y1', name: 'Mid-term', sortOrder: 1, startsOn: '2026-04-01', endsOn: '2026-09-30', weight: 50, createdByUser: false, skippedClasses: [{ classId: 'c5', className: 'Class 5', reason: 'Not held', createdAt: STAMP }], createdAt: STAMP, updatedAt: STAMP },
+  { id: 't2', academicYearId: 'y1', name: 'Annual', sortOrder: 2, startsOn: '2026-10-01', endsOn: '2027-03-31', weight: 50, createdByUser: false, skippedClasses: [], createdAt: STAMP, updatedAt: STAMP },
+];
+const RESULT_SETTINGS: ResultSettingsDto = {
+  academicYearId: 'y1',
+  testWeight: 20,
+  examWeight: 80,
+  passPercent: 40,
+  passRule: 'all_subjects',
+  bands: [...DEFAULT_GRADE_BANDS],
+  showPosition: true,
+  showAttendance: true,
+  showRemark: true,
+  withholdCardForDues: false,
+  notifyClassTests: false,
+  locked: false,
+  updatedAt: STAMP,
+};
 const klass = (id: string, name: string, sortOrder: number): ClassDto => ({
   id,
   academicYearId: 'y1',
@@ -83,6 +110,9 @@ const klass = (id: string, name: string, sortOrder: number): ClassDto => ({
   attendanceMode: sortOrder > 8 ? 'period' : 'daily',
   sortOrder,
   status: 'active',
+  nextClassId: null,
+  nextClassName: null,
+  isFinal: false,
   createdAt: STAMP,
   updatedAt: STAMP,
 });
@@ -657,6 +687,8 @@ async function mockApi(page: Page, session: Session) {
       '/custom-roles': CUSTOM_ROLES,
       '/holidays': HOLIDAYS,
       '/classes/c5/sections': SECTIONS,
+      '/classes/c5/subjects': [],
+      '/academic-years/y1/terms': TERMS,
       '/classes/c6/sections': [],
       '/classes/c9/sections': [],
       '/staff/st1/teacher-assignments': ASSIGNMENTS,
@@ -689,6 +721,7 @@ async function mockApi(page: Page, session: Session) {
     if (lists[path]) return json(200, page1(lists[path]));
     const one: Record<string, unknown> = {
       '/classes/c5': CLASSES[0],
+      '/academic-years/y1/result-settings': RESULT_SETTINGS,
       '/staff/st1': STAFF[0],
       '/guardians/g1': GUARDIANS[0],
       '/students/st-s1': STUDENTS[0],
@@ -727,6 +760,7 @@ const SCREENS: Screen[] = [
   { path: '/academics/classes', heading: 'Academic structure', session: 'school' },
   { path: '/academics/classes/c5', heading: 'Academic structure', session: 'school' },
   { path: '/academics/subjects', heading: 'Academic structure', session: 'school' },
+  { path: '/academics/terms', heading: 'Academic structure', session: 'school' },
   { path: '/account', heading: 'Your account', session: 'school' },
   { path: '/users', heading: 'User accounts', session: 'school' },
   { path: '/settings', heading: 'School settings', session: 'school' },

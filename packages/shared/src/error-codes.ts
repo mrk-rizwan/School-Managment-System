@@ -182,6 +182,39 @@ export const ErrorCode = {
   PLAN_ARCHIVED: 'PLAN_ARCHIVED',
   PLAN_IN_USE: 'PLAN_IN_USE',
   INVOICE_NOT_ISSUED: 'INVOICE_NOT_ISSUED',
+  // Phase 4 (phase-4-academic.md §5.1). 409 unless stated.
+  TERM_OVERLAPS: 'TERM_OVERLAPS', // 409, details.termId
+  TERM_OUTSIDE_YEAR: 'TERM_OUTSIDE_YEAR', // 409, details.termId (null on create)
+  TERM_IN_USE: 'TERM_IN_USE', // 409, details.termId
+  TERM_NAME_TAKEN: 'TERM_NAME_TAKEN', // 409, details.field = name (contracts/slice-29.md)
+  RESULT_SETTINGS_LOCKED: 'RESULT_SETTINGS_LOCKED', // 409, details.academicYearId
+  CLASS_SUBJECT_IN_USE: 'CLASS_SUBJECT_IN_USE', // 409, details.classSubjectId
+  CLASS_SUBJECTS_FROZEN: 'CLASS_SUBJECTS_FROZEN', // 409, details.classId
+  EXAM_NOT_SET_UP: 'EXAM_NOT_SET_UP', // 409, details { classSubjectId, sectionId, termId }
+  ASSESSMENT_LOCKED: 'ASSESSMENT_LOCKED', // 409, details.assessmentId
+  ASSESSMENT_OUTSIDE_TERM: 'ASSESSMENT_OUTSIDE_TERM', // 409, details.assessmentId
+  ASSESSMENT_VOIDED: 'ASSESSMENT_VOIDED', // 409, details.assessmentId
+  ASSESSMENT_HAS_MARKS: 'ASSESSMENT_HAS_MARKS', // 409, details.assessmentId
+  MARK_EXCEEDS_MAX: 'MARK_EXCEEDS_MAX', // 409, details { enrolmentId, max } (the whole request)
+  MARKS_INCOMPLETE: 'MARKS_INCOMPLETE', // 409, details.missing [{ enrolmentId, assessmentId }] (≤ 100)
+  RESULT_SHEET_NOT_DRAFT: 'RESULT_SHEET_NOT_DRAFT', // 409, details.sheetId
+  RESULT_SHEET_NOT_SUBMITTED: 'RESULT_SHEET_NOT_SUBMITTED', // 409, details.sheetId
+  RESULT_SHEET_NOT_APPROVED: 'RESULT_SHEET_NOT_APPROVED', // 409, details.sheetId
+  RESULT_SHEET_PUBLISHED: 'RESULT_SHEET_PUBLISHED', // 409, details.sheetId
+  RESULT_SHEET_VERSION_OPEN: 'RESULT_SHEET_VERSION_OPEN', // 409, details.sheetId
+  RESULT_SHEET_TERMS_UNPUBLISHED: 'RESULT_SHEET_TERMS_UNPUBLISHED', // 409, details.missingTermIds
+  MARK_CORRECTION_NOT_PENDING: 'MARK_CORRECTION_NOT_PENDING', // 409, details.markId
+  MARK_CORRECTION_SHEET_NOT_PUBLISHED: 'MARK_CORRECTION_SHEET_NOT_PUBLISHED', // 409, details.markId
+  CERTIFICATE_DUES_BLOCK: 'CERTIFICATE_DUES_BLOCK', // 409, details.outstanding
+  CERTIFICATE_STUDENT_NOT_LEFT: 'CERTIFICATE_STUDENT_NOT_LEFT', // 409, details.certificateId
+  CERTIFICATE_VOIDED: 'CERTIFICATE_VOIDED', // 409, details.certificateId
+  CERTIFICATE_NO_RESULT: 'CERTIFICATE_NO_RESULT', // 409, details.certificateId
+  PROMOTION_FINAL_NOT_APPROVED: 'PROMOTION_FINAL_NOT_APPROVED', // 409, details.sectionId
+  PROMOTION_SHEET_OPEN: 'PROMOTION_SHEET_OPEN', // 409, details.sheetId
+  PROMOTION_SHEET_NOT_OPEN: 'PROMOTION_SHEET_NOT_OPEN', // 409, details.sheetId
+  PROMOTION_INCOMPLETE: 'PROMOTION_INCOMPLETE', // 409, details.enrolmentIds | details.sections
+  PROMOTION_RESULT_SUPERSEDED: 'PROMOTION_RESULT_SUPERSEDED', // 409, details.enrolmentIds
+  PROMOTION_TARGET_INVALID: 'PROMOTION_TARGET_INVALID', // 409, details.reason: other_year | archived | no_target
   // Rule 24 (R225): role.manage and user.account.manage are inert on a default password. 403.
   DEFAULT_PASSWORD_BLOCKS_ACTION: 'DEFAULT_PASSWORD_BLOCKS_ACTION',
   // Client-side only: the web app's label for a failed response whose body was not the error

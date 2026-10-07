@@ -25,6 +25,23 @@ export const yearClosed = (): ApiException =>
 export const classArchived = (): ApiException =>
   new ApiException(409, ErrorCode.CLASS_ARCHIVED, 'An archived class cannot be changed.');
 
+/** Phase 4 slice 29 (contracts/slice-29.md §5): a term overlapping another of its year. */
+export const termOverlaps = (termId: bigint | null): ApiException =>
+  new ApiException(409, ErrorCode.TERM_OVERLAPS, 'This overlaps another term of the year.', {
+    termId: termId?.toString() ?? null,
+  });
+
+/** A term outside its year, or a year whose new dates would leave a term outside. */
+export const termOutsideYear = (termId: bigint | null): ApiException =>
+  new ApiException(409, ErrorCode.TERM_OUTSIDE_YEAR, 'A term must lie inside its academic year.', {
+    termId: termId?.toString() ?? null,
+  });
+
+export const termNameTaken = (): ApiException =>
+  new ApiException(409, ErrorCode.TERM_NAME_TAKEN, 'The year already has a term of that name.', {
+    field: 'name',
+  });
+
 // ------------------------------------------------------------------------------------ dates
 
 /** A `date` column value (UTC midnight) as `YYYY-MM-DD`. */

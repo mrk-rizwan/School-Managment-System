@@ -519,6 +519,17 @@ describe('R16 (slice 17): every message template, rendered with realistic values
         ],
       }),
     ],
+    // Phase 4 (phase-4-academic.md §3.5): name, term, percentage and grade only.
+    result_published: () => [
+      renderMessage('result_published', { studentName: 'Muhammad Abdul Rehman Siddiqui', termName: 'Mid-term', percentBp: 10000, grade: 'A+' }, ctx('result')),
+      renderMessage('result_published', { studentName: 'Hira Tariq', termName: 'Annual', percentBp: null, grade: null }, ctx('result')),
+    ],
+    result_revised: () => [
+      renderMessage('result_revised', { studentName: 'Muhammad Abdul Rehman Siddiqui', termName: 'Final', percentBp: 4000, grade: 'E' }, ctx('result')),
+    ],
+    test_marked: () => [
+      renderMessage('test_marked', { studentName: 'Hira Tariq', testName: 'Unit 4 weekly test' }, ctx('assessment')),
+    ],
   };
 
   it.each(MESSAGE_TYPES.filter((type) => !TEMPLATE_PENDING.has(type)).map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {

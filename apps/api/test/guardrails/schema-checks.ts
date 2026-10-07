@@ -1048,6 +1048,8 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_J_OBJECTS(),
   ...WAVE_K_OBJECTS(),
   ...PHASE_3_CLOSE_OBJECTS(),
+  ...PHASE_4_GROUNDWORK_OBJECTS(),
+  ...PHASE_4_BAND_VALUES_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -1411,8 +1413,9 @@ function PHASE_2_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       table: 'school_settings',
       name: 'school_settings_sms_allowed_types_check',
       definition:
-        // Widened by 20261005181500_phase3_groundwork with the SMS-eligible fee types.
-        "(sms_allowed_types <@ ARRAY['absence_alert'::message_type, 'late_advice'::message_type, 'attendance_corrected'::message_type, 'announcement_urgent'::message_type, 'announcement_normal'::message_type, 'holiday_notice'::message_type, 'fee_charged'::message_type, 'fee_due_reminder'::message_type, 'fee_overdue'::message_type, 'receipt_issued'::message_type, 'payment_claim_rejected'::message_type])",
+        // Widened by 20261005181500_phase3_groundwork with the SMS-eligible fee types and by
+        // 20261007120100_phase4_groundwork with the two result types.
+        "(sms_allowed_types <@ ARRAY['absence_alert'::message_type, 'late_advice'::message_type, 'attendance_corrected'::message_type, 'announcement_urgent'::message_type, 'announcement_normal'::message_type, 'holiday_notice'::message_type, 'fee_charged'::message_type, 'fee_due_reminder'::message_type, 'fee_overdue'::message_type, 'receipt_issued'::message_type, 'payment_claim_rejected'::message_type, 'result_published'::message_type, 'result_revised'::message_type])",
     },
     // ---- teacher_assignments: cover
     {
@@ -2907,5 +2910,62 @@ function PHASE_3_CLOSE_OBJECTS(): ExpectedObject[] {
     { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_reverses_carry_forward'" },
     { kind: 'function', name: 'asms_payment_reversal_not_self', definition: "v_refusal := 'payment_reversals_carried_spent'" },
     { kind: 'function', name: 'asms_payment_reversal_apply', definition: "IF NEW.kind = 'carry_forward_reversal' THEN" },
+  ];
+}
+
+/**
+ * Phase 4 groundwork (migrations 20261007120000_phase4_message_types and
+ * 20261007120100_phase4_groundwork, phase-4-academic.md §3.2, §4 "Slice 29"): the four set-up
+ * tables, the class promotion link and the certificate settings. The lock triggers that read
+ * result_sheets and assessments arrive with those tables (waves N and O).
+ */
+function PHASE_4_GROUNDWORK_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_seed_year_results', definition: "SET search_path TO 'public'" },
+    { kind: 'function', name: 'asms_seed_year_results', definition: 'ON CONFLICT ("school_id", "academic_year_id") DO NOTHING' },
+    { kind: 'function', name: 'asms_seed_year_results', definition: "(VALUES (1, 'Mid-term'), (2, 'Annual'))" },
+    { kind: 'function', name: 'asms_academic_term_inside_year', definition: "DETAIL = 'constraint: academic_terms_inside_year'" },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_dates_check', definition: 'CHECK ((ends_on >= starts_on))' },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_name_check', definition: "CHECK ((((name)::text = btrim((name)::text)) AND ((name)::text <> ''::text)))" },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_name_no_id_check', definition: "CHECK ((((name)::text !~ '[0-9]{13}'::text) AND ((name)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_no_overlap', definition: "EXCLUDE USING gist (school_id WITH =, academic_year_id WITH =, daterange(starts_on, ends_on, '[]'::text) WITH &&)" },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_sort_order_check', definition: 'CHECK (((sort_order >= 1) AND (sort_order <= 6)))' },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_sort_order_excl', definition: 'EXCLUDE USING btree (school_id WITH =, academic_year_id WITH =, sort_order WITH =) DEFERRABLE INITIALLY DEFERRED' },
+    { kind: 'constraint', table: 'academic_terms', name: 'academic_terms_weight_check', definition: 'CHECK (((weight >= 0) AND (weight <= 100)))' },
+    { kind: 'constraint', table: 'class_subjects', name: 'class_subjects_archived_check', definition: 'CHECK (((archived_at IS NULL) = (archived_by IS NULL)))' },
+    { kind: 'constraint', table: 'class_subjects', name: 'class_subjects_exam_max_marks_check', definition: 'CHECK (((exam_max_marks >= 1) AND (exam_max_marks <= 1000)))' },
+    { kind: 'constraint', table: 'class_subjects', name: 'class_subjects_sort_order_check', definition: 'CHECK (((sort_order >= 0) AND (sort_order <= 999)))' },
+    { kind: 'constraint', table: 'classes', name: 'classes_next_class_check', definition: 'CHECK (((NOT (is_final AND (next_class_id IS NOT NULL))) AND ((next_class_id IS NULL) OR (next_class_id <> id))))' },
+    { kind: 'constraint', table: 'result_settings', name: 'result_settings_bands_check', definition: "CHECK (((jsonb_typeof(bands) = 'array'::text) AND ((jsonb_array_length(bands) >= 1) AND (jsonb_array_length(bands) <= 12))))" },
+    { kind: 'constraint', table: 'result_settings', name: 'result_settings_pass_percent_check', definition: 'CHECK (((pass_percent >= 0) AND (pass_percent <= 100)))' },
+    { kind: 'constraint', table: 'result_settings', name: 'result_settings_weights_check', definition: 'CHECK ((((test_weight >= 0) AND (test_weight <= 100)) AND ((exam_weight >= 0) AND (exam_weight <= 100)) AND ((test_weight + exam_weight) = 100)))' },
+    { kind: 'constraint', table: 'school_settings', name: 'school_settings_certificate_signatory_name_check', definition: "CHECK (((certificate_signatory_name IS NULL) OR (((certificate_signatory_name)::text = btrim((certificate_signatory_name)::text)) AND ((certificate_signatory_name)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'school_settings', name: 'school_settings_certificate_signatory_name_no_id_check', definition: "CHECK ((((certificate_signatory_name)::text !~ '[0-9]{13}'::text) AND ((certificate_signatory_name)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'term_skips', name: 'term_skips_ended_check', definition: 'CHECK (((ended_at IS NULL) = (ended_by IS NULL)))' },
+    { kind: 'constraint', table: 'term_skips', name: 'term_skips_reason_check', definition: "CHECK ((((reason)::text = btrim((reason)::text)) AND ((reason)::text <> ''::text)))" },
+    { kind: 'constraint', table: 'term_skips', name: 'term_skips_reason_no_id_check', definition: "CHECK ((((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'index', table: 'academic_terms', name: 'academic_terms_name_key', definition: 'ON public.academic_terms USING btree (school_id, academic_year_id, lower((name)::text))' },
+    { kind: 'index', table: 'class_subjects', name: 'class_subjects_live_key', definition: 'ON public.class_subjects USING btree (school_id, class_id, subject_id) WHERE (archived_at IS NULL)' },
+    { kind: 'index', table: 'term_skips', name: 'term_skips_live_key', definition: 'ON public.term_skips USING btree (school_id, term_id, class_id) WHERE (ended_at IS NULL)' },
+    { kind: 'trigger', table: 'academic_terms', name: 'academic_terms_columns_immutable', definition: "BEFORE UPDATE ON public.academic_terms FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'academic_terms', name: 'academic_terms_inside_year', definition: 'BEFORE INSERT OR UPDATE OF starts_on, ends_on ON public.academic_terms FOR EACH ROW EXECUTE FUNCTION asms_academic_term_inside_year()' },
+    { kind: 'trigger', table: 'academic_years', name: 'academic_years_terms_inside', definition: 'BEFORE UPDATE OF starts_on, ends_on ON public.academic_years FOR EACH ROW EXECUTE FUNCTION asms_academic_term_inside_year()' },
+    { kind: 'trigger', table: 'class_subjects', name: 'class_subjects_archived_frozen', definition: "BEFORE UPDATE ON public.class_subjects FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('archived_at', 'archived_by', 'sort_order', 'exam_max_marks')" },
+    { kind: 'trigger', table: 'class_subjects', name: 'class_subjects_columns_immutable', definition: "BEFORE UPDATE ON public.class_subjects FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'class_id', 'subject_id', 'created_at')" },
+    { kind: 'trigger', table: 'result_settings', name: 'result_settings_columns_immutable', definition: "BEFORE UPDATE ON public.result_settings FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'created_at')" },
+    { kind: 'trigger', table: 'term_skips', name: 'term_skips_columns_immutable', definition: "BEFORE UPDATE ON public.term_skips FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'reason', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'term_skips', name: 'term_skips_ended_frozen', definition: "BEFORE UPDATE ON public.term_skips FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by')" },
+    ...noDeleteTriggers('academic_terms', 'term_skips', 'result_settings', 'class_subjects'),
+  ];
+}
+
+/**
+ * Security review LOW-2 (migration 20261007130000_result_bands_values): each grade band's grade
+ * is 1-4 of [A-Za-z0-9+-] and its minPercent a whole number 0-100, beside the length check.
+ */
+function PHASE_4_BAND_VALUES_OBJECTS(): ExpectedObject[] {
+  return [
+    { kind: 'constraint', table: 'result_settings', name: 'result_settings_band_values_check', definition: `CHECK (((jsonb_typeof(bands) <> 'array'::text) OR (NOT jsonb_path_exists(bands, '$[*]?((((((((@.type() != "object" || !(exists (@."grade"))) || !(exists (@."minPercent"))) || @."grade".type() != "string") || @."minPercent".type() != "number") || !(@."grade" like_regex "^[A-Za-z0-9+-]{1,4}$")) || @."minPercent" < 0) || @."minPercent" > 100) || @."minPercent".floor() != @."minPercent")'::jsonpath))))` },
   ];
 }

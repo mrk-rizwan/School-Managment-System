@@ -63,9 +63,13 @@ const TITLE_ONLY_PUSH: ReadonlySet<MessageType> = new Set<MessageType>([
   'payment_claim_rejected',
   // Slice 25: a staff member's own pay.
   'payslip_ready',
+  // Phase 4 (phase-4-academic.md §3.5): a child's result or test is not for a lock screen.
+  'result_published',
+  'result_revised',
+  'test_marked',
 ]);
 
-/** The push body of a message: its title for a money type (R238), else its body. */
+/** The push body of a message: its title for a money or result type (R238, §3.5), else its body. */
 export const pushBodyOf = (type: MessageType, title: string, body: string): string => (TITLE_ONLY_PUSH.has(type) ? title : body);
 
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */

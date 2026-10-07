@@ -12,6 +12,11 @@ export interface ClassRecord {
   sortOrder: number;
   attendanceMode: AttendanceMode;
   status: ClassStatus;
+  /** Phase 4 (rule 30): the class a passed student is promoted into, and its name. */
+  nextClassId: bigint | null;
+  nextClassName: string | null;
+  /** The school's last class: a passed student completes. Never with a next class. */
+  isFinal: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +39,8 @@ export interface ClassChanges {
   name?: string;
   sortOrder?: number;
   attendanceMode?: AttendanceMode;
+  nextClassId?: bigint | null;
+  isFinal?: boolean;
 }
 
 const SELECT = {
@@ -43,17 +50,21 @@ const SELECT = {
   sortOrder: true,
   attendanceMode: true,
   status: true,
+  nextClassId: true,
+  isFinal: true,
   createdAt: true,
   updatedAt: true,
-  // Same school by the composite foreign key (school_id, academic_year_id).
+  // Same school by the composite foreign keys (school_id, academic_year_id), (school_id, next_class_id).
   academicYear: { select: { name: true } },
+  nextClass: { select: { name: true } },
 } satisfies Prisma.ClassSelect;
 
 type ClassRow = Prisma.ClassGetPayload<{ select: typeof SELECT }>;
 
-const toRecord = ({ academicYear, ...row }: ClassRow): ClassRecord => ({
+const toRecord = ({ academicYear, nextClass, ...row }: ClassRow): ClassRecord => ({
   ...row,
   academicYearName: academicYear.name,
+  nextClassName: nextClass?.name ?? null,
 });
 
 /** Classes (tenant table classes). One row per class per academic year. */

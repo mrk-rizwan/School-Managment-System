@@ -3,6 +3,7 @@
  * that a table stores mirrors the Postgres enum of the same name, created with that table's slice;
  * test/guardrails/shared-enums.e2e-spec.ts compares the two once the enum exists.
  */
+import type { CertificateCounterName } from './academics';
 
 // ------------------------------------------------------------------------------- fee setup
 
@@ -251,9 +252,10 @@ export type ReceiptCounterName = `receipt_${string}`;
 
 /**
  * `school_counters.name` (CHECK school_counters_name_check): admission numbers, expense numbers
- * (created with the school) and one receipt counter per academic year (created with the year).
+ * (created with the school), one receipt counter per academic year (created with the year) and,
+ * since Phase 4, one certificate counter per type (phase-4-academic.md §1.1, rule 29).
  */
-export type SchoolCounterName = 'admission_no' | 'expense_no' | ReceiptCounterName;
+export type SchoolCounterName = 'admission_no' | 'expense_no' | ReceiptCounterName | CertificateCounterName;
 
 export const receiptCounterName = (academicYearId: bigint | string): ReceiptCounterName =>
   `receipt_${academicYearId.toString()}`;

@@ -59,6 +59,9 @@ const klass = (id: string, name: string, y: AcademicYearDto, sortOrder = 0): Cla
   sortOrder,
   attendanceMode: 'daily',
   status: 'active',
+  nextClassId: null,
+  nextClassName: null,
+  isFinal: false,
   createdAt: STAMP,
   updatedAt: STAMP,
 });

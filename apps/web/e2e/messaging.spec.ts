@@ -300,8 +300,11 @@ test('allow list: the eligible types, the never types disabled, internal types a
   const requests = await mockApi(page, { me: PRINCIPAL_ME, whatsapp: { effectiveProvider: 'waha', number: number() } });
   await open(page, '/settings/messaging');
   const card = page.locator('[data-slot="card"]').filter({ hasText: 'What may go by SMS' });
-  // Every SMS-eligible type (six from Phase 2, five fee types since slice 18) and the two never types.
-  await expect(card.getByRole('checkbox')).toHaveCount(SMS_ELIGIBLE_TYPES.length + 2);
+  // Every SMS-eligible type (six from Phase 2, five fee types since slice 18, two result types
+  // since Phase 4) and the three never types (diary, remark and, since Phase 4, marked tests).
+  await expect(card.getByRole('checkbox')).toHaveCount(SMS_ELIGIBLE_TYPES.length + 3);
+  await expect(card.getByLabel(/Published term results/)).toBeEnabled();
+  await expect(card.getByLabel(/Marked class tests/)).toBeDisabled();
   await expect(card.getByLabel(/Fee due reminders/)).toBeEnabled();
   await expect(card.getByText('Deposit slips to verify')).toHaveCount(0);
   await expect(card.getByLabel(/Diary entries/)).toBeDisabled();

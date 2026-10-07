@@ -189,6 +189,10 @@ function expressRoutes(app: NestExpressApplication): string[] {
 const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/academic-years', 'staff'],
   ['GET', '/api/v1/academic-years/:id', 'staff'],
+  // Phase 4 slice 29: a year's terms and result rules, read by any staff member (the teacher's
+  // marks screens show the term and the pass mark).
+  ['GET', '/api/v1/academic-years/:id/result-settings', 'staff'],
+  ['GET', '/api/v1/academic-years/:id/terms', 'staff'],
   ['POST', '/api/v1/auth/forgot-password', 'public'],
   ['POST', '/api/v1/auth/login', 'public'],
   ['POST', '/api/v1/auth/logout', 'authenticated-only'],
@@ -198,6 +202,7 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/classes', 'staff'],
   ['GET', '/api/v1/classes/:id', 'staff'],
   ['GET', '/api/v1/classes/:id/sections', 'staff'],
+  ['GET', '/api/v1/classes/:id/subjects', 'staff'],
   ['GET', '/api/v1/health', 'public'],
   ['GET', '/api/v1/holidays', 'staff'],
   ['GET', '/api/v1/holidays/:id', 'staff'],
@@ -297,6 +302,13 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'PATCH /api/v1/academic-years/:id': ['academic_year.updated'],
   'POST /api/v1/academic-years/:id/activate': ['academic_year.activated'],
   'POST /api/v1/academic-years/:id/close': ['academic_year.closed'],
+  // Phase 4 slice 29 (contracts/slice-29.md §6). Unskipping records academic_term.skipped with
+  // held: true; a repeat of either is a 200 with no row.
+  'POST /api/v1/academic-years/:id/terms': ['academic_term.created'],
+  'PATCH /api/v1/terms/:id': ['academic_term.updated'],
+  'POST /api/v1/terms/:id/skip-class': ['academic_term.skipped'],
+  'POST /api/v1/terms/:id/unskip-class': ['academic_term.skipped'],
+  'PATCH /api/v1/academic-years/:id/result-settings': ['result_settings.updated'],
   'POST /api/v1/admissions': ['guardian.created', 'student.admitted', 'charge.admission_fee', 'concession.created'],
   'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
   'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],
@@ -304,7 +316,7 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/auth/reset-password': ['user.password_reset_by_token'],
   'POST /api/v1/auth/verify-email': ['user.email_verified'],
   'POST /api/v1/classes': ['class.created'],
-  'PATCH /api/v1/classes/:id': ['class.updated'],
+  'PATCH /api/v1/classes/:id': ['class.updated', 'class.subjects_updated'],
   'POST /api/v1/classes/:id/archive': ['class.archived'],
   'POST /api/v1/classes/:id/copy-sections': ['class.sections_copied'],
   'POST /api/v1/classes/:id/sections': ['section.created'],

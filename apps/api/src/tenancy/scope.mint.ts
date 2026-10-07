@@ -1,6 +1,6 @@
 // Constructors of Scope. Importable only from src/modules/access/** (the permission service),
 // enforced by lint.
-import type { DatedScope, Scope, SectionRoles } from './scope';
+import type { DatedScope, MarksMode, MarksScope, Scope, SectionRoles } from './scope';
 
 type UnbrandedScope =
   | { readonly kind: 'all' }
@@ -39,4 +39,33 @@ export function datedScopeAll(on: Date): DatedScope {
 export function datedScopeSections(on: Date, sections: ReadonlyMap<bigint, SectionRoles>): DatedScope {
   // Copied so a caller cannot widen the scope by mutating its map afterwards.
   return brandDated({ kind: 'sections', on: new Date(on.getTime()), sections: new Map(sections) });
+}
+
+type UnbrandedMarksScope<M extends MarksMode> = { readonly mode: M } & (
+  | { readonly kind: 'all'; readonly on: Date }
+  | { readonly kind: 'sections'; readonly on: Date; readonly sections: ReadonlyMap<bigint, SectionRoles> }
+);
+
+const brandMarks = <M extends MarksMode>(scope: UnbrandedMarksScope<M>): MarksScope<M> => scope as MarksScope<M>;
+
+/** phase-4-academic.md §0.27: school-wide marks scope on `on`, for reading or for writing. */
+export function marksScopeAll<M extends MarksMode>(mode: M, on: Date): MarksScope<M> {
+  return brandMarks({ mode, kind: 'all', on: new Date(on.getTime()) });
+}
+
+/**
+ * The sections and subjects held on `on` (from teacher_assignments), for reading or for writing.
+ * Copied deeply, so a caller cannot widen the scope by mutating its map or a section's subject
+ * list afterwards.
+ */
+export function marksScopeSections<M extends MarksMode>(
+  mode: M,
+  on: Date,
+  sections: ReadonlyMap<bigint, SectionRoles>,
+): MarksScope<M> {
+  const copy = new Map<bigint, SectionRoles>();
+  for (const [sectionId, roles] of sections) {
+    copy.set(sectionId, { classTeacher: roles.classTeacher, cover: roles.cover, subjectIds: [...roles.subjectIds] });
+  }
+  return brandMarks({ mode, kind: 'sections', on: new Date(on.getTime()), sections: copy });
 }

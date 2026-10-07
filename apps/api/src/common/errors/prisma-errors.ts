@@ -16,6 +16,7 @@ import { SLICE_26_CONSTRAINTS } from './constraints-billing';
 import { SLICE_20_CONSTRAINTS } from './constraints-payments';
 import { SLICE_25_CONSTRAINTS } from './constraints-payroll';
 import { SLICE_21_CONSTRAINTS } from './constraints-claims';
+import { SLICE_29_CONSTRAINTS } from './constraints-academics';
 
 /** What may be logged about a database error. */
 export interface DatabaseErrorSummary {
@@ -221,6 +222,7 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
   ...SLICE_20_CONSTRAINTS,
   ...SLICE_25_CONSTRAINTS,
   ...SLICE_21_CONSTRAINTS,
+  ...SLICE_29_CONSTRAINTS,
 };
 
 /**
