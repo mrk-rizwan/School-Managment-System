@@ -3,7 +3,7 @@
 # opens the Approvals tab, shows the slip on a tap, verifies the claim (keeping it as the child's
 # advance when nothing is owed), then confirms the handover at the expected amount. ci-run.sh then
 # checks over curl that the claim is verified and the handover confirmed.
-# Env: SCHOOL_CODE, PRINCIPAL_CNIC, CLAIM_ID, HANDOVER_ID, OUT_DIR (ci-run.sh's output folder).
+# Env: SCHOOL_CODE, PRINCIPAL_CNIC, CLAIM_ID, HANDOVER_ID.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -39,7 +39,7 @@ appId: pk.asms.app.dev
     optional: true
 # FLAG_SECURE evidence (slice-27 review): the sheet is drawn in the Activity's own window, not a
 # Modal's, so this capture of the open slip must come out black. ci-run.sh prints its size.
-- takeScreenshot: ${OUT_DIR}/principal-approvals-claim-sheet
+- takeScreenshot: principal-approvals-claim-sheet
 - scrollUntilVisible:
     element:
       id: 'approvals.claim.verify'

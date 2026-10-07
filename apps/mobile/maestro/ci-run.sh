@@ -214,9 +214,10 @@ upload_id="$(curl -fs -H "Authorization: Bearer $guardian_token" -H 'X-App-Versi
   -F "file=@$root/apps/mobile/maestro/assets/deposit-slip.png;type=image/png" "$api/me/uploads" | json 'b.id')"
 CLAIM_ID="$(printf '{"method":"jazzcash","claimedAmount":700,"paidOn":"%s","reference":"MAESTRO-27","stagedUploadId":"%s"}' \
   "$today" "$upload_id" | post_as "$guardian_token" "/me/children/$STUDENT_ID/payment-claims" "$(key)" | json 'b.id')"
-flow principal-approvals principal-approvals.yaml "${ids[@]}" -e CLAIM_ID="$CLAIM_ID" -e HANDOVER_ID="$HANDOVER_ID" -e OUT_DIR="$out"
+flow principal-approvals principal-approvals.yaml "${ids[@]}" -e CLAIM_ID="$CLAIM_ID" -e HANDOVER_ID="$HANDOVER_ID"
 # The capture of the open slip under FLAG_SECURE (a black frame compresses to a few kilobytes).
-ls -l "$out/principal-approvals-claim-sheet.png" || true
+# Maestro writes takeScreenshot into the run's own output folder (under --debug-output).
+find "$out" -name 'principal-approvals-claim-sheet*.png' -exec ls -l {} \; || true
 claim_status="$(get "$principal_token" "/payment-claims/$CLAIM_ID" | json 'b.status')"
 if [ "$claim_status" != "verified" ]; then echo "the claim is '$claim_status', wanted verified"; exit 1; fi
 handover_status="$(get "$principal_token" "/cash-handovers/$HANDOVER_ID" | json 'b.status')"
