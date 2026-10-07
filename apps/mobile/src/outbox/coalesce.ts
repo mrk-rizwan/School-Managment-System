@@ -1,4 +1,4 @@
-import type { SubmitRegisterDto } from '../api/contracts';
+import type { AssessmentSubmitMarksDto, SubmitRegisterDto } from '../api/contracts';
 
 // Coalescing by natural key (slice-15 §7.4, R158): a second write to a register (section, date,
 // period) while a PENDING row for it exists merges into that row, so an offline correction
@@ -40,9 +40,24 @@ export function mergeMarksBody(existing: MarksBody, incoming: MarksBody): MarksB
   };
 }
 
-/** The merge used for a lane's bodies, serialised as stored. */
+/** `assessment:<server id>`: the marks of one assessment coalesce into one pending row (§3.8). */
+export function assessmentNaturalKey(assessmentId: string): string {
+  return `assessment:${assessmentId}`;
+}
+
+type EntriesBody = AssessmentSubmitMarksDto;
+
+/** Marks entries merged by enrolmentId, latest wins (its own key and base come with it). */
+export function mergeEntriesBody(existing: EntriesBody, incoming: EntriesBody): EntriesBody {
+  const byEnrolment = new Map(existing.entries.map((entry) => [entry.enrolmentId, entry]));
+  for (const entry of incoming.entries) byEnrolment.set(entry.enrolmentId, entry);
+  return { entries: [...byEnrolment.values()] };
+}
+
+/** The merge used for a lane's bodies, serialised as stored: registers by `marks`, assessments by `entries`. */
 export function mergeBodies(existing: string, incoming: string): string {
-  return JSON.stringify(
-    mergeMarksBody(JSON.parse(existing) as MarksBody, JSON.parse(incoming) as MarksBody),
-  );
+  const older = JSON.parse(existing) as MarksBody | EntriesBody;
+  const newer = JSON.parse(incoming) as MarksBody | EntriesBody;
+  if ('entries' in older && 'entries' in newer) return JSON.stringify(mergeEntriesBody(older, newer));
+  return JSON.stringify(mergeMarksBody(older as MarksBody, newer as MarksBody));
 }

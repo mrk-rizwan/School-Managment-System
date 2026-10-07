@@ -53,6 +53,7 @@ import {
   StudentStatusBadge,
 } from '../_lib/students-ui';
 import { StudentAttendanceTab } from './attendance-tab';
+import { CertificatesPanel } from './certificates-panel';
 import { DuesClearancePanel, useDuesClearance } from './dues-clearance-panel';
 import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
@@ -61,7 +62,16 @@ import { RemarksTab } from './remarks-tab';
 import { FeeStatementTab } from '../../fees/_lib/fee-statement';
 import { NotesField } from '../_lib/notes-field';
 
-type Tab = 'details' | 'guardians' | 'enrolments' | 'attendance' | 'remarks' | 'documents' | 'fees' | 'history';
+type Tab =
+  | 'details'
+  | 'guardians'
+  | 'enrolments'
+  | 'attendance'
+  | 'remarks'
+  | 'documents'
+  | 'fees'
+  | 'certificates'
+  | 'history';
 
 /** contracts/slice-6.md §3, §10. Write controls follow GET /me; the API checks every request. */
 export function StudentDetail({ id }: { id: string }) {
@@ -94,6 +104,9 @@ export function StudentDetail({ id }: { id: string }) {
             ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
             // The fee statement (phase-3-financial.md slice 19, R205); teachers see no money (R234).
             ...(can(Capability.FEE_STATEMENT_VIEW) ? [{ value: 'fees' as const, label: 'Fees' }] : []),
+            // Phase 4 slice 34: its own tab, so a certificate.issue holder without
+            // fee.statement.view reaches it too (wave N review).
+            ...(can(Capability.CERTIFICATE_ISSUE) ? [{ value: 'certificates' as const, label: 'Certificates' }] : []),
             { value: 'history', label: 'Status history' },
           ];
           const place = placeLabel(data.current);
@@ -153,6 +166,7 @@ export function StudentDetail({ id }: { id: string }) {
                     <FeeStatementTab student={data} />
                   </div>
                 )}
+                {tab === 'certificates' && <CertificatesPanel student={data} />}
                 {tab === 'history' && <StatusHistory studentId={data.id} />}
               </div>
             </>

@@ -22,6 +22,7 @@ import {
 import type { MeDto } from '../api/contracts';
 import { evictCache, readCache, writeCache, type Cached } from '../db/cache';
 import { discardExpiredUnsent, getDb, wipeUnlessOwnedBy, type DiscardedItem } from '../db/database';
+import { recoverWaitingMarks } from '../db/local-marks.repository';
 import { recoverWaitingAttachments, sweepPhotoFiles } from '../db/local.repository';
 import { countUnsent, purgeFinished } from '../db/outbox.repository';
 import { deleteCachedDownloads } from '../media/files';
@@ -204,6 +205,8 @@ export function SessionProvider({
     await recoverStaleItems(now);
     // Slice 16 §4.5, §13.3: photos left waiting by a crash, files no row points at, downloads.
     await recoverWaitingAttachments(now);
+    // Slice 30: marks left waiting for a test the server already has.
+    await recoverWaitingMarks(now);
     await sweepPhotoFiles();
     deleteCachedDownloads();
     const notice = describeDiscarded(await discardExpiredUnsent(now));

@@ -36,6 +36,7 @@ import { FinanceReportsService } from './finance-reports.service';
     ChargeRepository,
     AuditLogRepository,
   ],
-  exports: [FeeReminders],
+  // Phase 4 slice 34: certificates read dues only through FinanceReportsService.clearance (§5.1).
+  exports: [FeeReminders, FinanceReportsService],
 })
 export class FinanceReportsModule {}

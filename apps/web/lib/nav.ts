@@ -1,6 +1,7 @@
 import type { Capability } from '@asms/shared';
 import {
   ActivityIcon,
+  AwardIcon,
   BanknoteIcon,
   BookOpenIcon,
   BookOpenCheckIcon,
@@ -8,6 +9,7 @@ import {
   CalendarOffIcon,
   PlaneIcon,
   ClipboardCheckIcon,
+  ClipboardPenLineIcon,
   UserCheckIcon,
   CalendarDaysIcon,
   CircleUserRoundIcon,
@@ -58,6 +60,8 @@ export const schoolNav: NavItem[] = [
     capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve'],
   },
   { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
+  // Phase 4 slice 34: the certificates register (contracts/slice-34.md §8).
+  { href: '/certificates', label: 'Certificates', icon: AwardIcon, capability: 'certificate.issue' },
   { href: '/staff', label: 'Staff', icon: IdCardIcon, capability: 'staff.view' },
   { href: '/guardians', label: 'Guardians', icon: UsersRoundIcon, capability: 'guardian.manage' },
   // Registers are read with either key and written with mark (contracts/slice-11.md §1.1).
@@ -69,6 +73,9 @@ export const schoolNav: NavItem[] = [
   },
   // Office staff do not hold diary.write by default, so they do not see the diary (slice-13 §1.1).
   { href: '/diary', label: 'Diary', icon: BookOpenCheckIcon, capability: 'diary.write' },
+  // Phase 4 slice 30: tests and exams of the caller's sections and subjects, or the school's with
+  // marks.view_all (contracts/slice-30.md §8).
+  { href: '/marks', label: 'Marks', icon: ClipboardPenLineIcon, capability: ['marks.enter', 'marks.view_all'] },
   // Senders read their own announcements, or every one with .school (contracts/slice-14.md §1.1).
   {
     href: '/announcements',

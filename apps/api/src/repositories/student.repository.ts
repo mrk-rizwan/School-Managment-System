@@ -6,8 +6,10 @@ import type { Gender, Prisma, StudentStatus } from './generated/prisma/client';
 import { escapeLike, type PrismaTxAdapter } from './prisma';
 
 // contracts/slice-6.md §1-§3. The tenant table students. `bForm` is the field-encryption envelope
-// (AAD `schoolId|students|b_form`) and `bFormHash` its lookup HMAC; neither is decrypted or
-// matched here, only stored and compared.
+// (AAD `schoolId|students|b_form`, common/identity.ts bFormAad) and `bFormHash` its lookup HMAC;
+// this repository stores the envelope and compares the hash, and never decrypts. Decryption is in
+// the services only: the masked student view, the student login, and the leaving certificate's
+// print view (which reads the envelope through CertificateRepository.studentBForm).
 //
 // Shared interface (slice 6B's admission and readmission call these inside their transaction;
 // keep the signatures stable):

@@ -17,6 +17,8 @@ export type TickReason =
 
 export type WorkerStore = {
   listDue(now: Date): Promise<OutboxItem[]>;
+  /** pending -> sending if the row is still pending; the row as claimed, else null. */
+  claimPending(id: string, now: Date): Promise<OutboxItem | null>;
   saveItem(item: OutboxItem): Promise<void>;
   earliestAttempt(): Promise<string | null>;
 };
@@ -167,8 +169,10 @@ export class OutboxWorker {
   private async process(item: OutboxItem): Promise<void> {
     let finished: OutboxItem | null = null;
     try {
-      const sending = transition(item, { type: 'send', now: this.now() }).item;
-      await this.deps.store.saveItem(sending);
+      // An atomic claim, never a write-back of the body read by the scan: a Save that merged into
+      // the row between the scan and here is part of what is sent (wave N review).
+      const sending = await this.deps.store.claimPending(item.id, this.now());
+      if (sending === null) return;
       this.changed();
       let outcome: SentOutcome;
       try {

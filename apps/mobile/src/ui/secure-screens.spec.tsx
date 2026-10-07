@@ -18,6 +18,11 @@ const SECURE: Record<string, boolean> = {
   'classes/[sectionId]/diary/new.tsx': false,
   'classes/[sectionId]/students/index.tsx': true,
   'classes/[sectionId]/students/[studentId].tsx': true,
+  // Phase 4 slice 30: Marks — the grid names children; the lists and the test form do not
+  'marks/index.tsx': false,
+  'marks/[sectionId]/index.tsx': false,
+  'marks/[sectionId]/new.tsx': false,
+  'marks/test/[id].tsx': true,
   // Parent (§5.1–5.4)
   'children/index.tsx': true,
   'children/[studentId]/attendance.tsx': true,

@@ -9,6 +9,7 @@ export const TAB_ORDER = [
   'home',
   'approvals',
   'classes',
+  'marks',
   'today',
   'announce',
   'children',
@@ -44,6 +45,8 @@ export function composeTabs(me: TabSource): TabId[] {
       (cap(Capability.ATTENDANCE_STUDENT_MARK) ||
         cap(Capability.DIARY_WRITE) ||
         cap(Capability.REMARK_WRITE)),
+    // Phase 4 slice 30 (§3.8): a teacher's tests and marks, by their assignments (rule 13).
+    marks: staff && assigned && (cap(Capability.MARKS_ENTER) || cap(Capability.MARKS_VIEW_ALL)),
     today: staff && cap(Capability.ATTENDANCE_STUDENT_VIEW_ALL),
     announce: staff && cap(Capability.ANNOUNCEMENT_SEND_SCHOOL),
     children: me.capacities.includes('guardian'),

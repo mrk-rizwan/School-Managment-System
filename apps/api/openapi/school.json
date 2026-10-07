@@ -1040,6 +1040,390 @@
         },
         "type": "object"
       },
+      "AssessmentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "canEnterMarks": {
+            "description": "The caller may enter marks on it now: their write scope on held_on reaches its section and subject, and it is neither voided nor locked",
+            "type": "boolean"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByMe": {
+            "description": "The caller created it",
+            "type": "boolean"
+          },
+          "heldOn": {
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentKind"
+              }
+            ]
+          },
+          "lockedAt": {
+            "description": "A test locked by its submitted sheet",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "markedCount": {
+            "description": "Live marks entered so far",
+            "type": "integer"
+          },
+          "maxMarks": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "subjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "type": "string"
+          },
+          "testType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TestType"
+              }
+            ],
+            "description": "A test only; null on an exam",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "termId",
+          "termName",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "classSubjectId",
+          "subjectId",
+          "subjectName",
+          "kind",
+          "testType",
+          "name",
+          "maxMarks",
+          "heldOn",
+          "createdByMe",
+          "markedCount",
+          "canEnterMarks",
+          "lockedAt",
+          "voidedAt",
+          "voidReason",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "AssessmentKind": {
+        "enum": [
+          "test",
+          "exam"
+        ],
+        "type": "string"
+      },
+      "AssessmentMarkDto": {
+        "properties": {
+          "absent": {
+            "type": "boolean"
+          },
+          "assessmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "correctionReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "enteredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "excused": {
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "maxMarks": {
+            "type": "integer"
+          },
+          "obtained": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentMarkStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "supersedesId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "assessmentId",
+          "enrolmentId",
+          "studentId",
+          "obtained",
+          "maxMarks",
+          "absent",
+          "excused",
+          "status",
+          "supersedesId",
+          "correctionReason",
+          "enteredAt"
+        ],
+        "type": "object"
+      },
+      "AssessmentMarkRowDto": {
+        "properties": {
+          "absent": {
+            "type": "boolean"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "enteredAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "excused": {
+            "type": "boolean"
+          },
+          "markId": {
+            "description": "The live mark; null when none is entered",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "obtained": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "ownChildOf": {
+            "description": "The caller's user id when the caller is a guardian of this student (rule 27), else null",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentMarkStatus"
+              }
+            ],
+            "description": "live, or null when no mark is entered",
+            "nullable": true
+          },
+          "student": {
+            "$ref": "#/components/schemas/AssessmentStudentDto"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "student",
+          "markId",
+          "obtained",
+          "absent",
+          "excused",
+          "status",
+          "enteredAt",
+          "ownChildOf"
+        ],
+        "type": "object"
+      },
+      "AssessmentMarkStatus": {
+        "description": "live, or null when no mark is entered",
+        "enum": [
+          "live",
+          "pending",
+          "superseded",
+          "rejected"
+        ],
+        "type": "string"
+      },
+      "AssessmentMarksDto": {
+        "properties": {
+          "assessment": {
+            "$ref": "#/components/schemas/AssessmentDto"
+          },
+          "rows": {
+            "description": "The section's enrolments in force on held_on, by roll number then name",
+            "items": {
+              "$ref": "#/components/schemas/AssessmentMarkRowDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "assessment",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "AssessmentSort": {
+        "enum": [
+          "-heldOn",
+          "heldOn"
+        ],
+        "type": "string"
+      },
+      "AssessmentStudentDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "admissionNo",
+          "rollNo"
+        ],
+        "type": "object"
+      },
+      "AssessmentSubmitMarksDto": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/MarkEntryDto"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "AssessmentSubmitMarksMinimalResultDto": {
+        "properties": {
+          "assessmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/MarkEntryResultDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "assessmentId",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "AssessmentSubmitMarksResultDto": {
+        "properties": {
+          "assessment": {
+            "$ref": "#/components/schemas/AssessmentDto"
+          },
+          "entries": {
+            "description": "In request order; an entry for a student not on the grid is omitted (nothing written)",
+            "items": {
+              "$ref": "#/components/schemas/MarkEntryResultDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "assessment",
+          "entries"
+        ],
+        "type": "object"
+      },
       "AssignRoleDto": {
         "properties": {
           "customRoleId": {
@@ -1827,6 +2211,387 @@
           "payment"
         ],
         "type": "object"
+      },
+      "CertificateBodyDto": {
+        "properties": {
+          "academicYearName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "admittedOn": {
+            "example": "2026-10-07",
+            "format": "date",
+            "type": "string"
+          },
+          "attendedFrom": {
+            "example": "2026-10-07",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "attendedTo": {
+            "description": "Null while the student is still enrolled",
+            "example": "2026-10-07",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "conduct": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "example": "2026-10-07",
+            "format": "date",
+            "type": "string"
+          },
+          "enrolments": {
+            "description": "Oldest first",
+            "items": {
+              "$ref": "#/components/schemas/CertificateEnrolmentDto"
+            },
+            "type": "array"
+          },
+          "fatherName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "gender": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              }
+            ]
+          },
+          "remarks": {
+            "nullable": true,
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "signatoryName": {
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "studentStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schoolName",
+          "studentName",
+          "fatherName",
+          "admissionNo",
+          "gender",
+          "dateOfBirth",
+          "admittedOn",
+          "studentStatus",
+          "academicYearName",
+          "className",
+          "sectionName",
+          "attendedFrom",
+          "attendedTo",
+          "enrolments",
+          "conduct",
+          "remarks",
+          "signatoryName"
+        ],
+        "type": "object"
+      },
+      "CertificateDto": {
+        "properties": {
+          "academicYearId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "body": {
+            "$ref": "#/components/schemas/CertificateBodyDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "duesStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DuesStatus"
+              }
+            ]
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "issueNo": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "issuedByName": {
+            "type": "string"
+          },
+          "issuedOn": {
+            "example": "2026-10-07",
+            "format": "date",
+            "type": "string"
+          },
+          "label": {
+            "example": "LC-0001",
+            "type": "string"
+          },
+          "number": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "printedCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reissueOfId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CertificateType"
+              }
+            ]
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedByName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "type",
+          "number",
+          "label",
+          "issueNo",
+          "reissueOfId",
+          "academicYearId",
+          "academicYearName",
+          "title",
+          "issuedOn",
+          "issuedByName",
+          "printedCount",
+          "voidedAt",
+          "voidedByName",
+          "voidReason",
+          "createdAt",
+          "duesStatus",
+          "reason",
+          "body"
+        ],
+        "type": "object"
+      },
+      "CertificateEnrolmentDto": {
+        "properties": {
+          "academicYearName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "from": {
+            "example": "2026-10-07",
+            "format": "date",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "to": {
+            "description": "Null while the enrolment was still open",
+            "example": "2026-10-07",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearName",
+          "className",
+          "sectionName",
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
+      "CertificateSort": {
+        "enum": [
+          "-issuedOn",
+          "issuedOn"
+        ],
+        "type": "string"
+      },
+      "CertificateSummaryDto": {
+        "properties": {
+          "academicYearId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "issueNo": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "issuedByName": {
+            "type": "string"
+          },
+          "issuedOn": {
+            "example": "2026-10-07",
+            "format": "date",
+            "type": "string"
+          },
+          "label": {
+            "example": "LC-0001",
+            "type": "string"
+          },
+          "number": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "printedCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "reissueOfId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CertificateType"
+              }
+            ]
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedByName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "type",
+          "number",
+          "label",
+          "issueNo",
+          "reissueOfId",
+          "academicYearId",
+          "academicYearName",
+          "title",
+          "issuedOn",
+          "issuedByName",
+          "printedCount",
+          "voidedAt",
+          "voidedByName",
+          "voidReason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "CertificateType": {
+        "enum": [
+          "leaving",
+          "character",
+          "academic",
+          "completion",
+          "other"
+        ],
+        "type": "string"
       },
       "ChangeClassDto": {
         "properties": {
@@ -3379,6 +4144,50 @@
           "category",
           "priority",
           "audiences"
+        ],
+        "type": "object"
+      },
+      "CreateAssessmentDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "heldOn": {
+            "description": "Inside a term of the class’s year; fixes the term (A3)",
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
+          },
+          "maxMarks": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "testType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TestType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "sectionId",
+          "testType",
+          "name",
+          "maxMarks",
+          "heldOn"
         ],
         "type": "object"
       },
@@ -5097,6 +5906,14 @@
         ],
         "type": "object"
       },
+      "DuesStatus": {
+        "enum": [
+          "not_required",
+          "cleared",
+          "override"
+        ],
+        "type": "string"
+      },
       "EffectiveCapabilityDto": {
         "properties": {
           "capability": {
@@ -5445,6 +6262,28 @@
           "UNEXPECTED_RESPONSE"
         ],
         "type": "string"
+      },
+      "ExamSetUpResultDto": {
+        "properties": {
+          "created": {
+            "description": "Exams created by this request",
+            "type": "integer"
+          },
+          "existing": {
+            "description": "Exams that already existed (live)",
+            "type": "integer"
+          },
+          "skipped": {
+            "description": "Class-subject × section pairs not set up: the term is not held for the class",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "existing",
+          "skipped"
+        ],
+        "type": "object"
       },
       "ExpenseCategory": {
         "enum": [
@@ -7130,6 +7969,40 @@
         ],
         "type": "string"
       },
+      "IssueCertificateDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "conduct": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "remarks": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CertificateType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
       "IssueLoginDto": {
         "properties": {
           "reason": {
@@ -7696,6 +8569,83 @@
           "changedAt"
         ],
         "type": "string"
+      },
+      "MarkEntryDto": {
+        "properties": {
+          "absent": {
+            "default": false,
+            "description": "True for an absence (no mark)",
+            "type": "boolean"
+          },
+          "basedOnMarkId": {
+            "description": "The live mark the client saw, or null when it saw none",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "clientEntryKey": {
+            "description": "Generated once per entry on the device",
+            "pattern": "^[A-Za-z0-9_-]{16,64}$",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "obtained": {
+            "description": "The mark; absent or null with absent: true",
+            "maximum": 1000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "clientEntryKey",
+          "basedOnMarkId"
+        ],
+        "type": "object"
+      },
+      "MarkEntryOutcome": {
+        "enum": [
+          "created",
+          "superseded",
+          "unchanged",
+          "changed_elsewhere"
+        ],
+        "type": "string"
+      },
+      "MarkEntryResultDto": {
+        "properties": {
+          "clientEntryKey": {
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "markId": {
+            "description": "The live mark after this entry: the one written, the unchanged one, or (changed_elsewhere) the one now live",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkEntryOutcome"
+              }
+            ]
+          }
+        },
+        "required": [
+          "clientEntryKey",
+          "enrolmentId",
+          "markId",
+          "outcome"
+        ],
+        "type": "object"
       },
       "MarkOutcome": {
         "enum": [
@@ -11455,6 +12405,14 @@
             "minimum": 0,
             "type": "number"
           },
+          "certificateShowIdentityNo": {
+            "type": "boolean"
+          },
+          "certificateSignatoryName": {
+            "maxLength": 100,
+            "nullable": true,
+            "type": "string"
+          },
           "expenseApprovalThreshold": {
             "description": "Whole rupees",
             "maximum": 10000000,
@@ -11604,6 +12562,8 @@
           "payDay",
           "feeReminderDaysBefore",
           "overdueReminderEveryDays",
+          "certificateSignatoryName",
+          "certificateShowIdentityNo",
           "updatedAt"
         ],
         "type": "object"
@@ -11873,6 +12833,20 @@
         "required": [
           "revoked"
         ],
+        "type": "object"
+      },
+      "SetUpExamsDto": {
+        "properties": {
+          "classIds": {
+            "description": "Default: every class of the term's year that is not archived",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
         "type": "object"
       },
       "ShortfallResolution": {
@@ -13944,6 +14918,16 @@
         ],
         "type": "string"
       },
+      "TestType": {
+        "description": "A test only; null on an exam",
+        "enum": [
+          "daily",
+          "weekly",
+          "monthly",
+          "other"
+        ],
+        "type": "string"
+      },
       "UndoCarryForwardDto": {
         "properties": {
           "reason": {
@@ -14031,6 +15015,27 @@
           },
           "title": {
             "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateAssessmentDto": {
+        "properties": {
+          "heldOn": {
+            "description": "Stays inside the same term",
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
+          },
+          "maxMarks": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 80,
             "minLength": 1,
             "type": "string"
           }
@@ -14421,6 +15426,15 @@
             "maximum": 30,
             "minimum": 0,
             "type": "number"
+          },
+          "certificateShowIdentityNo": {
+            "type": "boolean"
+          },
+          "certificateSignatoryName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
           },
           "expenseApprovalThreshold": {
             "description": "Whole rupees",
@@ -17536,6 +18550,810 @@
         ]
       }
     },
+    "/api/v1/assessments": {
+      "get": {
+        "operationId": "AssessmentsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classSubjectId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AssessmentKind"
+            }
+          },
+          {
+            "description": "Include voided assessments",
+            "in": "query",
+            "name": "includeVoided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AssessmentSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AssessmentDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      },
+      "post": {
+        "operationId": "AssessmentsController_create",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssessmentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/assessments/{id}": {
+      "get": {
+        "operationId": "AssessmentsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      },
+      "patch": {
+        "operationId": "AssessmentsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAssessmentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/assessments/{id}/marks": {
+      "get": {
+        "operationId": "AssessmentsController_grid",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentMarksDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/assessments/{id}/submit-marks": {
+      "post": {
+        "operationId": "AssessmentsController_submitMarks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "return=minimal: the answer is { assessmentId, entries } (AssessmentSubmitMarksMinimalResultDto), with Preference-Applied: return=minimal. Absent: the full AssessmentSubmitMarksResultDto.",
+            "in": "header",
+            "name": "Prefer",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentSubmitMarksDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentSubmitMarksResultDto"
+                }
+              }
+            },
+            "description": "AssessmentSubmitMarksMinimalResultDto with Prefer: return=minimal"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/assessments/{id}/void": {
+      "post": {
+        "operationId": "AssessmentsController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
     "/api/v1/attendance-arrivals": {
       "post": {
         "operationId": "AttendanceController_arrival",
@@ -19991,6 +21809,604 @@
         },
         "tags": [
           "payments"
+        ]
+      }
+    },
+    "/api/v1/certificates": {
+      "get": {
+        "operationId": "CertificatesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CertificateType"
+            }
+          },
+          {
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issuedFrom",
+            "required": false,
+            "schema": {
+              "example": "2026-10-07",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "issuedTo",
+            "required": false,
+            "schema": {
+              "example": "2026-10-07",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "True lists only voided certificates, false only the valid ones",
+            "in": "query",
+            "name": "voided",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CertificateSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/CertificateDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/certificates/{id}": {
+      "get": {
+        "operationId": "CertificatesController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/certificates/{id}/print": {
+      "get": {
+        "operationId": "CertificatesController_print",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The printable certificate (R292)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/certificates/{id}/reissue": {
+      "post": {
+        "operationId": "CertificatesController_reissue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": "Replay of a committed reissue"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/certificates/{id}/void": {
+      "post": {
+        "operationId": "CertificatesController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
         ]
       }
     },
@@ -30760,6 +33176,117 @@
         },
         "tags": [
           "leave"
+        ]
+      }
+    },
+    "/api/v1/marks/{id}/excuse": {
+      "post": {
+        "operationId": "AssessmentsController_excuse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentMarkDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
         ]
       }
     },
@@ -43871,6 +46398,282 @@
         ]
       }
     },
+    "/api/v1/students/{id}/certificates": {
+      "get": {
+        "operationId": "StudentCertificatesController_listForStudent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CertificateSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/CertificateSummaryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      },
+      "post": {
+        "operationId": "StudentCertificatesController_issue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueCertificateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": "Replay of a committed issue"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
     "/api/v1/students/{id}/change-status": {
       "post": {
         "operationId": "StudentsController_changeStatus",
@@ -46504,6 +49307,117 @@
         },
         "tags": [
           "terms and results"
+        ]
+      }
+    },
+    "/api/v1/terms/{id}/set-up-exams": {
+      "post": {
+        "operationId": "AssessmentsController_setUpExams",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUpExamsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamSetUpResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
         ]
       }
     },

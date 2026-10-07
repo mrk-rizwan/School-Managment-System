@@ -52,6 +52,8 @@ const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettings
   payDay: row.payDay,
   feeReminderDaysBefore: row.feeReminderDaysBefore,
   overdueReminderEveryDays: row.overdueReminderEveryDays,
+  certificateSignatoryName: row.certificateSignatoryName,
+  certificateShowIdentityNo: row.certificateShowIdentityNo,
   updatedAt: row.updatedAt,
 });
 
@@ -86,6 +88,9 @@ const WRITABLE = [
   'payDay',
   'feeReminderDaysBefore',
   'overdueReminderEveryDays',
+  // Phase 4 (contracts/slice-34.md §6).
+  'certificateSignatoryName',
+  'certificateShowIdentityNo',
 ] as const satisfies readonly (keyof UpdateSchoolSettingsDto & keyof SchoolSettingsDto)[];
 
 const lateFeeAmountRequired = () =>

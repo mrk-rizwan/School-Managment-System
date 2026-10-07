@@ -182,6 +182,42 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Slice 34 (§5.1): the certificate repository is the certificates module's, and that module
+  // reads dues only through FinanceReportsService.clearance, never a money repository.
+  it.each([
+    ['certificate-repository-import.ts', 'src/modules/academics/terms.service.ts'],
+    ['certificate-repository-import.ts', 'src/modules/people/students/students.service.ts'],
+    ['money-repository-import.ts', 'src/modules/certificates/certificates.service.ts'],
+  ])('refuses %s at %s (slice 34)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['certificate-repository-import.ts', 'src/modules/certificates/certificates.service.ts'],
+    ['certificate-repository-import.ts', 'test/certificates/support.ts'],
+    ['money-repository-import.ts', 'src/modules/finance-reports/finance-reports.service.ts'],
+  ])('allows %s at %s (slice 34)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 30 (§5.1): the assessment and mark repositories are the assessments module's; that
+  // module reads the slice-29 set-up repositories (a recorded widening).
+  it.each([
+    ['assessment-repository-import.ts', 'src/modules/academics/terms.service.ts'],
+    ['assessment-repository-import.ts', 'src/modules/certificates/certificates.service.ts'],
+    ['assessment-repository-import.ts', 'src/jobs/charge-generate.ts'],
+  ])('refuses %s at %s (slice 30)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['assessment-repository-import.ts', 'src/modules/assessments/marks.service.ts'],
+    ['assessment-repository-import.ts', 'test/assessments/support.ts'],
+    ['academic-setup-repository-import.ts', 'src/modules/assessments/assessments.service.ts'],
+  ])('allows %s at %s (slice 30)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
   it('refuses a MarksScope assertion (Phase 4)', async () => {
     expect(
       rules(await lintAs('marks-scope-cast.ts', 'src/modules/assessments/assessments.service.ts')),

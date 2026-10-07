@@ -9,7 +9,7 @@ import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotenc
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
-import { sendPrintView } from '../../common/print-view';
+import { SameSitePrintGuard, sendPrintView } from '../../common/print-view';
 import { NoQueryDto } from '../../common/validation';
 import { ReasonDto } from '../../common/reason.dto';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
@@ -259,6 +259,7 @@ export class PayslipsController {
   /** R237: sendPrintView, escaped and scriptless. */
   @Get(':id/print')
   @RequireCapability(Capability.PAYROLL_VIEW)
+  @UseGuards(SameSitePrintGuard)
   @ApiIdParam()
   @ApiOkResponse(PRINT_VIEW_RESPONSE)
   @ApiErrors(...COMMON, 404)
@@ -343,7 +344,7 @@ export class MyPayrollController {
   /** R237: the own payslip through sendPrintView. */
   @Get('payslips/:id/print')
   @RequireStaff()
-  @UseGuards(MeReadsThrottleGuard)
+  @UseGuards(SameSitePrintGuard, MeReadsThrottleGuard)
   @ApiIdParam()
   @ApiOkResponse(PRINT_VIEW_RESPONSE)
   @ApiErrors(...COMMON, 404)

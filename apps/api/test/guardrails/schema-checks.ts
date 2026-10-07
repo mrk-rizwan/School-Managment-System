@@ -3012,6 +3012,7 @@ function WAVE_N_OBJECTS(): ExpectedObject[] {
     { kind: 'constraint', table: 'certificates', name: 'certificates_reissue_reason_check', definition: 'CHECK (((issue_no = 1) OR (reason IS NOT NULL)))' },
     { kind: 'constraint', table: 'certificates', name: 'certificates_title_check', definition: "CHECK (((title IS NULL) OR (((title)::text = btrim((title)::text)) AND ((title)::text <> ''::text))))" },
     { kind: 'constraint', table: 'certificates', name: 'certificates_title_no_id_check', definition: "CHECK ((((title)::text !~ '[0-9]{13}'::text) AND ((title)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'certificates', name: 'certificates_title_other_check', definition: "CHECK ((((type = 'other'::certificate_type) OR (title IS NULL)) AND ((title IS NULL) OR ((title)::text !~* 'leav'::text))))" },
     { kind: 'constraint', table: 'certificates', name: 'certificates_title_required_check', definition: "CHECK (((type <> 'other'::certificate_type) OR (title IS NOT NULL)))" },
     { kind: 'constraint', table: 'certificates', name: 'certificates_void_reason_check', definition: "CHECK (((void_reason IS NULL) OR (((void_reason)::text = btrim((void_reason)::text)) AND ((void_reason)::text <> ''::text))))" },
     { kind: 'constraint', table: 'certificates', name: 'certificates_void_reason_no_id_check', definition: "CHECK ((((void_reason)::text !~ '[0-9]{13}'::text) AND ((void_reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },

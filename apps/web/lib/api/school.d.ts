@@ -244,6 +244,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AssessmentsController_list"];
+        put?: never;
+        post: operations["AssessmentsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AssessmentsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AssessmentsController_update"];
+        trace?: never;
+    };
+    "/api/v1/assessments/{id}/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AssessmentsController_grid"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessments/{id}/submit-marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssessmentsController_submitMarks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assessments/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssessmentsController_void"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance-arrivals": {
         parameters: {
             query?: never;
@@ -542,6 +622,86 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["CashHandoversController_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificates/{id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_print"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificates/{id}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CertificatesController_reissue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificates/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CertificatesController_void"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1742,6 +1902,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["LeaveTypesController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marks/{id}/excuse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssessmentsController_excuse"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3396,6 +3572,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/students/{id}/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StudentCertificatesController_listForStudent"];
+        put?: never;
+        post: operations["StudentCertificatesController_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/students/{id}/change-status": {
         parameters: {
             query?: never;
@@ -3666,6 +3858,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["TermsController_update"];
+        trace?: never;
+    };
+    "/api/v1/terms/{id}/set-up-exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssessmentsController_setUpExams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/terms/{id}/skip-class": {
@@ -4153,6 +4361,109 @@ export interface components {
         ArchiveDto: {
             reason?: string;
         };
+        AssessmentDto: {
+            academicYearId: string;
+            /** @description The caller may enter marks on it now: their write scope on held_on reaches its section and subject, and it is neither voided nor locked */
+            canEnterMarks: boolean;
+            classId: string;
+            className: string;
+            classSubjectId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The caller created it */
+            createdByMe: boolean;
+            /**
+             * Format: date
+             * @example 2026-05-10
+             */
+            heldOn: string;
+            id: string;
+            kind: components["schemas"]["AssessmentKind"];
+            /**
+             * Format: date-time
+             * @description A test locked by its submitted sheet
+             */
+            lockedAt: string | null;
+            /** @description Live marks entered so far */
+            markedCount: number;
+            maxMarks: number;
+            name: string;
+            sectionId: string;
+            sectionName: string;
+            subjectId: string;
+            subjectName: string;
+            termId: string;
+            termName: string;
+            /** @description A test only; null on an exam */
+            testType: components["schemas"]["TestType"] | null;
+            /** Format: date-time */
+            updatedAt: string;
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+        };
+        /** @enum {string} */
+        AssessmentKind: "test" | "exam";
+        AssessmentMarkDto: {
+            absent: boolean;
+            assessmentId: string;
+            correctionReason: string | null;
+            enrolmentId: string;
+            /** Format: date-time */
+            enteredAt: string;
+            excused: boolean;
+            id: string;
+            maxMarks: number;
+            obtained: number | null;
+            status: components["schemas"]["AssessmentMarkStatus"];
+            studentId: string;
+            supersedesId: string | null;
+        };
+        AssessmentMarkRowDto: {
+            absent: boolean;
+            enrolmentId: string;
+            /** Format: date-time */
+            enteredAt: string | null;
+            excused: boolean;
+            /** @description The live mark; null when none is entered */
+            markId: string | null;
+            obtained: number | null;
+            /** @description The caller's user id when the caller is a guardian of this student (rule 27), else null */
+            ownChildOf: string | null;
+            /** @description live, or null when no mark is entered */
+            status: components["schemas"]["AssessmentMarkStatus"] | null;
+            student: components["schemas"]["AssessmentStudentDto"];
+        };
+        /**
+         * @description live, or null when no mark is entered
+         * @enum {string}
+         */
+        AssessmentMarkStatus: "live" | "pending" | "superseded" | "rejected";
+        AssessmentMarksDto: {
+            assessment: components["schemas"]["AssessmentDto"];
+            /** @description The section's enrolments in force on held_on, by roll number then name */
+            rows: components["schemas"]["AssessmentMarkRowDto"][];
+        };
+        /** @enum {string} */
+        AssessmentSort: "-heldOn" | "heldOn";
+        AssessmentStudentDto: {
+            admissionNo: string;
+            fullName: string;
+            id: string;
+            rollNo: number | null;
+        };
+        AssessmentSubmitMarksDto: {
+            entries: components["schemas"]["MarkEntryDto"][];
+        };
+        AssessmentSubmitMarksMinimalResultDto: {
+            assessmentId: string;
+            entries: components["schemas"]["MarkEntryResultDto"][];
+        };
+        AssessmentSubmitMarksResultDto: {
+            assessment: components["schemas"]["AssessmentDto"];
+            /** @description In request order; an entry for a student not on the grid is omitted (nothing written) */
+            entries: components["schemas"]["MarkEntryResultDto"][];
+        };
         AssignRoleDto: {
             customRoleId?: string;
             reason: string;
@@ -4327,6 +4638,122 @@ export interface components {
             payment: components["schemas"]["PaymentDto"];
             reversal: components["schemas"]["ReversalDto"];
         };
+        CertificateBodyDto: {
+            academicYearName: string | null;
+            admissionNo: string;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            admittedOn: string;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            attendedFrom: string | null;
+            /**
+             * Format: date
+             * @description Null while the student is still enrolled
+             * @example 2026-10-07
+             */
+            attendedTo: string | null;
+            className: string | null;
+            conduct: string | null;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            dateOfBirth: string;
+            /** @description Oldest first */
+            enrolments: components["schemas"]["CertificateEnrolmentDto"][];
+            fatherName: string | null;
+            gender: components["schemas"]["Gender"];
+            remarks: string | null;
+            schoolName: string;
+            sectionName: string | null;
+            signatoryName: string;
+            studentName: string;
+            studentStatus: components["schemas"]["StudentStatus"];
+        };
+        CertificateDto: {
+            academicYearId: string | null;
+            academicYearName: string | null;
+            admissionNo: string;
+            body: components["schemas"]["CertificateBodyDto"];
+            /** Format: date-time */
+            createdAt: string;
+            duesStatus: components["schemas"]["DuesStatus"];
+            id: string;
+            issueNo: number;
+            issuedByName: string;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            issuedOn: string;
+            /** @example LC-0001 */
+            label: string;
+            number: number;
+            printedCount: number;
+            reason: string | null;
+            reissueOfId: string | null;
+            studentId: string;
+            studentName: string;
+            title: string;
+            type: components["schemas"]["CertificateType"];
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidedByName: string | null;
+        };
+        CertificateEnrolmentDto: {
+            academicYearName: string;
+            className: string;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            from: string;
+            sectionName: string;
+            /**
+             * Format: date
+             * @description Null while the enrolment was still open
+             * @example 2026-10-07
+             */
+            to: string | null;
+        };
+        /** @enum {string} */
+        CertificateSort: "-issuedOn" | "issuedOn";
+        CertificateSummaryDto: {
+            academicYearId: string | null;
+            academicYearName: string | null;
+            admissionNo: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            issueNo: number;
+            issuedByName: string;
+            /**
+             * Format: date
+             * @example 2026-10-07
+             */
+            issuedOn: string;
+            /** @example LC-0001 */
+            label: string;
+            number: number;
+            printedCount: number;
+            reissueOfId: string | null;
+            studentId: string;
+            studentName: string;
+            title: string;
+            type: components["schemas"]["CertificateType"];
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidedByName: string | null;
+        };
+        /** @enum {string} */
+        CertificateType: "leaving" | "character" | "academic" | "completion" | "other";
         ChangeClassDto: {
             classId: string;
             /**
@@ -4724,6 +5151,19 @@ export interface components {
             /** @description One attachment, image or PDF (POST /uploads) */
             stagedUploadId?: string | null;
             title: string;
+        };
+        CreateAssessmentDto: {
+            classSubjectId: string;
+            /**
+             * Format: date
+             * @description Inside a term of the class’s year; fixes the term (A3)
+             * @example 2026-05-10
+             */
+            heldOn: string;
+            maxMarks: number;
+            name: string;
+            sectionId: string;
+            testType: components["schemas"]["TestType"];
         };
         CreateCampaignDto: {
             academicYearId: string;
@@ -5225,6 +5665,8 @@ export interface components {
             override: components["schemas"]["ClearanceOverrideDto"] | null;
             studentId: string;
         };
+        /** @enum {string} */
+        DuesStatus: "not_required" | "cleared" | "override";
         EffectiveCapabilityDto: {
             capability: components["schemas"]["Capability"];
             group: components["schemas"]["CapabilityGroup"];
@@ -5267,6 +5709,14 @@ export interface components {
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
         ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "UNEXPECTED_RESPONSE";
+        ExamSetUpResultDto: {
+            /** @description Exams created by this request */
+            created: number;
+            /** @description Exams that already existed (live) */
+            existing: number;
+            /** @description Class-subject × section pairs not set up: the term is not held for the class */
+            skipped: number;
+        };
         /** @enum {string} */
         ExpenseCategory: "electricity" | "water" | "internet" | "cleaning" | "stationery" | "repairs" | "maintenance" | "fuel" | "transport" | "building" | "daily_purchases" | "salary_advance_cash" | "cash_shortfall" | "other";
         ExpenseDto: {
@@ -5688,6 +6138,13 @@ export interface components {
         InboxItemKind: "announcement" | "notice";
         /** @enum {string} */
         InvoiceStatus: "issued" | "paid" | "void";
+        IssueCertificateDto: {
+            academicYearId?: string;
+            conduct?: string;
+            remarks?: string;
+            title?: string;
+            type: components["schemas"]["CertificateType"];
+        };
         IssueLoginDto: {
             reason?: string;
         };
@@ -5830,6 +6287,29 @@ export interface components {
         };
         /** @enum {string} */
         MarkChangeSort: "-changedAt" | "changedAt";
+        MarkEntryDto: {
+            /**
+             * @description True for an absence (no mark)
+             * @default false
+             */
+            absent?: boolean;
+            /** @description The live mark the client saw, or null when it saw none */
+            basedOnMarkId: string | null;
+            /** @description Generated once per entry on the device */
+            clientEntryKey: string;
+            enrolmentId: string;
+            /** @description The mark; absent or null with absent: true */
+            obtained?: number | null;
+        };
+        /** @enum {string} */
+        MarkEntryOutcome: "created" | "superseded" | "unchanged" | "changed_elsewhere";
+        MarkEntryResultDto: {
+            clientEntryKey: string;
+            enrolmentId: string;
+            /** @description The live mark after this entry: the one written, the unchanged one, or (changed_elsewhere) the one now live */
+            markId: string | null;
+            outcome: components["schemas"]["MarkEntryOutcome"];
+        };
         /** @enum {string} */
         MarkOutcome: "created" | "amended" | "unchanged";
         MarkPayslipPaidDto: {
@@ -6747,6 +7227,8 @@ export interface components {
             /** @example 09:30 */
             absenceAlertTime: string;
             attendanceAmendWindowDays: number;
+            certificateShowIdentityNo: boolean;
+            certificateSignatoryName: string | null;
             /** @description Whole rupees */
             expenseApprovalThreshold: number;
             feeCutoffDay: number;
@@ -6848,6 +7330,10 @@ export interface components {
         SessionChannel: "cookie" | "bearer";
         SessionsRevokedDto: {
             revoked: number;
+        };
+        SetUpExamsDto: {
+            /** @description Default: every class of the term's year that is not archived */
+            classIds?: string[];
         };
         /** @enum {string} */
         ShortfallResolution: "recovered" | "written_off" | "explained_by_void";
@@ -7398,6 +7884,11 @@ export interface components {
         };
         /** @enum {string} */
         TermSort: "sortOrder" | "-sortOrder";
+        /**
+         * @description A test only; null on an exam
+         * @enum {string}
+         */
+        TestType: "daily" | "weekly" | "monthly" | "other";
         UndoCarryForwardDto: {
             reason: string;
             /** @description The carry-forward of this payment to undo */
@@ -7429,6 +7920,16 @@ export interface components {
             /** @description null removes the attachment; a value replaces it */
             stagedUploadId?: string | null;
             title?: string;
+        };
+        UpdateAssessmentDto: {
+            /**
+             * Format: date
+             * @description Stays inside the same term
+             * @example 2026-05-10
+             */
+            heldOn?: string;
+            maxMarks?: number;
+            name?: string;
         };
         UpdateCampaignDto: {
             /** @description Whole rupees */
@@ -7537,6 +8038,8 @@ export interface components {
             /** @example 09:30 */
             absenceAlertTime?: string;
             attendanceAmendWindowDays?: number;
+            certificateShowIdentityNo?: boolean;
+            certificateSignatoryName?: string | null;
             /** @description Whole rupees */
             expenseApprovalThreshold?: number;
             feeCutoffDay?: number;
@@ -9328,6 +9831,541 @@ export interface operations {
             };
         };
     };
+    AssessmentsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                termId?: string;
+                classId?: string;
+                sectionId?: string;
+                classSubjectId?: string;
+                kind?: components["schemas"]["AssessmentKind"];
+                /** @description Include voided assessments */
+                includeVoided?: boolean;
+                sort?: components["schemas"]["AssessmentSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AssessmentDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAssessmentDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAssessmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_grid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentMarksDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_submitMarks: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description return=minimal: the answer is { assessmentId, entries } (AssessmentSubmitMarksMinimalResultDto), with Preference-Applied: return=minimal. Absent: the full AssessmentSubmitMarksResultDto. */
+                Prefer?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssessmentSubmitMarksDto"];
+            };
+        };
+        responses: {
+            /** @description AssessmentSubmitMarksMinimalResultDto with Prefer: return=minimal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentSubmitMarksResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_void: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     AttendanceController_arrival: {
         parameters: {
             query?: never;
@@ -10782,6 +11820,393 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HandoverDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CertificatesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                type?: components["schemas"]["CertificateType"];
+                studentId?: string;
+                issuedFrom?: string;
+                issuedTo?: string;
+                /** @description True lists only voided certificates, false only the valid ones */
+                voided?: boolean;
+                sort?: components["schemas"]["CertificateSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CertificateDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CertificatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CertificatesController_print: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The printable certificate (R292) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CertificatesController_reissue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed reissue */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    CertificatesController_void: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
                 };
             };
             401: {
@@ -18008,6 +19433,87 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_excuse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentMarkDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26813,6 +28319,177 @@ export interface operations {
             };
         };
     };
+    StudentCertificatesController_listForStudent: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                sort?: components["schemas"]["CertificateSort"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CertificateSummaryDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StudentCertificatesController_issue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueCertificateDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed issue */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     StudentsController_changeStatus: {
         parameters: {
             query?: never;
@@ -28462,6 +30139,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TermDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AssessmentsController_setUpExams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetUpExamsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamSetUpResultDto"];
                 };
             };
             401: {

@@ -87,3 +87,20 @@ export async function evictCache(now: Date = new Date()): Promise<number> {
   const result = await db.runAsync('DELETE FROM cache WHERE fetched_at < ?', [cutoff]);
   return result.changes;
 }
+
+/** Every cached response whose key starts with `prefix`, newest fetch first (slice 30: a section's grids). */
+export async function readCachedPrefix<T>(prefix: string): Promise<Cached<T>[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<unknown>(
+    "SELECT body, server_time, server_time_is_device FROM cache WHERE substr(key, 1, ?) = ? ORDER BY fetched_at DESC",
+    [prefix.length, prefix],
+  );
+  return rows.map((raw) => {
+    const row = Row.parse(raw);
+    return {
+      body: JSON.parse(row.body) as T,
+      serverTime: row.server_time,
+      serverTimeIsDevice: row.server_time_is_device === 1,
+    };
+  });
+}

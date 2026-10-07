@@ -11,6 +11,7 @@ emulator.
 | `flows/update-required.yaml`        | `MOBILE_MIN_APP_VERSION=99.0.0` | a 426 shows only the update screen, with the minimum version                             |
 | `flows/register-offline.yaml`       | API and worker                  | a register marked in airplane mode says "Saved on device", then "Saved on server" when the connection returns; `ci-run.sh` then checks over `curl` that the server holds it with two absent marks |
 | `flows/teacher-diary.yaml`          | API and worker                  | a diary entry reaches the server                                                         |
+| `flows/teacher-marks-offline.yaml` | API and worker                  | (Phase 4 slice 30) `ci-run.sh` puts English on Class 5's subject list (the principal) and creates a 5 B weekly test (the teacher) over `curl`; the teacher opens it from the Marks tab, enters a mark and an absence in airplane mode ("Saved on device"), and sees "Saved on server" when the connection returns; `ci-run.sh` checks both marks over `curl` |
 | `flows/parent-child.yaml`           | API, worker, object storage     | after the worker's rollup, the parent's card says "Absent"; the month opens; the seeded diary photo's thumbnail loads on a tap; the inbox opens |
 | `flows/principal-today.yaml`        | API and worker                  | Today lists the unrecorded 5 B register; "Record now" records it pre-filled; the row leaves Today; `ci-run.sh` checks over `curl` that the server has it |
 | `flows/principal-announce.yaml`     | API and worker                  | a short notice to 5 A shows "Reaches … · SMS …" before sending, appears on the list, and is in the guardian's inbox |
@@ -21,7 +22,7 @@ emulator.
 They read `SCHOOL_CODE`, `PRINCIPAL_CNIC`, `TEACHER_CNIC` and `GUARDIAN_CNIC` (the seeded people;
 each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the
 ids `ci-run.sh` reads over the API as those people: `SECTION_A`, `SECTION_B`, `ENROLMENT_1`,
-`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, and the seeded `CLAIM_ID` and `HANDOVER_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
+`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, the seeded `CLAIM_ID` and `HANDOVER_ID`, and (slice 30) `ASSESSMENT_ID`, `MARKS_E1`, `MARKS_E2`. Elements are selected by `testID`, `screen.element[.id]` — for
 example `signIn.schoolCode`, `classes.section.<id>.register`, `register.chip.<enrolmentId>`,
 `children.card.<studentId>.today`.
 

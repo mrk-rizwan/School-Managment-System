@@ -83,3 +83,14 @@ export type MyPaymentAccountDto = Schemas['MyPaymentAccountDto'];
 export type ApprovalsDto = Schemas['ApprovalsDto'];
 export type ClaimDto = Schemas['ClaimDto'];
 export type HandoverDto = Schemas['HandoverDto'];
+
+// Phase 4 slice 30: class tests and the marks grid (§3.8).
+export type AssessmentDto = Schemas['AssessmentDto'];
+export type AssessmentMarksDto = Schemas['AssessmentMarksDto'];
+export type AssessmentMarkRowDto = Schemas['AssessmentMarkRowDto'];
+export type CreateAssessmentDto = Schemas['CreateAssessmentDto'];
+export type AssessmentSubmitMarksDto = Schemas['AssessmentSubmitMarksDto'];
+export type MarkEntryDto = Schemas['MarkEntryDto'];
+export type MarkEntryResultDto = Schemas['MarkEntryResultDto'];
+export type ClassSubjectDto = Schemas['ClassSubjectDto'];
+export type TestType = Schemas['TestType'];

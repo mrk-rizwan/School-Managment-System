@@ -54,9 +54,10 @@ const fixtures: Record<string, { me: TabSource; tabs: string[]; bar: string[]; m
       capabilities: teacher,
       assignments: [assignment('class_teacher')],
     },
-    tabs: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    more: [],
+    // Slice 30: Marks after Classes, so Calendar and Account move under More.
+    tabs: ['home', 'classes', 'marks', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'classes', 'marks', 'inbox', 'more'],
+    more: ['calendar', 'account'],
   },
   'subject teacher': {
     me: {
@@ -64,15 +65,17 @@ const fixtures: Record<string, { me: TabSource; tabs: string[]; bar: string[]; m
       capabilities: teacher,
       assignments: [assignment('subject_teacher')],
     },
-    tabs: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    more: [],
+    // Slice 30: Marks after Classes, so Calendar and Account move under More.
+    tabs: ['home', 'classes', 'marks', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'classes', 'marks', 'inbox', 'more'],
+    more: ['calendar', 'account'],
   },
   'cover teacher only': {
     me: { capacities: ['staff'], capabilities: teacher, assignments: [assignment('cover')] },
-    tabs: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'classes', 'inbox', 'calendar', 'account'],
-    more: [],
+    // Slice 30: Marks after Classes, so Calendar and Account move under More.
+    tabs: ['home', 'classes', 'marks', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'classes', 'marks', 'inbox', 'more'],
+    more: ['calendar', 'account'],
   },
   'teacher with ended assignments (capability, no assignment → no Classes)': {
     me: { capacities: ['staff'], capabilities: teacher, assignments: [] },
@@ -98,9 +101,9 @@ const fixtures: Record<string, { me: TabSource; tabs: string[]; bar: string[]; m
       capabilities: teacher,
       assignments: [assignment('class_teacher')],
     },
-    tabs: ['home', 'classes', 'children', 'inbox', 'calendar', 'account'],
-    bar: ['home', 'classes', 'children', 'inbox', 'more'],
-    more: ['calendar', 'account'],
+    tabs: ['home', 'classes', 'marks', 'children', 'inbox', 'calendar', 'account'],
+    bar: ['home', 'classes', 'marks', 'children', 'more'],
+    more: ['inbox', 'calendar', 'account'],
   },
   'principal-parent': {
     me: { capacities: ['staff', 'guardian'], capabilities: principal, assignments: [] },

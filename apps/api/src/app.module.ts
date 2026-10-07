@@ -27,6 +27,8 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { FinanceReportsModule } from './modules/finance-reports/finance-reports.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { AssessmentsModule } from './modules/assessments/assessments.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -76,6 +78,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     PayrollModule,
     FinanceReportsModule,
     ApprovalsModule,
+    // Phase 4 slice 30 (phase-4-academic.md §2).
+    AssessmentsModule,
+    // Phase 4 slice 34 (phase-4-academic.md §2).
+    CertificatesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

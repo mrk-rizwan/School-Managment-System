@@ -148,6 +148,30 @@ export async function enqueueIn(txn: Db, input: EnqueueInput, now: Date): Promis
   return id;
 }
 
+/**
+ * Rewrites the body of the pending row of `naturalKey`, if any, inside the caller's transaction
+ * (slice 30: a marks entry queued behind one that just landed is re-based on the mark it made).
+ */
+export async function rewritePendingIn(
+  txn: Db,
+  naturalKey: string,
+  rewrite: (body: string) => string,
+  now: Date,
+): Promise<void> {
+  const pending = await txn.getFirstAsync<{ id: string; body: string }>(
+    "SELECT id, body FROM outbox WHERE natural_key = ? AND state = 'pending'",
+    [naturalKey],
+  );
+  if (pending === null) return;
+  const body = rewrite(pending.body);
+  if (body === pending.body) return;
+  await txn.runAsync('UPDATE outbox SET body = ?, updated_at = ? WHERE id = ?', [
+    body,
+    now.toISOString(),
+    pending.id,
+  ]);
+}
+
 /** Refused when no user owns the device rows: a write is never stored without its owner (§7.6). */
 export class NoOwnerError extends Error {
   constructor() {
@@ -196,6 +220,24 @@ export async function listByState(state: OutboxItem['state']): Promise<OutboxIte
 
 export async function findItem(id: string): Promise<OutboxItem | null> {
   const db = await getDb();
+  const row = await db.getFirstAsync<unknown>(`SELECT ${COLUMNS} FROM outbox WHERE id = ?`, [id]);
+  return row === null ? null : toItem(row);
+}
+
+/**
+ * pending -> sending, atomically: only a row still pending is claimed, and the row is read back
+ * after it left pending, so its body includes every merge that landed before the claim and none
+ * can land after it (a merge only ever touches a pending row). Null when it was no longer pending.
+ */
+export async function claimPending(id: string, now: Date): Promise<OutboxItem | null> {
+  const db = await getDb();
+  const stamp = now.toISOString();
+  const result = await db.runAsync(
+    `UPDATE outbox SET state = 'sending', attempts = attempts + 1, sending_since = ?, updated_at = ?
+       WHERE id = ? AND state = 'pending'`,
+    [stamp, stamp, id],
+  );
+  if (result.changes === 0) return null;
   const row = await db.getFirstAsync<unknown>(`SELECT ${COLUMNS} FROM outbox WHERE id = ?`, [id]);
   return row === null ? null : toItem(row);
 }

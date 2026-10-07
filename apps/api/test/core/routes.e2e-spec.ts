@@ -309,6 +309,14 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/terms/:id/skip-class': ['academic_term.skipped'],
   'POST /api/v1/terms/:id/unskip-class': ['academic_term.skipped'],
   'PATCH /api/v1/academic-years/:id/result-settings': ['result_settings.updated'],
+  // Phase 4 slice 30 (contracts/slice-30.md §7). Plan §7.1: marks entry before submission writes
+  // no audit row; the supersedes chain with entered_by/at is the history.
+  'POST /api/v1/assessments': 'none: a class test is its own record (created_by, created_at); plan §7.1 audits only its edit and void',
+  'PATCH /api/v1/assessments/:id': ['assessment.updated'],
+  'POST /api/v1/assessments/:id/submit-marks': 'none: marks entry is recorded by the marks supersedes chain with entered_by/at (plan §7.1)',
+  'POST /api/v1/assessments/:id/void': ['assessment.voided'],
+  'POST /api/v1/marks/:id/excuse': ['mark.excused'],
+  'POST /api/v1/terms/:id/set-up-exams': ['exams.set_up'],
   'POST /api/v1/admissions': ['guardian.created', 'student.admitted', 'charge.admission_fee', 'concession.created'],
   'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
   'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],
@@ -422,6 +430,12 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   // and the dues-clearance override, which is its audit row (R204).
   'POST /api/v1/fee-reminders/send': ['fee_reminder.sent'],
   'POST /api/v1/students/:id/dues-clearance/override': ['dues_clearance.overridden'],
+  // Phase 4 slice 34 (contracts/slice-34.md §7). A replayed issue or reissue writes no row; the
+  // print (a GET) writes certificate.printed, read back in test/certificates. The first issue
+  // that defaults the signatory also writes school_settings.updated (§6).
+  'POST /api/v1/students/:id/certificates': ['certificate.issued', 'school_settings.updated'],
+  'POST /api/v1/certificates/:id/reissue': ['certificate.reissued'],
+  'POST /api/v1/certificates/:id/void': ['certificate.voided'],
   // Phase 3 slice 23 (contracts/slice-23.md §3). A replayed create, a no-op patch and the same
   // receipt sent again write no row.
   'POST /api/v1/expenses': ['expense.recorded'],

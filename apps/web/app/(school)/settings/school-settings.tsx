@@ -82,6 +82,13 @@ const schema = z
     leaveCountsAs: z.enum(LEAVE_COUNTS_AS),
     remarkDefaultVisibility: z.enum(REMARK_VISIBILITIES),
     remarkNotifyGuardians: z.boolean(),
+    // Phase 4 slice 34: blank clears the signatory (the next certificate defaults it again).
+    certificateSignatoryName: z
+      .string()
+      .trim()
+      .max(100, 'Use at most 100 characters.')
+      .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.'),
+    certificateShowIdentityNo: z.boolean(),
   })
   .superRefine((v, ctx) => {
     if (v.lateCountsAs === 'absent_after_cutoff' && !isTime(v.lateCutoffTime)) {
@@ -153,6 +160,8 @@ function valuesOf(settings: SchoolSettingsDto): SettingsValues {
     leaveCountsAs: settings.leaveCountsAs,
     remarkDefaultVisibility: settings.remarkDefaultVisibility,
     remarkNotifyGuardians: settings.remarkNotifyGuardians,
+    certificateSignatoryName: settings.certificateSignatoryName ?? '',
+    certificateShowIdentityNo: settings.certificateShowIdentityNo,
   };
 }
 
@@ -194,6 +203,12 @@ function changesOf(v: SettingsValues, saved: SchoolSettingsDto): UpdateSchoolSet
       remarkDefaultVisibility: v.remarkDefaultVisibility,
     }),
     ...(v.remarkNotifyGuardians !== saved.remarkNotifyGuardians && { remarkNotifyGuardians: v.remarkNotifyGuardians }),
+    ...((v.certificateSignatoryName || null) !== saved.certificateSignatoryName && {
+      certificateSignatoryName: v.certificateSignatoryName || null,
+    }),
+    ...(v.certificateShowIdentityNo !== saved.certificateShowIdentityNo && {
+      certificateShowIdentityNo: v.certificateShowIdentityNo,
+    }),
   };
   return body;
 }
@@ -433,6 +448,28 @@ function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {
             label="Pay day"
             hint="The previous month’s payroll is prepared on this day."
             options={DUE_DAY_OPTIONS}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Certificates</CardTitle>
+          <CardDescription>How leaving, character and other certificates are signed and printed.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <FormField
+            control={form.control}
+            name="certificateSignatoryName"
+            label="Signed by"
+            hint="The name printed above the signature line. Blank: the principal’s name is used when the next certificate is issued."
+            maxLength={100}
+          />
+          <CheckboxField
+            control={form.control}
+            name="certificateShowIdentityNo"
+            label="Print the B-Form number on leaving certificates"
+            hint="Only on the printed leaving certificate; every print is recorded."
           />
         </CardContent>
       </Card>

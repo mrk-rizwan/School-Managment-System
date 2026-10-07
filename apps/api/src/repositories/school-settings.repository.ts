@@ -32,6 +32,9 @@ export interface SchoolSettingsRecord {
   payDay: number;
   feeReminderDaysBefore: number;
   overdueReminderEveryDays: number;
+  // Phase 4 (phase-4-academic.md §3.7, contracts/slice-34.md §6).
+  certificateSignatoryName: string | null;
+  certificateShowIdentityNo: boolean;
   updatedAt: Date;
 }
 
@@ -65,6 +68,8 @@ const SELECT = {
   payDay: true,
   feeReminderDaysBefore: true,
   overdueReminderEveryDays: true,
+  certificateSignatoryName: true,
+  certificateShowIdentityNo: true,
   updatedAt: true,
 } as const;
 
@@ -124,6 +129,18 @@ export class SchoolSettingsRepository {
     const { count } = await this.txHost.tx.schoolSettings.updateMany({
       where: { schoolId, updatedAt: row.updatedAt },
       data: { updatedAt: row.updatedAt },
+    });
+    return count === 1;
+  }
+
+  /**
+   * Phase 4 (contracts/slice-34.md §6): the first certificate issued sets the signatory to the
+   * active principal's name, unless someone set one meanwhile. True when this call set it.
+   */
+  async defaultCertificateSignatory(schoolId: SchoolId, name: string): Promise<boolean> {
+    const { count } = await this.txHost.tx.schoolSettings.updateMany({
+      where: { schoolId, certificateSignatoryName: null },
+      data: { certificateSignatoryName: name },
     });
     return count === 1;
   }

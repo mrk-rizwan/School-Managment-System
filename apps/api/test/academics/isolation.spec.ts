@@ -1,11 +1,13 @@
 // Control 4 / R62 for the slice 3 tables and Phase 4's set-up tables (slice 29): a row written as
 // school A is invisible to, and unwritable by, school B, through the repositories the services use.
 import type { SchoolId } from '../../src/tenancy/school-id';
-import { expectIsolated } from '../support/isolation';
+import { marksRepositories } from '../assessments/support';
+import { expectIsolated, sectionsMarksScope } from '../support/isolation';
 import { createSchoolUser } from '../support/school-session';
 import { closeTestDb, createTwoSchools, testDb } from '../support/schools';
 import { createAssessment, createCertificate, createMark, createMarksFixture } from './assessment-fixture';
 import { createAcademics, tag, type Academics } from './support';
+import { certificateRepositoryAs } from '../certificates/support';
 
 describe('academic structure tenant isolation', () => {
   let academics: Academics;
@@ -254,53 +256,84 @@ describe('academic structure tenant isolation', () => {
   // probes go through the guarded client with the tenant predicate, and each build agent replaces
   // its table's probe with its repository's read, list and write methods.
 
+  // Slice 30: through AssessmentRepository and MarkRepository, with a write scope reaching the
+  // fixture's section and subject (the probe as school B uses the same scope: only the SchoolId
+  // differs).
+  const fixtureScope = async (f: Awaited<ReturnType<typeof createMarksFixture>>) => {
+    const listed = await testDb().classSubject.findFirst({ where: { schoolId: f.school.id, id: f.classSubjectId } });
+    return sectionsMarksScope(
+      'write',
+      new Date('2026-05-10T00:00:00Z'),
+      new Map([[f.sectionId, { classTeacher: false, cover: false, subjectIds: [listed!.subjectId] }]]),
+    );
+  };
+
   it('assessments', async () => {
     const schools = await createTwoSchools();
     const f = await createMarksFixture(schools.a);
-    const db = testDb();
-    await expectIsolated(schools, {
-      create: async () => (await createAssessment(f)).id,
-      read: (schoolId, id) => db.assessment.findFirst({ where: { schoolId, id } }),
-      list: (schoolId) => db.assessment.findMany({ where: { schoolId, sectionId: f.sectionId } }),
-      write: async (schoolId, id) =>
-        (await db.assessment.updateMany({ where: { schoolId, id }, data: { name: 'Taken over' } })).count,
-      snapshot: nameOf,
-    });
+    const scope = await fixtureScope(f);
+    const repos = await marksRepositories();
+    try {
+      await expectIsolated(schools, {
+        create: async () => (await createAssessment(f)).id,
+        read: (schoolId, id) => repos.assessments.find(schoolId, scope, id),
+        list: async (schoolId) =>
+          (await repos.assessments.list(schoolId, scope, { includeVoided: true }, { skip: 0, take: 50, ascending: false })).rows,
+        write: async (schoolId, id) => ((await repos.assessments.update(schoolId, scope, id, { name: 'Taken over' })) ? 1 : 0),
+        snapshot: nameOf,
+      });
+    } finally {
+      await repos.close();
+    }
   });
 
   it('marks', async () => {
     const schools = await createTwoSchools();
     const f = await createMarksFixture(schools.a);
     const assessment = await createAssessment(f);
-    const db = testDb();
-    await expectIsolated(schools, {
-      create: async () => (await createMark(f, assessment)).id,
-      read: (schoolId, id) => db.mark.findFirst({ where: { schoolId, id } }),
-      list: (schoolId) => db.mark.findMany({ where: { schoolId, assessmentId: assessment.id } }),
-      write: async (schoolId, id) =>
-        (
-          await db.mark.updateMany({
-            where: { schoolId, id },
-            data: { status: 'superseded', supersededAt: new Date() },
-          })
-        ).count,
-      snapshot: (row) => (row as { status: string } | null)?.status ?? null,
-    });
+    const scope = await fixtureScope(f);
+    const repos = await marksRepositories();
+    try {
+      const target = await repos.assessments.find(f.school.id, scope, assessment.id);
+      if (!target) throw new Error('fixture assessment not found');
+      await expectIsolated(schools, {
+        create: async () => (await createMark(f, assessment)).id,
+        read: (schoolId, id) => repos.marks.find(schoolId, scope, id),
+        list: (schoolId) => repos.marks.liveForAssessment(schoolId, scope, assessment.id),
+        write: async (schoolId, id) => ((await repos.marks.supersede(schoolId, scope, target, id)) ? 1 : 0),
+        snapshot: (row) => (row as { status: string } | null)?.status ?? null,
+      });
+    } finally {
+      await repos.close();
+    }
   });
 
   it('certificates', async () => {
     const schools = await createTwoSchools();
     const f = await createMarksFixture(schools.a);
-    const db = testDb();
-    let number = 0;
-    await expectIsolated(schools, {
-      create: async () => (await createCertificate(f, ++number)).id,
-      read: (schoolId, id) => db.certificate.findFirst({ where: { schoolId, id } }),
-      list: (schoolId) => db.certificate.findMany({ where: { schoolId, studentId: f.studentId } }),
-      write: async (schoolId, id) =>
-        (await db.certificate.updateMany({ where: { schoolId, id }, data: { printedCount: { increment: 1 } } })).count,
-      snapshot: (row) => (row as { printedCount: number } | null)?.printedCount ?? null,
-    });
+    // Slice 34: through CertificateRepository with a school-wide (principal's) scope, so only the
+    // tenant key keeps the rows apart.
+    const { repo, all, close } = await certificateRepositoryAs(schools.a, f.userId);
+    try {
+      let number = 0;
+      const numbers = new Map<bigint, number>();
+      await expectIsolated(schools, {
+        create: async () => {
+          const row = await createCertificate(f, ++number);
+          numbers.set(row.id, number);
+          return row.id;
+        },
+        read: (schoolId, id) => repo.findById(schoolId, all, id),
+        list: async (schoolId) =>
+          (await repo.list(schoolId, all, { studentId: f.studentId, descending: true, skip: 0, take: 50 })).rows,
+        // A void stamps the certificate number (type and number), never the id alone.
+        write: async (schoolId, id) =>
+          (await repo.voidNumber(schoolId, 'character', numbers.get(id) ?? 0, f.userId, 'Taken over', new Date())).length,
+        snapshot: (row) => (row as { voidedAt: Date | null } | null)?.voidedAt ?? null,
+      });
+    } finally {
+      await close();
+    }
   });
 
   it('refuses an assessment, mark or certificate in school B naming school A’s rows (composite foreign keys)', async () => {

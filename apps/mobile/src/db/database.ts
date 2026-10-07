@@ -202,7 +202,7 @@ async function clearRows(db: Db): Promise<void> {
     );
     // Children before parents, so a foreign key never refuses the delete.
     const order = (name: string) =>
-      name === 'local_marks' || name === 'local_attachments' ? 0 : 1;
+      name === 'local_marks' || name === 'local_attachments' || name === 'local_assessment_marks' ? 0 : 1;
     for (const { name } of [...tables].sort((a, b) => order(a.name) - order(b.name))) {
       await db.execAsync(`DELETE FROM "${name.replace(/"/g, '')}";`);
     }

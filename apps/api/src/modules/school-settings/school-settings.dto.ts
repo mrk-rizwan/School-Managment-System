@@ -25,7 +25,7 @@ import {
   type MessageType,
   type RemarkVisibility,
 } from '@asms/shared';
-import { IfPresent, IfPresentNotNull, Rupees } from '../../common/fields';
+import { IfPresent, IfPresentNotNull, NameField, Rupees } from '../../common/fields';
 
 // contracts/slice-2.md §6 and contracts/slice-9.md §4.
 
@@ -136,6 +136,17 @@ export class SchoolSettingsDto {
 
   @ApiProperty(range(OVERDUE_REMINDER_EVERY_DAYS))
   overdueReminderEveryDays: number;
+
+  /**
+   * Phase 4 (contracts/slice-34.md §6): the name signed on certificates. Null until set, or until
+   * the first certificate is issued, which defaults it to the active principal's name.
+   */
+  @ApiProperty({ type: String, nullable: true, maxLength: 100 })
+  certificateSignatoryName: string | null;
+
+  /** Whether the leaving certificate's print view shows the student's B-Form number (item 33). */
+  @ApiProperty()
+  certificateShowIdentityNo: boolean;
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
@@ -287,4 +298,15 @@ export class UpdateSchoolSettingsDto {
   @Min(OVERDUE_REMINDER_EVERY_DAYS.min)
   @Max(OVERDUE_REMINDER_EVERY_DAYS.max)
   overdueReminderEveryDays?: number;
+
+  /** Null clears it; the next certificate issued defaults it to the active principal's name. */
+  @ApiPropertyOptional({ type: String, nullable: true, minLength: 1, maxLength: 100 })
+  @IfPresentNotNull()
+  @NameField(1, 100)
+  certificateSignatoryName?: string | null;
+
+  @ApiPropertyOptional()
+  @IfPresent()
+  @IsBoolean()
+  certificateShowIdentityNo?: boolean;
 }

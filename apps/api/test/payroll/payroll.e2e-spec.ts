@@ -521,6 +521,10 @@ describe('slice 25: salary, advances, payroll runs and payslips (e2e)', () => {
       expect(res.text).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
       expect(res.text).toContain('Tahira &lt;b&gt;Teacher&lt;/b&gt;');
       expect(res.text).toContain('Payslip, September 2026');
+      // Wave N review: a cross-site browser request is refused; same-origin prints.
+      const refused = await get(path, s).set('Sec-Fetch-Site', 'cross-site').expect(403);
+      expect(refused.body).toMatchObject({ error: { code: 'ORIGIN_REJECTED' } });
+      await get(path, s).set('Sec-Fetch-Site', 'same-origin').expect(200);
     }
     // Another staff member's own print route is 404.
     const other = await signIn('teacher', school);

@@ -8,6 +8,7 @@ export const SCREEN_REGISTRY: ReadonlySet<TabId> = new Set<TabId>([
   'home',
   'approvals',
   'classes',
+  'marks',
   'today',
   'announce',
   'children',

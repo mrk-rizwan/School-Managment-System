@@ -3,6 +3,11 @@
 // every interpolated value, so a fee-head name holding `<script>` prints as text; the template
 // text itself may not carry a script, and the CSP refuses one anyway.
 
+import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import type { Request } from 'express';
+import { ErrorCode } from '@asms/shared';
+import { ApiException } from './errors/api-exception';
+
 const ESCAPES: Readonly<Record<string, string>> = {
   '&': '&amp;',
   '<': '&lt;',
@@ -98,4 +103,22 @@ export function sendPrintView(res: PrintTarget, page: SafeHtml): void {
   res.status(200);
   for (const [name, value] of Object.entries(PRINT_VIEW_HEADERS)) res.setHeader(name, value);
   res.send(page.value);
+}
+
+/** The `Sec-Fetch-Site` values a print view answers: the web app's own tab, or a typed address. */
+const PRINT_FETCH_SITES: ReadonlySet<string> = new Set(['same-origin', 'none']);
+
+/**
+ * Wave N review (defence in depth): a print view is a GET that carries the session cookie, so a
+ * page on another site could open or frame it. A browser request whose `Sec-Fetch-Site` is present
+ * and is neither `same-origin` nor `none` is 403 ORIGIN_REJECTED. A request without the header
+ * (the mobile app, an older browser) is left to the other checks.
+ */
+@Injectable()
+export class SameSitePrintGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const site = context.switchToHttp().getRequest<Request>().headers['sec-fetch-site'];
+    if (site === undefined || (typeof site === 'string' && PRINT_FETCH_SITES.has(site))) return true;
+    throw new ApiException(403, ErrorCode.ORIGIN_REJECTED, 'This request came from an unexpected origin.');
+  }
 }

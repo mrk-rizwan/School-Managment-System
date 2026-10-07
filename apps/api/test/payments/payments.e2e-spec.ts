@@ -206,6 +206,13 @@ describe('slice 20: payments, receipts, reversals over HTTP (e2e)', () => {
     expect(res.text).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(res.text).not.toMatch(/<script/i);
     expect(res.text).toContain(`Fee receipt 1/${w.yearName}`);
+    // Wave N review: a cross-site browser request is refused; the app's own tab and a typed address print.
+    const path = `/receipts/${payment.receipt?.id}/print`;
+    for (const site of ['cross-site', 'same-site']) {
+      const refused = await get(path, w.office).set('Sec-Fetch-Site', site).expect(403);
+      expect(refused.body).toMatchObject({ error: { code: 'ORIGIN_REJECTED' } });
+    }
+    for (const site of ['same-origin', 'none']) await get(path, w.office).set('Sec-Fetch-Site', site).expect(200);
   });
 
   // ------------------------------------------------------------------------- reversals

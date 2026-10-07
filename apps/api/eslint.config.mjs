@@ -120,6 +120,17 @@ const IMPORTS = {
     message:
       'The term, result-settings and class-subject repositories are imported only from src/modules/academics/**.',
   },
+  // Phase 4 slice 34 (§5.1): the certificate repository is the certificates module's.
+  certificateRepository: {
+    regex: `(^|/)repositories/certificate\\.repository${EXT}$`,
+    message: 'CertificateRepository is imported only from src/modules/certificates/**.',
+  },
+  // Phase 4 slice 30 (§5.1): the assessment and mark repositories are the assessments module's
+  // (wave O's results module reads marks through its own read-only MarkReadsRepository).
+  assessmentRepositories: {
+    regex: `(^|/)repositories/(assessment|mark)\\.repository${EXT}$`,
+    message: 'The assessment and mark repositories are imported only from src/modules/assessments/**.',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -190,6 +201,13 @@ const TENANT_REPOSITORY_IMPORT = {
   // subfolder is caught too (fixture tenant-repository-nested-import.ts).
   regex: `(^|/)repositories/(?!platform/).+\\.repository${EXT}$`,
   message: 'src/modules/platform/billing/** reads no tenant table: it imports only the billing repositories (R222).',
+};
+
+// Phase 4 (§5.1): the certificates module reads dues only through
+// FinanceReportsService.clearance, never the money tables' repositories.
+const MONEY_REPOSITORY_IMPORT = {
+  regex: `(^|/)repositories/(finance-report|charge|charge-[a-z-]+|payment|payment-[a-z-]+|receipt|concession)\\.repository${EXT}$`,
+  message: 'src/modules/certificates/** reads dues only through FinanceReportsService.clearance (§5.1).',
 };
 
 /** The platform-repositories pattern with several repository files let through. */
@@ -308,6 +326,9 @@ const RAW_SQL_FILES = [
   // clearance's reads; read-only. Every statement filters school_id on every table it reads
   // (test/finance-reports/isolation.e2e-spec.ts).
   'src/repositories/finance-report.repository.ts',
+  // Phase 4 slice 34: the cert_<type> counter's upsert (R289), filtered on school_id like the
+  // receipt counter's (test/certificates/certificates.e2e-spec.ts).
+  'src/repositories/certificate.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -671,9 +692,35 @@ export default tseslint.config(
     rules: restrictImports({ exempt: ['announcementRepositories'] }),
   },
   {
-    // Phase 4 (§5.1): the academics module owns the set-up repositories; its suites probe them.
-    files: ['src/modules/academics/**/*.ts', 'test/academics/**/*.ts'],
+    // Phase 4 (§5.1): the academics module owns the set-up repositories.
+    files: ['src/modules/academics/**/*.ts'],
     rules: restrictImports({ exempt: ['academicSetupRepositories'] }),
+  },
+  {
+    // The academics suites probe the set-up repositories and (isolation, wave N) the assessment,
+    // mark and certificate repositories.
+    files: ['test/academics/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['academicSetupRepositories', 'assessmentRepositories', 'certificateRepository'],
+    }),
+  },
+  {
+    // Slice 30 (§5.1): the assessments module owns the assessment and mark repositories and reads
+    // the slice-29 set-up repositories (terms, class subjects, result settings) — a recorded
+    // widening of their block. Its suites probe the same.
+    files: ['src/modules/assessments/**/*.ts', 'test/assessments/**/*.ts'],
+    rules: restrictImports({ exempt: ['academicSetupRepositories', 'assessmentRepositories'] }),
+  },
+  {
+    // Slice 34 (§5.1): the certificates module owns its repository and reads dues only through
+    // FinanceReportsService.clearance.
+    files: ['src/modules/certificates/**/*.ts'],
+    rules: restrictImports({ exempt: ['certificateRepository'], extra: [MONEY_REPOSITORY_IMPORT] }),
+  },
+  {
+    // The slice-34 suites drive the repository directly.
+    files: ['test/certificates/**/*.ts'],
+    rules: restrictImports({ exempt: ['certificateRepository'] }),
   },
   {
     // §5.1: the monthly platform billing run (non-tenant), the only job reading the billing tables.

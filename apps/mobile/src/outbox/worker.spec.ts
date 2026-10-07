@@ -49,6 +49,20 @@ function memoryStore(items: OutboxItem[]): WorkerStore & { items: OutboxItem[]; 
           .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
       );
     },
+    claimPending(id: string, now: Date) {
+      const found = store.items.find((i) => i.id === id && i.state === 'pending');
+      if (found === undefined) return Promise.resolve(null);
+      const stamp = now.toISOString();
+      const claimed: OutboxItem = {
+        ...found,
+        state: 'sending',
+        attempts: found.attempts + 1,
+        sendingSince: stamp,
+        updatedAt: stamp,
+      };
+      store.items = store.items.map((i) => (i.id === id ? claimed : i));
+      return Promise.resolve(claimed);
+    },
     saveItem(next: OutboxItem) {
       store.items = store.items.map((i) => (i.id === next.id ? next : i));
       return Promise.resolve();

@@ -117,8 +117,12 @@ describe('wave N certificate guards (raw SQL)', () => {
     expect(await insert({ academic_year_id: null })).toBe('certificates_academic_year_check');
     expect(await insert({ type: 'other', number: 1, academic_year_id: null })).toBe('certificates_title_required_check');
     expect(await insert({ type: 'other', number: 1, academic_year_id: null, title: 'Sports certificate' })).toBeNull();
-    expect(await insert({ title: ' Padded' })).toBe('certificates_title_check');
-    expect(await insert({ title: 'For 35202-1234567-1' })).toBe('certificates_title_no_id_check');
+    expect(await insert({ type: 'other', number: 1, title: ' Padded' })).toBe('certificates_title_check');
+    expect(await insert({ type: 'other', number: 1, title: 'For 35202-1234567-1' })).toBe('certificates_title_no_id_check');
+    // Wave N review: a title only on `other`, and never a leaving certificate's.
+    expect(await insert({ title: 'Character and Conduct' })).toBe('certificates_title_other_check');
+    expect(await insert({ type: 'other', number: 1, title: 'School LEAVING certificate' })).toBe('certificates_title_other_check');
+    expect(await insert({ type: 'other', number: 1, title: 'Leaver of the year' })).toBe('certificates_title_other_check');
     expect(await insert({ type: 'leaving', number: 1, dues_status: 'override', reason: 'B-Form 3520212345671' })).toBe(
       'certificates_reason_no_id_check',
     );

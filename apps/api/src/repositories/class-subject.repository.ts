@@ -74,6 +74,15 @@ export class ClassSubjectRepository {
     return rows.map(toRecord);
   }
 
+  /** A live (not archived) class-subject by id: a test or an exam is set only on one (slice 30). */
+  async findLive(schoolId: SchoolId, id: bigint): Promise<ClassSubjectRecord | null> {
+    const row = await this.txHost.tx.classSubject.findFirst({
+      where: { schoolId, id, archivedAt: null },
+      select: SELECT,
+    });
+    return row && toRecord(row);
+  }
+
   /** The caller holds the class lock; a live duplicate fails on class_subjects_live_key. */
   async create(
     schoolId: SchoolId,

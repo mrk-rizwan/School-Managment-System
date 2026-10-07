@@ -8,7 +8,7 @@ import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotenc
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
-import { sendPrintView } from '../../common/print-view';
+import { SameSitePrintGuard, sendPrintView } from '../../common/print-view';
 import { perUserThrottle } from '../../common/rate-limit';
 import { SchoolClock } from '../../common/school-clock';
 import { NoQueryDto } from '../../common/validation';
@@ -234,6 +234,7 @@ export class ReceiptsController {
   /** R237: the printable page, through sendPrintView only. */
   @Get(':id/print')
   @RequireCapability(...READERS)
+  @UseGuards(SameSitePrintGuard)
   @ApiIdParam()
   @ApiOkResponse({ description: 'The printable receipt (R237)', content: { 'text/html': { schema: { type: 'string' } } } })
   @ApiErrors(...COMMON, 404, 422)

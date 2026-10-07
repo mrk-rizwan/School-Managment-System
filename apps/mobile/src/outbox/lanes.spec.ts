@@ -40,11 +40,15 @@ test('the online-only list after Phase 3 (§3.9, R226)', () => {
       'cancel_leave',
       'approve_leave',
       'reject_leave',
+      // Phase 4 (§0.30): everything but creating a test and entering marks.
+      'edit_assessment',
+      'void_assessment',
+      'excuse_mark',
     ].sort(),
   );
 });
 
-test('nine lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and local tables', () => {
+test('eleven lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and local tables', () => {
   expect(Object.keys(LANES).sort()).toEqual(
     [
       'device_register',
@@ -56,6 +60,8 @@ test('nine lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and loc
       'expense_receipt',
       'payment_claim',
       'payment_claim_image',
+      'assessment_create',
+      'marks_enter',
     ].sort(),
   );
   expect(LANES.device_register).toMatchObject({
@@ -124,6 +130,25 @@ test('nine lanes, with the §9 and Phase 3 §3.9 paths, methods, senders and loc
     domainTable: 'local_files',
     label: 'Deposit slip photo',
   });
+  // Phase 4 slice 30 (§3.8): a class test, then its marks (per-row keys, no header, coalescing).
+  expect(LANES.assessment_create).toMatchObject({
+    method: 'POST',
+    path: '/api/v1/assessments',
+    sender: 'json',
+    idempotencyHeader: true,
+    domainTable: 'local_assessments',
+    label: 'Class test',
+  });
+  expect(LANES.marks_enter).toMatchObject({
+    method: 'POST',
+    path: '/api/v1/assessments/:id/submit-marks',
+    sender: 'json',
+    idempotencyHeader: false,
+    coalesces: true,
+    headers: { Prefer: 'return=minimal' },
+    domainTable: 'local_assessment_marks',
+    label: 'Marks',
+  });
 });
 
 // A deposit claim and its image (slice 21) are the other money lanes §3.9 allows.
@@ -142,10 +167,11 @@ test('no money write but an expense and a deposit claim (and their files) is a l
   ]);
 });
 
-test('submit_register is the only coalescing lane; diary_entry, remark, expense and payment_claim the header lanes', () => {
+test('submit_register and marks_enter coalesce; diary_entry, remark, expense, payment_claim and assessment_create carry the header', () => {
   const ids = Object.keys(LANES) as (keyof typeof LANES)[];
-  expect(ids.filter((id) => LANES[id].coalesces)).toEqual(['submit_register']);
+  expect(ids.filter((id) => LANES[id].coalesces).sort()).toEqual(['marks_enter', 'submit_register']);
   expect(ids.filter((id) => LANES[id].idempotencyHeader).sort()).toEqual([
+    'assessment_create',
     'diary_entry',
     'expense',
     'payment_claim',
@@ -190,6 +216,12 @@ test.each([
   ['payment_claim_image', 'CLAIM_NOT_PENDING', 'discard'],
   ['payment_claim_image', 'REFERENCE_NOT_FOUND', 'retry'],
   ['payment_claim_image', 'ATTACHMENT_FILE_MISSING', 'discard'],
+  ['assessment_create', 'ASSESSMENT_OUTSIDE_TERM', 'edit_resend'],
+  ['assessment_create', 'SUBJECT_NOT_ASSIGNED', 'edit_resend'],
+  ['assessment_create', 'IDEMPOTENCY_KEY_REUSED', 'discard'],
+  ['marks_enter', 'MARK_EXCEEDS_MAX', 'edit_resend'],
+  ['marks_enter', 'ASSESSMENT_LOCKED', 'discard'],
+  ['marks_enter', 'ASSESSMENT_VOIDED', 'discard'],
 ])('%s, %s → %s', (lane, code, remedy) => {
   expect(remedyFor(lane, code)).toBe(remedy);
 });

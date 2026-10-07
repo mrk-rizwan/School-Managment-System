@@ -17,6 +17,11 @@ export const queryKeys = {
   studentRemarks: (studentId: string, page: number) =>
     ['students', studentId, 'remarks', page] as const,
 
+  // Phase 4 slice 30: Marks (a section's tests, a test's grid, a class's subject list).
+  assessments: (sectionId: string) => ['assessments', 'section', sectionId] as const,
+  assessmentGrid: (assessmentId: string) => ['assessments', 'grid', assessmentId] as const,
+  classSubjects: (classId: string) => ['classes', classId, 'subjects'] as const,
+
   // Parent, student, staff
   /**
    * A family read (slice-16 §5): a guardian's child (`studentId`) or the student's own (null) —
@@ -68,6 +73,8 @@ export const queryKeys = {
   localDiary: (sectionId: string) => ['local', 'diary', sectionId] as const,
   localRemarks: (studentId: string) => ['local', 'remarks', studentId] as const,
   localClaims: (studentId: string) => ['local', 'claims', studentId] as const,
+  localAssessments: (sectionId: string) => ['local', 'assessments', sectionId] as const,
+  localMarks: (ref: string) => ['local', 'marks', ref] as const,
 };
 
 /** Prefixes for invalidation after a write reaches the server (slice-16 §3.1). */

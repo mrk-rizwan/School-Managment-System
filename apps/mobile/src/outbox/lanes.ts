@@ -179,6 +179,41 @@ export const LANES = {
     label: 'Deposit slip photo',
     remedies: { [ErrorCode.REFERENCE_NOT_FOUND]: 'retry' },
   },
+  // Phase 4 slice 30 (§3.8): a class test created offline, then its marks. The marks wait for the
+  // test's server id (the diary_attachment re-target pattern) and coalesce per assessment.
+  assessment_create: {
+    method: 'POST',
+    path: '/api/v1/assessments',
+    idempotencyHeader: true,
+    coalesces: false,
+    sender: 'json',
+    domainTable: 'local_assessments',
+    label: 'Class test',
+    remedies: {
+      [ErrorCode.ASSESSMENT_OUTSIDE_TERM]: 'edit_resend',
+      [ErrorCode.SUBJECT_NOT_ASSIGNED]: 'edit_resend',
+      [ErrorCode.VALIDATION_FAILED]: 'edit_resend',
+      [ErrorCode.INVALID_VALUE]: 'edit_resend',
+      [ErrorCode.REFERENCE_NOT_FOUND]: 'edit_resend',
+    },
+  },
+  marks_enter: {
+    method: 'POST',
+    path: '/api/v1/assessments/:id/submit-marks',
+    // Per-row keys (clientEntryKey) make it retry-safe; no header (§3.8).
+    idempotencyHeader: false,
+    // The answer is { assessmentId, entries }: the phone holds what it sent.
+    headers: { Prefer: 'return=minimal' },
+    coalesces: true,
+    sender: 'json',
+    domainTable: 'local_assessment_marks',
+    label: 'Marks',
+    // changed_elsewhere is a per-row outcome of a 200, shown on the grid with a reload.
+    remedies: {
+      [ErrorCode.MARK_EXCEEDS_MAX]: 'edit_resend',
+      [ErrorCode.ASSESSMENT_LOCKED]: 'discard',
+    },
+  },
 } as const satisfies Record<string, Lane>;
 
 export type LaneId = keyof typeof LANES;
@@ -220,6 +255,10 @@ export const ONLINE_ONLY_ACTIONS = [
   'cancel_leave',
   'approve_leave',
   'reject_leave',
+  // Phase 4 (§0.30): only a test's creation and marks entry wait on the device.
+  'edit_assessment',
+  'void_assessment',
+  'excuse_mark',
 ] as const;
 
 export type OnlineOnlyAction = (typeof ONLINE_ONLY_ACTIONS)[number];

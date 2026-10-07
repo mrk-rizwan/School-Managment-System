@@ -1,6 +1,8 @@
 import { containsIdentityNumber, type AttendanceStatus, type RemarkCategory } from '@asms/shared';
 import type {
+  AssessmentSubmitMarksDto,
   CounterPaymentMethod,
+  CreateAssessmentDto,
   CreateClaimDto,
   CreateDiaryEntryDto,
   CreateExpenseDto,
@@ -8,6 +10,7 @@ import type {
   DepositMethod,
   RecordableExpenseCategory,
   SubmitRegisterDto,
+  TestType,
 } from '../api/contracts';
 import { containsPhone } from '../platform/scrub';
 
@@ -170,4 +173,47 @@ export function buildClaimBody(input: ClaimInput): CreateClaimDto {
  */
 export function buildAttachmentBody(localAttachmentId: string): { localAttachmentId: string } {
   return { localAttachmentId };
+}
+
+// --- Phase 4 slice 30 (§3.8): a class test and the marks grid --------------------------------
+
+export type AssessmentInput = {
+  classSubjectId: string;
+  sectionId: string;
+  testType: TestType;
+  name: string;
+  maxMarks: number;
+  heldOn: string;
+};
+
+export function buildAssessmentBody(input: AssessmentInput): CreateAssessmentDto {
+  checked('name', input.name);
+  return {
+    classSubjectId: input.classSubjectId,
+    sectionId: input.sectionId,
+    testType: input.testType,
+    name: input.name.trim().replace(/\s+/g, ' '),
+    maxMarks: input.maxMarks,
+    heldOn: input.heldOn,
+  };
+}
+
+/** One row of the grid as sent: a mark or an absence, its own key, the live mark it was based on. */
+export type MarkEntryInput = {
+  enrolmentId: string;
+  obtained: number | null;
+  absent: boolean;
+  clientEntryKey: string;
+  basedOnMarkId: string | null;
+};
+
+export function buildMarksBody(entries: readonly MarkEntryInput[]): AssessmentSubmitMarksDto {
+  return {
+    entries: entries.map((entry) => ({
+      enrolmentId: entry.enrolmentId,
+      ...(entry.absent ? { absent: true } : { obtained: entry.obtained }),
+      clientEntryKey: entry.clientEntryKey,
+      basedOnMarkId: entry.basedOnMarkId,
+    })),
+  };
 }

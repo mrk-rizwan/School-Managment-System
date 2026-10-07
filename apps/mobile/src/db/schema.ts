@@ -177,6 +177,49 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX local_claims_student ON local_claims (student_id, created_at);
   `,
+  // 6 — Phase 4 slice 30 (§3.8): a class test created offline, and the marks typed on the grid.
+  // A mark row is the latest intent per (assessment, enrolment); on a test still on the device it
+  // waits (no outbox row) for the test's server id, then is queued. Ids, numbers and the typed
+  // test name only: never a student's name.
+  `
+  CREATE TABLE local_assessments (
+    id TEXT PRIMARY KEY NOT NULL,
+    section_id TEXT NOT NULL,
+    class_subject_id TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    test_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    max_marks INTEGER NOT NULL,
+    held_on TEXT NOT NULL,
+    outbox_id TEXT NULL,
+    server_id TEXT NULL,
+    saved_on_server_at TEXT NULL,
+    state TEXT NOT NULL CHECK (state IN ('queued', 'done', 'failed', 'discarded')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE local_assessment_marks (
+    id TEXT PRIMARY KEY NOT NULL,
+    assessment_id TEXT NULL,
+    local_assessment_id TEXT NULL REFERENCES local_assessments (id) ON DELETE CASCADE,
+    enrolment_id TEXT NOT NULL,
+    client_entry_key TEXT NOT NULL,
+    obtained INTEGER NULL,
+    absent INTEGER NOT NULL DEFAULT 0,
+    based_on_mark_id TEXT NULL,
+    outbox_id TEXT NULL,
+    state TEXT NOT NULL
+      CHECK (state IN ('waiting', 'queued', 'done', 'changed_elsewhere', 'failed')),
+    server_mark_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CHECK (assessment_id IS NOT NULL OR local_assessment_id IS NOT NULL)
+  );
+  CREATE UNIQUE INDEX local_assessment_marks_key
+    ON local_assessment_marks (COALESCE(assessment_id, ''), COALESCE(local_assessment_id, ''), enrolment_id);
+  CREATE INDEX local_assessments_section ON local_assessments (section_id, created_at);
+  CREATE INDEX local_assessment_marks_outbox ON local_assessment_marks (outbox_id);
+  `,
 ];
 
 /**
@@ -218,6 +261,16 @@ export const PURGE_ORPHAN_LOCAL_ROWS = `
    WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
      AND NOT EXISTS (SELECT 1 FROM local_files f
                       WHERE f.owner_table = 'local_claims' AND f.owner_id = local_claims.id);
+  DELETE FROM local_assessment_marks
+   WHERE (outbox_id IS NOT NULL AND outbox_id NOT IN (SELECT id FROM outbox))
+      OR (outbox_id IS NULL AND local_assessment_id IN (
+            SELECT t.id FROM local_assessments t
+             WHERE t.server_id IS NULL
+               AND (t.outbox_id IS NULL OR t.outbox_id NOT IN (SELECT id FROM outbox))));
+  DELETE FROM local_assessments
+   WHERE (outbox_id IS NULL OR outbox_id NOT IN (SELECT id FROM outbox))
+     AND NOT EXISTS (SELECT 1 FROM local_assessment_marks m
+                      WHERE m.local_assessment_id = local_assessments.id);
 `;
 
 /** Created before any migration runs, so the version can be read. */

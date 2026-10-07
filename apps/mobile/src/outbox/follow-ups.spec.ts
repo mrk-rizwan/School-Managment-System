@@ -21,7 +21,7 @@ import {
 } from '../test/fake-api';
 import { DOCUMENT, putFile } from '../test/file-system';
 import { recorded, registerView, TODAY } from '../test/fixtures';
-import { onSaved, sendItem } from './runtime';
+import { onSaved, outboxWorker, sendItem } from './runtime';
 import { OutboxWorker } from './worker';
 
 // slice-16 §10.3 (outbox/follow-ups.spec.ts): each lane's follow-up after the server's 2xx.
@@ -33,9 +33,16 @@ beforeEach(async () => {
   await bindOwner('41', '7');
 });
 
-function run() {
+/**
+ * Runs the queue to rest. A follow-up that queues a write triggers the app's own worker too, and
+ * since the claim is atomic (wave N review) whichever worker claims an item sends it: wait for both.
+ */
+async function run() {
   const worker = new OutboxWorker({ store: outbox, send: sendItem, isOnline: () => true, onSaved });
-  return worker.trigger('enqueued').then(() => worker.idle());
+  await worker.trigger('enqueued');
+  await worker.idle();
+  await outboxWorker.idle();
+  await worker.idle();
 }
 
 const summary = { roster: 3, marked: 3, present: 2, absent: 1, late: 0, onLeave: 0 };

@@ -31,6 +31,15 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/announcements/:id/send': 'capability: announcement.send.school | announcement.send.scope',
   'GET /api/v1/announcements/:id/thumbnail': 'capability: announcement.send.school | announcement.send.scope',
   'POST /api/v1/announcements/preview-audience': 'capability: announcement.send.school | announcement.send.scope',
+  // Phase 4 slice 30 (contracts/slice-30.md §1): reads with either marks key, writes with
+  // marks.enter (the row scope is the subject-aware MarksScope of held_on, per request).
+  'GET /api/v1/assessments': 'capability: marks.enter | marks.view_all',
+  'POST /api/v1/assessments': 'capability: marks.enter',
+  'GET /api/v1/assessments/:id': 'capability: marks.enter | marks.view_all',
+  'PATCH /api/v1/assessments/:id': 'capability: marks.enter | assessment.define',
+  'GET /api/v1/assessments/:id/marks': 'capability: marks.enter | marks.view_all',
+  'POST /api/v1/assessments/:id/submit-marks': 'capability: marks.enter',
+  'POST /api/v1/assessments/:id/void': 'capability: marks.enter | assessment.define',
   'POST /api/v1/attendance-arrivals': 'capability: attendance.student.mark',
   'POST /api/v1/attendance-marks/:id/amend': 'capability: attendance.student.mark',
   'GET /api/v1/attendance-marks/:id/changes': 'capability: attendance.student.mark | attendance.student.view_all',
@@ -248,6 +257,15 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/fee-reminders/send': 'capability: charge.campaign.send',
   'GET /api/v1/students/:id/dues-clearance': 'capability: fee.statement.view',
   'POST /api/v1/students/:id/dues-clearance/override': 'capability: certificate.issue',
+  // Phase 4 slice 34 (contracts/slice-34.md §1): certificate.issue everywhere (the void adds the
+  // principal gate in the service, R293); the student's list also with student.view, scoped.
+  'GET /api/v1/certificates': 'capability: certificate.issue',
+  'GET /api/v1/certificates/:id': 'capability: certificate.issue',
+  'GET /api/v1/certificates/:id/print': 'capability: certificate.issue',
+  'POST /api/v1/certificates/:id/reissue': 'capability: certificate.issue',
+  'POST /api/v1/certificates/:id/void': 'capability: certificate.issue',
+  'GET /api/v1/students/:id/certificates': 'capability: certificate.issue | student.view',
+  'POST /api/v1/students/:id/certificates': 'capability: certificate.issue',
   // Phase 3 slice 23: expense readers, the recorder's writes, the approver's decisions (§3.1).
   'GET /api/v1/expenses': 'capability: expense.record | expense.approve | finance.report.view',
   'POST /api/v1/expenses': 'capability: expense.record',
@@ -337,6 +355,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/teacher-assignments/:id/end': 'capability: class.manage',
   'PATCH /api/v1/terms/:id': 'capability: assessment.define',
   'POST /api/v1/terms/:id/skip-class': 'capability: assessment.define',
+  'POST /api/v1/terms/:id/set-up-exams': 'capability: assessment.define',
+  'POST /api/v1/marks/:id/excuse': 'capability: result.approve',
   'POST /api/v1/terms/:id/unskip-class': 'capability: assessment.define',
   'POST /api/v1/uploads': 'capability: document.upload | diary.write | announcement.send.scope | announcement.send.school | expense.record',
   'POST /api/v1/user-roles/:id/remove': 'capability: role.manage',

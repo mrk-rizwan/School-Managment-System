@@ -14,4 +14,7 @@ export const FINANCE_SETTINGS = {
   payDay: 1,
   feeReminderDaysBefore: 3,
   overdueReminderEveryDays: 14,
+  // Phase 4 slice 34 (contracts/slice-34.md §6): the certificate settings at their defaults.
+  certificateSignatoryName: null,
+  certificateShowIdentityNo: true,
 } as const satisfies Partial<SchoolSettingsDto>;

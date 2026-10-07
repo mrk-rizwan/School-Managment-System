@@ -49,12 +49,12 @@ const OutboxViewRow = z.object({
   o_updated: z.string().nullable(),
 });
 
-const OUTBOX_COLUMNS =
+export const OUTBOX_COLUMNS =
   'o.id AS o_id, o.state AS o_state, o.response_status AS o_status, o.response_code AS o_code, ' +
   'o.response_message AS o_message, o.response_details AS o_details, ' +
   'o.next_attempt_at AS o_next, o.updated_at AS o_updated';
 
-function outboxOf(raw: unknown): OutboxView | null {
+export function outboxOf(raw: unknown): OutboxView | null {
   const r = OutboxViewRow.parse(raw);
   if (r.o_id === null || r.o_state === null || r.o_updated === null) return null;
   return {
@@ -70,7 +70,7 @@ function outboxOf(raw: unknown): OutboxView | null {
 }
 
 /** A write is never stored without its owner (slice-15 §7.6). */
-async function ownedTransaction(task: (txn: Db) => Promise<void>): Promise<void> {
+export async function ownedTransaction(task: (txn: Db) => Promise<void>): Promise<void> {
   if ((await readOwner()) === null) throw new NoOwnerError();
   await inExclusiveTransaction(task);
 }
@@ -1266,6 +1266,10 @@ export async function discardItem(outboxId: string): Promise<void> {
     );
     await txn.runAsync('DELETE FROM local_claims WHERE outbox_id = ?', [outboxId]);
     await txn.runAsync('DELETE FROM local_files WHERE outbox_id = ?', [outboxId]);
+    // Slice 30: a discarded test takes the marks waiting for it (the foreign key cascades); a
+    // discarded marks row takes its entries.
+    await txn.runAsync('DELETE FROM local_assessments WHERE outbox_id = ?', [outboxId]);
+    await txn.runAsync('DELETE FROM local_assessment_marks WHERE outbox_id = ?', [outboxId]);
     await txn.execAsync(PURGE_ORPHAN_LOCAL_ROWS);
   });
   await sweepPhotoFiles();
@@ -1323,6 +1327,13 @@ export async function resendWithRemedy(
         failed.domainId,
       ]);
     }
+    // Slice 30: a marks row's entries follow the outbox row (domainId is the assessment).
+    if (failed.lane === 'marks_enter') {
+      await txn.runAsync(
+        "UPDATE local_assessment_marks SET outbox_id = ?, state = 'queued', updated_at = ? WHERE outbox_id = ?",
+        [outboxId, now.toISOString(), failed.id],
+      );
+    }
     if (failed.lane === 'submit_register' && failed.domainId !== null) {
       const marks = (body as { marks?: { enrolmentId: string; status: string }[] }).marks ?? [];
       await mirrorMarks(txn, failed.domainId, marks);
@@ -1372,6 +1383,7 @@ const LOCAL_TABLES = new Set([
   'local_expenses',
   'local_files',
   'local_claims',
+  'local_assessments',
 ]);
 
 /**

@@ -6,6 +6,7 @@ export const TAB_TITLES: Record<TabId | 'more', string> = {
   home: 'Home',
   approvals: 'Approvals',
   classes: 'Classes',
+  marks: 'Marks',
   today: 'Today',
   announce: 'Announce',
   children: 'Children',

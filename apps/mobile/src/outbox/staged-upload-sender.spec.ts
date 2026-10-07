@@ -254,9 +254,14 @@ const expenseInput = {
 } as const;
 const savedExpense = { id: '900', expenseNo: 12, status: 'pending_approval', hasReceipt: false };
 
-function drain() {
+/** Runs the queue to rest: the receipt queued by the expense's follow-up may be claimed by the
+ * app's own worker, which that follow-up triggers (the claim is atomic, wave N review). */
+async function drain() {
   const worker = new OutboxWorker({ store: outbox, send: sendItem, isOnline: () => true, onSaved });
-  return worker.trigger('enqueued').then(() => worker.idle());
+  await worker.trigger('enqueued');
+  await worker.idle();
+  await outboxWorker.idle();
+  await worker.idle();
 }
 
 /** An expense with a photographed receipt, saved on the phone. */

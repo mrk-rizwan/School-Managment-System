@@ -94,8 +94,13 @@ token_of() { # identity digits -> a bearer token (never printed). The body goes 
     | json 'b.bearerToken'
 }
 
+auth() { # token -> a curl config naming the bearer header, read through -K <(auth ...): printf
+  # is a builtin, so the token never appears on a command line or in a process listing.
+  printf 'header = "Authorization: Bearer %s"\n' "$1"
+}
+
 get() { # token, path
-  curl -fs -H "Authorization: Bearer $1" -H 'X-App-Version: 0.1.0' "$api$2"
+  curl -fs -K <(auth "$1") -H 'X-App-Version: 0.1.0' "$api$2"
 }
 
 airplane() { adb shell cmd connectivity airplane-mode "$1"; sleep 3; }
@@ -151,6 +156,31 @@ if [ "$absent" != "2" ]; then echo "the server's register has $absent absent mar
 
 flow teacher-diary teacher-diary.yaml "${ids[@]}"
 
+# --- Phase 4 slice 30: marks entered offline ---------------------------------------------------
+# Seeded over curl: English on Class 5's subject list (the principal), and a weekly test in 5 B
+# by the teacher, who teaches English there. The flow enters two marks in airplane mode.
+principal_token="$(token_of "$PRINCIPAL_CNIC")"
+CLASS_5="$(echo "$view" | json 'b.section.classId')"
+ENGLISH="$(echo "$teacher_me" | json "b.assignments.find(a=>a.role==='subject_teacher').subjectId")"
+printf '{"subjects":[{"subjectId":"%s","sortOrder":1,"examMaxMarks":100}]}' "$ENGLISH" \
+  | curl -fs -K <(auth "$principal_token") -H 'X-App-Version: 0.1.0' \
+    -H 'Content-Type: application/json' -X PATCH "$api/classes/$CLASS_5" -d @- >/dev/null
+class_subject="$(get "$teacher_token" "/classes/$CLASS_5/subjects" | json "b.data.find(s=>s.subjectId==='$ENGLISH').id")"
+ASSESSMENT_ID="$(printf '{"classSubjectId":"%s","sectionId":"%s","testType":"weekly","name":"Maestro spelling test","maxMarks":20,"heldOn":"%s"}' \
+  "$class_subject" "$SECTION_B" "$today" \
+  | curl -fs -K <(auth "$teacher_token") -H 'X-App-Version: 0.1.0' -H 'Content-Type: application/json' \
+    -H "Idempotency-Key: $(node -e "console.log(require('node:crypto').randomUUID())")" -X POST "$api/assessments" -d @- \
+  | json 'b.id')"
+marks_grid="$(get "$teacher_token" "/assessments/$ASSESSMENT_ID/marks")"
+MARKS_E1="$(echo "$marks_grid" | json 'b.rows[0].enrolmentId')"
+MARKS_E2="$(echo "$marks_grid" | json 'b.rows[1].enrolmentId')"
+flow teacher-marks-offline teacher-marks-offline.yaml "${ids[@]}" -e ASSESSMENT_ID="$ASSESSMENT_ID" \
+  -e MARKS_E1="$MARKS_E1" -e MARKS_E2="$MARKS_E2"
+# "The server has it": a live 17 and a live absence.
+marked="$(get "$teacher_token" "/assessments/$ASSESSMENT_ID/marks" \
+  | json "b.rows.filter(r=>r.status==='live'&&((r.enrolmentId==='$MARKS_E1'&&r.obtained===17)||(r.enrolmentId==='$MARKS_E2'&&r.absent))).length")"
+if [ "$marked" != "2" ]; then echo "the server holds $marked of the two marks"; exit 1; fi
+
 # The parent's card says "Absent" only once the worker's rollup has run: wait for it (≤ 90 s).
 status=""
 for _ in $(seq 1 45); do
@@ -179,7 +209,7 @@ flow principal-announce principal-announce.yaml "${ids[@]}" -e CLASS_ID="$CLASS_
 accounts="$(get "$principal_token" '/payment-accounts?status=active' | json 'b.total')"
 if [ "$accounts" = "0" ]; then
   printf '{"kind":"jazzcash","title":"Demo School","accountNo":"0300-0000000"}' \
-    | curl -fs -H "Authorization: Bearer $principal_token" -H 'X-App-Version: 0.1.0' \
+    | curl -fs -K <(auth "$principal_token") -H 'X-App-Version: 0.1.0' \
       -H 'Content-Type: application/json' -X POST "$api/payment-accounts" -d @- >/dev/null
 fi
 flow parent-deposit-slip parent-deposit-slip.yaml "${ids[@]}"
@@ -188,7 +218,7 @@ flow parent-deposit-slip parent-deposit-slip.yaml "${ids[@]}"
 claim_id="$(get "$principal_token" "/payment-claims?status=pending&studentId=$STUDENT_ID" | json 'b.data[0].id')"
 if [ -z "$claim_id" ] || [ "$claim_id" = "undefined" ]; then echo "the parent's claim is not in the office queue"; exit 1; fi
 printf '{"advanceForStudentId":"%s"}' "$STUDENT_ID" \
-  | curl -fs -H "Authorization: Bearer $principal_token" -H 'X-App-Version: 0.1.0' \
+  | curl -fs -K <(auth "$principal_token") -H 'X-App-Version: 0.1.0' \
     -H 'Content-Type: application/json' -X POST "$api/payment-claims/$claim_id/verify" -d @- >/dev/null
 flow parent-receipt parent-receipt.yaml "${ids[@]}"
 
@@ -198,9 +228,9 @@ flow parent-receipt parent-receipt.yaml "${ids[@]}"
 # (the principal may not confirm a handover they collected or opened, R194).
 key() { node -e "console.log(require('node:crypto').randomUUID())"; }
 post_as() { # token, path, idempotency key ('' for none); the JSON body on stdin
-  local headers=(-H "Authorization: Bearer $1" -H 'X-App-Version: 0.1.0' -H 'Content-Type: application/json')
+  local headers=(-H 'X-App-Version: 0.1.0' -H 'Content-Type: application/json')
   [ -n "$3" ] && headers+=(-H "Idempotency-Key: $3")
-  curl -fs "${headers[@]}" -X POST "$api$2" -d @-
+  curl -fs -K <(auth "$1") "${headers[@]}" -X POST "$api$2" -d @-
 }
 teacher_id="$(echo "$teacher_me" | json 'b.id')"
 printf '{"capability":"payment.record","effect":"grant","reason":"Maestro cash handover"}' \
@@ -210,7 +240,7 @@ printf '{"academicYearId":"%s","payerName":"Maestro payer","studentIds":["%s"],"
   "$year_id" "$STUDENT_ID" "$today" "$STUDENT_ID" \
   | post_as "$teacher_token" /payments "$(key)" >/dev/null
 HANDOVER_ID="$(printf '{}' | post_as "$teacher_token" /me/staff/cash-handovers '' | json 'b.id')"
-upload_id="$(curl -fs -H "Authorization: Bearer $guardian_token" -H 'X-App-Version: 0.1.0' \
+upload_id="$(curl -fs -K <(auth "$guardian_token") -H 'X-App-Version: 0.1.0' \
   -F "file=@$root/apps/mobile/maestro/assets/deposit-slip.png;type=image/png" "$api/me/uploads" | json 'b.id')"
 CLAIM_ID="$(printf '{"method":"jazzcash","claimedAmount":700,"paidOn":"%s","reference":"MAESTRO-27","stagedUploadId":"%s"}' \
   "$today" "$upload_id" | post_as "$guardian_token" "/me/children/$STUDENT_ID/payment-claims" "$(key)" | json 'b.id')"

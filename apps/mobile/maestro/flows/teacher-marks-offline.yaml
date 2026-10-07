@@ -1,0 +1,58 @@
+# Phase 4 slice 30 (plan §3.8) — CI only. Same session as teacher-diary: the teacher opens the
+# Marks tab, the 5 B English test ci-run.sh created over the API (its grid loads once online),
+# enters two marks in airplane mode ("Saved on device"), and sees them reach the server when the
+# connection returns ("Saved on server"). ci-run.sh then checks over curl that the server holds
+# both marks. Env: SECTION_B, ASSESSMENT_ID, MARKS_E1, MARKS_E2.
+appId: pk.asms.app.dev
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: 'tabs.marks'
+    timeout: 30000
+- tapOn:
+    id: 'tabs.marks'
+- scrollUntilVisible:
+    element:
+      id: 'marks.section.${SECTION_B}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'marks.section.${SECTION_B}'
+- scrollUntilVisible:
+    element:
+      id: 'marks.test.${ASSESSMENT_ID}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'marks.test.${ASSESSMENT_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'marks.input.${MARKS_E1}'
+    timeout: 30000
+- setAirplaneMode: enabled
+- tapOn:
+    id: 'marks.input.${MARKS_E1}'
+- inputText: '17'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'marks.absent.${MARKS_E2}'
+    direction: DOWN
+- tapOn:
+    id: 'marks.absent.${MARKS_E2}'
+- tapOn:
+    id: 'marks.save'
+- extendedWaitUntil:
+    visible:
+      id: 'marks.stateLine'
+      text: 'Saved on device.*'
+    timeout: 15000
+- assertVisible:
+    id: 'sync.chip'
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'marks.stateLine'
+      text: 'Saved on server at .*'
+    timeout: 60000

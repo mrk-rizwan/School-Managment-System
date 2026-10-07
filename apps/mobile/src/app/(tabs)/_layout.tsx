@@ -10,6 +10,7 @@ const ROUTES = [
   'home',
   'approvals',
   'classes',
+  'marks',
   'today',
   'announce',
   'children',

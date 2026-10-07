@@ -22,7 +22,7 @@ import { actionsFor, groupAssignments, sectionTitle, wholeClassIds } from './my-
 type SectionsPage = { data: SectionDto[] };
 
 /** A class's sections for its whole-class subject rows: cached, 50 a page (a picker read). */
-function useClassSections(classIds: readonly string[]) {
+export function useClassSections(classIds: readonly string[]) {
   return useQueries({
     queries: classIds.map((classId) => {
       const path = '/api/v1/classes/{id}/sections';

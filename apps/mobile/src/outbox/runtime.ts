@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { currentBearerToken, sendRaw } from '../api/client';
 import { queryClient } from '../api/query-client';
 import type {
+  AssessmentMarksDto,
+  AssessmentSubmitMarksDto,
   RegisterSubmitMinimalResultDto,
   RegisterSubmitResultDto,
   RegisterViewDto,
@@ -11,6 +13,8 @@ import type {
 } from '../api/contracts';
 import { invalidationKeys, queryKeys } from '../api/query-keys';
 import { applySubmitResult, marksFromMinimal } from '../attendance/register-model';
+import { applyMarkResults } from '../marks/marks-model';
+import { markAssessmentSaved, markMarksSaved } from '../db/local-marks.repository';
 import { cacheKey, readCache, writeCache, type Cached } from '../db/cache';
 import {
   markClaimSaved,
@@ -122,9 +126,39 @@ const MinimalSubmitResult = registerResult(
   }),
 );
 const WithId = z.object({ id: z.string() });
+/** AssessmentSubmitMarksMinimalResultDto (or the full answer): the per-row outcomes. */
+const MarksResult = z.object({
+  entries: z.array(
+    z.object({
+      clientEntryKey: z.string(),
+      enrolmentId: z.string(),
+      markId: z.string().nullable(),
+      outcome: z.enum(['created', 'superseded', 'unchanged', 'changed_elsewhere']),
+    }),
+  ),
+});
 const WithSection = z.object({ id: z.string(), sectionId: z.string() });
 /** ExpenseDto: enough of it to show the number and the status on the phone. */
 const SavedExpense = z.object({ id: z.string(), expenseNo: z.number(), status: z.string() });
+
+/**
+ * Lays the marks that landed over the cached grid (memory and disk), so the open grid shows
+ * them without a refetch. False when there is no grid on the device.
+ */
+async function applyToCachedGrid(
+  assessmentId: string,
+  sent: AssessmentSubmitMarksDto,
+  results: readonly z.infer<typeof MarksResult>['entries'][number][],
+): Promise<boolean> {
+  const queryKey = queryKeys.assessmentGrid(assessmentId);
+  const key = cacheKey(`/api/v1/assessments/${assessmentId}/marks`);
+  const cached =
+    queryClient.getQueryData<Cached<AssessmentMarksDto>>(queryKey) ?? (await readCache<AssessmentMarksDto>(key));
+  if (cached === null || cached === undefined) return false;
+  const next = await writeCache(key, applyMarkResults(cached.body, sent, results), cached.serverTime);
+  queryClient.setQueryData<Cached<AssessmentMarksDto>>(queryKey, next, { updatedAt: Date.parse(next.serverTime) });
+  return true;
+}
 
 /** The id between two path segments: /api/v1/sections/<id>/submit-register → <id>. */
 const idAfter = (path: string, segment: string) =>
@@ -175,6 +209,29 @@ export const ON_SAVED: Record<string, (item: OutboxItem, outcome: SentOutcome) =
     if (item.domainId !== null) await markUploadDone('local_attachments', item.domainId);
     const result = WithSection.safeParse(outcome.body);
     invalidate(result.success ? invalidationKeys.sectionDiary(result.data.sectionId) : []);
+  },
+  // Phase 4 slice 30 (§3.8): the test's server id; the marks waiting for it are queued behind it.
+  async assessment_create(item, outcome) {
+    const result = WithId.safeParse(outcome.body);
+    const queued = await markAssessmentSaved(item.id, result.success ? result.data.id : null);
+    const sent = JSON.parse(item.body) as { sectionId?: string };
+    invalidate(sent.sectionId ? [queryKeys.assessments(sent.sectionId)] : []);
+    if (queued > 0) void outboxWorker.trigger('enqueued');
+  },
+  // Per-row outcomes (R262): each local row answered; the open grid takes the marks that landed
+  // from the answer itself, and refetches only when a row was changed elsewhere.
+  async marks_enter(item, outcome) {
+    const result = MarksResult.safeParse(outcome.body);
+    const assessmentId = idAfter(item.path, 'assessments');
+    if (!result.success) {
+      invalidate([queryKeys.assessmentGrid(assessmentId)]);
+      return;
+    }
+    const sent = JSON.parse(item.body) as AssessmentSubmitMarksDto;
+    await markMarksSaved(item.id, assessmentId, sent, result.data.entries);
+    const elsewhere = result.data.entries.some((e) => e.outcome === 'changed_elsewhere');
+    const applied = !elsewhere && (await applyToCachedGrid(assessmentId, sent, result.data.entries));
+    invalidate([['assessments', 'section'], ...(applied ? [] : [queryKeys.assessmentGrid(assessmentId)])]);
   },
   // Phase 3 slice 23 (§3.9): the expense's number and status; its receipt is queued behind it.
   async expense(item, outcome) {
