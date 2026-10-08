@@ -291,19 +291,84 @@ describe('wave P promotion guards (raw SQL)', () => {
     }
   });
 
-  it('§1.1: superseding a result marks only applied rows revised; an open row is re-checked at apply', async () => {
-    const savepoint = `revised_${seq++}`;
-    await pg.query(`SAVEPOINT ${savepoint}`);
-    try {
-      await pg.query(`UPDATE results SET superseded_at = now() WHERE school_id = $1 AND id = $2`, [f.school.id, resultId]);
+  describe('§1.1: results_promotion_revised and results_promotion_returned', () => {
+    const revisedOf = async (): Promise<boolean | undefined> => {
       const { rows } = await pg.query<{ revised_after_apply: boolean }>(
         `SELECT revised_after_apply FROM promotion_decisions WHERE school_id = $1 AND id = $2`,
         [f.school.id, openRow],
       );
-      expect(rows[0]?.revised_after_apply).toBe(false);
-    } finally {
-      await pg.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-    }
+      return rows[0]?.revised_after_apply;
+    };
+    /** f's row decided and applied on f's result, its sheet applied. */
+    const applyOpenRow = async () => {
+      await pg.query(
+        `UPDATE promotion_decisions SET decision = 'complete', reason = 'Leaves after this class', decided_by = $3, decided_at = now()
+         WHERE school_id = $1 AND id = $2`,
+        [f.school.id, openRow, f.userId],
+      );
+      await pg.query(`UPDATE promotion_decisions SET applied_at = now() WHERE school_id = $1 AND id = $2`, [f.school.id, openRow]);
+      await pg.query(
+        `UPDATE promotion_sheets SET status = 'applied', applied_by = opened_by, applied_at = now() WHERE school_id = $1 AND id = $2`,
+        [f.school.id, openSheet],
+      );
+    };
+    const supersedeResult = () =>
+      pg.query(`UPDATE results SET superseded_at = now() WHERE school_id = $1 AND id = $2`, [f.school.id, resultId]);
+    /** A correction's replacing row for f's result: the same figures, `revised` as given. */
+    const replaceResult = (revised: boolean) =>
+      pg.query(
+        `INSERT INTO results (school_id, sheet_id, enrolment_id, student_id, academic_year_id, term_id, total_obtained,
+           total_max, percent_bp, grade, passed, position, position_of, revised, supersedes_id)
+         SELECT school_id, sheet_id, enrolment_id, student_id, academic_year_id, term_id, total_obtained,
+           total_max, percent_bp, grade, passed, position, position_of, $3, id
+         FROM results WHERE school_id = $1 AND id = $2`,
+        [f.school.id, resultId, revised],
+      );
+    const inSavepoint = async (body: () => Promise<void>) => {
+      const savepoint = `revised_${seq++}`;
+      await pg.query(`SAVEPOINT ${savepoint}`);
+      try {
+        await body();
+      } finally {
+        await pg.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+      }
+    };
+
+    it('an open row is never marked: apply re-checks it', () =>
+      inSavepoint(async () => {
+        await supersedeResult();
+        await replaceResult(true);
+        expect(await revisedOf()).toBe(false);
+      }));
+
+    it('an applied row is not marked when its result is only carried into a new version (revised = false)', () =>
+      inSavepoint(async () => {
+        await applyOpenRow();
+        await supersedeResult();
+        expect(await revisedOf()).toBe(false);
+        await replaceResult(false);
+        expect(await revisedOf()).toBe(false);
+      }));
+
+    it('an applied row is marked when the row replacing its result is revised', () =>
+      inSavepoint(async () => {
+        await applyOpenRow();
+        await supersedeResult();
+        await replaceResult(true);
+        expect(await revisedOf()).toBe(true);
+      }));
+
+    it('an applied row is marked when its sheet is returned and its result withdrawn', () =>
+      inSavepoint(async () => {
+        await applyOpenRow();
+        await pg.query(
+          `UPDATE result_sheets SET status = 'returned', return_reason = 'Check again' WHERE school_id = $1 AND id = (
+             SELECT sheet_id FROM results WHERE school_id = $1 AND id = $2)`,
+          [f.school.id, resultId],
+        );
+        await supersedeResult();
+        expect(await revisedOf()).toBe(true);
+      }));
   });
 
   it('§3.2: an enrolment ends once, active -> completed or left', async () => {

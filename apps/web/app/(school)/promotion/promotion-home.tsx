@@ -22,25 +22,15 @@ import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { unwrap } from '@/lib/api/client';
-import { academics, type AcademicYearDto } from '@/lib/api/school-academics-contract';
+import type { AcademicYearDto } from '@/lib/api/school-academics-contract';
 import { promotionApi, type PromotionSheetDto } from '@/lib/api/school-promotion-contract';
-import { useYears } from '../academics/_lib/options';
+import { allPages, useYears, useYearSections } from '../academics/_lib/options';
 import { useDefaultYearId, YearFilter } from '../reports/_lib/reports-ui';
 import { promotionErrorMessage, promotionKeys, sheetHref } from './_lib/promotion-ui';
 
 // contracts/slice-35.md: Promotion. Every section of the chosen year with its promotion sheet's
 // state; a section without an open or applied sheet can be opened into a target year once its
 // final result is approved. The year closes only when every section with students is applied.
-
-/** Every page of a list (page size 50, the API's cap) until its total: a school may have more than 50 sections. */
-async function allPages<T>(page: (n: number) => Promise<{ data: T[]; total: number }>): Promise<T[]> {
-  const out: T[] = [];
-  for (let n = 1; ; n++) {
-    const { data, total } = await page(n);
-    out.push(...data);
-    if (data.length === 0 || out.length >= total) return out;
-  }
-}
 
 /** The sheet a section shows: the open one, else the applied one, else the newest (cancelled). */
 const sheetOf = (sheets: readonly PromotionSheetDto[], sectionId: string): PromotionSheetDto | null => {
@@ -59,30 +49,34 @@ export function PromotionHome() {
   const [chosenYear, setChosenYear] = useState('');
   const yearId = useDefaultYearId(chosenYear);
   const [opening, setOpening] = useState<SectionRow | null>(null);
-  const rows = useQuery({
+  const sheets = useQuery({
     queryKey: promotionKeys.sections(yearId),
-    queryFn: async (): Promise<SectionRow[]> => {
-      const sheets = await allPages((page) =>
+    queryFn: () =>
+      allPages((page) =>
         unwrap(promotionApi.GET('/api/v1/promotion-sheets', { params: { query: { academicYearId: yearId, page, limit: 50 } } })),
-      );
-      const classes = await allPages((page) =>
-        unwrap(academics.GET('/api/v1/classes', { params: { query: { academicYearId: yearId, page, limit: 50 } } })),
-      );
-      const out: SectionRow[] = [];
-      for (const klass of classes) {
-        const sections = await allPages((page) =>
-          unwrap(
-            academics.GET('/api/v1/classes/{id}/sections', { params: { path: { id: klass.id }, query: { page, limit: 50 } } }),
-          ),
-        );
-        for (const section of sections) {
-          out.push({ sectionId: section.id, className: klass.name, sectionName: section.name, sheet: sheetOf(sheets, section.id) });
-        }
-      }
-      return out;
-    },
+      ),
     enabled: yearId !== '',
   });
+  const classes = useYearSections(yearId, { includeArchived: true });
+  // Every section of the year with its sheet: one screen state over the two reads.
+  const rows = {
+    data:
+      sheets.data && classes.data
+        ? classes.data.flatMap((klass) =>
+            klass.sections.map(
+              (section): SectionRow => ({
+                sectionId: section.id,
+                className: klass.name,
+                sectionName: section.name,
+                sheet: sheetOf(sheets.data, section.id),
+              }),
+            ),
+          )
+        : undefined,
+    isPending: sheets.isPending || classes.isPending,
+    error: sheets.error ?? classes.error,
+    refetch: () => Promise.all([sheets.refetch(), classes.refetch()]),
+  };
   return (
     <>
       <PageHeader

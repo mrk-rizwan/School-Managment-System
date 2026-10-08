@@ -53,6 +53,8 @@ export const queryKeys = {
     ['attendance-reports', 'daily-summary', date, page] as const,
   activeStaff: (page: number) => ['staff', 'active', page] as const,
   staffAssignments: (staffId: string) => ['staff', staffId, 'assignments'] as const,
+  /** The leave approval's cover picker: the first page of active staff. */
+  coverStaff: ['approvals', 'staff', 'active'] as const,
   messagingUsage: ['messaging', 'usage'] as const,
   announcements: (page: number) => ['announcements', page] as const,
   announcement: (id: string) => ['announcements', 'one', id] as const,
@@ -84,6 +86,8 @@ export const queryKeys = {
   localClaims: (studentId: string) => ['local', 'claims', studentId] as const,
   localAssessments: (sectionId: string) => ['local', 'assessments', sectionId] as const,
   localMarks: (ref: string) => ['local', 'marks', ref] as const,
+  /** A section's cached roster, for a test made on the device (slice 30). */
+  localRoster: (sectionId: string) => ['local', 'roster', sectionId] as const,
 };
 
 /** Prefixes for invalidation after a write reaches the server (slice-16 §3.1). */

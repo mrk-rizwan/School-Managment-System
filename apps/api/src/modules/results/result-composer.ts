@@ -31,6 +31,7 @@ import type {
 } from '../../repositories/result-sheet.repository';
 import {
   ResultRepository,
+  type NewResult,
   type OwnChildFlag,
   type OwnChildRole,
   type ResultRecord,
@@ -364,20 +365,12 @@ export class ResultComposer {
     const flags = await this.ownChildFlags(schoolId, roster, contributors, () => [], inherited);
 
     // Names and print order: the latest term snapshot of each class-subject.
-    const headers = new Map<string, SubjectHeader>();
     const order = new Map(termWeights.map((t, i) => [t.termId, i]));
     const byTerm = [...termResults].sort(
       (a, b) => (order.get(a.termId ?? 0n) ?? 0) - (order.get(b.termId ?? 0n) ?? 0),
     );
-    for (const r of byTerm) {
-      for (const s of r.subjects) {
-        headers.set(s.classSubjectId.toString(), {
-          classSubjectId: s.classSubjectId,
-          subjectName: s.subjectName,
-          sortOrder: s.sortOrder,
-        });
-      }
-    }
+    const subjectHeaders = subjectHeadersOf(byTerm);
+    const headers = new Map(subjectHeaders.map((h) => [h.classSubjectId.toString(), h]));
 
     const rows: ComposedRow[] = roster.map((student) => {
       const mine = resultsOf.get(student.studentId) ?? [];
@@ -429,14 +422,7 @@ export class ResultComposer {
         })),
       };
     });
-    return {
-      rows: ranked(rows),
-      subjects: [...headers.values()].sort(
-        (a, b) => a.sortOrder - b.sortOrder || (a.classSubjectId < b.classSubjectId ? -1 : 1),
-      ),
-      gaps: [],
-      examsNotSetUp: [],
-    };
+    return { rows: ranked(rows), subjects: subjectHeaders, gaps: [], examsNotSetUp: [] };
   }
 
   /** One aggregate over the range for the roster (R277), as basis points. */
@@ -530,6 +516,28 @@ function groupBy<T>(rows: readonly T[], key: (row: T) => bigint): Map<bigint, T[
   return map;
 }
 
+/**
+ * The subjects of rows (stored results, or composed rows) as headers: each class-subject once, a
+ * later row's snapshot winning, in print order (sort order, then id).
+ */
+export function subjectHeadersOf(
+  rows: readonly { readonly subjects: readonly SubjectHeader[] }[],
+): SubjectHeader[] {
+  const headers = new Map<bigint, SubjectHeader>();
+  for (const row of rows) {
+    for (const s of row.subjects) {
+      headers.set(s.classSubjectId, {
+        classSubjectId: s.classSubjectId,
+        subjectName: s.subjectName,
+        sortOrder: s.sortOrder,
+      });
+    }
+  }
+  return [...headers.values()].sort(
+    (a, b) => a.sortOrder - b.sortOrder || (a.classSubjectId < b.classSubjectId ? -1 : 1),
+  );
+}
+
 const header = (cs: ClassSubjectRecord): SubjectHeader => ({
   classSubjectId: cs.id,
   subjectName: cs.subjectName,
@@ -581,6 +589,38 @@ function sortSubjects(
       (headers.get(a.key)?.sortOrder ?? 0) - (headers.get(b.key)?.sortOrder ?? 0) ||
       (BigInt(a.key) < BigInt(b.key) ? -1 : 1),
   );
+}
+
+/**
+ * A composed row as a new stored result of `sheet`: unrevised and unpublished (a correction's
+ * version sets those, and what it supersedes, over it).
+ */
+export function newResultOf(
+  sheet: Pick<ResultSheetRecord, 'id' | 'academicYearId' | 'termId' | 'classId'>,
+  row: Omit<ComposedRow, 'fullName' | 'admissionNo' | 'rollNo'>,
+): NewResult {
+  return {
+    sheetId: sheet.id,
+    enrolmentId: row.enrolmentId,
+    studentId: row.studentId,
+    academicYearId: sheet.academicYearId,
+    termId: sheet.termId,
+    classId: sheet.classId,
+    totalObtained: row.totalObtained,
+    totalMax: row.totalMax,
+    percentBp: row.percentBp,
+    grade: row.grade,
+    passed: row.passed,
+    failedSubjects: row.failedSubjects,
+    position: row.position,
+    positionOf: row.positionOf,
+    attendanceBp: row.attendanceBp,
+    remark: row.remark,
+    ownChildFlags: row.ownChildFlags,
+    revised: false,
+    publishedAt: null,
+    subjects: row.subjects,
+  };
 }
 
 /** A stored result as a composed row (an approved or published sheet's detail). */

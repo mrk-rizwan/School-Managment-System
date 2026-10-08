@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, yearMonthOf } from '@asms/shared';
+import { Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, resultTermLabel, yearMonthOf } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -257,7 +257,7 @@ function Queues({ approvals }: { approvals: ApprovalsDto }) {
               <Link href={`/results/sheets/${r.id}`} className="flex items-start justify-between gap-3 hover:underline">
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate font-medium">
-                    {r.className} {r.sectionName} · {r.isFinal ? 'Final result' : r.termName}
+                    {r.className} {r.sectionName} · {resultTermLabel(r)}
                     {r.ownChildFlags.length > 0 && (
                       <Badge variant="destructive" className="ml-2">
                         own child

@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode, type MarkEntryOutcome } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
+import {
+  ApiException,
+  concurrentUpdate,
+  fieldRefused,
+  notFound,
+} from '../../common/errors/api-exception';
 import { readLocked } from '../../common/locking';
 import { SchoolContext } from '../../common/school-context';
 import { NotificationService } from '../../messaging/notification.service';
@@ -12,12 +17,16 @@ import {
   type AssessmentRecord,
 } from '../../repositories/assessment.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
-import { MarkRepository, type MarkRecord } from '../../repositories/mark.repository';
+import {
+  MarkRepository,
+  type MarkRecord,
+  type NewMark,
+} from '../../repositories/mark.repository';
 import { ResultSettingsRepository } from '../../repositories/result-settings.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { MarksScope } from '../../tenancy/scope';
-import { yearClosed } from '../academics/academics.shared';
+import { requireOpenYear } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
 import { ownChildCheck } from '../fees/fee-gates';
 import { ResultRevisionService } from '../results/result-revision.service';
@@ -83,7 +92,7 @@ export class MarksService {
    */
   async grid(session: SchoolSessionContext, id: bigint): Promise<AssessmentMarksDto> {
     const schoolId = this.context.schoolId;
-    const on = await this.assessments.scopeDateOf(schoolId, id);
+    const on = await this.views.marksDate(schoolId, await this.assessments.scopeDatesOf(schoolId, id));
     const scope = on && (await this.permissions.marksReadScopeOf(session, on));
     const row = scope ? await this.assessments.find(schoolId, scope, id) : null;
     if (!row || !scope) throw notFound();
@@ -149,7 +158,7 @@ export class MarksService {
   ): Promise<AssessmentSubmitMarksResultDto> {
     const { schoolId, userId } = this.context.actor();
     this.assertWellFormed(dto);
-    const on = await this.assessments.scopeDateOf(schoolId, id);
+    const on = await this.views.marksDate(schoolId, await this.assessments.scopeDatesOf(schoolId, id));
     const scope = on && (await this.permissions.marksWriteScopeOf(session, on));
     if (!scope) throw notFound();
     const row = await readLocked(
@@ -161,9 +170,7 @@ export class MarksService {
     if (row.lockedAt !== null || (await this.views.sheetLocks(schoolId, row))) {
       throw assessmentLocked(row.id);
     }
-    const year = await this.years.findById(schoolId, row.academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
+    await requireOpenYear(this.years, schoolId, row.academicYearId);
     for (const entry of dto.entries) {
       const { obtained } = valueOf(entry);
       if (obtained !== null && obtained > row.maxMarks)
@@ -193,8 +200,10 @@ export class MarksService {
       keyed.set(`${mark.enrolmentId}|${mark.clientEntryKey}`, mark);
     }
 
+    // Every entry is decided in memory first; the writes are then one supersede and one insert
+    // for the whole request (slice 36, the 500 ms budget), the per-row outcomes kept.
     const results: MarkEntryResultDto[] = [];
-    const created: bigint[] = [];
+    const writes: { result: MarkEntryResultDto; mark: NewMark; supersedes: bigint | null }[] = [];
     for (const entry of dto.entries) {
       const enrolmentId = BigInt(entry.enrolmentId);
       const student = roster.get(enrolmentId);
@@ -229,27 +238,39 @@ export class MarksService {
         continue;
       }
       if (lockedStudents.has(student.studentId)) throw assessmentLocked(row.id);
-      if (current && !(await this.marks.supersede(schoolId, scope, row, current.id))) {
-        answer('changed_elsewhere', null);
-        continue;
-      }
-      const mark = await this.marks.insertLive(schoolId, scope, row, {
-        enrolmentId,
-        studentId: student.studentId,
-        ...value,
-        excused: false,
-        supersedesId: current?.id ?? null,
-        correctionReason: null,
-        enteredBy: userId,
-        clientEntryKey: entry.clientEntryKey,
+      answer(current ? 'superseded' : 'created', null);
+      writes.push({
+        result: results[results.length - 1]!,
+        supersedes: current?.id ?? null,
+        mark: {
+          enrolmentId,
+          studentId: student.studentId,
+          ...value,
+          excused: false,
+          supersedesId: current?.id ?? null,
+          correctionReason: null,
+          enteredBy: userId,
+          clientEntryKey: entry.clientEntryKey,
+        },
       });
-      live.set(enrolmentId, mark);
-      if (current) {
-        answer('superseded', mark.id);
-      } else {
-        answer('created', mark.id);
-        created.push(student.studentId);
-      }
+    }
+
+    // Under the assessment's row lock the live rows read above cannot have moved.
+    const superseding = writes.flatMap((w) => (w.supersedes === null ? [] : [w.supersedes]));
+    if ((await this.marks.supersedeMany(schoolId, scope, row, superseding)) !== superseding.length) {
+      throw concurrentUpdate();
+    }
+    const inserted = await this.marks.insertLiveMany(
+      schoolId,
+      scope,
+      row,
+      writes.map((w) => w.mark),
+    );
+    const idOf = new Map(inserted.map((m) => [m.enrolmentId, m.id]));
+    const created: bigint[] = [];
+    for (const w of writes) {
+      w.result.markId = idOf.get(w.mark.enrolmentId)?.toString() ?? null;
+      if (w.supersedes === null) created.push(w.mark.studentId);
     }
 
     if (row.kind === 'test' && created.length > 0)
@@ -320,7 +341,8 @@ export class MarksService {
    * (absent, excused, the reason, entered by the approver) superseding it, under the
    * assessment's row lock; a locked test still takes it. Refused on the approver's own child
    * (SELF_ACTION_FORBIDDEN own_child) unless they are the sole principal (recorded
-   * selfApproved). Written within the caller's marks write scope (the principal's is `all`).
+   * selfApproved). Written within the caller's marks decision scope (marks.enter or result.approve,
+   * slice 36: a school-wide result.approve holder decides school-wide).
    */
   @Transactional()
   async excuse(
@@ -329,8 +351,8 @@ export class MarksService {
     reason: string,
   ): Promise<AssessmentMarkDto> {
     const { schoolId, userId } = this.context.actor();
-    const on = await this.marks.scopeDateOf(schoolId, markId);
-    const scope = on && (await this.permissions.marksWriteScopeOf(session, on));
+    const on = await this.views.marksDate(schoolId, await this.marks.scopeDatesOf(schoolId, markId));
+    const scope = on && (await this.permissions.marksDecisionScopeOf(session, on));
     if (!scope) throw notFound();
     const found = await this.marks.find(schoolId, scope, markId);
     if (!found) throw notFound();
@@ -340,9 +362,7 @@ export class MarksService {
     if (!mark) throw notFound();
     if (row.voidedAt !== null) throw assessmentVoided(row.id);
     if (mark.status !== 'live' || !mark.absent || mark.excused) throw notAnAbsence(mark.id);
-    const year = await this.years.findById(schoolId, row.academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
+    await requireOpenYear(this.years, schoolId, row.academicYearId);
     const selfApproved = await ownChildCheck(this.permissions, session, schoolId, mark.studentId);
     const target = { studentId: mark.studentId, classId: row.classId, termId: row.termId };
     const published = await this.revision.publishedTermResultOf(schoolId, target);

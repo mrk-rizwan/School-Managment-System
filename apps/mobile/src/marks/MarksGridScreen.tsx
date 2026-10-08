@@ -125,7 +125,7 @@ function ServerGrid({ assessmentId, secure }: { assessmentId: string; secure: bo
 
 function LocalGrid({ test, secure }: { test: LocalAssessment; secure: boolean }) {
   const roster = useQuery({
-    queryKey: ['local', 'roster', test.sectionId],
+    queryKey: queryKeys.localRoster(test.sectionId),
     queryFn: () => cachedRoster(test.sectionId),
     networkMode: 'always',
   });

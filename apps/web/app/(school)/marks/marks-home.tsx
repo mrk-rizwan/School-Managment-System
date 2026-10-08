@@ -1,6 +1,12 @@
 'use client';
 
-import { Capability, MAX_ASSESSMENT_MARKS, newIdempotencyKey, TEST_TYPES } from '@asms/shared';
+import {
+  Capability,
+  MAX_ASSESSMENT_MARKS,
+  newIdempotencyKey,
+  TEST_TYPE_LABELS,
+  TEST_TYPES,
+} from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
@@ -48,7 +54,6 @@ import {
   marksErrorMessage,
   marksHref,
   marksKeys,
-  TEST_TYPE_LABELS,
 } from './_lib/marks-ui';
 
 // contracts/slice-30.md §8: the assessments the caller reads (GET /assessments: their sections

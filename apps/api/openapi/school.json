@@ -2580,6 +2580,13 @@
       },
       "CertificateResultSubjectDto": {
         "properties": {
+          "examAbsent": {
+            "description": "Absent from the term exam: prints \"Ab\" (\"Ex\" when excused, rule 26)",
+            "type": "boolean"
+          },
+          "examExcused": {
+            "type": "boolean"
+          },
           "grade": {
             "nullable": true,
             "type": "string"
@@ -2609,7 +2616,9 @@
           "obtained",
           "max",
           "percentBp",
-          "grade"
+          "grade",
+          "examAbsent",
+          "examExcused"
         ],
         "type": "object"
       },
@@ -13576,7 +13585,7 @@
             "type": "integer"
           },
           "locked": {
-            "description": "True once any result sheet of the year is approved: the settings are then frozen (from wave O; always false before)",
+            "description": "True once any result sheet of the year is approved or published: the weights, pass mark, pass rule and bands are then frozen (the display, withholding and notification toggles stay editable)",
             "type": "boolean"
           },
           "notifyClassTests": {
@@ -13987,18 +13996,11 @@
             "minimum": 0,
             "type": "integer"
           },
-          "ownChild": {
-            "items": {
-              "$ref": "#/components/schemas/OwnChildFlagDto"
-            },
-            "type": "array"
-          },
           "selfApproved": {
             "type": "boolean"
           }
         },
         "required": [
-          "ownChild",
           "cover",
           "selfApproved",
           "missing",
@@ -15056,6 +15058,12 @@
             "maxItems": 100,
             "minItems": 1,
             "type": "array"
+          },
+          "heldOn": {
+            "description": "The exams' date, inside the term (slice 36). Default: the term's last day. Exams that already exist keep theirs",
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
           }
         },
         "type": "object"

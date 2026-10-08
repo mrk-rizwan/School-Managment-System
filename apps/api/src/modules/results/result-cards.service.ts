@@ -13,6 +13,7 @@ import { FinanceReportsService } from '../finance-reports/finance-reports.servic
 import { resultCardPage, resultSheetPage } from './result-print';
 import { ResultSheetsService } from './result-sheets.service';
 import type { ResultDto } from './results.dto';
+import { subjectFiguresDto } from './results.shared';
 
 // contracts/slice-32.md §2, §5 (phase-4-academic.md §3.4, rule 28, R279, R282): the report card is
 // the stored results row with its subjects (ResultDto); this service builds it for every reader —
@@ -64,22 +65,7 @@ export function toResultDto(card: ResultCardRecord, schoolName: string): ResultD
     revised: card.revised,
     publishedAt: card.publishedAt,
     supersededAt: card.supersededAt,
-    subjects: card.subjects.map((s) => ({
-      classSubjectId: s.classSubjectId.toString(),
-      subjectName: s.subjectName,
-      sortOrder: s.sortOrder,
-      testBp: s.testBp,
-      examBp: s.examBp,
-      examObtained: s.examObtained,
-      examMax: s.examMax,
-      examAbsent: s.examAbsent,
-      examExcused: s.examExcused,
-      percentBp: s.percentBp,
-      obtained: s.obtained,
-      max: s.max,
-      grade: s.grade,
-      status: s.status,
-    })),
+    subjects: card.subjects.map((s) => ({ ...subjectFiguresDto(s), sortOrder: s.sortOrder })),
   };
 }
 
@@ -167,11 +153,6 @@ export class ResultCardsService {
     if (id === null) return null;
     const [card] = await this.cards(schoolId, [id]);
     return card ?? null;
-  }
-
-  /** The stored rows behind `cards` (the print views read the records). */
-  records(schoolId: SchoolId, resultIds: readonly bigint[]): Promise<ResultCardRecord[]> {
-    return this.results.cards(schoolId, resultIds);
   }
 
   /**

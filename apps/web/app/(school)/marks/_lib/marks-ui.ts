@@ -1,6 +1,6 @@
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, TEST_TYPE_LABELS } from '@asms/shared';
 import { refusalMessage, type RefusalMessages } from '@/lib/api/errors';
-import type { AssessmentDto, TestType } from '@/lib/api/school-assessments-contract';
+import type { AssessmentDto } from '@/lib/api/school-assessments-contract';
 
 // Shared by the marks screens (contracts/slice-30.md §8): query keys, labels and refusals.
 
@@ -12,13 +12,6 @@ export const marksKeys = {
 };
 
 export const marksHref = (id: string) => `/marks/${id}`;
-
-export const TEST_TYPE_LABELS: Record<TestType, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  other: 'Other',
-};
 
 /** "Weekly test", "Exam". */
 export const kindLabel = (a: Pick<AssessmentDto, 'kind' | 'testType'>): string =>

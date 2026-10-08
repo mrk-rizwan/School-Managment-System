@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, RESULT_SHEET_STATUSES } from '@asms/shared';
+import { Capability, RESULT_SHEET_STATUSES, resultTermLabel } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -38,6 +38,7 @@ import {
 } from '@/lib/api/school-results-contract';
 import { formatDateTime, todayInSchool } from '@/lib/format';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { useYearSections } from '../../academics/_lib/options';
 import { mySections } from '../../attendance/_lib/attendance-ui';
 import { useDefaultYearId, YearFilter } from '../../reports/_lib/reports-ui';
 import {
@@ -46,7 +47,6 @@ import {
   sheetHref,
   SHEET_STATUS_LABELS,
   sheetStatusVariant,
-  sheetTermLabel,
 } from '../_lib/results-ui';
 
 // contracts/slice-31.md §9: Results → Sheets. The sheets the caller reads (their own sections as
@@ -146,7 +146,7 @@ export function ResultsHome() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        {sheetTermLabel(s)}
+                        {resultTermLabel(s)}
                         {s.version > 1 && (
                           <span className="ml-1 text-xs text-muted-foreground">v{s.version}</span>
                         )}
@@ -210,30 +210,11 @@ function OpenSheetDialog({ yearId, onClose }: { yearId: string; onClose: () => v
     (s) => s.roles.includes('class_teacher') || s.roles.includes('cover'),
   );
   const define = can(Capability.ASSESSMENT_DEFINE);
-  const classes = useQuery({
-    queryKey: ['result-sheets', 'classes', yearId],
-    queryFn: async () => {
-      const page = await unwrap(
-        academics.GET('/api/v1/classes', {
-          params: { query: { academicYearId: yearId, status: 'active', limit: 50 } },
-        }),
-      );
-      const rows: { sectionId: string; label: string }[] = [];
-      for (const klass of page.data) {
-        const sections = await unwrap(
-          academics.GET('/api/v1/classes/{id}/sections', {
-            params: { path: { id: klass.id }, query: { limit: 50 } },
-          }),
-        );
-        for (const section of sections.data)
-          rows.push({ sectionId: section.id, label: `${klass.name} ${section.name}` });
-      }
-      return rows;
-    },
-    enabled: define && yearId !== '',
-  });
+  const classes = useYearSections(yearId, { enabled: define });
   const choices = define
-    ? (classes.data ?? [])
+    ? (classes.data ?? []).flatMap((klass) =>
+        klass.sections.map((section) => ({ sectionId: section.id, label: `${klass.name} ${section.name}` })),
+      )
     : mine.map((s) => ({ sectionId: s.sectionId, label: `${s.className} ${s.sectionName}` }));
   const [sectionId, setSectionId] = useState('');
   const [termId, setTermId] = useState('');

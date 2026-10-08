@@ -117,6 +117,9 @@ export class CertificateResultSubjectDto {
   @ApiProperty({ type: 'integer', minimum: 0, maximum: 10000, nullable: true, description: '7850 = 78.50 %' })
   percentBp: number | null;
   @ApiProperty(NULLABLE_TEXT) grade: string | null;
+  @ApiProperty({ description: 'Absent from the term exam: prints "Ab" ("Ex" when excused, rule 26)' })
+  examAbsent: boolean;
+  @ApiProperty() examExcused: boolean;
 }
 
 /** A11: the named year's published final result, else its last published term (snapshotted). */

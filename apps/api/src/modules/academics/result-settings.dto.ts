@@ -69,7 +69,7 @@ export class ResultSettingsDto {
 
   @ApiProperty({
     description:
-      'True once any result sheet of the year is approved: the settings are then frozen (from wave O; always false before)',
+      'True once any result sheet of the year is approved or published: the weights, pass mark, pass rule and bands are then frozen (the display, withholding and notification toggles stay editable)',
   })
   locked: boolean;
 

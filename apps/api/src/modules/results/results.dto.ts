@@ -169,7 +169,6 @@ export class ResultSheetSettingsDto {
 }
 
 export class ResultSheetFlagsDto {
-  @ApiProperty({ type: () => OwnChildFlagDto, isArray: true }) ownChild: OwnChildFlagDto[];
   @ApiProperty() cover: boolean;
   @ApiProperty() selfApproved: boolean;
   @ApiProperty({

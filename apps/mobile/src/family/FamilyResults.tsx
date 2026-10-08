@@ -1,4 +1,4 @@
-import { formatDay, formatPercentBp, formatRupees } from '@asms/shared';
+import { formatDay, formatPercentLabel, formatRupees, resultTermLabel } from '@asms/shared';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -32,14 +32,8 @@ import type { FamilySource } from './source';
 const studentIdOf = (source: FamilySource): string | null =>
   source.kind === 'child' ? source.studentId : null;
 
-/** 7450 → "74.50 %"; null → "—". */
-const percent = (bp: number | null): string => (bp === null ? '—' : `${formatPercentBp(bp)} %`);
-
-const summaryTitle = (s: MyResultSummaryDto): string =>
-  s.isFinal ? 'Final result' : (s.termName ?? '');
-
 const summaryLine = (s: MyResultSummaryDto): string =>
-  [percent(s.percentBp), s.grade, s.revised ? 'Revised' : null].filter(Boolean).join(' · ');
+  [formatPercentLabel(s.percentBp), s.grade, s.revised ? 'Revised' : null].filter(Boolean).join(' · ');
 
 const testLine = (t: MyAssessmentMarkDto): string =>
   t.absent ? (t.excused ? 'Excused' : 'Absent') : `${t.obtained ?? 0} / ${t.maxMarks}`;
@@ -192,7 +186,7 @@ export function FamilyResultsScreen({ source, secure }: { source: FamilySource; 
               {summaries.map((s) => (
                 <ListRow
                   key={s.id}
-                  title={summaryTitle(s)}
+                  title={resultTermLabel(s)}
                   detail={summaryLine(s)}
                   onPress={() => openCard(s.id)}
                   testID={`results.summary.${s.id}`}

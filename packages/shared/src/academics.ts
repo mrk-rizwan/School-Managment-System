@@ -13,6 +13,14 @@ export type AssessmentKind = (typeof ASSESSMENT_KINDS)[number];
 export const TEST_TYPES = ['daily', 'weekly', 'monthly', 'other'] as const;
 export type TestType = (typeof TEST_TYPES)[number];
 
+/** How a test type reads on the web and the phone. */
+export const TEST_TYPE_LABELS: Readonly<Record<TestType, string>> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  other: 'Other',
+};
+
 /** `marks.status`: a mark is never edited; a change is a new row (§0.25). */
 export const ASSESSMENT_MARK_STATUSES = ['live', 'pending', 'superseded', 'rejected'] as const;
 export type AssessmentMarkStatus = (typeof ASSESSMENT_MARK_STATUSES)[number];
@@ -91,6 +99,16 @@ export const DEFAULT_PASS_PERCENT = 40;
 /** An exam's max marks default (class_subjects.exam_max_marks); a mark's range is 1-1000. */
 export const DEFAULT_EXAM_MAX_MARKS = 100;
 export const MAX_ASSESSMENT_MARKS = 1000;
+
+/**
+ * Why a typed mark is not a mark out of `max` — "Whole number" or "At most {max}" — or null when it
+ * is. One rule for the web grid and the phone's; a blank entry is the caller's to decide.
+ */
+export function markDraftProblem(text: string, max: number): string | null {
+  const trimmed = text.trim();
+  if (!/^[0-9]{1,4}$/.test(trimmed)) return 'Whole number';
+  return Number(trimmed) > max ? `At most ${max}` : null;
+}
 
 /** A term remark, written by the class teacher on the sheet (§1.1). */
 export const TERM_REMARK_MAX = 300;

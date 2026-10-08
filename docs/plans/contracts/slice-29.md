@@ -172,3 +172,13 @@ plan's table: a taken term name) and the existing `ACADEMIC_YEAR_CLOSED`, `REFER
 7. Fix round (2026-10-07): `PATCH /classes/:id` refuses `academicYearId` with `subjects` (§5);
    the marks scope is two typed scopes, read and write (§7); grade labels and band minimums are
    checked by the DTO and by a second CHECK in a new migration (§4).
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **`ResultSettingsDto.locked` is computed** (it was always `false`): true once any result sheet
+  of the year is `approved` or `published` — the condition of the trigger `result_settings_locked`,
+  read by `ResultSettingsRepository.locked`. The weights, pass mark, pass rule and bands are then
+  refused (`RESULT_SETTINGS_LOCKED`); the display, withholding and notification toggles stay
+  editable and their PATCH answers `locked: true`. The web result-rules screen's locked branch now
+  shows. Test: `test/results/result-sheets.e2e-spec.ts` (R268-R270 case).
+- `POST /terms/:id/set-up-exams` takes an optional `heldOn` (see `slice-30.md`, Phase 4 close).

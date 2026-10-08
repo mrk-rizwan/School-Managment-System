@@ -1,6 +1,6 @@
 'use client';
 
-import { formatPercentBp, formatRupees } from '@asms/shared';
+import { EXAM_MARKER_LEGEND, examMarker, formatPercentLabel, formatRupees, resultTermLabel } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { EmptyState, QueryStates, StateCard } from '@/components/page-states';
@@ -38,13 +38,6 @@ export const myResultsKeys = {
   student: (studentId: string, page: number) => ['school', 'student-results', studentId, page] as const,
 };
 
-/** 7850 → "78.50 %"; null → "—". */
-export const percentText = (bp: number | null | undefined): string =>
-  bp === null || bp === undefined ? '—' : `${formatPercentBp(bp)} %`;
-
-const termLabel = (r: Pick<ResultDto, 'isFinal' | 'termName'>): string =>
-  r.isFinal ? 'Final result' : (r.termName ?? '');
-
 /**
  * The report card (plan §3.4): exactly the stored row (R279) — the per-subject table, totals,
  * percentage, grade, position, attendance and remark as the school's toggles allow, and "Revised"
@@ -59,7 +52,7 @@ export function ReportCard({ result }: { result: ResultDto }) {
           <div className="grid gap-1">
             <CardDescription>{result.schoolName}</CardDescription>
             <CardTitle>
-              {termLabel(result)} · {result.academicYearName}
+              {resultTermLabel(result)} · {result.academicYearName}
             </CardTitle>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -92,11 +85,18 @@ export function ReportCard({ result }: { result: ResultDto }) {
             <TableBody>
               {result.subjects.map((s) => (
                 <TableRow key={s.classSubjectId}>
-                  <TableCell className="px-3">{s.subjectName}</TableCell>
+                  <TableCell className="px-3">
+                    {s.subjectName}
+                    {examMarker(s) && (
+                      <Badge variant="outline" className="ml-2" data-testid={`reportCard.marker.${s.classSubjectId}`}>
+                        {examMarker(s)}
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="px-3 text-right tabular-nums">
                     {s.obtained === null ? '—' : `${s.obtained} / ${s.max}`}
                   </TableCell>
-                  <TableCell className="px-3 text-right tabular-nums">{percentText(s.percentBp)}</TableCell>
+                  <TableCell className="px-3 text-right tabular-nums">{formatPercentLabel(s.percentBp)}</TableCell>
                   <TableCell className="px-3 text-right">{s.grade ?? '—'}</TableCell>
                 </TableRow>
               ))}
@@ -108,13 +108,18 @@ export function ReportCard({ result }: { result: ResultDto }) {
                   {result.totalObtained} / {result.totalMax}
                 </TableCell>
                 <TableCell className="px-3 text-right font-medium tabular-nums" data-testid="reportCard.percent">
-                  {percentText(result.percentBp)}
+                  {formatPercentLabel(result.percentBp)}
                 </TableCell>
                 <TableCell className="px-3 text-right font-medium">{result.grade ?? '—'}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
         </div>
+        {result.subjects.some((s) => examMarker(s) !== null) && (
+          <p className="text-muted-foreground text-xs" data-testid="reportCard.legend">
+            {EXAM_MARKER_LEGEND}
+          </p>
+        )}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
           <Figure label="Result" value={result.passed === null ? '—' : result.passed ? 'Passed' : 'Not passed'} />
           {result.showPosition && (
@@ -123,7 +128,7 @@ export function ReportCard({ result }: { result: ResultDto }) {
               value={result.position === null ? '—' : `${result.position} of ${result.positionOf ?? '—'}`}
             />
           )}
-          {result.showAttendance && <Figure label="Attendance" value={percentText(result.attendanceBp)} />}
+          {result.showAttendance && <Figure label="Attendance" value={formatPercentLabel(result.attendanceBp)} />}
         </dl>
         {result.showRemark && result.remark && (
           <div className="grid gap-1 text-sm">
@@ -277,9 +282,9 @@ function SummaryChip({
         active ? 'border-primary bg-primary/5' : 'hover:bg-muted',
       )}
     >
-      <span className="font-medium">{summary.isFinal ? 'Final result' : summary.termName}</span>
+      <span className="font-medium">{resultTermLabel(summary)}</span>
       <span className="tabular-nums text-muted-foreground">
-        {percentText(summary.percentBp)}
+        {formatPercentLabel(summary.percentBp)}
         {summary.grade && ` · ${summary.grade}`}
         {summary.revised && ' · Revised'}
       </span>

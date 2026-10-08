@@ -1,9 +1,14 @@
 // Pieces shared by the four academic-structure resources (contracts/slice-3.md §1).
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ErrorCode } from '@asms/shared';
-import { ApiException } from '../../common/errors/api-exception';
+import { ApiException, notFound } from '../../common/errors/api-exception';
 import { IfPresent, TextField } from '../../common/fields';
 import { assertRange } from '../../common/school-clock';
+import type {
+  AcademicYearRecord,
+  AcademicYearRepository,
+} from '../../repositories/academic-year.repository';
+import type { SchoolId } from '../../tenancy/school-id';
 
 /** The body of every archive action (§3.5, §4.5, §5.5). */
 export class ArchiveDto {
@@ -21,6 +26,18 @@ export const yearClosed = (): ApiException =>
     ErrorCode.ACADEMIC_YEAR_CLOSED,
     'A closed academic year cannot be changed.',
   );
+
+/** The academic year, open: 404 when unknown, ACADEMIC_YEAR_CLOSED when closed. */
+export async function requireOpenYear(
+  years: Pick<AcademicYearRepository, 'findById'>,
+  schoolId: SchoolId,
+  id: bigint,
+): Promise<AcademicYearRecord> {
+  const year = await years.findById(schoolId, id);
+  if (!year) throw notFound();
+  if (year.status === 'closed') throw yearClosed();
+  return year;
+}
 
 export const classArchived = (): ApiException =>
   new ApiException(409, ErrorCode.CLASS_ARCHIVED, 'An archived class cannot be changed.');

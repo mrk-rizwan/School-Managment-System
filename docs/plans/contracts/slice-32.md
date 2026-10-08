@@ -207,3 +207,24 @@ off the re-composed roster refuses; withdraw (and the grid's pending fields).
 `src/modules/results/result-revision.spec.ts`: `changed` by class-subject. Direct writes:
 `marks-guards` and `sheet-guards` (§4.2). Web `e2e/report-cards.spec.ts`: withdraw from the grid and
 from Mark corrections.
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **"Ab" and "Ex" on the card (rule 26).** A subject whose term exam was missed and **not excused**
+  prints `Ab` after its name; an excused absence prints `Ex` (not "—", which already means "not
+  assessed"). When any subject carries a marker, a legend line follows the marks table: "Ab:
+  absent from the exam, counted as 0. Ex: absence from the exam excused; the subject is composed
+  from the tests taken." (`examMarker`, `EXAM_MARKER_LEGEND` in `packages/shared` results). The
+  same on the API print (`result-print.ts`), the web card, the phone's `ReportCardView` (and its
+  shared text) and the certificate marks table. The final result carries no exam, so no marker.
+  Tests: `test/results/report-cards.e2e-spec.ts`, `e2e/my-results.spec.ts`,
+  `src/results/report-card.spec.tsx`.
+- **Decisions are scoped by `marks.enter` or `result.approve`** (security L3): an excusal
+  (`POST /marks/:id/excuse`) and a correction's approve, reject and withdraw mint their write scope
+  from either key (`PermissionsService.marksDecisionScopeOf`), so a `result.approve` holder decides
+  within that grant's scope — school-wide for the principal, a custom role or a grant. The
+  corrections list and `GET /mark-corrections/:id` read with `marks.enter`, `marks.view_all` or
+  `result.approve`. The requester-is-not-the-decider and own-child rules are unchanged. Test:
+  "slice 36 (security L3): a custom role holding result.approve alone…".
+- `formatPercentLabel(bp)` and `resultTermLabel({ isFinal, termName })` live in `packages/shared`
+  results; every print, the web and the phone use them (no text changed).

@@ -9,14 +9,17 @@ import type { PrismaTxAdapter } from './prisma';
 // a teacher's class test, or a term's exam (one per section, class-subject and term). Every read
 // and write takes the subject-aware MarksScope and applies it **in the predicate**: a section in
 // the scope and, for a read, a subject taught there or the section's class teacher (or cover);
-// for a write, a subject taught there only. The one read without a scope is scopeDateOf, which
-// returns the held_on date the scope is minted for and nothing else.
+// for a write, a subject taught there only. The one read without a scope is scopeDatesOf, which
+// returns the dates the scope is minted from (held_on, the kind, the term's dates) and nothing else.
 
 export interface AssessmentRecord {
   id: bigint;
   academicYearId: bigint;
   termId: bigint;
   termName: string;
+  /** The term's dates: an exam's marks are scoped to the day of entry inside them (slice 36). */
+  termStartsOn: Date;
+  termEndsOn: Date;
   classId: bigint;
   className: string;
   sectionId: bigint;
@@ -60,7 +63,7 @@ const SELECT = {
   createdAt: true,
   updatedAt: true,
   // Same school by the composite foreign keys (school_id, term_id, ...), (school_id, class_id, ...).
-  term: { select: { name: true } },
+  term: { select: { name: true, startsOn: true, endsOn: true } },
   class: { select: { name: true } },
   section: { select: { name: true } },
   classSubject: { select: { subjectId: true, subject: { select: { name: true } } } },
@@ -77,6 +80,8 @@ const toRecord = ({
 }: Row): AssessmentRecord => ({
   ...row,
   termName: term.name,
+  termStartsOn: term.startsOn,
+  termEndsOn: term.endsOn,
   className: klass.name,
   sectionName: section.name,
   subjectId: classSubject.subjectId,
@@ -84,6 +89,28 @@ const toRecord = ({
 });
 
 // ------------------------------------------------------------------------------------ scope
+
+/**
+ * What a MarksScope is minted from (§0.27, slice 36): the assessment's held_on and kind and its
+ * term's dates — `marksDateOf` (assessments.shared.ts) picks the date.
+ */
+export interface ScopeDates {
+  heldOn: Date;
+  kind: AssessmentKind;
+  termStartsOn: Date;
+  termEndsOn: Date;
+}
+
+export const scopeDates = (row: {
+  heldOn: Date;
+  kind: AssessmentKind;
+  term: { startsOn: Date; endsOn: Date };
+}): ScopeDates => ({
+  heldOn: row.heldOn,
+  kind: row.kind,
+  termStartsOn: row.term.startsOn,
+  termEndsOn: row.term.endsOn,
+});
 
 /**
  * Whether `scope` reaches a section and subject (§0.27): a read needs the section and either the
@@ -170,16 +197,16 @@ export class AssessmentRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
 
   /**
-   * The assessment's held_on and nothing else: the date the caller's MarksScope is minted for
+   * The assessment's scope dates and nothing else: what the caller's MarksScope is minted from
    * (§0.27). Not a read of the row: a caller outside the scope learns nothing from it, because
    * every answer is then read through a scoped method.
    */
-  async scopeDateOf(schoolId: SchoolId, id: bigint): Promise<Date | null> {
+  async scopeDatesOf(schoolId: SchoolId, id: bigint): Promise<ScopeDates | null> {
     const row = await this.txHost.tx.assessment.findFirst({
       where: { schoolId, id },
-      select: { heldOn: true },
+      select: { heldOn: true, kind: true, term: { select: { startsOn: true, endsOn: true } } },
     });
-    return row?.heldOn ?? null;
+    return row && scopeDates(row);
   }
 
   /** The assessment if `scope` reads it (voided included), else null. */

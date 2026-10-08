@@ -2,7 +2,9 @@
 // final class — 60 enrolments completed, 60 students made alumni (status rows, audit rows,
 // sessions), 60 rows marked applied, under the sheet's lock — must finish within 3 s, the
 // request's answer included. The per-row work is batched so the budget also holds on a remote
-// database, where each round trip costs tens of milliseconds.
+// database, where each round trip costs tens of milliseconds. The endpoint is warmed once on a
+// one-student sheet of another section first, so the timed call measures the request, not the
+// first compilation of its queries.
 //
 // Measure it alone, so no other suite shares the database or the CPU:
 //   node --experimental-vm-modules node_modules/jest/bin/jest.js test/promotion/apply-perf.e2e-spec.ts --runInBand
@@ -36,6 +38,11 @@ describe('§7.2: applying a 60-student final-class promotion sheet (performance)
     expect(opened.status).toBe(201);
     const sheet = detailOf(opened);
     expect(sheet.undecided).toBe(0);
+    // The warm-up: 5-A's one pupil, promoted.
+    const warmPupil = await student(w, w.a5A, 'Warm Pupil');
+    await approvedSheet(w, w.a5A, [[warmPupil, true]]);
+    const warm = detailOf(await h.open(w.a5A.id, w.yearB.id, w.principal).expect(201));
+    expect((await h.apply(warm.id, w.principal)).status).toBe(200);
 
     const started = performance.now();
     const applied = await h.apply(sheet.id, w.principal);

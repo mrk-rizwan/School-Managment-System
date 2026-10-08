@@ -22,11 +22,12 @@ import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { MarkRepository, type CorrectionRecord } from '../../repositories/mark.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { MarksScope } from '../../tenancy/scope';
-import { toDateString, yearClosed } from '../academics/academics.shared';
+import { requireOpenYear, toDateString } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
 import { ownChildCheck } from '../fees/fee-gates';
 import { ResultCardsService } from '../results/result-cards.service';
 import { ResultRevisionService } from '../results/result-revision.service';
+import { marksDateOf } from './assessments.shared';
 import type {
   CorrectMarkDto,
   ListMarkCorrectionsQueryDto,
@@ -139,7 +140,7 @@ export class MarkCorrectionsService {
         assessmentId: row.id.toString(),
       });
     }
-    await this.assertYearOpen(schoolId, row.academicYearId);
+    await requireOpenYear(this.years, schoolId, row.academicYearId);
     const published = await this.revision.publishedTermResultOf(schoolId, {
       studentId: mark.studentId,
       classId: row.classId,
@@ -177,10 +178,13 @@ export class MarkCorrectionsService {
 
   // ------------------------------------------------------------------------------------- reads
 
-  /** GET /mark-corrections: the caller's marks read scope of today; newest request first. */
+  /**
+   * GET /mark-corrections: the caller's read scope of today — marks.enter, marks.view_all or
+   * result.approve (a decider reads what they decide, slice 36); newest request first.
+   */
   async list(session: SchoolSessionContext, query: ListMarkCorrectionsQueryDto): Promise<Page<MarkCorrectionDto>> {
     const schoolId = session.schoolId;
-    const scope = await this.permissions.marksReadScopeOf(session, await this.clock.today(schoolId));
+    const scope = await this.permissions.sheetReadScopeOf(session, await this.clock.today(schoolId));
     if (!scope) return toPage([], query, 0);
     const { rows, total } = await this.marks.listCorrections(
       schoolId,
@@ -198,8 +202,9 @@ export class MarkCorrectionsService {
   /** GET /mark-corrections/:id: read under the scope of the assessment's held_on. */
   async get(session: SchoolSessionContext, id: bigint): Promise<MarkCorrectionDto> {
     const schoolId = session.schoolId;
-    const on = await this.marks.scopeDateOf(schoolId, id);
-    const scope = on && (await this.permissions.marksReadScopeOf(session, on));
+    const dates = await this.marks.scopeDatesOf(schoolId, id);
+    const on = dates && marksDateOf(dates, await this.clock.today(schoolId));
+    const scope = on && (await this.permissions.sheetReadScopeOf(session, on));
     const row = scope ? await this.marks.findCorrection(schoolId, scope, id) : null;
     if (!row) throw notFound();
     const [dto] = await this.toDtos(session, [row]);
@@ -318,22 +323,31 @@ export class MarkCorrectionsService {
     id: bigint,
   ): Promise<{ scope: MarksScope<'write'>; row: AssessmentRecord; mark: CorrectionRecord }> {
     const schoolId = session.schoolId;
-    const { scope, row } = await this.lockedFor(session, id);
+    const { scope, row } = await this.lockedFor(session, id, 'decision');
     const mark = await this.marks.findCorrection(schoolId, scope, id);
     if (!mark) throw notFound();
     if (mark.state !== 'pending') throw notPending(id);
-    await this.assertYearOpen(schoolId, row.academicYearId);
+    await requireOpenYear(this.years, schoolId, row.academicYearId);
     return { scope, row, mark };
   }
 
-  /** The mark's assessment, locked, inside the caller's write scope of its held_on; else 404. */
+  /**
+   * The mark's assessment, locked, inside the caller's scope on its marks date; else 404. A
+   * request is scoped by marks.enter; a decision by marks.enter or result.approve (slice 36).
+   */
   private async lockedFor(
     session: SchoolSessionContext,
     markId: bigint,
+    as: 'request' | 'decision' = 'request',
   ): Promise<{ scope: MarksScope<'write'>; row: AssessmentRecord }> {
     const schoolId = session.schoolId;
-    const on = await this.marks.scopeDateOf(schoolId, markId);
-    const scope = on && (await this.permissions.marksWriteScopeOf(session, on));
+    const dates = await this.marks.scopeDatesOf(schoolId, markId);
+    const on = dates && marksDateOf(dates, await this.clock.today(schoolId));
+    const scope =
+      on &&
+      (as === 'decision'
+        ? await this.permissions.marksDecisionScopeOf(session, on)
+        : await this.permissions.marksWriteScopeOf(session, on));
     if (!scope) throw notFound();
     const found = await this.marks.find(schoolId, scope, markId);
     if (!found) throw notFound();
@@ -349,12 +363,6 @@ export class MarkCorrectionsService {
     if (requester !== userId) return false;
     if (await this.permissions.isSolePrincipal(schoolId, userId)) return true;
     throw ownRequest();
-  }
-
-  private async assertYearOpen(schoolId: SchoolId, academicYearId: bigint): Promise<void> {
-    const year = await this.years.findById(schoolId, academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
   }
 
   private async toDtos(session: SchoolSessionContext, rows: readonly CorrectionRecord[]): Promise<MarkCorrectionDto[]> {

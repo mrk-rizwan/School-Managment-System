@@ -27,7 +27,8 @@ digits never appear on its command line (`ci-run.sh` sets them from `PRINCIPAL_C
 `TEACHER_CNIC` and `GUARDIAN_CNIC`) (the seeded people;
 each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the
 ids `ci-run.sh` reads over the API as those people: `SECTION_A`, `SECTION_B`, `ENROLMENT_1`,
-`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, the seeded `CLAIM_ID` and `HANDOVER_ID`, and (slice 30) `ASSESSMENT_ID`, `MARKS_E1`, `MARKS_E2`. Elements are selected by `testID`, `screen.element[.id]` — for
+`ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, the seeded `CLAIM_ID` and `HANDOVER_ID`, and (slice 30) `ASSESSMENT_ID`, `MARKS_E1`, `MARKS_E2`, (slice 31) `SHEET_ID`, (slice 33)
+`RESULT_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
 example `signIn.schoolCode`, `classes.section.<id>.register`, `register.chip.<enrolmentId>`,
 `children.card.<studentId>.today`.
 

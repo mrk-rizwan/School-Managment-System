@@ -2,11 +2,14 @@
 // §3): one scriptless, auto-escaped layout, sent only through sendPrintView. Every figure is the
 // stored row's (ResultDto); the year's display toggles have already nulled what they hide. A sheet
 // prints its live cards one per page.
-import { formatPercentBp } from '@asms/shared';
+import {
+  EXAM_MARKER_LEGEND,
+  examMarker,
+  formatPercentLabel as percent,
+  resultTermLabel,
+} from '@asms/shared';
 import { html, printPage, type SafeHtml } from '../../common/print-view';
 import type { ResultDto } from './results.dto';
-
-const percent = (bp: number | null): string => (bp === null ? '—' : `${formatPercentBp(bp)} %`);
 
 function dayIn(timezone: string, at: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -17,10 +20,25 @@ function dayIn(timezone: string, at: Date): string {
   }).format(at);
 }
 
+/** The subject's name with its exam marker (rule 26: "Ab" absent, "Ex" excused). */
+export function subjectWithMarker(s: { subjectName: string; examAbsent?: boolean; examExcused?: boolean }): SafeHtml {
+  const marker = examMarker(s);
+  return marker === null
+    ? html`${s.subjectName}`
+    : html`${s.subjectName} <span class="marker">${marker}</span>`;
+}
+
+/** The legend under a marks table, when any subject carries a marker. */
+export function markerLegend(subjects: readonly { examAbsent?: boolean; examExcused?: boolean }[]): SafeHtml {
+  return subjects.some((s) => examMarker(s) !== null)
+    ? html`<p class="legend">${EXAM_MARKER_LEGEND}</p>`
+    : html``;
+}
+
 function subjectRow(s: ResultDto['subjects'][number]): SafeHtml {
   const assessed = s.status === 'assessed';
   return html`<tr>
-  <td>${s.subjectName}</td>
+  <td>${subjectWithMarker(s)}</td>
   <td class="amount">${assessed && s.obtained !== null ? s.obtained : '—'}</td>
   <td class="amount">${s.max}</td>
   <td class="amount">${assessed ? percent(s.percentBp) : '—'}</td>
@@ -30,7 +48,7 @@ function subjectRow(s: ResultDto['subjects'][number]): SafeHtml {
 
 /** One card. `timezone` dates the "Revised" stamp in the school's day. */
 export function resultCard(card: ResultDto, timezone: string): SafeHtml {
-  const term = card.isFinal ? 'Final result' : (card.termName ?? '');
+  const term = resultTermLabel(card);
   const stamp =
     card.supersededAt !== null
       ? html`<p class="stamp superseded">SUPERSEDED: a corrected version of this result exists</p>`
@@ -62,6 +80,7 @@ ${stamp}
   ${card.subjects.map(subjectRow)}
   <tr class="total"><th>Total</th><th class="amount">${card.totalObtained}</th><th class="amount">${card.totalMax}</th><th class="amount">${percent(card.percentBp)}</th><th>${card.grade ?? '—'}</th></tr>
 </table>
+${markerLegend(card.subjects)}
 <table class="summary">
   <tr><th>Result</th><td>${verdict}</td></tr>
   ${position}
@@ -80,6 +99,8 @@ const STYLE = html`<style>
   .card .total th { border-top: 2px solid #111; }
   .card .stamp { text-align: center; font-weight: 700; border: 2px solid #111; padding: 4px; }
   .card .stamp.superseded { border-color: #b91c1c; color: #b91c1c; }
+  .card .marker { font-size: 11px; font-weight: 700; border: 1px solid #111; padding: 0 3px; }
+  .card .legend { font-size: 12px; margin: 4px 0 12px; }
   .card .remark { border: 1px solid #ddd; padding: 8px; }
   .card .sign { display: flex; justify-content: space-between; margin-top: 56px; }
   .card .sign div { min-width: 200px; text-align: center; border-top: 1px solid #111; padding-top: 4px; }

@@ -130,3 +130,13 @@ once approved; a guardian with `can_login` off, an ended link or merged away rea
 family route; a subject teacher gets no cards on the student page, the class teacher does. Web
 `e2e/my-results.spec.ts` (the student's withheld copy; the versions in the section picker); phone
 `src/family/results.spec.tsx` (the student's withheld copy; Load older).
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **The result reports need `marks.view_all` school-wide** (security L4): `GET
+  /result-reports/section-summary` and `/subject` answer 404 unless the caller's scope for the key
+  is `all`. No source scopes `marks.view_all` to sections today; the check guards the future. Test:
+  `test/results/family-results.e2e-spec.ts` ("slice 36 (security L4)").
+- The family's class-test list (`GET /me/children/:id/assessments`, `/me/student/assessments`) is
+  read bounded by the child: their live marks, then those marks' tests, ordered and paged in
+  memory, then the page's details. Same order (newest test first), same page, same total.

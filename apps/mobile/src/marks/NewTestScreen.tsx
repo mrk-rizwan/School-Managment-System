@@ -1,6 +1,7 @@
 import {
   formatDay,
   MAX_ASSESSMENT_MARKS,
+  TEST_TYPE_LABELS,
   TEST_TYPES,
   todayInSchool,
   type TestType,
@@ -31,13 +32,6 @@ import { markSubjects } from './SectionAssessmentsScreen';
 // A new class test — /marks/[sectionId]/new (plan §3.8): saved on the device with its outbox row
 // (assessment_create; the outbox id is the Idempotency-Key), offline too. Its marks can be typed
 // at once and wait for the test's server id. Not secure: no child's name.
-
-const TYPE_LABELS: Record<TestType, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  other: 'Other',
-};
 
 type Page = { data: ClassSubjectDto[] };
 
@@ -166,7 +160,7 @@ export function NewTestScreen({
       {errors.subject ? <Text style={styles.error}>{errors.subject}</Text> : null}
       <SegmentedPicker
         label="Type"
-        options={TEST_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }))}
+        options={TEST_TYPES.map((value) => ({ value, label: TEST_TYPE_LABELS[value] }))}
         value={testType}
         onChange={setTestType}
         testID="newTest.type"

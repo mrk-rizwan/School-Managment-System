@@ -2,7 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
 import { RequireCapability, RequireCapacity } from '../../common/auth/route-access';
-import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
+import { CurrentSchoolSession, scopeOf, type SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
@@ -154,16 +154,22 @@ export class ResultReportsController {
   @Get('section-summary')
   @ApiOkResponse({ type: SectionSummaryReportDto })
   @ApiErrors(...COMMON, 404, 409, 422)
-  sectionSummary(@Query() query: SectionSummaryQueryDto): Promise<SectionSummaryReportDto> {
-    return this.reports.sectionSummary(query);
+  sectionSummary(
+    @Query() query: SectionSummaryQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
+  ): Promise<SectionSummaryReportDto> {
+    return this.reports.sectionSummary(scopeOf(session), query);
   }
 
   /** Per-section averages, top and bottom, of one class-subject in a term (R287). */
   @Get('subject')
   @ApiOkResponse({ type: SubjectReportDto })
   @ApiErrors(...COMMON, 404, 422)
-  subject(@Query() query: SubjectReportQueryDto): Promise<SubjectReportDto> {
-    return this.reports.subject(query);
+  subject(
+    @Query() query: SubjectReportQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
+  ): Promise<SubjectReportDto> {
+    return this.reports.subject(scopeOf(session), query);
   }
 }
 

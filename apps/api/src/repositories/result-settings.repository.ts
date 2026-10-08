@@ -86,6 +86,18 @@ export class ResultSettingsRepository {
     return row && toRecord(row);
   }
 
+  /**
+   * R256: whether the year's composition settings are frozen — a result sheet of the year is
+   * approved or published (the condition of the trigger result_settings_locked).
+   */
+  async locked(schoolId: SchoolId, academicYearId: bigint): Promise<boolean> {
+    const sheet = await this.txHost.tx.resultSheet.findFirst({
+      where: { schoolId, academicYearId, status: { in: ['approved', 'published'] } },
+      select: { id: true },
+    });
+    return sheet !== null;
+  }
+
   /** The caller holds the year's lock and has validated the merged settings. */
   async update(
     schoolId: SchoolId,

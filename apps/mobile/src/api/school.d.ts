@@ -5229,6 +5229,9 @@ export interface components {
             totalObtained: number;
         };
         CertificateResultSubjectDto: {
+            /** @description Absent from the term exam: prints "Ab" ("Ex" when excused, rule 26) */
+            examAbsent: boolean;
+            examExcused: boolean;
             grade: string | null;
             max: number;
             /** @description Printed obtained; null when not assessed */
@@ -7998,7 +8001,7 @@ export interface components {
             /** @description Descending minimums; the last at 0 */
             bands: components["schemas"]["GradeBandDto"][];
             examWeight: number;
-            /** @description True once any result sheet of the year is approved: the settings are then frozen (from wave O; always false before) */
+            /** @description True once any result sheet of the year is approved or published: the weights, pass mark, pass rule and bands are then frozen (the display, withholding and notification toggles stay editable) */
             locked: boolean;
             /** @description Tell the family by app when a class test is marked (never SMS) */
             notifyClassTests: boolean;
@@ -8112,7 +8115,6 @@ export interface components {
             /** @description Gaps that refuse a submission (R268) */
             missing: components["schemas"]["ResultSheetGapDto"][];
             missingCount: number;
-            ownChild: components["schemas"]["OwnChildFlagDto"][];
             selfApproved: boolean;
         };
         ResultSheetGapDto: {
@@ -8374,6 +8376,12 @@ export interface components {
         SetUpExamsDto: {
             /** @description Default: every class of the term's year that is not archived */
             classIds?: string[];
+            /**
+             * Format: date
+             * @description The exams' date, inside the term (slice 36). Default: the term's last day. Exams that already exist keep theirs
+             * @example 2026-05-10
+             */
+            heldOn?: string;
         };
         SheetRemarkDto: {
             enrolmentId: string;

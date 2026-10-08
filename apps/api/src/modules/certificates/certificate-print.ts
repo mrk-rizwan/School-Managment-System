@@ -3,8 +3,9 @@
 // Every value comes from the stored body snapshot except the issuer's name, the void stamp and the
 // B-Form number, which the handler decrypts for a non-voided leaving certificate with
 // certificate_show_identity_no on and passes here; it is never stored, logged or returned as JSON.
-import { certificateLabel, formatPercentBp, type StudentStatus } from '@asms/shared';
+import { certificateLabel, formatPercentLabel as percent, type StudentStatus } from '@asms/shared';
 import { html, printPage, type SafeHtml } from '../../common/print-view';
+import { markerLegend, subjectWithMarker } from '../results/result-print';
 import type { CertificateBody } from '../../repositories/certificate.repository';
 import type { CertificateDto } from './certificates.dto';
 
@@ -76,14 +77,12 @@ function detailRows(cert: CertificateDto, identityNumber: string | null): SafeHt
   return rows.filter((r): r is SafeHtml => r !== null);
 }
 
-const percent = (bp: number | null): string => (bp === null ? '—' : `${formatPercentBp(bp)} %`);
-
 /** A11 (wave P): the marks table of an academic or completion certificate, as issued. */
 function marksTable(cert: CertificateDto): SafeHtml {
   const r = cert.body.result;
   if (r === null || (cert.type !== 'academic' && cert.type !== 'completion')) return html``;
   const rows = r.subjects.map(
-    (s) => html`<tr><td>${s.subjectName}</td><td class="amount">${s.obtained === null ? '—' : s.obtained}</td><td class="amount">${s.max}</td><td class="amount">${percent(s.percentBp)}</td><td>${s.grade ?? '—'}</td></tr>`,
+    (s) => html`<tr><td>${subjectWithMarker(s)}</td><td class="amount">${s.obtained === null ? '—' : s.obtained}</td><td class="amount">${s.max}</td><td class="amount">${percent(s.percentBp)}</td><td>${s.grade ?? '—'}</td></tr>`,
   );
   const verdict = r.passed === null ? '' : r.passed ? 'Passed' : 'Not passed';
   return html`<h3>Result: ${r.isFinal ? 'Final' : r.termName}, class ${r.className} ${r.sectionName}</h3>
@@ -92,6 +91,7 @@ function marksTable(cert: CertificateDto): SafeHtml {
   ${rows}
   <tr><th>Total</th><th class="amount">${r.totalObtained}</th><th class="amount">${r.totalMax}</th><th class="amount">${percent(r.percentBp)}</th><th>${r.grade ?? '—'}</th></tr>
 </table>
+${markerLegend(r.subjects)}
 ${verdict === '' ? html`` : html`<p>${verdict}</p>`}`;
 }
 
@@ -121,6 +121,8 @@ export function certificatePage(cert: CertificateDto, identityNumber: string | n
   .cert .stamp { text-align: center; font-weight: 700; letter-spacing: 4px; border: 2px solid #111; padding: 4px; }
   .cert .void { text-align: center; font-weight: 700; border: 2px solid #b91c1c; color: #b91c1c; padding: 8px; }
   .cert .lead { font-size: 15px; line-height: 1.7; margin: 16px 0; }
+  .cert .marker { font-size: 11px; font-weight: 700; border: 1px solid #111; padding: 0 3px; }
+  .cert .legend { font-size: 12px; }
   .cert .sign { display: flex; justify-content: space-between; margin-top: 64px; }
   .cert .sign div { min-width: 220px; text-align: center; border-top: 1px solid #111; padding-top: 4px; }
 </style>

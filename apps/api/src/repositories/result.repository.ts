@@ -109,6 +109,7 @@ export interface ClaimedResult {
 }
 
 const SUBJECT_SELECT = {
+  resultId: true,
   classSubjectId: true,
   subjectName: true,
   sortOrder: true,
@@ -150,7 +151,6 @@ const SELECT = {
   notifiedAt: true,
   supersedesId: true,
   createdAt: true,
-  subjects: { select: SUBJECT_SELECT, orderBy: [{ sortOrder: 'asc' }, { classSubjectId: 'asc' }] },
 } satisfies Prisma.ResultSelect;
 
 type Row = Prisma.ResultGetPayload<{ select: typeof SELECT }>;
@@ -168,9 +168,13 @@ function toFlags(value: Prisma.JsonValue): OwnChildFlag[] {
   });
 }
 
-const toRecord = ({ ownChildFlags, ...row }: Row): ResultRecord => ({
+const toRecord = (
+  { ownChildFlags, ...row }: Row,
+  subjects: ReadonlyMap<bigint, ResultSubjectRecord[]>,
+): ResultRecord => ({
   ...row,
   ownChildFlags: toFlags(ownChildFlags),
+  subjects: subjects.get(row.id) ?? [],
 });
 
 const CARD_SELECT = {
@@ -197,10 +201,13 @@ const CARD_SELECT = {
 
 type CardRow = Prisma.ResultGetPayload<{ select: typeof CARD_SELECT }>;
 
-const toCard = ({ sheet, enrolment, ...row }: CardRow): ResultCardRecord => {
+const toCard = (
+  { sheet, enrolment, ...row }: CardRow,
+  subjects: ReadonlyMap<bigint, ResultSubjectRecord[]>,
+): ResultCardRecord => {
   const show = sheet.academicYear.resultSettings;
   return {
-    ...toRecord(row),
+    ...toRecord(row, subjects),
     sheetVersion: sheet.version,
     classId: sheet.classId,
     className: sheet.class.name,
@@ -222,6 +229,39 @@ const toCard = ({ sheet, enrolment, ...row }: CardRow): ResultCardRecord => {
 @Injectable()
 export class ResultRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
+
+  /**
+   * The subjects of `resultIds` by result, in print order: one statement keyed on
+   * (school_id, result_id) — never a nested relation read, which the planner answers with a scan
+   * of result_subjects (performance review, slice 36).
+   */
+  private async subjectsOf(
+    schoolId: SchoolId,
+    resultIds: readonly bigint[],
+  ): Promise<Map<bigint, ResultSubjectRecord[]>> {
+    const byResult = new Map<bigint, ResultSubjectRecord[]>();
+    if (resultIds.length === 0) return byResult;
+    const rows = await this.txHost.tx.resultSubject.findMany({
+      where: { schoolId, resultId: { in: [...new Set(resultIds)] } },
+      select: SUBJECT_SELECT,
+      orderBy: [{ sortOrder: 'asc' }, { classSubjectId: 'asc' }],
+    });
+    for (const { resultId, ...subject } of rows) {
+      const list = byResult.get(resultId) ?? [];
+      list.push(subject);
+      byResult.set(resultId, list);
+    }
+    return byResult;
+  }
+
+  /** Rows read with SELECT, with their subjects. */
+  private async records(schoolId: SchoolId, rows: readonly Row[]): Promise<ResultRecord[]> {
+    const subjects = await this.subjectsOf(
+      schoolId,
+      rows.map((r) => r.id),
+    );
+    return rows.map((row) => toRecord(row, subjects));
+  }
 
   /**
    * A sheet version's full row set (§0.25, R269): the results in one statement, their subjects in
@@ -277,7 +317,7 @@ export class ResultRepository {
       select: SELECT,
       orderBy: { id: 'asc' },
     });
-    return rows.map(toRecord);
+    return this.records(schoolId, rows);
   }
 
   /**
@@ -291,7 +331,11 @@ export class ResultRepository {
       where: { schoolId, id: { in: [...new Set(ids)] } },
       select: CARD_SELECT,
     });
-    const byId = new Map(rows.map((row) => [row.id, toCard(row)]));
+    const subjects = await this.subjectsOf(
+      schoolId,
+      rows.map((r) => r.id),
+    );
+    const byId = new Map(rows.map((row) => [row.id, toCard(row, subjects)]));
     return ids.flatMap((id) => {
       const card = byId.get(id);
       return card ? [card] : [];
@@ -449,7 +493,7 @@ export class ResultRepository {
       select: SELECT,
       orderBy: { id: 'asc' },
     });
-    return rows.map(toRecord);
+    return this.records(schoolId, rows);
   }
 
   /**

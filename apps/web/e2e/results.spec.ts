@@ -135,7 +135,6 @@ const SHEET: ResultSheetDetailDto = {
     }),
   ],
   flags: {
-    ownChild: [],
     cover: false,
     selfApproved: false,
     missing: [{ enrolmentId: 'e2', assessmentId: 'as3' }],
@@ -261,10 +260,6 @@ test('the principal returns a sheet with a reason; an own-child flag shows', asy
   const flagged: ResultSheetDetailDto = {
     ...SUBMITTED,
     ownChildFlags: [{ userId: 'u9', role: 'mark_author', userName: 'Kamran Parent' }],
-    flags: {
-      ...SUBMITTED.flags,
-      ownChild: [{ userId: 'u9', role: 'mark_author', userName: 'Kamran Parent' }],
-    },
   };
   const { requests } = await mockSchoolApi(page, {
     me: PRINCIPAL_ME,

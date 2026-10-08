@@ -195,7 +195,7 @@ exports[`ReportCardView renders the stored row: subjects, totals, percentage, po
           }
         }
       >
-        English
+        English (Ex)
       </Text>
       <Text
         style={
@@ -297,6 +297,18 @@ exports[`ReportCardView renders the stored row: subjects, totals, percentage, po
         B
       </Text>
     </View>
+    <Text
+      style={
+        {
+          "color": "#737373",
+          "fontSize": 14,
+          "paddingTop": 4,
+        }
+      }
+      testID="reportCard.legend"
+    >
+      Ab: absent from the exam, counted as 0. Ex: absence from the exam excused; the subject is composed from the tests taken.
+    </Text>
     <View
       style={
         {

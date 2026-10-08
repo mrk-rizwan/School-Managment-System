@@ -11,26 +11,17 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** **Phases 1, 2 and 3 are complete and closed.** Phase 3 (Financial) closed on
-  2026-10-07 **by the owner's decision, with the real-driver proof deferred** (see "Left to do"
-  item 1): all code is done and CI is fully green (run 37639293912 on `0af67a9`: API 2,285 tests,
-  Playwright 338, mobile 582, all ten Maestro flows), and the gate re-run on `0af67a9` found
-  nothing else unmet. Project = 110.5 / 160.5 days = 69 %. **Next: Phase 4 (Academic) needs a
-  plan** (`docs/plans/phase-4-academic.md`, not written). The real-driver proof stays a hard
-  precondition of the first production deployment. **Phase 4 decisions were taken on 2026-10-07**
-  (the owner accepted every main-thread recommendation → CLAUDE.md rules 26-31; register items
-  14, 15, 21 closed); the plan `docs/plans/phase-4-academic.md` is written and reviewed by
-  `business-rules`, `data-architect`, `security-reviewer` and `api-designer` (every finding folded
-  in; 33 days, slices 29-36, R254-R300) and **was approved by the owner on 2026-10-07**
-  ("proceed code", every default as written). **Built and committed:** wave M (`87c5bff`,
-  groundwork + slice 29 set-up), the edit-dialog fix (`d44ee92`), wave N schema (`dcd9778`) and
-  wave N (`2bc618b`, slice 30 marks offline + slice 34 certificates; CI green), wave O (`4a22fc4`,
-  slice 31 result sheets; CI: mobile green, one Phase 2 test red because ResultsModule re-provided
-  `TeacherAssignmentRepository` — fixed in the working tree, ships with wave P). **In progress:**
-  wave P (slices 32 report cards + corrections + certificate marks table, 33 family views + result
-  reports, 35 promotion + year end; three agents, uncommitted, brief in the session scratchpad
-  `wave-p-brief.md`). Then reviews, fix round, commit, CI, and slice 36 (phase close).
-  Phase 4 = 19.5 / 33 days done.
+- **Phase:** Phases 1-3 complete and closed (Phase 3 on 2026-10-07 with the real-driver proof
+  deferred to go-live, "Left to do" item 1). **Phase 4 (Academic): every slice (29-35) is built,
+  reviewed and committed, CI green on `012041b`** (run 37804054311, attempt 2: all eleven Maestro
+  flows incl. teacher-marks-offline, principal-approve-result, parent-report-card). **Slice 36,
+  the close, is in its last step:** the whole-phase reviews (security PASS; performance; business
+  rules; code quality; docs) are folded into one fix round (uncommitted at the time of writing),
+  then commit, CI, `phase-gate`. Plan `docs/plans/phase-4-academic.md` (rules 26-31, R254-R300);
+  as-built differences are in each contract's deviation section (`contracts/slice-29.md` …
+  `slice-35.md`). Phase 4 = 32.25 / 33 days; project = 142.75 / 163.5 days = 87 %. **Next after
+  the gate: Phase 5 (Extended) needs a plan** (biometric, advanced reporting, transport, the
+  period timetable, events/PTM, past-results import — rule 31).
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -309,6 +300,60 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
   on their proving tests; only critical or high findings get a re-review.
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
+
+## 2026-10-07/08 — Phase 4 built: waves M-P and the close (Fable 5.1 plans and reviews, Opus 5.5 builds)
+
+**Waves and commits.** M (`87c5bff`): groundwork (message types, terms, result settings with
+bands, class subjects, `asms_seed_year_results` for every year, the result-composition functions,
+`MarksScope` read/write) + slice 29 set-up. Web edit-dialog bug (`d44ee92`): seven edit dialogs
+had never saved since Phases 1-3 (react-hook-form `isDirty` read only in the handler); one test
+per dialog now. N schema (`dcd9778`) + N (`2bc618b`): slice 30 marks entry offline on the phone
+(two outbox lanes, per-row keys, `changed_elsewhere`) and slice 34 certificates (numbered per
+type, leaving certificate dues-gated, B-Form only in its print, audited). O (`4a22fc4`): slice 31
+result sheets — compose, submit, approve, publish, final sheet, `result-notify`. P (`012041b`):
+slice 32 report cards and corrections (versions with full row sets), slice 33 parent/student views
+and result reports, slice 35 promotion and year end (+ cancel), and the fix for wave O's one CI
+failure (ResultsModule re-provided `TeacherAssignmentRepository`, so a Phase 2 spy missed it).
+
+**Process notes.** Every wave: per-slice security and correctness reviews (Fable), one fix round
+(Opus), commit, CI. Three session restarts stopped the wave P agents; they were resumed from disk
+each time with no loss. One agent tried to delete a migration-history row after a network drop;
+the permission guard refused it and it added a forward migration instead (kept: two small wave O
+migrations). Running many API e2e suites at once on this laptop crashes node — run them one group
+at a time.
+
+**Decisions taken by the main thread during the build (owner may overturn):**
+- Office staff do not hold `class.manage` by default (Phase 1 defaults kept; plan §3.1 corrected).
+- Exam marks: an exam's write scope is minted for the day of entry inside its term (covers can
+  enter exam marks during their dates only when they also hold the subject); exams can be dated.
+- Card markers: an unexcused missed exam prints "Ab", an excused one "Ex", with a legend.
+- Certificates: void voids the whole number; custom titles only on "other", never "leaving";
+  alumni may receive a leaving certificate; prints refuse cross-site requests (also receipts and
+  payslips).
+- Corrections: the requester may withdraw; a result.approve holder decides (scope from marks.enter
+  or result.approve); author ≠ approver and own-child refused in the database and the service, sole
+  principal recorded `self_approved`; excusal after publication applies at once; a correction that
+  changes no figure tells nobody; never-told families get `result_published`, not `revised`.
+- Families: a teacher sees full cards only for sections they class-teach or cover; a student with
+  a withheld card sees "Report card not available. Please ask your parent or the school office"
+  and no figure; the phone reads results online only and shares the card as text.
+- Promotion: complete only for a final class; a principal's override of their own child is refused
+  unless sole principal; a principal may cancel an open sheet; year close ignores sections with no
+  enrolment in force on the year's last day; `revised_after_apply` only when the student's own
+  figures changed.
+
+**For the owner to confirm (defaults built; the plan does not guess):** position within the
+section, not the class (item 36); result messages go to the fee-payer guardians first, else the
+primary contact, else every guardian with a phone (as receipts); `not_continuing` refused for a
+suspended student (reactivate first); the optional `pass_rule = overall`; grace marks not built
+(item 35); grade bands and pass mark values (item 32); B-Form on the leaving certificate (item 33,
+default on).
+
+**Performance at 3,000 students × 6 years** (2.4M marks, 575k result subjects): approve a
+60-student section 0.8-1.0 s (budget 2 s), correction cascade 1.3 s, section print 0.17 s,
+reports ≤ 0.15 s, guardian reads ≤ 0.06 s, submit-marks 60 rows 0.19 s after batching (was 0.82 s),
+promotion apply 0.24 s (was 2.7 s). Two whole-table scans fixed; a partial index for the notify
+sweep.
 
 ## 2026-10-07 (evening) — Phase 3 closed by the owner, real-driver proof deferred (main thread)
 

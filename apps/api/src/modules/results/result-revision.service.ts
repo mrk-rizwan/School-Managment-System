@@ -23,7 +23,8 @@ import {
   ResultComposer,
   type ComposedRow,
   type Composition,
-  type SubjectHeader,
+  newResultOf,
+  subjectHeadersOf,
 } from './result-composer';
 import { snapshotSettings, ResultSheetsService } from './result-sheets.service';
 import { selfDecision } from './results.shared';
@@ -35,9 +36,10 @@ import { selfDecision } from './results.shared';
 // supersedes, `revised` where its figures changed, the section re-ranked); the old rows stay
 // readable, superseded. The student's published final result is re-composed the same way from
 // the new term rows. Only the corrected student is told (`result-notify { resultId }`), once, and
-// only when their figures changed. An applied promotion decision that named a superseded row is
-// flagged `revised_after_apply` by the database (trigger results_promotion_revised, slice 35); an
-// open promotion sheet re-checks its rows at apply.
+// only when their figures changed. An applied promotion decision whose row is replaced by a
+// `revised` row is flagged `revised_after_apply` by the database (trigger results_promotion_revised
+// on the insert, slice 35); a row carried over unchanged flags nothing. An open promotion sheet
+// re-checks its rows at apply.
 
 /** A refusal: a sheet of the section is approved and not published, so a change would leave its rows stale. */
 const versionOpen = (sheetId: bigint): ApiException =>
@@ -141,7 +143,7 @@ export class ResultRevisionService {
       term,
       settings,
       contributors,
-      { attendance: false, subjects: storedSubjects(termOld) },
+      { attendance: false, subjects: subjectHeadersOf(termOld) },
     );
     if (!termComposition.rows.some((row) => row.studentId === target.studentId)) {
       throw offRoster(termSheet.id);
@@ -258,29 +260,19 @@ export class ResultRevisionService {
       const next = { ...row, position: ranks[i]?.position ?? null, positionOf: ranks[i]?.positionOf ?? null };
       const revised = changed(prev, next);
       const tellAgain = revised && prev.studentId === opts.toldStudentId;
+      // The old version's student, attendance and remark; the new figures.
       return {
-        sheetId: 0n,
-        enrolmentId: prev.enrolmentId,
-        studentId: prev.studentId,
-        academicYearId: prev.academicYearId,
-        termId: prev.termId,
-        classId: from.classId,
-        totalObtained: next.totalObtained,
-        totalMax: next.totalMax,
-        percentBp: next.percentBp,
-        grade: next.grade,
-        passed: next.passed,
-        failedSubjects: next.failedSubjects,
-        position: next.position,
-        positionOf: next.positionOf,
-        attendanceBp: prev.attendanceBp,
-        remark: prev.remark,
-        ownChildFlags: next.ownChildFlags,
+        ...newResultOf(from, {
+          ...next,
+          enrolmentId: prev.enrolmentId,
+          studentId: prev.studentId,
+          attendanceBp: prev.attendanceBp,
+          remark: prev.remark,
+        }),
         revised,
         publishedAt: opts.now,
         supersedesId: prev.id,
         notifiedAt: tellAgain || prev.notifiedAt === null ? null : opts.now,
-        subjects: next.subjects,
       };
     });
     // results_live_key: the old rows leave the live set before the new ones join it. (superseded_by
@@ -377,19 +369,3 @@ export function changed(prev: Figures, next: Figures): boolean {
   });
 }
 
-/** The subjects a version's rows were composed over, with their snapshotted names and print order. */
-function storedSubjects(rows: readonly ResultRecord[]): SubjectHeader[] {
-  const seen = new Map<bigint, SubjectHeader>();
-  for (const row of rows) {
-    for (const s of row.subjects) {
-      if (!seen.has(s.classSubjectId)) {
-        seen.set(s.classSubjectId, {
-          classSubjectId: s.classSubjectId,
-          subjectName: s.subjectName,
-          sortOrder: s.sortOrder,
-        });
-      }
-    }
-  }
-  return [...seen.values()];
-}

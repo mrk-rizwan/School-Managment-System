@@ -107,6 +107,8 @@ function bodyResultOf(card: ResultDto): CertificateBodyResult {
       max: s.max,
       percentBp: s.percentBp,
       grade: s.grade,
+      examAbsent: s.examAbsent,
+      examExcused: s.examExcused,
     })),
     totalObtained: card.totalObtained,
     totalMax: card.totalMax,

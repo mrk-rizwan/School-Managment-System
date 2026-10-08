@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
 import type { MarksScope } from '../tenancy/scope';
-import { assessmentScopeWhere, scopeReaches, type AssessmentRecord } from './assessment.repository';
+import {
+  assessmentScopeWhere,
+  scopeDates,
+  scopeReaches,
+  type AssessmentRecord,
+  type ScopeDates,
+} from './assessment.repository';
 import type { AssessmentMarkStatus, Prisma } from './generated/prisma/client';
 import { userNames } from './name-reads';
 import type { PrismaTxAdapter } from './prisma';
@@ -180,15 +186,19 @@ export class MarkRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
 
   /**
-   * The mark's assessment's held_on and nothing else: the date the caller's MarksScope is minted
-   * for. Every answer is then read through a scoped method.
+   * The mark's assessment's scope dates and nothing else: what the caller's MarksScope is minted
+   * from. Every answer is then read through a scoped method.
    */
-  async scopeDateOf(schoolId: SchoolId, markId: bigint): Promise<Date | null> {
+  async scopeDatesOf(schoolId: SchoolId, markId: bigint): Promise<ScopeDates | null> {
     const mark = await this.txHost.tx.mark.findFirst({
       where: { schoolId, id: markId },
-      select: { assessment: { select: { heldOn: true } } },
+      select: {
+        assessment: {
+          select: { heldOn: true, kind: true, term: { select: { startsOn: true, endsOn: true } } },
+        },
+      },
     });
-    return mark?.assessment.heldOn ?? null;
+    return mark && scopeDates(mark.assessment);
   }
 
   /** The mark if `scope` reads its assessment, else null. */
@@ -386,6 +396,47 @@ export class MarkRepository {
       data: { status: 'superseded', supersededAt: new Date() },
     });
     return count === 1;
+  }
+
+  /**
+   * The given live rows of `target` superseded at once (submit-marks, slice 36): the count
+   * superseded. Under the assessment's row lock, so the caller expects every one.
+   */
+  async supersedeMany(
+    schoolId: SchoolId,
+    scope: MarksScope<'write'>,
+    target: Target,
+    markIds: readonly bigint[],
+  ): Promise<number> {
+    this.assertWrites(scope, target);
+    if (markIds.length === 0) return 0;
+    const { count } = await this.txHost.tx.mark.updateMany({
+      where: { schoolId, id: { in: [...markIds] }, assessmentId: target.id, status: 'live' },
+      data: { status: 'superseded', supersededAt: new Date() },
+    });
+    return count;
+  }
+
+  /** Several live rows on `target` in one statement (submit-marks), as insertLive writes each. */
+  async insertLiveMany(
+    schoolId: SchoolId,
+    scope: MarksScope<'write'>,
+    target: Target,
+    marks: readonly NewMark[],
+  ): Promise<MarkRecord[]> {
+    this.assertWrites(scope, target);
+    if (marks.length === 0) return [];
+    return this.txHost.tx.mark.createManyAndReturn({
+      data: marks.map((mark) => ({
+        schoolId,
+        assessmentId: target.id,
+        academicYearId: target.academicYearId,
+        maxMarks: target.maxMarks,
+        status: 'live' as const,
+        ...mark,
+      })),
+      select: SELECT,
+    });
   }
 
   /**

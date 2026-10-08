@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, TERM_REMARK_MAX } from '@asms/shared';
+import { Capability, formatPercentLabel, resultTermLabel, TERM_REMARK_MAX } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -30,13 +30,11 @@ import { formatDateTime } from '@/lib/format';
 import { useCapabilities } from '@/lib/school-session';
 import {
   openPrint,
-  percentLabel,
   resultErrorMessage,
   resultKeys,
   ROLE_LABELS,
   SHEET_STATUS_LABELS,
   sheetStatusVariant,
-  sheetTermLabel,
 } from '../../_lib/results-ui';
 
 // contracts/slice-31.md §9: one result sheet. The preview is the shared composition over the live
@@ -148,7 +146,7 @@ function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
   return (
     <>
       <PageHeader
-        title={`${data.className} ${data.sectionName} · ${sheetTermLabel(data)}`}
+        title={`${data.className} ${data.sectionName} · ${resultTermLabel(data)}`}
         description={
           data.source === 'preview'
             ? 'A preview from the marks entered so far. Nothing is stored until the sheet is approved.'
@@ -295,7 +293,7 @@ function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
                     {row.totalMax > 0 ? `${row.totalObtained}/${row.totalMax}` : '—'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {percentLabel(row.percentBp)}
+                    {formatPercentLabel(row.percentBp)}
                   </TableCell>
                   <TableCell>
                     {row.grade ?? '—'}
@@ -309,7 +307,7 @@ function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
                     {row.position !== null ? `${row.position} / ${row.positionOf}` : '—'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {percentLabel(row.attendanceBp)}
+                    {formatPercentLabel(row.attendanceBp)}
                   </TableCell>
                   <TableCell>
                     {editing ? (
@@ -356,11 +354,11 @@ function Flags({ data }: { data: ResultSheetDetailDto }) {
           <AlertDescription>{data.returnReason}</AlertDescription>
         </Alert>
       )}
-      {flags.ownChild.length > 0 && (
+      {data.ownChildFlags.length > 0 && (
         <Alert data-testid="sheet.ownChild">
           <AlertTitle>A parent on this sheet</AlertTitle>
           <AlertDescription>
-            {flags.ownChild.map((f) => `${f.userName} ${ROLE_LABELS[f.role]}`).join('; ')} — and is
+            {data.ownChildFlags.map((f) => `${f.userName} ${ROLE_LABELS[f.role]}`).join('; ')} — and is
             a guardian of a student on it.
           </AlertDescription>
         </Alert>

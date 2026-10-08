@@ -1,3 +1,4 @@
+import { markDraftProblem } from '@asms/shared';
 import type {
   AssessmentMarkRowDto,
   AssessmentMarksDto,
@@ -49,10 +50,9 @@ export function parseDraft(
   if (draft.absent) return { value: { obtained: null, absent: true }, error: null };
   const text = draft.text.trim();
   if (text === '') return { value: null, error: null };
-  if (!/^[0-9]{1,4}$/.test(text)) return { value: null, error: 'Whole number' };
-  const obtained = Number(text);
-  if (obtained > max) return { value: null, error: `At most ${max}` };
-  return { value: { obtained, absent: false }, error: null };
+  const error = markDraftProblem(text, max);
+  if (error !== null) return { value: null, error };
+  return { value: { obtained: Number(text), absent: false }, error: null };
 }
 
 /**

@@ -77,7 +77,7 @@ const PUBLISHED: ResultSheetDetailDto = {
   settings: { testWeight: 20, examWeight: 80, passPercent: 40, passRule: 'all_subjects', snapshot: true },
   subjects: [],
   preview: [previewRow('e1', 'r1', 'Zara Khan')],
-  flags: { ownChild: [], cover: false, selfApproved: false, missing: [], missingCount: 0, examsNotSetUp: [] },
+  flags: { cover: false, selfApproved: false, missing: [], missingCount: 0, examsNotSetUp: [] },
   canRemark: false,
   canSubmit: false,
   canDecide: false,

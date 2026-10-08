@@ -1,10 +1,6 @@
-import { ErrorCode, formatPercentBp } from '@asms/shared';
+import { ErrorCode } from '@asms/shared';
 import { refusalMessage, type RefusalMessages } from '@/lib/api/errors';
-import type {
-  OwnChildRole,
-  ResultSheetDto,
-  ResultSheetStatus,
-} from '@/lib/api/school-results-contract';
+import type { OwnChildRole, ResultSheetStatus } from '@/lib/api/school-results-contract';
 
 // Shared by the result-sheet screens (contracts/slice-31.md §9): query keys, labels, refusals.
 
@@ -43,13 +39,6 @@ export const ROLE_LABELS: Record<OwnChildRole, string> = {
   approver: 'approves the sheet',
 };
 
-/** "Mid-term", "Final result". */
-export const sheetTermLabel = (s: Pick<ResultSheetDto, 'termName' | 'isFinal'>): string =>
-  s.isFinal ? 'Final result' : (s.termName ?? '');
-
-/** 7850 → "78.50 %"; null → "—". */
-export const percentLabel = (bp: number | null | undefined): string =>
-  bp === null || bp === undefined ? '—' : `${formatPercentBp(bp)} %`;
 
 const RESULT_REFUSALS: RefusalMessages = {
   [ErrorCode.MARKS_INCOMPLETE]: (details) => {

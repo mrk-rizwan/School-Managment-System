@@ -2,10 +2,11 @@
 import { ErrorCode } from '@asms/shared';
 import { ApiException } from '../../common/errors/api-exception';
 import type { ResultSheetRecord } from '../../repositories/result-sheet.repository';
-import type { OwnChildFlag } from '../../repositories/result.repository';
+import type { OwnChildFlag, ResultSubjectRecord } from '../../repositories/result.repository';
 import type { ComposedRow, Gap } from './result-composer';
 import type {
   OwnChildFlagDto,
+  ResultCardSubjectDto,
   ResultPreviewRowDto,
   ResultSheetDto,
   ResultSheetGapDto,
@@ -160,6 +161,27 @@ export function toSheetDto(
   };
 }
 
+/** The figures every subject DTO carries (the card's and the preview's), without user ids. */
+export function subjectFiguresDto(
+  s: ResultSubjectRecord,
+): Omit<ResultCardSubjectDto, 'sortOrder'> {
+  return {
+    classSubjectId: s.classSubjectId.toString(),
+    subjectName: s.subjectName,
+    testBp: s.testBp,
+    examBp: s.examBp,
+    examObtained: s.examObtained,
+    examMax: s.examMax,
+    examAbsent: s.examAbsent,
+    examExcused: s.examExcused,
+    percentBp: s.percentBp,
+    obtained: s.obtained,
+    max: s.max,
+    grade: s.grade,
+    status: s.status,
+  };
+}
+
 export function toPreviewRow(
   row: ComposedRow,
   missing: number,
@@ -186,19 +208,7 @@ export function toPreviewRow(
     ownChildFlags: flagDtos(row.ownChildFlags, names),
     missing,
     subjects: row.subjects.map((s) => ({
-      classSubjectId: s.classSubjectId.toString(),
-      subjectName: s.subjectName,
-      testBp: s.testBp,
-      examBp: s.examBp,
-      examObtained: s.examObtained,
-      examMax: s.examMax,
-      examAbsent: s.examAbsent,
-      examExcused: s.examExcused,
-      percentBp: s.percentBp,
-      obtained: s.obtained,
-      max: s.max,
-      grade: s.grade,
-      status: s.status,
+      ...subjectFiguresDto(s),
       ownChildOf: s.ownChildOf?.toString() ?? null,
     })),
   };

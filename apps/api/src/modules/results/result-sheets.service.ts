@@ -17,10 +17,7 @@ import {
   AcademicTermRepository,
   type AcademicTermRecord,
 } from '../../repositories/academic-term.repository';
-import {
-  AcademicYearRepository,
-  type AcademicYearRecord,
-} from '../../repositories/academic-year.repository';
+import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassRepository } from '../../repositories/class.repository';
 import { MarkReadsRepository } from '../../repositories/mark-reads.repository';
@@ -36,11 +33,12 @@ import { SectionRepository } from '../../repositories/section.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import type { MarksScope } from '../../tenancy/scope';
-import { classArchived, yearClosed } from '../academics/academics.shared';
+import { classArchived, requireOpenYear, yearClosed } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
 import {
   ResultComposer,
   storedRow,
+  subjectHeadersOf,
   type Composition,
   type CompositionSettings,
 } from './result-composer';
@@ -206,17 +204,7 @@ export class ResultSheetsService {
     const termId = dto.termId === null ? null : BigInt(dto.termId);
     const yearTerms = await this.terms.allForYear(schoolId, year.id);
     if (termId === null) {
-      const weights = termWeightsOf(yearTerms, klass.id);
-      assertHeldWeights(weights);
-      const published = await this.sheets.publishedTermIds(
-        schoolId,
-        sectionId,
-        weights.filter((t) => t.held).map((t) => t.termId),
-      );
-      const missing = weights
-        .filter((t) => t.held && !published.has(t.termId))
-        .map((t) => t.termId);
-      if (missing.length > 0) throw termsUnpublished(missing);
+      await this.finalWeights(schoolId, sectionId, klass.id, yearTerms);
     } else {
       const term = yearTerms.find((t) => t.id === termId);
       if (!term)
@@ -358,22 +346,9 @@ export class ResultSheetsService {
             (a.rollNo ?? Number.MAX_SAFE_INTEGER) - (b.rollNo ?? Number.MAX_SAFE_INTEGER) ||
             a.fullName.localeCompare(b.fullName),
         );
-      const headers = new Map<
-        string,
-        { classSubjectId: bigint; subjectName: string; sortOrder: number }
-      >();
-      for (const row of composed) {
-        for (const s of row.subjects) headers.set(s.classSubjectId.toString(), s);
-      }
       composition = {
         rows: composed,
-        subjects: [...headers.values()]
-          .map(({ classSubjectId, subjectName, sortOrder }) => ({
-            classSubjectId,
-            subjectName,
-            sortOrder,
-          }))
-          .sort((a, b) => a.sortOrder - b.sortOrder),
+        subjects: subjectHeadersOf(composed),
         gaps: [],
         examsNotSetUp: [],
       };
@@ -434,11 +409,6 @@ export class ResultSheetsService {
         ),
       ),
       flags: {
-        ownChild: flags.map((f) => ({
-          userId: f.userId.toString(),
-          role: f.role,
-          userName: names.get(f.userId) ?? '',
-        })),
         cover: sheet.submittedUnderAssignmentId !== null,
         selfApproved: sheet.selfApproved,
         missing: composition.gaps.slice(0, MAX_GAPS).map(gapDto),
@@ -519,7 +489,7 @@ export class ResultSheetsService {
     const { scope, sheet } = await this.lock(session, id);
     if (sheet.status !== 'draft' && sheet.status !== 'returned') throw sheetNotDraft(sheet);
     if (!(await this.authorship(session, sheet.sectionId)).allowed) throw notClassTeacher();
-    await this.assertYearOpen(schoolId, sheet.academicYearId);
+    await requireOpenYear(this.years, schoolId, sheet.academicYearId);
     const seen = new Set<string>();
     dto.remarks.forEach((r, i) => {
       if (seen.has(r.enrolmentId)) {
@@ -599,7 +569,7 @@ export class ResultSheetsService {
     if (sheet.status !== 'draft' && sheet.status !== 'returned') throw sheetNotDraft(sheet);
     const authorship = await this.authorship(session, sheet.sectionId);
     if (!authorship.allowed) throw notClassTeacher();
-    await this.assertYearOpen(schoolId, sheet.academicYearId);
+    await requireOpenYear(this.years, schoolId, sheet.academicYearId);
     const composition = await this.compose(session, scope, sheet, { attendance: false });
     const notSetUp = composition.examsNotSetUp[0];
     if (notSetUp !== undefined) throw examNotSetUp(notSetUp, sheet.sectionId, sheet.termId);
@@ -651,7 +621,7 @@ export class ResultSheetsService {
     if (sheet.status !== 'submitted' && sheet.status !== 'approved') throw sheetNotSubmitted(sheet);
     if (sheet.submittedBy === userId && !(await this.permissions.isSolePrincipal(schoolId, userId)))
       throw selfDecision();
-    await this.assertYearOpen(schoolId, sheet.academicYearId);
+    await requireOpenYear(this.years, schoolId, sheet.academicYearId);
     const now = this.clock.now();
     const moved = await this.sheets.markReturned(schoolId, sheet.id, {
       decidedBy: userId,
@@ -717,11 +687,23 @@ export class ResultSheetsService {
     return published;
   }
 
-  async assertYearOpen(schoolId: SchoolId, academicYearId: bigint): Promise<AcademicYearRecord> {
-    const year = await this.years.findById(schoolId, academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
-    return year;
+  /**
+   * R275: the final sheet is ready — the held weights sum to 100 and every held term of the year
+   * is published for the section. Its term weights; else refused. Create and approve both ask.
+   */
+  async finalWeights(
+    schoolId: SchoolId,
+    sectionId: bigint,
+    classId: bigint,
+    yearTerms: readonly AcademicTermRecord[],
+  ): Promise<TermWeight[]> {
+    const weights = termWeightsOf(yearTerms, classId);
+    assertHeldWeights(weights);
+    const held = weights.filter((t) => t.held).map((t) => t.termId);
+    const published = await this.sheets.publishedTermIds(schoolId, sectionId, held);
+    const missing = held.filter((termId) => !published.has(termId));
+    if (missing.length > 0) throw termsUnpublished(missing);
+    return weights;
   }
 }
 

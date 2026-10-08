@@ -1,6 +1,6 @@
 # Deploying ASMS
 
-Production requirements created by Phases 1-3. Each one is something the code assumes and
+Production requirements created by Phases 1-4 (Phase 4 added none). Each one is something the code assumes and
 cannot enforce on its own. Sources: `docs/plans/phase-2-daily-operations.md` §3 and §9,
 `docs/plans/contracts/slice-9.md`, `apps/api/src/config/env.ts`, `apps/api/src/bootstrap.ts`,
 `apps/api/src/jobs/worker-host.ts`.

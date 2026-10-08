@@ -118,8 +118,8 @@ export class TermsService {
   }
 
   /**
-   * Name, dates and weight under the year's lock. The term-in-use lock (an assessment or a
-   * submitted sheet of the term, TERM_IN_USE) arrives with those tables in waves N and O.
+   * Name, dates and weight under the year's lock. Dates and weight are refused once the term is
+   * in use (an assessment or a submitted sheet: TERM_IN_USE, enforced by the database).
    */
   @Transactional()
   async update(id: bigint, dto: UpdateTermDto): Promise<TermDto> {

@@ -195,4 +195,47 @@ describe('slice 35 review fixes (e2e)', () => {
     const list = await h.get(`/promotion-sheets?sectionId=${w.a5A.id}&status=cancelled`, w.principal);
     expect((list.body as { data: { id: string }[] }).data.map((s) => s.id)).toEqual([sheet.id]);
   });
+
+  it('slice 36 (security L2): a decision other than the proposal for the decider’s own child is refused unless sole principal (selfApproved); own-child rows are flagged', async () => {
+    const w = await promotionWorld(() => app);
+    const mine = await student(w, w.a5A, 'Usman Principal');
+    const other = await student(w, w.a5A, 'Nida Rauf');
+    // approvedSheet adds a second principal (its decider): the principal is not the sole one.
+    await approvedSheet(w, w.a5A, [
+      [mine, true],
+      [other, false],
+    ]);
+    await h.parentOf(w, w.principal.user, mine);
+    const sheet = detailOf(await h.open(w.a5A.id, w.yearB.id, w.principal).expect(201));
+    const decide = (decision: string, reason?: string) =>
+      h.decide(sheet.id, [{ enrolmentId: mine.enrolmentId.toString(), decision, ...(reason ? { reason } : {}) }], w.principal);
+
+    // The proposal itself stands: allowed, flagged.
+    await decide('promote').expect(200);
+    const [agreed] = await h.audit(w.school, 'promotion_sheet.decided');
+    expect(agreed?.metadata).toEqual({
+      decisions: { [mine.enrolmentId.toString()]: expect.objectContaining({ to: 'promote', ownChild: 'true' }) },
+    });
+    // Differing from it is refused; another child's row is unaffected.
+    const refused = await decide('detain', 'Not ready for Class 6');
+    expect([refused.status, errorOf(refused).code, errorOf(refused).details]).toEqual([409, 'SELF_ACTION_FORBIDDEN', { reason: 'own_child' }]);
+    expect(rowOf(detailOf(await h.detail(sheet.id, w.principal).expect(200)), mine).decision).toBe('promote');
+    const others = await h.decide(sheet.id, [{ enrolmentId: other.enrolmentId.toString(), decision: 'promote', reason: 'Passed the re-test' }], w.principal);
+    expect(others.status).toBe(200);
+
+    // The other principal leaves: the sole principal may, recorded selfApproved.
+    await db().userRole.updateMany({
+      where: { schoolId: w.school.id, systemRole: 'principal', userId: { not: w.principal.user.userId }, endedAt: null },
+      data: { endedAt: new Date(), endedBy: w.principal.user.userId },
+    });
+    await decide('detain', 'Not ready for Class 6').expect(200);
+    const audits = await h.audit(w.school, 'promotion_sheet.decided');
+    expect(audits.at(-1)?.metadata).toEqual({
+      decisions: { [mine.enrolmentId.toString()]: expect.objectContaining({ to: 'detain', ownChild: 'true' }) },
+      selfApproved: true,
+    });
+    expect(audits[1]?.metadata).toEqual({
+      decisions: { [other.enrolmentId.toString()]: expect.not.objectContaining({ ownChild: expect.anything() }) },
+    });
+  });
 });

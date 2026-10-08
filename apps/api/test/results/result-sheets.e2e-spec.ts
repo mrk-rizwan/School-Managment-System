@@ -232,6 +232,9 @@ describe('result sheets (e2e)', () => {
     expect(inbox.results?.items).toEqual(queue.data);
     expect(queue.data[0]?.id).toBe(sheet.id);
 
+    // The result-rules screen's lock (slice 36): open until a sheet of the year is approved.
+    const settingsPath = api(`/academic-years/${r.year.id}/result-settings`);
+    expect(((await h.get(settingsPath, r.principal.cookie)).body as { locked: boolean }).locked).toBe(false);
     const approved = await sheetVerb(h, sheet.id, 'approve', r.principal);
     expect(approved.status).toBe(200);
     const stored = approved.body as ResultSheetDetailDto;
@@ -319,6 +322,11 @@ describe('result sheets (e2e)', () => {
       r.principal.cookie,
     );
     expect(errorOf(frozen).code).toBe(ErrorCode.RESULT_SETTINGS_LOCKED);
+    expect(((await h.get(settingsPath, r.principal.cookie)).body as { locked: boolean }).locked).toBe(true);
+    // A display toggle stays editable, and the answer still says locked.
+    const toggled = await h.send('patch', settingsPath, { showPosition: false }, r.principal.cookie);
+    expect(toggled.status).toBe(200);
+    expect(toggled.body).toMatchObject({ showPosition: false, locked: true });
     const actions = (
       await db.auditLog.findMany({
         where: { schoolId: r.school.id, subjectType: 'result_sheet' },

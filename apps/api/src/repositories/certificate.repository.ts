@@ -42,6 +42,9 @@ export interface CertificateBodySubject {
   /** Basis points (7850 = 78.50 %); null when not assessed. */
   percentBp: number | null;
   grade: string | null;
+  /** Absent from the term exam (rule 26: prints "Ab", or "Ex" when excused); false on a body issued before slice 36. */
+  examAbsent: boolean;
+  examExcused: boolean;
 }
 
 /**
@@ -227,6 +230,8 @@ function toResult(value: Json | undefined): CertificateBodyResult | null {
         max: int(s.max),
         percentBp: intOrNull(s.percentBp),
         grade: textOrNull(s.grade),
+        examAbsent: boolOrNull(s.examAbsent) ?? false,
+        examExcused: boolOrNull(s.examExcused) ?? false,
       };
     }),
     totalObtained: int(value.totalObtained),

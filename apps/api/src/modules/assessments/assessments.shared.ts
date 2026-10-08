@@ -1,7 +1,7 @@
 // Pieces shared by the assessment and marks services (contracts/slice-30.md).
 import { ErrorCode } from '@asms/shared';
 import { ApiException } from '../../common/errors/api-exception';
-import type { AssessmentRecord } from '../../repositories/assessment.repository';
+import type { AssessmentRecord, ScopeDates } from '../../repositories/assessment.repository';
 import type { MarkRecord } from '../../repositories/mark.repository';
 import { toDateString } from '../academics/academics.shared';
 import type { AssessmentDto, AssessmentMarkDto } from './assessments.dto';
@@ -41,6 +41,16 @@ export const assessmentOutsideTerm = (id: bigint | null): ApiException =>
       : 'The date must stay inside the assessment’s term.',
     { assessmentId: idOrNull(id) },
   );
+
+/**
+ * The date a marks scope is minted for (§0.27, slice 36): an exam's marks are entered after the
+ * exam by whoever teaches the subject then, so an exam's scope is the day of entry (`today`, school
+ * time) while it lies inside the exam's term, else its held_on; a test's is always its held_on.
+ */
+export const marksDateOf = (dates: ScopeDates, today: Date): Date =>
+  dates.kind === 'exam' && dates.termStartsOn <= today && today <= dates.termEndsOn
+    ? today
+    : dates.heldOn;
 
 export const subjectNotAssigned = (): ApiException =>
   new ApiException(

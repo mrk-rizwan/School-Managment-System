@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { Capability, ErrorCode, type PromotionOutcome } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../common/auth/school-session';
-import { ApiException, concurrentUpdate, fieldRefused, notFound } from '../../common/errors/api-exception';
+import {
+  ApiException,
+  concurrentUpdate,
+  fieldRefused,
+  notFound,
+  ownChild,
+} from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { readLocked } from '../../common/locking';
 import { toPage, type Page } from '../../common/pagination';
@@ -20,7 +26,7 @@ import {
 import type { SchoolId } from '../../tenancy/school-id';
 import type { Scope } from '../../tenancy/scope';
 import { toDateString, yearClosed } from '../academics/academics.shared';
-import { requirePrincipal } from '../access/money-gates';
+import { isPrincipal, requirePrincipal } from '../access/money-gates';
 import { PermissionsService } from '../access/permissions.service';
 import { FinanceReportsService } from '../finance-reports/finance-reports.service';
 import { EnrolmentsService, type EnrolmentTarget } from '../people/students/enrolments.service';
@@ -296,7 +302,10 @@ export class PromotionService {
    * R295, R298: the given rows only, on an open sheet under its row lock. Each row re-reads its
    * result (a correction since opening re-proposes it); a decision other than the proposal, or
    * with none, needs a reason; promote and detain need a live class of the target year and a live
-   * section of it; not_continuing needs student.status.change and an active student.
+   * section of it; not_continuing needs student.status.change and an active student. A decision
+   * other than the proposal (or with none) for the actor's own child is refused
+   * (SELF_ACTION_FORBIDDEN own_child) unless they are the sole principal (recorded selfApproved);
+   * every own-child row is flagged in the audit (slice 36).
    */
   @Transactional()
   async decide(session: SchoolSessionContext, id: bigint, dto: UpdatePromotionSheetDto): Promise<PromotionSheetDetailDto> {
@@ -329,6 +338,7 @@ export class PromotionService {
     const now = new Date();
     // Audit metadata holds no arrays: the rows by enrolment id.
     const changes: Record<string, Record<string, string | null>> = {};
+    let selfApproved = false;
     for (const [i, input] of dto.decisions.entries()) {
       const row = rows.get(BigInt(input.enrolmentId));
       if (!row) throw notFound();
@@ -352,6 +362,11 @@ export class PromotionService {
       if (input.decision === 'not_continuing' && row.studentStatus !== 'active') {
         throw studentsNotActive([row]);
       }
+      const isOwnChild = await this.permissions.actorIsGuardianOf(schoolId, userId, row.studentId);
+      if (isOwnChild && input.decision !== proposed) {
+        if (!(isPrincipal(session) && (await this.permissions.isSolePrincipal(schoolId, userId)))) throw ownChild();
+        selfApproved = true;
+      }
       const target = this.resolveTarget(i, input, section, targets);
       await this.promotion.updateDecision(schoolId, row.id, {
         resultId: result?.id ?? null,
@@ -370,6 +385,7 @@ export class PromotionService {
         reason,
         targetClassId: target?.classId.toString() ?? null,
         targetSectionId: target?.sectionId.toString() ?? null,
+        ...(isOwnChild ? { ownChild: 'true' } : {}),
       };
     }
     await this.audit.record(schoolId, {
@@ -377,7 +393,7 @@ export class PromotionService {
       action: 'promotion_sheet.decided',
       subjectType: SUBJECT,
       subjectId: id,
-      metadata: { decisions: changes },
+      metadata: { decisions: changes, ...(selfApproved ? { selfApproved: true } : {}) },
     });
     return this.toDetail(schoolId, sheet);
   }

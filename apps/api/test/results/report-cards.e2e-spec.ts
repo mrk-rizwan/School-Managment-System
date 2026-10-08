@@ -357,6 +357,11 @@ describe('report cards, corrections, certificates marks (e2e)', () => {
     const r = await resultRoom(h);
     await publishMidTerm(r);
     const before = await liveRow(r, r.enrolment2);
+    // Rule 26 (slice 36): the unexcused exam absence prints "Ab", with the legend.
+    const absentPage = (await print(`/results/${before.id}/print`, r.principal)).text;
+    expect(absentPage).toContain('English <span class="marker">Ab</span>');
+    expect(absentPage).toContain('Ab: absent from the exam, counted as 0.');
+    expect(absentPage).not.toContain('Mathematics <span class="marker">');
     const absence = await liveMark(r, r.exams.englishA, r.enrolment2);
     const excused = await h.send('post', api(`/marks/${absence.id}/excuse`), { reason: 'Hospitalised' }, r.principal.cookie);
     expect(excused.status).toBe(200);
@@ -366,9 +371,53 @@ describe('report cards, corrections, certificates marks (e2e)', () => {
     // English is now not assessed (no test, exam excused): printed "—", out of the totals.
     expect(after.subjects.find((s) => s.classSubjectId === r.english.classSubjectId)?.status).toBe('not_assessed');
     expect(after.totalMax).toBe(before.totalMax - 100);
+    // ... and once excused, "Ex".
+    expect((await print(`/results/${after.id}/print`, r.principal)).text).toContain('English <span class="marker">Ex</span>');
     expect(revisedTold).toEqual([after.id]);
     const audit = await db.auditLog.findFirstOrThrow({ where: { schoolId: r.school.id, action: 'mark.excused' } });
     expect(audit.metadata).toMatchObject({ revisedResultId: String(after.id) });
+  });
+
+  it('slice 36 (security L3): a custom role holding result.approve alone decides excusals and corrections school-wide', async () => {
+    const r = await resultRoom(h);
+    await publishMidTerm(r);
+    // An exams officer: the custom role is their only role.
+    const officer = await h.caller(r.school, 'office_staff', 'Exams Officer');
+    const role = await db.customRole.create({
+      data: { schoolId: r.school.id, key: `exams_${Date.now().toString(36)}`, name: 'Exams officer' },
+    });
+    await db.customRoleCapability.create({
+      data: { schoolId: r.school.id, customRoleId: role.id, capabilityKey: Capability.RESULT_APPROVE, addedBy: r.principal.userId },
+    });
+    await db.userRole.create({
+      data: { schoolId: r.school.id, userId: officer.userId, customRoleId: role.id, assignedBy: r.principal.userId },
+    });
+    await db.userRole.updateMany({
+      where: { schoolId: r.school.id, id: officer.userRoleId },
+      data: { endedAt: new Date(), endedBy: r.principal.userId },
+    });
+
+    // The excusal (an absence on a published result): decided, a new version.
+    const absence = await liveMark(r, r.exams.englishA, r.enrolment2);
+    const excused = await h.send('post', api(`/marks/${absence.id}/excuse`), { reason: 'Hospitalised' }, officer.cookie);
+    expect(excused.status).toBe(200);
+    expect((await liveRow(r, r.enrolment2)).revised).toBe(true);
+
+    // A correction a teacher asks for: listed for the officer, approved by them.
+    const exam = await liveMark(r, r.exams.mathsA, r.enrolment1);
+    const asked = (await correct(exam.id, { obtained: 84, reason: 'Totalled wrong' }, r.mathsTeacher)).body as MarkCorrectionDto;
+    const listed = (await h.get(api('/mark-corrections?status=pending'), officer.cookie)).body as Page<MarkCorrectionDto>;
+    expect(listed.data.map((c) => c.id)).toEqual([asked.id]);
+    const approved = await decide(asked.id, 'approve', officer);
+    expect(approved.status).toBe(200);
+    expect((approved.body as MarkCorrectionDecisionDto).mark.status).toBe('approved');
+    // Deciding is not entering: the officer enters no mark.
+    const entry = await request(h.app.getHttpServer())
+      .post(api(`/assessments/${r.exams.mathsA}/submit-marks`))
+      .set('Cookie', officer.cookie)
+      .set('Origin', ORIGIN)
+      .send({ entries: [{ enrolmentId: String(r.enrolment1), obtained: 90, clientEntryKey: entryKey(), basedOnMarkId: null }] });
+    expect(entry.status).toBe(403);
   });
 
   it('contracts/slice-32.md §4: an excusal while the term sheet is approved but unpublished is refused (its rows would go stale)', async () => {
@@ -676,6 +725,8 @@ describe('report cards, corrections, certificates marks (e2e)', () => {
         max: s.max,
         percentBp: s.percentBp,
         grade: s.grade,
+        examAbsent: s.examAbsent,
+        examExcused: s.examExcused,
       })),
       totalObtained: row.totalObtained,
       totalMax: row.totalMax,
@@ -690,6 +741,16 @@ describe('report cards, corrections, certificates marks (e2e)', () => {
     expect(page.status).toBe(200);
     expect(page.text).toContain('Result: Mid-term, class Six A');
     expect(page.text).toContain('Mathematics');
+    expect(page.text).not.toContain('class="marker"');
+    // Rule 26 (slice 36): the certificate's marks table prints "Ab" for the unexcused exam absence.
+    const absentCert = (await postKeyed(h, api(`/students/${r.child2.id}/certificates`), { type: 'academic' }, r.office.cookie)).body as CertificateDto;
+    expect(absentCert.body.result?.subjects.find((s) => s.subjectName === 'English')).toMatchObject({ examAbsent: true, examExcused: false });
+    const absentCertPage = await request(h.app.getHttpServer())
+      .get(api(`/certificates/${absentCert.id}/print`))
+      .set('Cookie', r.office.cookie)
+      .set('Origin', ORIGIN);
+    expect(absentCertPage.text).toContain('English <span class="marker">Ab</span>');
+    expect(absentCertPage.text).toContain('Ab: absent from the exam, counted as 0.');
 
     // The final, once published, is preferred (A11); a later correction changes nothing issued.
     await h.send(

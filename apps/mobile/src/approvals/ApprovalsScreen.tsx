@@ -529,7 +529,7 @@ function LeaveSheet({ request, me, onSettled, onClose }: SheetProps & { request:
   const [sectionId, setSectionId] = useState<string | null>(request.sectionsNeedingCover[0]?.sectionId ?? null);
   const [cover, setCover] = useState<StaffChoice | null>(null);
   const staff = useQuery({
-    queryKey: ['approvals', 'staff', 'active'],
+    queryKey: queryKeys.coverStaff,
     queryFn: async (): Promise<{ choices: StaffChoice[]; more: boolean }> => {
       const page = await unwrap(
         api.GET('/api/v1/staff', { params: { query: { status: 'active', limit: STAFF_PAGE, page: 1 } } }),

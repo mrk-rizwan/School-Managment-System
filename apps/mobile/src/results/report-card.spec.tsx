@@ -84,7 +84,8 @@ describe('ReportCardView', () => {
     expect(screen.getByText('Green Valley School')).toBeTruthy();
     expect(screen.getByText('Report card · Mid-term · 2026-27')).toBeTruthy();
     expect(screen.getByTestId('reportCard.subject.cs-m')).toHaveTextContent('Mathematics79 / 100B');
-    expect(screen.getByTestId('reportCard.subject.cs-e')).toHaveTextContent('English——');
+    expect(screen.getByTestId('reportCard.subject.cs-e')).toHaveTextContent('English (Ex)——');
+    expect(screen.getByTestId('reportCard.legend')).toHaveTextContent(/^Ab: absent from the exam, counted as 0\. Ex:/);
     expect(screen.getByTestId('reportCard.percent')).toHaveTextContent('74.50 % · Passed');
     expect(screen.getByTestId('reportCard.position')).toHaveTextContent('Position 1 / 2');
     expect(screen.getByText('Attendance 92.30 %')).toBeTruthy();
@@ -120,7 +121,26 @@ describe('ReportCardView', () => {
     fireEvent.press(screen.getByTestId('reportCard.share'));
     expect(share).toHaveBeenCalledWith({ message: reportCardText(CARD) });
     expect(reportCardText(CARD)).toContain('Mathematics: 79 / 100 (B)');
-    expect(reportCardText(CARD)).toContain('English: —');
+    expect(reportCardText(CARD)).toContain('English (Ex): —');
+    expect(reportCardText(CARD)).toContain('Ab: absent from the exam, counted as 0.');
     expect(reportCardText(CARD)).toContain('Total: 149 / 200 · 74.50 % · Grade B');
+  });
+
+  it('prints "Ab" for an unexcused exam absence, and no legend when no subject carries a marker (rule 26)', () => {
+    const [maths, english] = CARD.subjects;
+    const absent: ResultDto = {
+      ...CARD,
+      subjects: [
+        maths!,
+        { ...english!, examAbsent: true, examExcused: false, testBp: 6000, examBp: 0, percentBp: 1200, obtained: 12, grade: 'F', status: 'assessed' },
+      ],
+    };
+    const { rerender } = render(<ReportCardView result={absent} />);
+    expect(screen.getByTestId('reportCard.subject.cs-e')).toHaveTextContent('English (Ab)12 / 100F');
+    expect(screen.getByTestId('reportCard.legend')).toBeTruthy();
+    expect(reportCardText(absent)).toContain('English (Ab): 12 / 100 (F)');
+    rerender(<ReportCardView result={{ ...CARD, subjects: [maths!] }} />);
+    expect(screen.queryByTestId('reportCard.legend')).toBeNull();
+    expect(reportCardText({ ...CARD, subjects: [maths!] })).not.toContain('Ab:');
   });
 });

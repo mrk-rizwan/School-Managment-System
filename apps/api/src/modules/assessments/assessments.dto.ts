@@ -346,6 +346,15 @@ export class SetUpExamsDto {
     },
   })
   classIds?: string[];
+
+  @ApiPropertyOptional({
+    ...DATE,
+    description:
+      "The exams' date, inside the term (slice 36). Default: the term's last day. Exams that already exist keep theirs",
+  })
+  @IfPresent()
+  @IsCalendarDate()
+  heldOn?: string;
 }
 
 export class ExamSetUpResultDto {

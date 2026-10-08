@@ -6,10 +6,8 @@ import type { PromotionOutcome } from '@/lib/api/school-promotion-contract';
 
 export const promotionKeys = {
   all: ['promotion'] as const,
-  list: (query: object) => ['promotion', 'list', query] as const,
   sheet: (id: string) => ['promotion', 'sheet', id] as const,
   sections: (yearId: string) => ['promotion', 'sections', yearId] as const,
-  targets: (yearId: string) => ['promotion', 'targets', yearId] as const,
 };
 
 export const sheetHref = (id: string) => `/promotion/${id}`;

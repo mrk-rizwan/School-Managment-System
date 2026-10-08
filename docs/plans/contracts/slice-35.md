@@ -113,9 +113,16 @@ audit row; `skipped` in the DTO); one that stops being active while apply runs i
 `applied` (not exactly one → `CONCURRENT_UPDATE`). Audit `promotion_sheet.applied { sectionId, targetYearId, promote, detain, complete,
 not_continuing, effectiveOn, skipped{ <enrolmentId>: reason } }`.
 
-**After apply** a result superseded (a slice-32 correction re-composing the final sheet, or a
-return) sets `revised_after_apply` on its applied row — a database trigger on `results`
-(`results_promotion_revised`), so the correction code needs no hook; the applied enrolments stand.
+**After apply** an applied row is marked `revised_after_apply` only when its result really
+changed; the applied enrolments stand. A slice-32 correction supersedes the **full** row set of the
+section's sheet version, so superseding alone marks nothing: `results_promotion_revised` (AFTER
+INSERT on `results`, `WHEN supersedes_id IS NOT NULL AND revised`) marks the row whose result the
+new row supersedes — a row whose printed figures changed (totals, verdict, position or a
+subject), never one carried over unchanged. A **return** of an approved sheet withdraws its rows
+with no replacement: `results_promotion_returned` (AFTER UPDATE OF `superseded_at`) marks the
+applied rows of a sheet that is `returned` (the return moves the sheet before it supersedes the
+rows). Both are database triggers (migration `20261008220000_promotion_revised_only_changed`), so
+the correction code needs no hook.
 
 **Budget (§7.2):** a 60-student final class applies in ≤ 3 s; the statements are a fixed number,
 not per student (`test/promotion/apply-perf.e2e-spec.ts`; about 230 ms locally, from 2.7 s before
@@ -128,7 +135,7 @@ the year's last day and has no applied promotion sheet (`EnrolmentRepository.sec
 before R44. A section with nobody in force on that day needs no sheet. The web close dialog shows
 the sections from the error's details.
 
-## 6. Schema (migrations `20261008170000_wave_p_promotion`, `20261008190000_wave_p_review_fixes`)
+## 6. Schema (migrations `20261008170000_wave_p_promotion`, `20261008190000_wave_p_review_fixes`, `20261008220000_promotion_revised_only_changed`)
 
 `promotion_outcome`, `promotion_sheet_status`; `promotion_sheets` and `promotion_decisions` per
 plan §3.2/§4, with the hand-written objects listed in `test/guardrails/schema-checks.ts`
@@ -139,7 +146,7 @@ class + target year, target section + target class, new enrolment + student + ta
 decided_by), the target, reason (`decision IS NOT DISTINCT FROM proposed OR reason IS NOT NULL`),
 decided and applied CHECKs, `asms_promotion_decision_guard` (written only while the sheet is open,
 for an enrolment of its section and year; an applied row frozen but for `revised_after_apply`,
-false → true only), `results_promotion_revised`; no delete, no truncate, `school_id` immutable on
+false → true only), `results_promotion_revised` and `results_promotion_returned` (§4 "After apply"; replaced the wave P trigger, which fired on every superseded row); no delete, no truncate, `school_id` immutable on
 both. `enrolments_status_transition` = `asms_status_transition('active:completed', 'active:left')`.
 The review-fix migration adds `cancelled` to `promotion_sheet_status` and makes the status edges
 `asms_status_transition('open:applied', 'open:cancelled')` (cancelled is final).
@@ -179,3 +186,23 @@ year's end, an enrolment starting after it, a section-scoped caller completing a
 9. The web's Promotion page pages the sheets, classes and sections to their totals (more than 50
    sections); changing a row's decision clears its chosen class and section so the server's
    default for the new decision applies.
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **Own child on the promotion sheet** (security L2): in `PATCH /promotion-sheets/:id`, a decision
+  that differs from the proposal (or has none) for a student the actor is a guardian of is refused
+  `409 SELF_ACTION_FORBIDDEN { reason: own_child }`, unless the actor is the sole principal; then
+  it is recorded `selfApproved: true` in the `promotion_sheet.decided` audit. Every own-child row
+  is flagged `ownChild: 'true'` in that audit row's decisions, the proposal kept or not. Test:
+  `test/promotion/promotion-fixes.e2e-spec.ts` ("slice 36 (security L2)").
+- R300 is complete in `test/promotion/year-end.e2e-spec.ts`: the term and final sheets are marked,
+  submitted and approved through the API (no direct result inserts); the correction after apply is
+  asked for (`POST /marks/:id/correct`) and approved, and `results_promotion_revised` sets
+  `revised_after_apply` on the corrected student's applied row only (the section's other rows are
+  superseded unchanged and stay unmarked; §4 "After apply"); the withdrawn student's status takes
+  effect today; the detained student goes to the same-name section; `not_continuing` is refused
+  for a suspended student; dues stay open after the year closes.
+- `test/promotion/apply-perf.e2e-spec.ts` warms the endpoint on a one-student sheet first.
+- `useYearSections(yearId)` (web `academics/_lib/options.ts`) gives the result-sheet and promotion
+  screens a year's classes with their sections, every page; `PromotionRepository.targetClass` and
+  the web `promotionKeys.list` / `promotionKeys.targets` are gone.

@@ -95,7 +95,6 @@ const SHEET: ResultSheetDetailDto = {
     }),
   ],
   flags: {
-    ownChild: [],
     cover: false,
     selfApproved: false,
     missing: [{ enrolmentId: 'e2', assessmentId: 'a3' }],

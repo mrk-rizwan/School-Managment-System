@@ -1,4 +1,4 @@
-import { TERM_REMARK_MAX } from '@asms/shared';
+import { formatPercentLabel, TERM_REMARK_MAX } from '@asms/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -17,7 +17,6 @@ import { colors, fontSize, space } from '../ui/theme';
 import {
   fetchSheet,
   ownChildNote,
-  percent,
   rowLine,
   sheetFailure,
   sheetTitle,
@@ -253,7 +252,7 @@ function SheetView({
                 title={`${row.rollNo !== null ? `${row.rollNo}. ` : ''}${row.fullName}`}
                 detail={rowLine(row)}
                 value={
-                  percent(row.attendanceBp) === '—' ? null : `Att. ${percent(row.attendanceBp)}`
+                  formatPercentLabel(row.attendanceBp) === '—' ? null : `Att. ${formatPercentLabel(row.attendanceBp)}`
                 }
                 testID={`sheet.row.${row.enrolmentId}`}
               />

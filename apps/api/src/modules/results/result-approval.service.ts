@@ -6,15 +6,17 @@ import { concurrentUpdate, notFound } from '../../common/errors/api-exception';
 import { SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { AcademicTermRepository } from '../../repositories/academic-term.repository';
+import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import {
   ResultSheetRepository,
   type SheetSnapshot,
 } from '../../repositories/result-sheet.repository';
 import { ResultRepository } from '../../repositories/result.repository';
+import { requireOpenYear } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
-import { ResultComposer, type Composition } from './result-composer';
-import { assertHeldWeights, ResultSheetsService, termWeightsOf } from './result-sheets.service';
+import { newResultOf, ResultComposer, type Composition } from './result-composer';
+import { ResultSheetsService } from './result-sheets.service';
 import type { ResultSheetDetailDto } from './results.dto';
 import {
   examNotSetUp,
@@ -23,7 +25,6 @@ import {
   selfDecision,
   sheetFlags,
   sheetNotSubmitted,
-  termsUnpublished,
 } from './results.shared';
 
 // contracts/slice-31.md §2.7 (phase-4-academic.md slice 31 "Behaviour", R269-R272, R275, R276):
@@ -44,6 +45,7 @@ export class ResultApprovalService {
     private readonly results: ResultRepository,
     private readonly composer: ResultComposer,
     private readonly terms: AcademicTermRepository,
+    private readonly years: AcademicYearRepository,
     private readonly permissions: PermissionsService,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
@@ -58,7 +60,7 @@ export class ResultApprovalService {
       ? sheet.status === 'draft' || sheet.status === 'returned' || sheet.status === 'submitted'
       : sheet.status === 'submitted';
     if (!ready) throw sheetNotSubmitted(sheet);
-    await this.sheetsService.assertYearOpen(schoolId, sheet.academicYearId);
+    const year = await requireOpenYear(this.years, schoolId, sheet.academicYearId);
 
     // R271: never the submitter, except the sole principal (recorded self_approved).
     let selfApproved = false;
@@ -78,13 +80,7 @@ export class ResultApprovalService {
     let snapshot: SheetSnapshot;
     if (isFinal) {
       // R275: every held term published for the section; held weights sum to 100.
-      const weights = termWeightsOf(yearTerms, sheet.classId);
-      assertHeldWeights(weights);
-      const held = weights.filter((t) => t.held).map((t) => t.termId);
-      const published = await this.sheets.publishedTermIds(schoolId, sheet.sectionId, held);
-      const missing = held.filter((termId) => !published.has(termId));
-      if (missing.length > 0) throw termsUnpublished(missing);
-      const year = await this.sheetsService.assertYearOpen(schoolId, sheet.academicYearId);
+      const weights = await this.sheetsService.finalWeights(schoolId, sheet.sectionId, sheet.classId, yearTerms);
       composition = await this.composer.final(
         schoolId,
         scope,
@@ -135,28 +131,7 @@ export class ResultApprovalService {
     await this.results.insertSet(
       schoolId,
       sheet.id,
-      composition.rows.map((row) => ({
-        sheetId: sheet.id,
-        enrolmentId: row.enrolmentId,
-        studentId: row.studentId,
-        academicYearId: sheet.academicYearId,
-        termId: sheet.termId,
-        classId: sheet.classId,
-        totalObtained: row.totalObtained,
-        totalMax: row.totalMax,
-        percentBp: row.percentBp,
-        grade: row.grade,
-        passed: row.passed,
-        failedSubjects: row.failedSubjects,
-        position: row.position,
-        positionOf: row.positionOf,
-        attendanceBp: row.attendanceBp,
-        remark: row.remark,
-        ownChildFlags: row.ownChildFlags,
-        revised: false,
-        publishedAt: null,
-        subjects: row.subjects,
-      })),
+      composition.rows.map((row) => newResultOf(sheet, row)),
     );
     const flags = sheetFlags(composition.rows);
     await this.audit.record(schoolId, {

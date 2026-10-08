@@ -175,6 +175,45 @@ test.describe("a guardian's child's results", () => {
     await expectNoSidewaysScroll(page);
   });
 
+  test('an exam absence prints "Ab" (unexcused) or "Ex" (excused) with the legend (rule 26)', async ({ page }) => {
+    const [maths, english] = CARD.subjects;
+    const card: ResultDto = {
+      ...CARD,
+      subjects: [
+        { ...maths!, examAbsent: true, examExcused: true },
+        { ...english!, examAbsent: true, examExcused: false, examObtained: null, examBp: 0, percentBp: 0, obtained: 0, grade: 'F' },
+      ],
+    };
+    await mockSchoolApi(page, {
+      me: GUARDIAN_ME,
+      replies: {
+        'GET /me/children/st1/results': { status: 200, body: LIST },
+        'GET /me/children/st1/results/r1': { status: 200, body: { withheld: false, outstanding: null, result: card } },
+        'GET /me/children/st1/assessments': { status: 200, body: page1([]) },
+      },
+    });
+    await open(page, '/my-children/st1/results');
+    const shown = page.getByTestId('reportCard.r1');
+    await expect(shown.getByTestId('reportCard.marker.cs1')).toHaveText('Ex');
+    await expect(shown.getByTestId('reportCard.marker.cs2')).toHaveText('Ab');
+    await expect(shown.getByTestId('reportCard.legend')).toContainText('Ab: absent from the exam, counted as 0.');
+  });
+
+  test('no marker, no legend', async ({ page }) => {
+    await mockSchoolApi(page, {
+      me: GUARDIAN_ME,
+      replies: {
+        'GET /me/children/st1/results': { status: 200, body: LIST },
+        'GET /me/children/st1/results/r1': { status: 200, body: { withheld: false, outstanding: null, result: CARD } },
+        'GET /me/children/st1/assessments': { status: 200, body: page1([]) },
+      },
+    });
+    await open(page, '/my-children/st1/results');
+    await expect(page.getByTestId('reportCard.r1')).toContainText('Mathematics');
+    await expect(page.getByTestId('reportCard.legend')).toHaveCount(0);
+    await expect(page.getByTestId('reportCard.marker.cs1')).toHaveCount(0);
+  });
+
   test('a withheld card names the amount owed and shows no card', async ({ page }) => {
     const { requests } = await mockSchoolApi(page, {
       me: GUARDIAN_ME,

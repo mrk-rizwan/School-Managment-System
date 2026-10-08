@@ -1,31 +1,43 @@
-import { formatDay } from '@asms/shared';
+import {
+  EXAM_MARKER_LEGEND,
+  examMarker,
+  formatDay,
+  formatPercentLabel as percent,
+  resultTermLabel,
+} from '@asms/shared';
 import { Share, StyleSheet, Text, View } from 'react-native';
 import type { ResultDto } from '../api/contracts';
 import { Button } from '../ui/Button';
 import { Sheet } from '../ui/Sheet';
 import { colors, fontSize, space } from '../ui/theme';
-import { percent } from './results';
 
 // The report card on the phone (phase-4-academic.md §3.4, slice 32, R279, R284): ResultDto — the
 // stored result row — rendered natively, one layout. The year's display toggles have already
 // nulled what they hide. Shared as text (the app ships no view-capture library; receipts and
 // payslips share the same way). The screen that shows it is secure (FamilyResults).
 
-const termOf = (r: ResultDto): string => (r.isFinal ? 'Final result' : (r.termName ?? ''));
-
 const subjectMark = (s: ResultDto['subjects'][number]): string =>
   s.status === 'assessed' && s.obtained !== null ? `${s.obtained} / ${s.max}` : '—';
+
+/** The subject's name with its exam marker (rule 26: "Ab" absent, "Ex" excused). */
+const subjectName = (s: ResultDto['subjects'][number]): string => {
+  const marker = examMarker(s);
+  return marker === null ? s.subjectName : `${s.subjectName} (${marker})`;
+};
+
+const hasMarker = (r: ResultDto): boolean => r.subjects.some((s) => examMarker(s) !== null);
 
 /** The card as plain text, for Share (figures only; no identity number is ever on a card). */
 export function reportCardText(r: ResultDto): string {
   const lines = [
     r.schoolName,
-    `Report card · ${termOf(r)} · ${r.academicYearName}`,
+    `Report card · ${resultTermLabel(r)} · ${r.academicYearName}`,
     `${r.studentName} · ${r.className} ${r.sectionName}${r.rollNo === null ? '' : ` · Roll ${r.rollNo}`}`,
     ...(r.supersededAt !== null ? ['SUPERSEDED: a corrected version exists'] : []),
     ...(r.revised && r.supersededAt === null && r.publishedAt ? [`Revised on ${formatDay(r.publishedAt.slice(0, 10))}`] : []),
     '',
-    ...r.subjects.map((s) => `${s.subjectName}: ${subjectMark(s)}${s.grade && s.status === 'assessed' ? ` (${s.grade})` : ''}`),
+    ...r.subjects.map((s) => `${subjectName(s)}: ${subjectMark(s)}${s.grade && s.status === 'assessed' ? ` (${s.grade})` : ''}`),
+    ...(hasMarker(r) ? [EXAM_MARKER_LEGEND] : []),
     '',
     `Total: ${r.totalObtained} / ${r.totalMax} · ${percent(r.percentBp)}${r.grade ? ` · Grade ${r.grade}` : ''}`,
     ...(r.passed === null ? [] : [r.passed ? 'Passed' : 'Not passed']),
@@ -43,7 +55,7 @@ export function ReportCardView({ result: r }: { result: ResultDto }) {
         <View style={styles.head}>
           <Text style={styles.school}>{r.schoolName}</Text>
           <Text style={styles.caption}>
-            Report card · {termOf(r)} · {r.academicYearName}
+            Report card · {resultTermLabel(r)} · {r.academicYearName}
           </Text>
           <Text style={styles.body}>
             {r.studentName} · {r.className} {r.sectionName}
@@ -66,7 +78,7 @@ export function ReportCardView({ result: r }: { result: ResultDto }) {
         </View>
         {r.subjects.map((s) => (
           <View key={s.classSubjectId} style={styles.row} testID={`reportCard.subject.${s.classSubjectId}`}>
-            <Text style={styles.cell}>{s.subjectName}</Text>
+            <Text style={styles.cell}>{subjectName(s)}</Text>
             <Text style={styles.num}>{subjectMark(s)}</Text>
             <Text style={styles.grade}>{s.status === 'assessed' ? (s.grade ?? '') : '—'}</Text>
           </View>
@@ -78,6 +90,11 @@ export function ReportCardView({ result: r }: { result: ResultDto }) {
           </Text>
           <Text style={[styles.grade, styles.th]}>{r.grade ?? '—'}</Text>
         </View>
+        {hasMarker(r) ? (
+          <Text style={styles.legend} testID="reportCard.legend">
+            {EXAM_MARKER_LEGEND}
+          </Text>
+        ) : null}
         <View style={styles.summary}>
           <Text style={styles.body} testID="reportCard.percent">
             {percent(r.percentBp)}
@@ -116,6 +133,7 @@ const styles = StyleSheet.create({
   cell: { flex: 1, fontSize: fontSize.body, color: colors.foreground },
   num: { width: 96, textAlign: 'right', fontSize: fontSize.body, color: colors.foreground, fontVariant: ['tabular-nums'] },
   grade: { width: 48, textAlign: 'right', fontSize: fontSize.body, color: colors.foreground },
+  legend: { fontSize: fontSize.small, color: colors.mutedForeground, paddingTop: space.xs },
   summary: { gap: space.xs, paddingTop: space.md },
   remark: { fontSize: fontSize.body, color: colors.foreground, fontStyle: 'italic' },
 });

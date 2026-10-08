@@ -338,16 +338,15 @@ describe('slice 35: promotion and year end (e2e)', () => {
     expect(await db().enrolment.count({ where: { schoolId: w.school.id, academicYearId: w.yearB.id, studentId: { in: [pass.studentId, fail.studentId, none.studentId] } } })).toBe(3);
   });
 
-  it('§1.1: a result superseded after apply marks the row revised_after_apply; the applied enrolments stand', async () => {
+  it('§1.1: the final sheet returned after apply marks its rows revised_after_apply; the applied enrolments stand', async () => {
     const w = await promotionWorld(() => app);
     const { pass, none, sheet: source } = await classFive(w);
     const sheet = detailOf(await h.open(w.a5A.id, w.yearB.id, w.principal).expect(201));
     await h.decide(sheet.id, [{ enrolmentId: none.enrolmentId.toString(), decision: 'detain', reason: 'Repeats the class' }], w.principal).expect(200);
     const applied = detailOf(await h.apply(sheet.id, w.principal).expect(200));
     expect(rowOf(applied, pass).revisedAfterApply).toBe(false);
-    const passResult = source.resultIds.get(pass.enrolmentId);
-    if (passResult === undefined) throw new Error('no result');
-    await supersede(w, passResult);
+    // The approved final is returned: its results are withdrawn (results_promotion_returned).
+    await h.post(`/result-sheets/${source.sheetId}/return`, { reason: 'Recheck the totals' }, w.principal).expect(200);
     const after = detailOf(await h.detail(sheet.id, w.principal).expect(200));
     expect(rowOf(after, pass)).toMatchObject({ revisedAfterApply: true, decision: 'promote', newEnrolmentId: rowOf(applied, pass).newEnrolmentId });
   });

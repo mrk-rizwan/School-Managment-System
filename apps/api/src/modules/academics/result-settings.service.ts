@@ -16,7 +16,7 @@ import type { ResultSettingsDto, UpdateResultSettingsDto } from './result-settin
 
 const SUBJECT = 'result_settings';
 
-function toDto(row: ResultSettingsRecord): ResultSettingsDto {
+function toDto(row: ResultSettingsRecord, locked: boolean): ResultSettingsDto {
   return {
     academicYearId: row.academicYearId.toString(),
     testWeight: row.testWeight,
@@ -29,8 +29,7 @@ function toDto(row: ResultSettingsRecord): ResultSettingsDto {
     showRemark: row.showRemark,
     withholdCardForDues: row.withholdCardForDues,
     notifyClassTests: row.notifyClassTests,
-    // Wave O adds result_sheets and the lock (RESULT_SETTINGS_LOCKED, trigger result_settings_locked).
-    locked: false,
+    locked,
     updatedAt: row.updatedAt,
   };
 }
@@ -53,7 +52,8 @@ const SCALARS = [
 /**
  * The result rules of an academic year (phase-4-academic.md §3.7, R255, contracts/slice-29.md
  * §3): weights, pass mark and rule, grade bands and the card toggles. One row per year, seeded
- * with it. Frozen once a sheet of the year is approved (R256, from wave O).
+ * with it. The composition settings are frozen once a sheet of the year is approved (R256,
+ * trigger result_settings_locked; `locked` on the DTO).
  */
 @Injectable()
 export class ResultSettingsService {
@@ -67,7 +67,7 @@ export class ResultSettingsService {
   async get(academicYearId: bigint): Promise<ResultSettingsDto> {
     const row = await this.settings.findForYear(this.context.schoolId, academicYearId);
     if (!row) throw notFound();
-    return toDto(row);
+    return toDto(row, await this.settings.locked(this.context.schoolId, academicYearId));
   }
 
   /** Given fields, validated whole after the merge: weights sum to 100, bands by bandsProblem. */
@@ -106,7 +106,8 @@ export class ResultSettingsService {
     if ((data.testWeight ?? current.testWeight) + (data.examWeight ?? current.examWeight) !== 100) {
       throw fieldRefused('testWeight', ErrorCode.INVALID_VALUE, 'testWeight and examWeight must sum to 100');
     }
-    if (Object.keys(changes).length === 0) return toDto(current);
+    const locked = await this.settings.locked(schoolId, academicYearId);
+    if (Object.keys(changes).length === 0) return toDto(current, locked);
 
     const updated = await this.settings.update(schoolId, academicYearId, data, userId);
     await this.audit.record(schoolId, {
@@ -116,6 +117,6 @@ export class ResultSettingsService {
       subjectId: updated.id,
       metadata: { academicYearId: academicYearId.toString(), changes },
     });
-    return toDto(updated);
+    return toDto(updated, locked);
   }
 }

@@ -9,6 +9,7 @@ import type { SectionSummaryReportDto, SubjectReportDto } from '../../src/module
 import type { ResultDto, ResultSheetDetailDto } from '../../src/modules/results/results.dto';
 import { OutboxDispatcher } from '../../src/messaging/outbox-dispatcher';
 import { ResultCardsService } from '../../src/modules/results/result-cards.service';
+import { PermissionsService } from '../../src/modules/access/permissions.service';
 import { grant } from '../assessments/support';
 import { captureOutbox, guardianLogin, studentLogin } from '../diary/support';
 import { errorOf, StaffHarness } from '../staff/support';
@@ -391,5 +392,26 @@ describe('family and student results, result reports (e2e)', () => {
     expect((await h.get(officePath, r.office.cookie)).status).toBe(403);
     await grant(h, r, r.office, Capability.MARKS_VIEW_ALL);
     expect((await h.get(officePath, r.office.cookie)).status).toBe(200);
+  });
+
+  it('slice 36 (security L4): the reports need marks.view_all school-wide — a section-scoped holder is 404', async () => {
+    const r = await resultRoom(h);
+    const sheet = await publishMidTerm(r);
+    // No source scopes marks.view_all to sections today; one that did is simulated: the guard's
+    // scope for the class teacher's marks.view_all is their marks.enter scope (their section).
+    await grant(h, r, r.classTeacher, Capability.MARKS_VIEW_ALL);
+    const permissions = h.app.get(PermissionsService, { strict: false });
+    const canAny = permissions.canAny.bind(permissions);
+    jest.spyOn(permissions, 'canAny').mockImplementation((schoolId, access, keys) =>
+      access.userId === r.classTeacher.userId && keys.includes(Capability.MARKS_VIEW_ALL)
+        ? canAny(schoolId, access, [Capability.MARKS_ENTER])
+        : canAny(schoolId, access, keys),
+    );
+    const summary = api(`/result-reports/section-summary?sheetId=${sheet.id}`);
+    const subject = api(`/result-reports/subject?termId=${r.midTermId}&classSubjectId=${r.maths.classSubjectId}`);
+    expect((await h.get(summary, r.classTeacher.cookie)).status).toBe(404);
+    expect((await h.get(subject, r.classTeacher.cookie)).status).toBe(404);
+    expect((await h.get(summary, r.principal.cookie)).status).toBe(200);
+    expect((await h.get(subject, r.principal.cookie)).status).toBe(200);
   });
 });

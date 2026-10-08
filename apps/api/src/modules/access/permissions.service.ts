@@ -362,6 +362,16 @@ export class PermissionsService {
   }
 
   /**
+   * The write scope of a decision on marks — an excusal, a correction's approval or rejection
+   * (slice 36, security L3): marks.enter or result.approve, any-of, write mode. A result.approve
+   * holder (the principal, a custom role, a grant: school-wide sources) decides school-wide; the
+   * author ≠ approver and own-child rules are the services'.
+   */
+  marksDecisionScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'write'> | null> {
+    return this.marksScope(session, 'write', [Capability.MARKS_ENTER, Capability.RESULT_APPROVE], on);
+  }
+
+  /**
    * Phase 4 slice 31 (§3.1): the result-sheet read scope on `on`: marks.enter, marks.view_all or
    * result.approve, any-of, read mode. A school-wide key (the principal's result.approve, an office
    * grant of marks.view_all) reads every section; a teacher reads the sections they class-teach or

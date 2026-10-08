@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, newIdempotencyKey } from '@asms/shared';
+import { Capability, markDraftProblem, newIdempotencyKey } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -100,9 +100,7 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
   );
   const invalid = changed.filter((row) => {
     const d = draftOf(row);
-    if (d.absent) return false;
-    if (!/^[0-9]{1,4}$/.test(d.obtained.trim())) return true;
-    return Number(d.obtained) > assessment.maxMarks;
+    return !d.absent && markDraftProblem(d.obtained, assessment.maxMarks) !== null;
   });
   const set = (row: AssessmentMarkRowDto, patch: Partial<Draft>) =>
     setDrafts((current) => new Map(current).set(row.enrolmentId, { ...draftOf(row), ...patch }));
@@ -206,8 +204,7 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
   const correctionDraftBad =
     correcting !== null &&
     !correcting.draft.absent &&
-    (!/^[0-9]{1,4}$/.test(correcting.draft.obtained.trim()) ||
-      Number(correcting.draft.obtained) > assessment.maxMarks);
+    markDraftProblem(correcting.draft.obtained, assessment.maxMarks) !== null;
 
   /** Enter and ↓ move to the next row's mark, ↑ to the previous one. */
   const move = (index: number, step: number) => {

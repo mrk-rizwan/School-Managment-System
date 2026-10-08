@@ -516,20 +516,6 @@ export class PromotionRepository {
     });
   }
 
-  /** A class by id with its live sections; null when another school's or unknown. */
-  async targetClass(schoolId: SchoolId, id: bigint): Promise<TargetClass | null> {
-    return this.txHost.tx.class.findFirst({
-      where: { schoolId, id },
-      select: {
-        id: true,
-        name: true,
-        academicYearId: true,
-        status: true,
-        sections: { where: { schoolId, deletedAt: null }, select: { id: true, name: true }, orderBy: { name: 'asc' } },
-      },
-    });
-  }
-
   /** Display names for the opener and applier. */
   names(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
     return userNames(this.txHost.tx, schoolId, ids);

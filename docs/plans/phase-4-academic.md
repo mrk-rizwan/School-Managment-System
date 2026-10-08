@@ -10,7 +10,12 @@ complete; nothing from them is restated unless Phase 4 changes it. **Reviewed** 
 finding is folded in. The first draft's enrolment-keyed composition, whole-class exams, single
 own-child flag, lazy sheet creation, `PUT` routes, `Idempotency-Key` on the marks grid, grade-band
 table, null-means-final class link, sequential roll numbers at promotion, and position by total
-marks were all changed. **Status:** revised after four reviews; **approved by the owner for execution
+marks were all changed. **As built:** each slice contract's deviation section
+(`contracts/slice-29.md` … `slice-35.md`) records where the build differs from this plan — for
+example the card is shared as text, not an image; `StudentsService.promote` (no separate status
+service); `superseded_by` is never set and chains read `supersedes_id`; corrections can be
+withdrawn by their author; promotion sheets can be cancelled; excusal after publication applies at
+once. Where this plan and a contract differ, the contract wins. **Status:** revised after four reviews; **approved by the owner for execution
 on 2026-10-07** ("proceed code"), with every §1.1 default and §1.2 stance as written. The owner's decisions (rules 26–31) are settled; §1.2 lists what stays open.
 
 Phase 4 delivers the academic record the school was sold: subjects per class; the terms of a

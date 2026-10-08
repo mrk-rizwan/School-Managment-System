@@ -1,6 +1,6 @@
 'use client';
 
-import { formatPercentBp, newIdempotencyKey, PROMOTION_OUTCOMES } from '@asms/shared';
+import { formatPercentLabel, newIdempotencyKey, PROMOTION_OUTCOMES } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -22,7 +22,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { unwrap } from '@/lib/api/client';
-import { academics } from '@/lib/api/school-academics-contract';
 import {
   promotionApi,
   type PromotionDecisionDto,
@@ -32,6 +31,7 @@ import {
 } from '@/lib/api/school-promotion-contract';
 import { formatDateTime } from '@/lib/format';
 import { useIsPrincipal } from '../../fees/_lib/fees-ui';
+import { useYearSections } from '../../academics/_lib/options';
 import { OUTCOME_LABELS, promotionErrorMessage, promotionKeys } from '../_lib/promotion-ui';
 
 // contracts/slice-35.md §2-§4: one section's promotion sheet. Each student's result, the
@@ -90,25 +90,7 @@ function SheetBody({ sheet }: { sheet: PromotionSheetDetailDto }) {
   // R295: only a final class completes; elsewhere the choice is not offered.
   const outcomes = PROMOTION_OUTCOMES.filter((o) => o !== 'complete' || sheet.classIsFinal);
   const [applyKey, setApplyKey] = useState(newIdempotencyKey);
-  const targets = useQuery({
-    queryKey: promotionKeys.targets(sheet.targetYearId),
-    queryFn: async () => {
-      const classes = await unwrap(
-        academics.GET('/api/v1/classes', {
-          params: { query: { academicYearId: sheet.targetYearId, status: 'active', limit: 50 } },
-        }),
-      );
-      const out: { id: string; name: string; sections: { id: string; name: string }[] }[] = [];
-      for (const klass of classes.data) {
-        const sections = await unwrap(
-          academics.GET('/api/v1/classes/{id}/sections', { params: { path: { id: klass.id }, query: { limit: 50 } } }),
-        );
-        out.push({ id: klass.id, name: klass.name, sections: sections.data.map((s) => ({ id: s.id, name: s.name })) });
-      }
-      return out;
-    },
-    enabled: open,
-  });
+  const targets = useYearSections(sheet.targetYearId, { enabled: open });
 
   const edit = (r: PromotionDecisionDto): Edit => edits[r.enrolmentId] ?? editOf(r);
   const setEdit = (r: PromotionDecisionDto, patch: Partial<Edit>) =>
@@ -276,7 +258,7 @@ function SheetBody({ sheet }: { sheet: PromotionSheetDetailDto }) {
                       <span className="text-muted-foreground">{r.resultId ? 'Not assessed' : 'No result'}</span>
                     ) : (
                       <>
-                        {formatPercentBp(r.percentBp)} % · {r.grade}{' '}
+                        {formatPercentLabel(r.percentBp)} · {r.grade}{' '}
                         <span className={r.passed ? 'text-muted-foreground' : 'text-destructive'}>
                           {r.passed ? 'Passed' : 'Failed'}
                         </span>

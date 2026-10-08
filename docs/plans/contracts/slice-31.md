@@ -305,3 +305,28 @@ Maestro `principal-approve-result.yaml`, wired into `ci-run.sh` after `principal
 - **34 (wave N's TODO):** `CERTIFICATE_NO_RESULT` and the marks table on academic/completion
   certificates now that published results exist.
 - **35:** promotion reads `results` (FK target `(school_id, id, enrolment_id)` exists).
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **`ResultSheetFlagsDto.ownChild` is removed** (it duplicated `ownChildFlags` on the sheet). The
+  web sheet reads `ownChildFlags`.
+- The final sheet's readiness (held weights summing to 100, every held term published for the
+  section) is one helper, `ResultSheetsService.finalWeights`, used by create and approve; approve
+  checks the year open once. `subjectHeadersOf(rows)` (result-composer) builds the subject headers
+  of stored or composed rows (the detail, the final, a correction); `newResultOf(sheet, row)` maps a
+  composed row to a stored result; `subjectFiguresDto` is the base of both subject DTOs. Pure
+  moves: no figure or answer changes.
+- A sheet's stored results and a card's subjects are read in two statements (results, then
+  `result_subjects` by `(school_id, result_id)`), never a nested relation read.
+- **Index** `results_unnotified_idx` on `results (school_id, sheet_id) WHERE notified_at IS NULL AND
+  superseded_at IS NULL` (migration `20261008210000_phase4_close`) serves the result-notify sweep;
+  partial, so not declared in `schema.prisma`; the schema guard holds it.
+- `result-notify`: `NotificationService` has no batch send; the job still sends per result (the
+  budget holds), as before.
+- R296 is complete in `test/results/scripted-section.e2e-spec.ts`: a second held term, the two-term
+  final against `composeFinal`, an unexcused exam absence composed to 0, a term remark on the card,
+  own-child flags for the remark author, the submitter and the approver, a correction after
+  publication that re-ranks the section and re-composes the final (every figure against the pure
+  functions), and a withheld card released by a payment while `result_published` still goes out.
+- `test/results/approve-perf.e2e-spec.ts` seeds 20 attendance days per student and warms the
+  endpoint on another section's sheet before the timed approval.

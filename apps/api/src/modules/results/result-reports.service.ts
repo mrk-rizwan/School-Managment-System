@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ErrorCode } from '@asms/shared';
 import { ApiException, notFound } from '../../common/errors/api-exception';
 import { SchoolContext } from '../../common/school-context';
+import type { Scope } from '../../tenancy/scope';
 import { ResultReadsRepository } from '../../repositories/result-reads.repository';
 import type {
   GradeCountDto,
@@ -11,6 +12,14 @@ import type {
   SubjectReportQueryDto,
   SubjectReportStudentDto,
 } from './result-reports.dto';
+
+/**
+ * The reports read every section of the school, so they need marks.view_all school-wide (slice 36,
+ * security L4): a narrower scope — should a source ever scope it to sections — is 404.
+ */
+function requireSchoolWide(scope: Scope): void {
+  if (scope.kind !== 'all') throw notFound();
+}
 
 /** The subject report's top and bottom per section. */
 const TOP_N = 3;
@@ -34,8 +43,8 @@ function gradeCounts(grades: readonly (string | null)[]): GradeCountDto[] {
 /**
  * The result reports (phase-4-academic.md slice 33, contracts/slice-33.md §3, R287): figures read
  * from the stored rows only, so the section summary's pass count is the stored `passed` rows and
- * the subject report's averages are the mean of the stored `percent_bp`. `marks.view_all` only
- * (school-wide), so no row scope applies.
+ * the subject report's averages are the mean of the stored `percent_bp`. `marks.view_all` only,
+ * school-wide (anything narrower is 404), so no row scope applies.
  */
 @Injectable()
 export class ResultReportsService {
@@ -45,7 +54,8 @@ export class ResultReportsService {
   ) {}
 
   /** GET /result-reports/section-summary: one approved or published sheet version. */
-  async sectionSummary(query: SectionSummaryQueryDto): Promise<SectionSummaryReportDto> {
+  async sectionSummary(scope: Scope, query: SectionSummaryQueryDto): Promise<SectionSummaryReportDto> {
+    requireSchoolWide(scope);
     const schoolId = this.context.schoolId;
     const sheet = await this.reads.reportSheet(schoolId, BigInt(query.sheetId));
     if (sheet === null) throw notFound();
@@ -115,7 +125,8 @@ export class ResultReportsService {
   }
 
   /** GET /result-reports/subject: one class-subject in one term, per section (live rows). */
-  async subject(query: SubjectReportQueryDto): Promise<SubjectReportDto> {
+  async subject(scope: Scope, query: SubjectReportQueryDto): Promise<SubjectReportDto> {
+    requireSchoolWide(scope);
     const schoolId = this.context.schoolId;
     const termId = BigInt(query.termId);
     const classSubjectId = BigInt(query.classSubjectId);

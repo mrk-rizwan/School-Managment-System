@@ -5,8 +5,12 @@
 // student; a subject teacher who is a guardian of a student on the sheet (own-child flag). The
 // class teacher submits, the principal approves; every stored figure equals the shared pure
 // functions over what was entered; the attendance equals GET /students/:id/attendance; the
-// messages are counted per family and student login; then the final sheet composes the
-// published terms (R275). Corrections and withholding are slice 32.
+// messages are counted per family and student login. Slice 36 completes R296: the Annual term is
+// held too (an unexcused exam absence composed to 0, term remarks on the card, own-child flags for
+// the remark author, the submitter and the approver, a withheld card that still tells the family
+// and is released by a payment), the final composes both terms (R275), and a correction after
+// publication re-ranks the section and re-composes the final — every stored figure asserted
+// against the shared pure functions.
 import {
   ErrorCode,
   composeFinal,
@@ -18,10 +22,12 @@ import {
   type ResultFigures,
   type TestMarkInput,
 } from '@asms/shared';
-import type { ResultSheetDetailDto } from '../../src/modules/results/results.dto';
+import type { MarkCorrectionDto } from '../../src/modules/assessments/mark-corrections.dto';
+import type { MyChildResultsDto } from '../../src/modules/results/my-results.dto';
+import type { ResultDto, ResultSheetDetailDto } from '../../src/modules/results/results.dto';
 import { OutboxDispatcher } from '../../src/messaging/outbox-dispatcher';
 import { ResultNotifyJob } from '../../src/modules/results/result-notify.job';
-import { captureOutbox, studentLogin } from '../diary/support';
+import { captureOutbox, guardianLogin, studentLogin } from '../diary/support';
 import { errorOf, StaffHarness, type Caller } from '../staff/support';
 import { closeTestDb, createSchool, type TestSchool } from '../support/schools';
 import {
@@ -38,7 +44,7 @@ import {
   linkGuardian,
   type TestSection,
 } from '../support/students';
-import { api, createTest, enterMarks, entryKey, openSheet, sheetVerb } from './support';
+import { api, createTest, enterMarks, entryKey, openSheet, postKeyed, sheetVerb } from './support';
 
 const SUBJECTS = 12;
 /** Index of the subject with no tests (Drawing): exam only. */
@@ -417,15 +423,18 @@ describe('R296: the scripted section (slice 31)', () => {
 
     // ---------------------------------------------------------------------------- R270
     const onSheet = students.filter((s) => s.key !== 'S7');
-    const expected: (ResultFigures & {
-      key: string;
-      figures: ReturnType<typeof composeSubject>[];
-    })[] = onSheet.map((s) => {
+    type Expected = ResultFigures & { key: string; figures: ReturnType<typeof composeSubject>[] };
+    /** A term's figures by the pure functions, over the marks entered (R270). */
+    const expectedOf = (
+      termTests: readonly (typeof tests)[number][],
+      examFor: (i: number) => { id: bigint; maxMarks: number },
+      marks: ReadonlyMap<string, number | 'absent'>,
+    ): Expected[] => onSheet.map((s) => {
       const figures = subjects.map((_, i) => {
-        const testInputs: TestMarkInput[] = tests
-          .filter((t) => t.subject === i && entered.has(`${s.key}|${t.id}`))
+        const testInputs: TestMarkInput[] = termTests
+          .filter((t) => t.subject === i && marks.has(`${s.key}|${t.id}`))
           .map((t) => {
-            const v = entered.get(`${s.key}|${t.id}`)!;
+            const v = marks.get(`${s.key}|${t.id}`)!;
             return {
               obtained: v === 'absent' ? null : v,
               max: t.max,
@@ -434,8 +443,8 @@ describe('R296: the scripted section (slice 31)', () => {
               applicable: true,
             };
           });
-        const exam = examOf(sixA, i);
-        const v = entered.get(`${s.key}|${exam.id}`);
+        const exam = examFor(i);
+        const v = marks.get(`${s.key}|${exam.id}`);
         const examInput: ExamMarkInput | null =
           v === undefined
             ? null
@@ -460,55 +469,63 @@ describe('R296: the scripted section (slice 31)', () => {
       });
       return { key: s.key, ...result, figures };
     });
-    const ranks = positions(expected);
+    /** Every stored row of a term equals the pure functions' figures, positions included. */
+    const expectStored = (
+      rows: readonly { studentId: bigint; enrolmentId: bigint; totalObtained: number; totalMax: number; percentBp: number | null; grade: string | null; passed: boolean | null; failedSubjects: number; position: number | null; positionOf: number | null; subjects: { testBp: number | null; examBp: number | null; percentBp: number | null; obtained: number | null; max: number; status: string }[] }[],
+      want: readonly Expected[],
+    ) => {
+      const wantRanks = positions(want);
+      expect(rows).toHaveLength(want.length);
+      for (const [i, s] of onSheet.entries()) {
+        const row = rows.find((r) => r.studentId === s.id)!;
+        expect(row.enrolmentId).toBe(s.enrolmentA);
+        expect({
+          totalObtained: row.totalObtained,
+          totalMax: row.totalMax,
+          percentBp: row.percentBp,
+          grade: row.grade,
+          passed: row.passed,
+          failedSubjects: row.failedSubjects,
+          position: row.position,
+          positionOf: row.positionOf,
+        }).toEqual({
+          totalObtained: want[i]!.totalObtained,
+          totalMax: want[i]!.totalMax,
+          percentBp: want[i]!.percentBp,
+          grade: want[i]!.grade,
+          passed: want[i]!.passed,
+          failedSubjects: want[i]!.failedSubjects.length,
+          position: wantRanks[i]!.position,
+          positionOf: wantRanks[i]!.positionOf,
+        });
+        expect(
+          row.subjects.map((x) => ({
+            testBp: x.testBp,
+            examBp: x.examBp,
+            percentBp: x.percentBp,
+            obtained: x.obtained,
+            max: x.max,
+            status: x.status,
+          })),
+        ).toEqual(
+          want[i]!.figures.map((x) => ({
+            testBp: x.testBp,
+            examBp: x.examBp,
+            percentBp: x.percentBp,
+            obtained: x.obtained,
+            max: x.max,
+            status: x.status,
+          })),
+        );
+      }
+    };
+    const midExam = (i: number) => examOf(sixA, i);
+    const expected = expectedOf(tests, midExam, entered);
     const stored = await db.result.findMany({
       where: { schoolId: school.id, sheetId: BigInt(sheet.id) },
       include: { subjects: { orderBy: { sortOrder: 'asc' } } },
     });
-    expect(stored).toHaveLength(6);
-    for (const [i, s] of onSheet.entries()) {
-      const row = stored.find((r) => r.studentId === s.id)!;
-      const want = expected[i]!;
-      expect(row.enrolmentId).toBe(s.enrolmentA);
-      expect({
-        totalObtained: row.totalObtained,
-        totalMax: row.totalMax,
-        percentBp: row.percentBp,
-        grade: row.grade,
-        passed: row.passed,
-        failedSubjects: row.failedSubjects,
-        position: row.position,
-        positionOf: row.positionOf,
-      }).toEqual({
-        totalObtained: want.totalObtained,
-        totalMax: want.totalMax,
-        percentBp: want.percentBp,
-        grade: want.grade,
-        passed: want.passed,
-        failedSubjects: want.failedSubjects.length,
-        position: ranks[i]!.position,
-        positionOf: ranks[i]!.positionOf,
-      });
-      expect(
-        row.subjects.map((x) => ({
-          testBp: x.testBp,
-          examBp: x.examBp,
-          percentBp: x.percentBp,
-          obtained: x.obtained,
-          max: x.max,
-          status: x.status,
-        })),
-      ).toEqual(
-        want.figures.map((x) => ({
-          testBp: x.testBp,
-          examBp: x.examBp,
-          percentBp: x.percentBp,
-          obtained: x.obtained,
-          max: x.max,
-          status: x.status,
-        })),
-      );
-    }
+    expectStored(stored, expected);
     // The scenario's particulars, stated plainly.
     const of = (key: string) => stored.find((r) => r.studentId === st(key).id)!;
     expect(of('S2').subjects.find((x) => x.subjectName === 'Drawing')).toMatchObject({
@@ -569,53 +586,242 @@ describe('R296: the scripted section (slice 31)', () => {
     expect(messages.find((m) => m.guardianId === keypad.id)?.channelPlan).toContain('sms');
     expect(await job.run(school.id, { sheetId: BigInt(sheet.id) })).toBe(0);
 
-    // ---------------------------------------------------------------------------- R275
-    // The Annual term is not held for the class: the final composes the Mid-term alone, its weight
-    // renormalised (A6), with the year's attendance.
+    // ---------------------------------------------------------------------------- the Annual term
+    // Slice 36 (R296): the second term is held. Its exams (dated its last day, ahead of today) are
+    // entered for every 6-A student; S3 is absent from Subject B's exam and not excused: it counts
+    // 0, and with no Annual test the subject composes to 0 — assessed, printed "Ab".
+    expect(
+      (await h.send('post', api(`/terms/${annual!.id}/set-up-exams`), {}, principal.cookie)).status,
+    ).toBe(200);
+    const annualExams = await db.assessment.findMany({
+      where: { schoolId: school.id, termId: annual!.id, kind: 'exam', sectionId: sixA.id },
+    });
+    const annualExam = (i: number) =>
+      annualExams.find((e) => e.classSubjectId === subjects[i]!.classSubjectId)!;
+    const annualEntered = new Map<string, number | 'absent'>();
+    // An exams clerk (office, granted marks.enter: school-wide) enters them, Subject A aside: the
+    // principal has used most of the minute's marks writes (60 a user).
+    const clerk = await h.caller(school, 'office_staff', 'Exams Clerk');
+    await db.userCapabilityGrant.create({
+      data: {
+        schoolId: school.id,
+        userId: clerk.userId,
+        capabilityKey: 'marks.enter',
+        effect: 'grant',
+        grantedBy: principal.userId,
+        reason: 'Annual exam entry',
+      },
+    });
+    for (let i = 0; i < SUBJECTS; i++) {
+      const exam = annualExam(i);
+      const rows: [bigint, number | 'absent'][] = [];
+      for (const [k, s] of onSheet.entries()) {
+        const value: number | 'absent' =
+          s.key === 'S3' && i === 1 ? 'absent' : markFor(k + 3, 200 + i, exam.maxMarks);
+        annualEntered.set(`${s.key}|${exam.id}`, value);
+        rows.push([s.enrolmentA!, value]);
+      }
+      await enterMarks(h, exam.id, i === 0 ? parentTeacher : clerk, rows);
+    }
+
+    // The family of S2 owes a charge, and the school withholds cards until dues are cleared (R282):
+    // the result message still goes out (rule 28); a payment releases the card.
+    await db.$executeRaw`SELECT asms_seed_school_finance(${school.id}::bigint)`;
+    const office = await h.caller(school, 'office_staff', 'Omar Office');
+    const tuition = await db.feeHead.findFirstOrThrow({
+      where: { schoolId: school.id, category: 'tuition' },
+    });
+    expect(
+      (
+        await postKeyed(
+          h,
+          api('/charges'),
+          {
+            enrolmentId: String(st('S2').enrolmentA),
+            feeHeadId: String(tuition.id),
+            amount: 2500,
+            dueOn: isoDay(0),
+            description: 'Tuition',
+          },
+          office.cookie,
+        )
+      ).status,
+    ).toBe(201);
     expect(
       (
         await h.send(
-          'post',
-          api(`/terms/${annual!.id}/skip-class`),
-          { classId: String(klass.id), reason: 'One term this year' },
+          'patch',
+          api(`/academic-years/${year.id}/result-settings`),
+          { withholdCardForDues: true },
           principal.cookie,
         )
       ).status,
     ).toBe(200);
+    await db.studentGuardian.updateMany({
+      where: { schoolId: school.id, studentId: s2.id, guardianId: whatsapp.id },
+      data: { canLogin: true },
+    });
+    const s2Parent = await guardianLogin(db, school, whatsapp);
+
+    // Own-child flags (R276): the class teacher and the principal are guardians of S4 as well.
+    for (const [user, name] of [
+      [classTeacher, 'S4 Mother'],
+      [principal, 'S4 Uncle'],
+    ] as const) {
+      const guardian = await createGuardian(db, school, { fullName: name });
+      await linkGuardian(db, school, s4, guardian, {
+        isPrimaryContact: false,
+        isFeePayer: false,
+        relationship: 'other',
+      });
+      await db.user.updateMany({
+        where: { schoolId: school.id, id: user.userId },
+        data: { guardianId: guardian.id },
+      });
+    }
+
+    const { body: annualSheet } = await openSheet(h, classTeacher, sixA.id, annual!.id);
+    const remarks: Record<string, string> = {
+      S1: 'A steady, careful worker.',
+      S4: 'Works hard in every subject.',
+    };
+    expect(
+      (
+        await h.send(
+          'patch',
+          api(`/result-sheets/${annualSheet.id}`),
+          {
+            remarks: Object.entries(remarks).map(([key, remark]) => ({
+              enrolmentId: String(st(key).enrolmentA),
+              remark,
+            })),
+          },
+          classTeacher.cookie,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await sheetVerb(h, annualSheet.id, 'submit', classTeacher)).status).toBe(200);
+    const annualApproved = await sheetVerb(h, annualSheet.id, 'approve', principal);
+    expect(annualApproved.status).toBe(200);
+    expect((annualApproved.body as ResultSheetDetailDto).status).toBe('published');
+    const annualStored = await db.result.findMany({
+      where: { schoolId: school.id, sheetId: BigInt(annualSheet.id) },
+      include: { subjects: { orderBy: { sortOrder: 'asc' } } },
+    });
+    expectStored(annualStored, expectedOf([], annualExam, annualEntered));
+    const annualOf = (key: string) => annualStored.find((r) => r.studentId === st(key).id)!;
+    expect(annualOf('S3').subjects.find((x) => x.subjectName === 'Subject B')).toMatchObject({
+      status: 'assessed',
+      percentBp: 0,
+      obtained: 0,
+      examAbsent: true,
+      examExcused: false,
+    });
+    // The remark is on the card; S3's absence prints "Ab".
+    const card = (await h.get(api(`/results/${annualOf('S1').id}`), principal.cookie))
+      .body as ResultDto;
+    expect(card.remark).toBe(remarks.S1);
+    const s3Print = await h.get(api(`/results/${annualOf('S3').id}/print`), principal.cookie);
+    expect(s3Print.text).toContain('Subject B <span class="marker">Ab</span>');
+    // R276: S4's row names the mark author, the remark author, the submitter and the approver.
+    expect(annualOf('S4').ownChildFlags).toEqual([
+      { userId: String(parentTeacher.userId), role: 'mark_author' },
+      { userId: String(classTeacher.userId), role: 'remark_author' },
+      { userId: String(classTeacher.userId), role: 'submitter' },
+      { userId: String(principal.userId), role: 'approver' },
+    ]);
+    expect(
+      onSheet
+        .filter((s) => s.key !== 'S4')
+        .every((s) => (annualOf(s.key).ownChildFlags as unknown[]).length === 0),
+    ).toBe(true);
+
+    // R273 with R282: the withheld family is still told; their card waits for the payment.
+    expect(await job.run(school.id, { sheetId: BigInt(annualSheet.id) })).toBe(4);
+    expect(
+      await db.message.count({
+        where: { schoolId: school.id, type: 'result_published', guardianId: whatsapp.id },
+      }),
+    ).toBe(2);
+    const s2Results = () => h.get(api(`/me/children/${s2.id}/results`), s2Parent.cookie);
+    const s2Card = () =>
+      h.get(api(`/me/children/${s2.id}/results/${annualOf('S2').id}`), s2Parent.cookie);
+    expect((await s2Results()).body as MyChildResultsDto).toMatchObject({
+      withheld: true,
+      outstanding: 2500,
+    });
+    expect((await s2Card()).body).toMatchObject({ withheld: true, result: null });
+    expect(
+      (
+        await postKeyed(
+          h,
+          api('/payments'),
+          {
+            academicYearId: String(year.id),
+            payerGuardianId: String(whatsapp.id),
+            studentIds: [String(s2.id)],
+            amount: 2500,
+            method: 'cash',
+            receivedOn: isoDay(0),
+          },
+          office.cookie,
+        )
+      ).status,
+    ).toBe(201);
+    expect((await s2Results()).body).toMatchObject({ withheld: false });
+    expect(((await s2Card()).body as { result: ResultDto | null }).result?.id).toBe(
+      String(annualOf('S2').id),
+    );
+
+    // ---------------------------------------------------------------------------- R275
+    // Both terms held: the final composes them by their weights (composeFinal).
     const finalOpen = await openSheet(h, principal, sixA.id, null);
     expect(finalOpen.status).toBe(201);
     const final = await sheetVerb(h, finalOpen.body.id, 'approve', principal);
     expect(final.status).toBe(200);
-    const finals = await db.result.findMany({
-      where: { schoolId: school.id, sheetId: BigInt(finalOpen.body.id) },
-    });
-    for (const s of onSheet) {
-      const term = stored.find((r) => r.studentId === s.id)!;
-      const want = composeFinal({
-        terms: [
-          {
-            weight: mid!.weight,
+    /** The live final rows equal composeFinal over each student's live term rows. */
+    const expectFinal = async () => {
+      const live = await db.result.findMany({
+        where: { schoolId: school.id, academicYearId: year.id, supersededAt: null },
+        include: { subjects: true },
+      });
+      const finals = live.filter((r) => r.termId === null);
+      expect(finals).toHaveLength(onSheet.length);
+      const wants = onSheet.map((s) => {
+        const termRow = (termId: bigint) =>
+          live.find((r) => r.studentId === s.id && r.termId === termId)!;
+        return composeFinal({
+          terms: [mid!, annual!].map((t) => ({
+            weight: t.weight,
             held: true,
-            subjects: term.subjects.map((x) => ({
+            subjects: termRow(t.id).subjects.map((x) => ({
               key: String(x.classSubjectId),
               percentBp: x.percentBp,
               max: x.max,
             })),
-          },
-          { weight: annual!.weight, held: false, subjects: [] },
-        ],
-        bands: DEFAULT_GRADE_BANDS,
-        passRule: 'all_subjects',
-        passPercent: 40,
+          })),
+          bands: DEFAULT_GRADE_BANDS,
+          passRule: 'all_subjects',
+          passPercent: 40,
+        });
       });
-      expect(finals.find((r) => r.studentId === s.id)).toMatchObject({
-        percentBp: want.percentBp,
-        totalObtained: want.totalObtained,
-        grade: want.grade,
-        passed: want.passed,
-        termId: null,
-      });
-    }
+      const wantRanks = positions(wants);
+      for (const [i, s] of onSheet.entries()) {
+        expect(finals.find((r) => r.studentId === s.id)).toMatchObject({
+          percentBp: wants[i]!.percentBp,
+          totalObtained: wants[i]!.totalObtained,
+          totalMax: wants[i]!.totalMax,
+          grade: wants[i]!.grade,
+          passed: wants[i]!.passed,
+          failedSubjects: wants[i]!.failedSubjects.length,
+          position: wantRanks[i]!.position,
+          positionOf: wantRanks[i]!.positionOf,
+          termId: null,
+        });
+      }
+      return finals;
+    };
+    const finalsBefore = await expectFinal();
     const finalSheet = await db.resultSheet.findFirst({
       where: { schoolId: school.id, id: BigInt(finalOpen.body.id) },
     });
@@ -626,7 +832,59 @@ describe('R296: the scripted section (slice 31)', () => {
     });
     expect(finalSheet?.termWeights).toEqual([
       { termId: String(mid!.id), weight: mid!.weight, held: true },
-      { termId: String(annual!.id), weight: annual!.weight, held: false },
+      { termId: String(annual!.id), weight: annual!.weight, held: true },
     ]);
+
+    // ---------------------------------------------------------------------------- R280, R296
+    // A correction after publication: Subject A's Mid-term exam (asked for by its teacher) of the
+    // first student whose new mark moves a position. The principal approves: the Mid-term's
+    // version 2 is written, re-ranked, and the published final re-composed in the same step.
+    const before = positions(expected).map((p) => p.position);
+    const examA = midExam(0);
+    let chosen: { key: string; value: number; marks: Map<string, number | 'absent'> } | null =
+      null;
+    for (const s of onSheet.filter((x) => x.key !== 'S4')) {
+      for (const value of [examA.maxMarks, 0]) {
+        if (entered.get(`${s.key}|${examA.id}`) === value) continue;
+        const marks = new Map(entered).set(`${s.key}|${examA.id}`, value);
+        const after = positions(expectedOf(tests, midExam, marks)).map((p) => p.position);
+        if (after.some((p, k) => p !== before[k])) {
+          chosen = { key: s.key, value, marks };
+          break;
+        }
+      }
+      if (chosen) break;
+    }
+    if (!chosen) throw new Error('no single correction moves a position');
+    const examMark = await db.mark.findFirstOrThrow({
+      where: {
+        schoolId: school.id,
+        assessmentId: examA.id,
+        studentId: st(chosen.key).id,
+        status: 'live',
+      },
+    });
+    const asked = await postKeyed(
+      h,
+      api(`/marks/${examMark.id}/correct`),
+      { obtained: chosen.value, reason: 'Paper re-totalled' },
+      parentTeacher.cookie,
+    );
+    expect(asked.status).toBe(201);
+    const decided = await h.send(
+      'post',
+      api(`/mark-corrections/${(asked.body as MarkCorrectionDto).id}/approve`),
+      {},
+      principal.cookie,
+    );
+    expect(decided.status).toBe(200);
+    const midLive = await db.result.findMany({
+      where: { schoolId: school.id, termId: mid!.id, supersededAt: null },
+      include: { subjects: { orderBy: { sortOrder: 'asc' } } },
+    });
+    expect(midLive.every((r) => r.sheetId !== BigInt(sheet.id))).toBe(true);
+    expectStored(midLive, expectedOf(tests, midExam, chosen.marks));
+    const finalsAfter = await expectFinal();
+    expect(finalsAfter.every((r) => finalsBefore.every((b) => b.id !== r.id))).toBe(true);
   });
 });

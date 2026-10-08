@@ -202,3 +202,13 @@ whole `certificates.body` column and every `certificate.*` audit row). Control 4
   (wave N review; replaces the build's per-row void).
 - The student page's panel is its own Certificates tab rather than on the Fees tab, so a holder
   of `certificate.issue` without `fee.statement.view` reaches it (wave N review).
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- The certificate body's marks-table subjects carry `examAbsent` and `examExcused` (snapshotted at
+  issue; a body issued before slice 36 reads both as false), and `CertificateResultSubjectDto` has
+  both. The print shows `Ab` / `Ex` after the subject and the legend line, as the report card does
+  (`slice-32.md`, Phase 4 close).
+- R16: the identity scan covers `certificates` (`body::text`, `title`, `reason`, `void_reason`),
+  `assessments` (`name`, `void_reason`), `academic_terms.name` and `term_skips.reason`
+  (`test/guardrails/identity-scan.e2e-spec.ts`, security L1).

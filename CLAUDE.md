@@ -158,18 +158,21 @@ Phase 4 (previously open decisions 14, 15, 21 and client questions 4, 10, 11, 17
     again per student, which reissues the report card and notifies the guardian. Marks for a
     teacher's own child are allowed but flagged on the sheet; the approver is never the submitter
     (*main-thread default, open to correction:* a sole principal may, recorded `self_approved`, as
-    rule 21 of the Phase 3 plan allows for money).
+    rule 21 of the Phase 3 plan allows for money; built in slice 31 for sheets and corrections).
 28. **Report card.** One standard layout: school, student, per-subject marks and grade, total,
-    percentage, overall grade, position in class (*default* on; ties share the position), the
+    percentage, overall grade, position in the section, the approval unit (*default* on; standard competition ranking, ties
+    share the position), the
     term's attendance percentage from the Phase 2 attendance record, the class teacher's term
     remark, signature lines. Rendered natively in the app, printed from the web (scriptless HTML,
     no PDF), and printed for keypad-phone families. A school may **withhold the card until dues
     are cleared** (*default* off); the result message still goes out, and the principal may
-    override through the same dues endpoint certificates use.
+    override through the same dues endpoint certificates use. The guardian then sees percentage,
+    grade and the amount owed; the student's own login sees no figure and no mention of fees
+    ("please ask your parent or the school office").
 29. **Certificates.** Types: leaving, character, academic (marks transcript), completion, other
     (free title). One sequential number per school per type, never reset; issued by
     `certificate.issue` holders (office staff by default); **only the leaving certificate is
-    dues-gated** (rule 20) and it needs the student already withdrawn or transferred; a reissue
+    dues-gated** (rule 20) and it needs the student already withdrawn, transferred or completed (alumni); a reissue
     keeps the number, is a new row with a reason, and prints "Duplicate"; the authorising officer
     printed is the issuer, with the principal's name from school settings. Issued from the stored
     record years after the student left.
@@ -180,7 +183,9 @@ Phase 4 (previously open decisions 14, 15, 21 and client questions 4, 10, 11, 17
     next year), completed (the final class → alumni), not continuing (withdrawn). The section
     defaults to the same name in the next class. **Unpaid fees never block promotion**: arrears
     stay in their year, reminders continue and the sheet flags them; the leaving certificate stays
-    blocked by rule 20. An academic year closes only when every section's promotion sheet is done.
+    blocked by rule 20. The principal may cancel an open promotion sheet with a reason, and the
+    section may then open another. An academic year closes only when every section's promotion
+    sheet is applied; a section with no enrolment in force on the year's last day needs none.
 31. **Scope held back from Phase 4:** the period timetable (which teacher, period and room; it
     tightens period attendance, not results), events and PTM, and the import of past results all
     go to Phase 5. Phase 4 adds only the list of subjects each class takes, per year.
@@ -228,10 +233,17 @@ signature but never the query itself:
    `QueueTenancy.runAsSchool` (exception 3). Since Phase 2 lint also confines `bullmq` to
    `src/jobs/**` and `src/messaging/outbox-dispatcher.ts`, the messaging drivers to
    `src/messaging/**` (everything sends through `NotificationService`), and the announcement and
-   inbox repositories to their owning modules. The `school_id` of a row can never change:
+   inbox repositories to their owning modules. Since Phase 4 each academic repository is confined
+   to its module (academics, assessments, results, certificates, promotion); results read marks
+   only through the read-only `MarkReadsRepository`; certificates and results read dues only
+   through `FinanceReportsService.clearance`; promotion writes enrolments and statuses only
+   through `EnrolmentsService` and `StudentsService`. The `school_id` of a row can never change:
    the query guard refuses it and a database trigger rejects it.
 7. **Row scope is a required, branded argument** on every student-linked repository method. Only
-   the permission service can construct it; an empty list means no rows, never no filter.
+   the permission service can construct it; an empty list means no rows, never no filter. Since
+   Phase 4 a second brand, `MarksScope` (separate read and write modes, carrying the subject), is
+   minted only in `src/tenancy/scope.mint.ts`; a read scope cannot be passed where a write scope
+   is required, and a `marks.view_all` grant never widens what a teacher may write.
 8. **A schema guard test reads the migrated database** and fails on a table without `school_id`,
    a foreign key between tenant tables that omits it, a missing index, or a cascade — outside two
    named allowlists in `test/guardrails/schema-checks.ts`: the non-tenant tables, and the global

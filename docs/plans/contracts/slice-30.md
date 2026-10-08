@@ -195,3 +195,31 @@ Nav "Marks" for `marks.enter | marks.view_all`. Playwright `e2e/marks.spec.ts`.
 - `TERM_IN_USE` for a submitted sheet; `CLASS_SUBJECT_IN_USE` for published results.
 - `MarkReadsRepository` (read-only) for the results module; corrections (`pending` rows) in
   slice 32; excusal after publication is a correction.
+
+## Phase 4 close (slice 36, 2026-10-08)
+
+- **Set-up date.** `POST /terms/:id/set-up-exams` takes an optional `heldOn` (YYYY-MM-DD) inside
+  the term; default the term's last day. Outside: 422 `VALIDATION_FAILED`, field `heldOn`, code
+  `ASSESSMENT_OUTSIDE_TERM`. Exams that already exist keep their date. The set-up's own write scope
+  is minted for that date.
+- **The marks scope of an exam is the day of entry.** For an **exam**, every marks read and write
+  (grid, `GET /assessments/:id`, `canEnterMarks`, submit-marks, excusal, correction request and
+  decision, `GET /mark-corrections/:id`) mints its scope for **today (school time) when today lies
+  inside the exam's term**, else for `held_on` (`marksDateOf`, `assessments.shared.ts`): exam marks
+  are entered after the exam by whoever teaches then, so a cover or substitute whose dates hold the
+  day of entry reaches an exam dated the term's end. **A test stays on its `held_on`**, and an
+  assessment's edit and void stay on `held_on` whatever the kind. A `cover` row still writes no
+  subject the cover does not teach (R263 unchanged): the substitute needs a dated subject
+  assignment. Test: `test/assessments/assessments.e2e-spec.ts` ("slice 36: set-up takes a heldOn…").
+- **submit-marks writes in two statements.** Every entry is decided in memory first (resend,
+  `changed_elsewhere`, `unchanged`, the lock), then one `updateMany` supersedes the replaced live
+  rows and one `createManyAndReturn` inserts the new ones (`MarkRepository.supersedeMany`,
+  `insertLiveMany`); the per-row outcomes and `marks_live_key` are unchanged. Under the
+  assessment's row lock the live rows cannot move; should the supersede count differ, the whole
+  request is `409 CONCURRENT_UPDATE` (before, that row alone answered `changed_elsewhere`; it cannot
+  happen under the lock). Budget: 60 rows within 500 ms (`test/assessments/submit-perf.e2e-spec.ts`,
+  warmed once; measured 190 ms locally).
+- The term's assessments and their live marks are read in two statements (no nested relation),
+  so the planner uses the marks indexes (`MarkReadsRepository.termAssessmentsWithMarks`).
+- `TEST_TYPE_LABELS` and `markDraftProblem(text, max)` ("Whole number" / "At most N") moved to
+  `packages/shared` `academics`; the web grid and the phone use them.

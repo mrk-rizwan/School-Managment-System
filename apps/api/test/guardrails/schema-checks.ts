@@ -3106,6 +3106,7 @@ function WAVE_O_OBJECTS(): ExpectedObject[] {
     { kind: 'index', table: 'results', name: 'results_live_key', definition: "ON public.results USING btree (school_id, enrolment_id, COALESCE(term_id, (0)::bigint)) WHERE (superseded_at IS NULL)" },
     { kind: 'index', table: 'results', name: 'results_sheet_enrolment_key', definition: "ON public.results USING btree (school_id, sheet_id, enrolment_id) WHERE (superseded_at IS NULL)" },
     { kind: 'index', table: 'results', name: 'results_term_live_idx', definition: "ON public.results USING btree (school_id, term_id) WHERE (superseded_at IS NULL)" },
+    { kind: 'index', table: 'results', name: 'results_unnotified_idx', definition: "ON public.results USING btree (school_id, sheet_id) WHERE ((notified_at IS NULL) AND (superseded_at IS NULL))" },
     { kind: 'trigger', table: 'academic_terms', name: 'academic_terms_results_locked', definition: "BEFORE INSERT ON public.academic_terms FOR EACH ROW EXECUTE FUNCTION asms_academic_term_results_locked()" },
     { kind: 'trigger', table: 'assessments', name: 'assessments_locked_at_guard', definition: "BEFORE UPDATE OF locked_at ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_assessment_locked_at_guard()" },
     { kind: 'trigger', table: 'assessments', name: 'assessments_sheet_guard', definition: "BEFORE INSERT OR UPDATE OF voided_at ON public.assessments FOR EACH ROW EXECUTE FUNCTION asms_assessment_sheet_guard()" },
@@ -3174,12 +3175,17 @@ function WAVE_P_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'class_id', 'section_id', 'target_year_id', 'opened_by', 'opened_at', 'created_at')" },
     { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_school_id_immutable', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
     { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_status_transition', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_status_transition('open:applied', 'open:cancelled')" },
-    { kind: 'trigger', table: 'results', name: 'results_promotion_revised', definition: "AFTER UPDATE OF superseded_at ON public.results FOR EACH ROW WHEN (((old.superseded_at IS NULL) AND (new.superseded_at IS NOT NULL))) EXECUTE FUNCTION asms_promotion_result_revised()" },
     { kind: 'index', table: 'promotion_sheets', name: 'promotion_sheets_open_key', definition: "ON public.promotion_sheets USING btree (school_id, section_id) WHERE (status = 'open'::promotion_sheet_status)" },
     { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_applied_frozen'" },
     { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_sheet_open'" },
     { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_enrolment_of_section'" },
     { kind: 'function', name: 'asms_promotion_result_revised', definition: 'd.applied_at IS NOT NULL AND NOT d.revised_after_apply' },
+    // Phase 4 close (20261008220000_promotion_revised_only_changed): an applied row is flagged
+    // only by a correction's revised replacing row, or by its sheet's return.
+    { kind: 'trigger', table: 'results', name: 'results_promotion_revised', definition: "AFTER INSERT ON public.results FOR EACH ROW WHEN (((new.supersedes_id IS NOT NULL) AND new.revised)) EXECUTE FUNCTION asms_promotion_result_revised()" },
+    { kind: 'trigger', table: 'results', name: 'results_promotion_returned', definition: "AFTER UPDATE OF superseded_at ON public.results FOR EACH ROW WHEN (((old.superseded_at IS NULL) AND (new.superseded_at IS NOT NULL))) EXECUTE FUNCTION asms_promotion_result_revised()" },
+    { kind: 'function', name: 'asms_promotion_result_revised', definition: 'v_result_id := NEW.supersedes_id;' },
+    { kind: 'function', name: 'asms_promotion_result_revised', definition: "s.status = 'returned'" },
     ...noDeleteTriggers('promotion_sheets', 'promotion_decisions'),
     // Wave P review fixes (20261008190000_wave_p_review_fixes): R281 in the database.
     { kind: 'trigger', table: 'marks', name: 'marks_not_self', definition: "BEFORE UPDATE OF decided_by ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_mark_not_self()" },

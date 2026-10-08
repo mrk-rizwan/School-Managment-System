@@ -1,5 +1,6 @@
 'use client';
 
+import { formatPercentLabel } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
@@ -19,7 +20,6 @@ import { resultsApi } from '@/lib/api/school-results-contract';
 import { cn } from '@/lib/utils';
 import { useClasses } from '../../academics/_lib/options';
 import { ReportStates, useDefaultYearId, YearFilter } from '../../reports/_lib/reports-ui';
-import { percentText } from '../../my-results/_lib/my-results-ui';
 
 // contracts/slice-33.md §3, §5: Results → Reports, read with marks.view_all from the stored rows
 // (R287): a published section sheet's summary, and one subject of a class in a term across its
@@ -195,7 +195,7 @@ function SectionSummary({ report }: { report: SectionSummaryReportDto }) {
         <Tile label="Students" value={String(report.students)} />
         <Tile label="Passed" value={String(report.passed)} testId="resultReports.passed" />
         <Tile label="Not passed" value={String(report.failed)} />
-        <Tile label="Average" value={percentText(report.averageBp)} />
+        <Tile label="Average" value={formatPercentLabel(report.averageBp)} />
       </div>
       <Card>
         <CardHeader>
@@ -226,7 +226,7 @@ function SectionSummary({ report }: { report: SectionSummaryReportDto }) {
                     <TableCell className="px-3 text-right tabular-nums">{s.assessed}</TableCell>
                     <TableCell className="px-3 text-right tabular-nums">{s.passed}</TableCell>
                     <TableCell className="px-3 text-right tabular-nums">{s.failed}</TableCell>
-                    <TableCell className="px-3 text-right tabular-nums">{percentText(s.averageBp)}</TableCell>
+                    <TableCell className="px-3 text-right tabular-nums">{formatPercentLabel(s.averageBp)}</TableCell>
                     <TableCell className="px-3 text-muted-foreground">
                       {s.grades.map((g) => `${g.grade} ${g.count}`).join(' · ') || '—'}
                     </TableCell>
@@ -327,7 +327,7 @@ function SubjectReport({ report }: { report: SubjectReportDto }) {
     );
   }
   const names = (list: SubjectReportDto['sections'][number]['top']) =>
-    list.map((s) => `${s.fullName} (${percentText(s.percentBp)})`).join(', ') || '—';
+    list.map((s) => `${s.fullName} (${formatPercentLabel(s.percentBp)})`).join(', ') || '—';
   return (
     <Card data-testid="resultReports.subject">
       <CardHeader>
@@ -335,7 +335,7 @@ function SubjectReport({ report }: { report: SubjectReportDto }) {
           {report.subjectName} · {report.className} · {report.termName}
         </CardTitle>
         <CardDescription>
-          {report.assessed} assessed · average {percentText(report.averageBp)}
+          {report.assessed} assessed · average {formatPercentLabel(report.averageBp)}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -358,7 +358,7 @@ function SubjectReport({ report }: { report: SubjectReportDto }) {
                     {!s.published && <span className="text-muted-foreground"> · not yet published</span>}
                   </TableCell>
                   <TableCell className="px-3 text-right tabular-nums">{s.assessed}</TableCell>
-                  <TableCell className="px-3 text-right tabular-nums">{percentText(s.averageBp)}</TableCell>
+                  <TableCell className="px-3 text-right tabular-nums">{formatPercentLabel(s.averageBp)}</TableCell>
                   <TableCell className="px-3">{names(s.top)}</TableCell>
                   <TableCell className="px-3">{names(s.bottom)}</TableCell>
                 </TableRow>

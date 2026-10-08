@@ -17,6 +17,7 @@ import {
   sectionTermKey,
   type AssessmentRecord,
   type NewExam,
+  type ScopeDates,
 } from '../../repositories/assessment.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ClassSubjectRepository } from '../../repositories/class-subject.repository';
@@ -28,6 +29,7 @@ import type { MarksScope } from '../../tenancy/scope';
 import {
   classArchived,
   fromDateString,
+  requireOpenYear,
   toDateString,
   yearClosed,
   type Changes,
@@ -47,6 +49,7 @@ import {
   assessmentLocked,
   assessmentOutsideTerm,
   assessmentVoided,
+  marksDateOf,
   resultSheetNotDraft,
   subjectNotAssigned,
   toAssessmentDto,
@@ -126,7 +129,7 @@ export class AssessmentsService {
   /** The assessment with its view for the caller, read under the scope of its held_on; else 404. */
   async get(session: SchoolSessionContext, id: bigint): Promise<AssessmentDto> {
     const schoolId = this.context.schoolId;
-    const on = await this.assessments.scopeDateOf(schoolId, id);
+    const on = await this.marksDate(schoolId, await this.assessments.scopeDatesOf(schoolId, id));
     const scope = on && (await this.permissions.marksReadScopeOf(session, on));
     const row = scope ? await this.assessments.find(schoolId, scope, id) : null;
     if (!row || !scope) throw notFound();
@@ -135,9 +138,14 @@ export class AssessmentsService {
     return dto;
   }
 
+  /** The date a marks scope of the assessment is minted for (marksDateOf); null when none. */
+  async marksDate(schoolId: SchoolId, dates: ScopeDates | null): Promise<Date | null> {
+    return dates && marksDateOf(dates, await this.clock.today(schoolId));
+  }
+
   /**
    * The DTOs of `rows` (read under `readScope`): the live-mark counts in one statement, and
-   * whether the caller writes each, from the write scope of its held_on (one mint per date).
+   * whether the caller writes each, from the write scope of its marks date (one mint per date).
    */
   async views(
     session: SchoolSessionContext,
@@ -157,11 +165,13 @@ export class AssessmentsService {
       scope: Awaited<ReturnType<PermissionsService['marksWriteScopeOf']>>;
     }[] = [];
     const dtos: AssessmentDto[] = [];
+    const today = await this.clock.today(schoolId);
     for (const row of rows) {
-      const on = row.heldOn.getTime();
+      const date = marksDateOf(row, today);
+      const on = date.getTime();
       let minted = writeScopes.find((entry) => entry.on === on);
       if (!minted) {
-        minted = { on, scope: await this.permissions.marksWriteScopeOf(session, row.heldOn) };
+        minted = { on, scope: await this.permissions.marksWriteScopeOf(session, date) };
         writeScopes.push(minted);
       }
       const write = minted.scope;
@@ -373,7 +383,8 @@ export class AssessmentsService {
     schoolId: SchoolId,
     id: bigint,
   ): Promise<{ scope: MarksScope<'write'>; row: AssessmentRecord }> {
-    const on = await this.assessments.scopeDateOf(schoolId, id);
+    // An edit or void is not a marks entry: scoped to held_on, whatever the kind.
+    const on = (await this.assessments.scopeDatesOf(schoolId, id))?.heldOn;
     const scope = on && (await this.permissions.marksWriteScopeOf(session, on));
     if (!scope) throw notFound();
     const row = await readLocked(
@@ -385,9 +396,7 @@ export class AssessmentsService {
       throw notAuthor();
     if (row.voidedAt !== null) throw assessmentVoided(row.id);
     if (row.lockedAt !== null || (await this.sheetLocks(schoolId, row))) throw assessmentLocked(row.id);
-    const year = await this.years.findById(schoolId, row.academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
+    await requireOpenYear(this.years, schoolId, row.academicYearId);
     return { scope, row };
   }
 
@@ -404,8 +413,8 @@ export class AssessmentsService {
   /**
    * §5 (slice 29 moved here, R257): one exam per live class-subject per live section of each
    * class, for a term; idempotent (an existing live exam is counted, never duplicated); a class the
-   * term is not held for is skipped. The exam is dated the term's last day, max marks from the
-   * class-subject; both can be edited until a mark exists.
+   * term is not held for is skipped. The exam is dated `heldOn` (inside the term; default the
+   * term's last day), max marks from the class-subject; both can be edited until a mark exists.
    */
   @Transactional()
   async setUpExams(
@@ -416,10 +425,12 @@ export class AssessmentsService {
     const { schoolId, userId } = this.context.actor();
     const term = await this.terms.findById(schoolId, termId);
     if (!term) throw notFound();
-    const year = await this.years.findById(schoolId, term.academicYearId);
-    if (!year) throw notFound();
-    if (year.status === 'closed') throw yearClosed();
-    const scope = await this.permissions.marksWriteScopeOf(session, term.endsOn);
+    const year = await requireOpenYear(this.years, schoolId, term.academicYearId);
+    const heldOn = dto.heldOn === undefined ? term.endsOn : fromDateString(dto.heldOn);
+    if (heldOn < term.startsOn || heldOn > term.endsOn) {
+      throw fieldRefused('heldOn', ErrorCode.ASSESSMENT_OUTSIDE_TERM, 'heldOn must lie inside the term');
+    }
+    const scope = await this.permissions.marksWriteScopeOf(session, heldOn);
     if (scope === null) throw notFound();
 
     const { rows: yearClasses } = await this.classes.list(schoolId, {
@@ -479,7 +490,7 @@ export class AssessmentsService {
               subjectId: subject.subjectId,
               name: `${term.name} exam`.slice(0, 80),
               maxMarks: subject.examMaxMarks,
-              heldOn: term.endsOn,
+              heldOn,
               createdBy: userId,
             });
           }

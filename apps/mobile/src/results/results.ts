@@ -1,4 +1,4 @@
-import { ApiError, ErrorCode, formatPercentBp } from '@asms/shared';
+import { ApiError, ErrorCode, formatPercentLabel, resultTermLabel } from '@asms/shared';
 import { api, isNetworkError, unwrap } from '../api/client';
 import type {
   ResultPreviewRowDto,
@@ -34,15 +34,11 @@ export const STATUS_WORDS: Record<ResultSheetDto['status'], string> = {
 
 export const sheetTitle = (
   s: Pick<ResultSheetDto, 'className' | 'sectionName' | 'termName' | 'isFinal'>,
-): string => `${s.className} ${s.sectionName} · ${s.isFinal ? 'Final result' : (s.termName ?? '')}`;
-
-/** 7450 → "74.50 %"; null → "—". */
-export const percent = (bp: number | null): string =>
-  bp === null ? '—' : `${formatPercentBp(bp)} %`;
+): string => `${s.className} ${s.sectionName} · ${resultTermLabel(s)}`;
 
 /** One row's line: "74.50 % · B · 1 / 2", "Not assessed", with a gap or fail note. */
 export function rowLine(r: ResultPreviewRowDto): string {
-  const parts = [percent(r.percentBp)];
+  const parts = [formatPercentLabel(r.percentBp)];
   if (r.grade) parts.push(r.grade);
   if (r.position !== null) parts.push(`${r.position} / ${r.positionOf}`);
   if (r.passed === false) parts.push('fail');

@@ -698,6 +698,82 @@ describe('assessments and marks (e2e)', () => {
     ).toEqual({ created: 1, existing: 3, skipped: 0 });
   });
 
+  it('slice 36: set-up takes a heldOn inside the term; exam marks are scoped to the day of entry while the term runs, test marks to held_on', async () => {
+    const r = await markRoom(h);
+    const [midTerm, annual] = await db.academicTerm.findMany({
+      where: { schoolId: r.school.id, academicYearId: r.year.id },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const setUp = (termId: bigint, body: object = {}) =>
+      h.send('post', api(`/terms/${termId}/set-up-exams`), body, r.principal.cookie);
+    // A date outside the term is refused, nothing created.
+    const outside = await setUp(midTerm!.id, { heldOn: isoDay(5) });
+    expect(outside.status).toBe(422);
+    expect(errorOf(outside).details).toMatchObject({
+      fields: [{ path: 'heldOn', code: ErrorCode.ASSESSMENT_OUTSIDE_TERM }],
+    });
+    // The Mid-term runs three more weeks: its exams are dated its last day, after today.
+    await db.academicTerm.updateMany({
+      where: { schoolId: r.school.id, id: annual!.id },
+      data: { startsOn: day(isoDay(22)) },
+    });
+    await db.academicTerm.updateMany({
+      where: { schoolId: r.school.id, id: midTerm!.id },
+      data: { endsOn: day(isoDay(21)) },
+    });
+    expect((await setUp(midTerm!.id)).status).toBe(200);
+    const mathsExam = await db.assessment.findFirstOrThrow({
+      where: { schoolId: r.school.id, termId: midTerm!.id, sectionId: r.sixA.id, classSubjectId: r.maths.classSubjectId },
+    });
+    expect(mathsExam.heldOn).toEqual(day(isoDay(21)));
+    const examId = String(mathsExam.id);
+
+    // A cover for five days either side of today (the class teacher's cover and the subject).
+    const cover = await h.caller(r.school, 'teacher', 'Kamran Cover');
+    const coverDates = { section: r.sixA, startsOn: isoDay(-5), endsOn: isoDay(5) };
+    await createTeacherAssignment(db, r.school, cover, { role: 'cover', ...coverDates });
+    await createTeacherAssignment(db, r.school, cover, {
+      role: 'subject_teacher',
+      subjectId: r.maths.id,
+      ...coverDates,
+    });
+    // An earlier cover, over before today.
+    const earlier = await h.caller(r.school, 'teacher', 'Saima Earlier');
+    await createTeacherAssignment(db, r.school, earlier, {
+      role: 'subject_teacher',
+      subjectId: r.maths.id,
+      section: r.sixA,
+      startsOn: isoDay(-20),
+      endsOn: isoDay(-6),
+    });
+
+    // The cover enters the exam today, though the exam is dated after the cover ends.
+    const coverGrid = await grid(examId, cover);
+    expect(coverGrid.status).toBe(200);
+    expect((coverGrid.body as AssessmentMarksDto).assessment.canEnterMarks).toBe(true);
+    expect((await submit(examId, cover, [entry(r.enrolment1, 61)])).status).toBe(200);
+    // The earlier cover is outside its dates today: 404. The regular teacher still enters.
+    expect((await grid(examId, earlier)).status).toBe(404);
+    expect((await submit(examId, earlier, [entry(r.enrolment2, 40)])).status).toBe(404);
+    expect((await submit(examId, r.mathsTeacher, [entry(r.enrolment2, 52)])).status).toBe(200);
+
+    // A test stays on its held_on: one held before the cover began is not the cover's.
+    const before = await createTest(r, r.mathsTeacher, { heldOn: isoDay(-10), name: 'Before the cover' });
+    expect((await grid(before.id, cover)).status).toBe(404);
+    expect((await submit(before.id, cover, [entry(r.enrolment1, 5)])).status).toBe(404);
+    expect((await grid(before.id, earlier)).status).toBe(200);
+    expect((await submit(before.id, earlier, [entry(r.enrolment1, 5)])).status).toBe(200);
+
+    // An exam whose term has not begun is scoped to its held_on (here a date the caller chose).
+    expect((await setUp(annual!.id, { heldOn: isoDay(40) })).status).toBe(200);
+    const annualExam = await db.assessment.findFirstOrThrow({
+      where: { schoolId: r.school.id, termId: annual!.id, sectionId: r.sixA.id, classSubjectId: r.maths.classSubjectId },
+    });
+    expect(annualExam.heldOn).toEqual(day(isoDay(40)));
+    expect((await submit(String(annualExam.id), cover, [entry(r.enrolment1, 70)])).status).toBe(404);
+    expect((await submit(String(annualExam.id), r.mathsTeacher, [entry(r.enrolment1, 70)])).status).toBe(200);
+  });
+
   // ---------------------------------------------------------------------- test_marked (R266)
 
   it('R266: test_marked only with notify_class_tests on, only for a first mark on a test', async () => {

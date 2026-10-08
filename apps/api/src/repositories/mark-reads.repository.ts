@@ -164,8 +164,10 @@ export class MarkReadsRepository {
   }
 
   /**
-   * One call: the class's non-voided assessments of the term (every section's, so a student who
-   * moved section brings their marks, §0.25), each with the live marks of `studentIds`.
+   * The class's non-voided assessments of the term (every section's, so a student who moved
+   * section brings their marks, §0.25), each with the live marks of `studentIds`. Two statements:
+   * a nested relation read would put the assessment ids in an `IN` Prisma pairs with school_id
+   * row by row, which the planner answers with a scan of marks (performance review, slice 36).
    */
   async termAssessmentsWithMarks(
     schoolId: SchoolId,
@@ -182,22 +184,37 @@ export class MarkReadsRepository {
         kind: true,
         maxMarks: true,
         heldOn: true,
-        marksOfYear: {
-          where: { schoolId, status: 'live', studentId: { in: [...query.studentIds] } },
-          select: {
-            id: true,
-            studentId: true,
-            enrolmentId: true,
-            obtained: true,
-            absent: true,
-            excused: true,
-            enteredBy: true,
-          },
-          orderBy: { id: 'asc' },
-        },
       },
       orderBy: [{ heldOn: 'asc' }, { id: 'asc' }],
     });
-    return rows.map(({ marksOfYear, ...row }) => ({ ...row, marks: marksOfYear }));
+    const marks =
+      rows.length === 0 || query.studentIds.length === 0
+        ? []
+        : await this.txHost.tx.mark.findMany({
+            where: {
+              schoolId,
+              status: 'live',
+              assessmentId: { in: rows.map((r) => r.id) },
+              studentId: { in: [...query.studentIds] },
+            },
+            select: {
+              id: true,
+              assessmentId: true,
+              studentId: true,
+              enrolmentId: true,
+              obtained: true,
+              absent: true,
+              excused: true,
+              enteredBy: true,
+            },
+            orderBy: { id: 'asc' },
+          });
+    const marksOf = new Map<bigint, LiveMarkRow[]>();
+    for (const { assessmentId, ...mark } of marks) {
+      const list = marksOf.get(assessmentId) ?? [];
+      list.push(mark);
+      marksOf.set(assessmentId, list);
+    }
+    return rows.map((row) => ({ ...row, marks: marksOf.get(row.id) ?? [] }));
   }
 }

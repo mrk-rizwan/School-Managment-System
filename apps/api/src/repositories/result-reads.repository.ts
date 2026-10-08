@@ -197,70 +197,92 @@ export class ResultReadsRepository {
 
   /**
    * The student's class-test marks (R286): live marks of non-voided tests, newest test first,
-   * optionally of one term. Exams and pending corrections never.
+   * optionally of one term. Exams and pending corrections never. Bounded by the child (performance
+   * review, slice 36): their live marks first (marks_school_id_student_id_academic_year_id_idx),
+   * then only those marks' assessments — never a join over every assessment of the school — the
+   * order and the page taken in memory, then the page's details.
    */
   async testMarks(
     schoolId: SchoolId,
     studentId: bigint,
     query: { termId?: bigint; skip: number; take: number },
   ): Promise<{ rows: TestMarkRecord[]; total: number }> {
-    const where = {
-      schoolId,
-      studentId,
-      status: 'live',
-      assessment: {
-        is: {
-          kind: 'test',
-          voidedAt: null,
-          ...(query.termId === undefined ? {} : { termId: query.termId }),
-        },
-      },
-    } satisfies Prisma.MarkWhereInput;
-    const [rows, total] = [
-      await this.txHost.tx.mark.findMany({
-        where,
-        select: {
-          id: true,
-          obtained: true,
-          absent: true,
-          excused: true,
-          enteredAt: true,
-          assessment: {
+    const live = await this.txHost.tx.mark.findMany({
+      where: { schoolId, studentId, status: 'live' },
+      select: { id: true, assessmentId: true },
+    });
+    const tests =
+      live.length === 0
+        ? []
+        : await this.txHost.tx.assessment.findMany({
+            where: {
+              schoolId,
+              id: { in: [...new Set(live.map((m) => m.assessmentId))] },
+              kind: 'test',
+              voidedAt: null,
+              ...(query.termId === undefined ? {} : { termId: query.termId }),
+            },
+            select: { id: true, heldOn: true },
+          });
+    const heldOn = new Map(tests.map((t) => [t.id, t.heldOn.getTime()]));
+    const ordered = live
+      .filter((m) => heldOn.has(m.assessmentId))
+      .sort(
+        (a, b) =>
+          heldOn.get(b.assessmentId)! - heldOn.get(a.assessmentId)! ||
+          (a.assessmentId < b.assessmentId ? 1 : a.assessmentId > b.assessmentId ? -1 : 0),
+      );
+    const page = ordered.slice(query.skip, query.skip + query.take);
+    const rows =
+      page.length === 0
+        ? []
+        : await this.txHost.tx.mark.findMany({
+            where: { schoolId, id: { in: page.map((m) => m.id) } },
             select: {
               id: true,
-              name: true,
-              testType: true,
-              heldOn: true,
-              termId: true,
-              maxMarks: true,
-              term: { select: { name: true } },
-              classSubject: { select: { subject: { select: { name: true } } } },
+              obtained: true,
+              absent: true,
+              excused: true,
+              enteredAt: true,
+              assessment: {
+                select: {
+                  id: true,
+                  name: true,
+                  testType: true,
+                  heldOn: true,
+                  termId: true,
+                  maxMarks: true,
+                  term: { select: { name: true } },
+                  classSubject: { select: { subject: { select: { name: true } } } },
+                },
+              },
             },
-          },
-        },
-        orderBy: [{ assessment: { heldOn: 'desc' } }, { assessmentId: 'desc' }],
-        skip: query.skip,
-        take: query.take,
-      }),
-      await this.txHost.tx.mark.count({ where }),
-    ];
+          });
+    const byId = new Map(rows.map((r) => [r.id, r]));
     return {
-      total,
-      rows: rows.map(({ assessment: a, ...m }) => ({
-        markId: m.id,
-        assessmentId: a.id,
-        name: a.name,
-        testType: a.testType,
-        heldOn: a.heldOn,
-        termId: a.termId,
-        termName: a.term.name,
-        subjectName: a.classSubject.subject.name,
-        maxMarks: a.maxMarks,
-        obtained: m.obtained,
-        absent: m.absent,
-        excused: m.excused,
-        enteredAt: m.enteredAt,
-      })),
+      total: ordered.length,
+      rows: page.flatMap(({ id }) => {
+        const found = byId.get(id);
+        if (!found) return [];
+        const { assessment: a, ...m } = found;
+        return [
+          {
+            markId: m.id,
+            assessmentId: a.id,
+            name: a.name,
+            testType: a.testType,
+            heldOn: a.heldOn,
+            termId: a.termId,
+            termName: a.term.name,
+            subjectName: a.classSubject.subject.name,
+            maxMarks: a.maxMarks,
+            obtained: m.obtained,
+            absent: m.absent,
+            excused: m.excused,
+            enteredAt: m.enteredAt,
+          },
+        ];
+      }),
     };
   }
 

@@ -771,8 +771,8 @@ describe('R16 (Phase 3): the money tables free text, whole tables', () => {
 
 // ------------------------------------------------------------------------------------------------
 // Phase 4 wave P review fixes (R16): the academic free text a person types — a mark correction's
-// reason, a sheet's return reason, term remarks, a promotion decision's reason — whole tables,
-// and the audit rows of mark corrections and promotion sheets (their reasons and metadata).
+// reason, a sheet's return reason, term remarks, a promotion decision's reason, certificates,
+// assessment and term names, "not held" reasons — whole tables, and the audit rows of mark corrections and promotion sheets (their reasons and metadata).
 
 const PHASE_4_FREE_TEXT: Record<string, string[]> = {
   marks: ['correction_reason'],
@@ -780,6 +780,12 @@ const PHASE_4_FREE_TEXT: Record<string, string[]> = {
   result_sheet_remarks: ['remark'],
   results: ['remark'],
   promotion_decisions: ['reason'],
+  // Slice 36 (security L1): the certificate snapshot and its typed text, the assessments' names
+  // and void reasons, the term names and "not held" reasons.
+  certificates: ['body::text', 'title', 'reason', 'void_reason'],
+  assessments: ['name', 'void_reason'],
+  academic_terms: ['name'],
+  term_skips: ['reason'],
 };
 
 describe('R16 (Phase 4): corrections, remarks and promotion reasons, whole tables', () => {
