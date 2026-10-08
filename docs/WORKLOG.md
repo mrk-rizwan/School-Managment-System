@@ -11,17 +11,15 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** Phases 1-3 complete and closed (Phase 3 on 2026-10-07 with the real-driver proof
-  deferred to go-live, "Left to do" item 1). **Phase 4 (Academic): every slice (29-35) is built,
-  reviewed and committed, CI green on `012041b`** (run 37804054311, attempt 2: all eleven Maestro
-  flows incl. teacher-marks-offline, principal-approve-result, parent-report-card). **Slice 36,
-  the close, is in its last step:** the whole-phase reviews (security PASS; performance; business
-  rules; code quality; docs) are folded into one fix round (uncommitted at the time of writing),
-  then commit, CI, `phase-gate`. Plan `docs/plans/phase-4-academic.md` (rules 26-31, R254-R300);
-  as-built differences are in each contract's deviation section (`contracts/slice-29.md` …
-  `slice-35.md`). Phase 4 = 32.25 / 33 days; project = 142.75 / 163.5 days = 87 %. **Next after
-  the gate: Phase 5 (Extended) needs a plan** (biometric, advanced reporting, transport, the
-  period timetable, events/PTM, past-results import — rule 31).
+- **Phase:** **Phases 1-4 complete and closed.** Phase 4 (Academic) closed on 2026-10-08:
+  every slice 29-36 built, reviewed and committed, close commit `55255eb`, CI run 37822174131
+  green on both jobs (all Maestro flows incl. teacher-marks-offline, principal-approve-result,
+  parent-report-card), **`phase-gate` PASS** with two recorded limitations (below, "What Phase 5
+  inherits"). Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live ("Left to
+  do" item 1). Project = 143.5 / 163.5 days = 88 %. **Next: Phase 5 (Extended) needs a plan**
+  (rule 31: the period timetable, events and PTM, past-results import; plus biometric attendance,
+  advanced reporting and transport, register item 20) — and the owner's answers to the Phase 4
+  defaults listed below.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -130,6 +128,50 @@ slice in progress counts half. **Project % = days done ÷ 163.5** (Phase 4 plann
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## What Phase 5 inherits from Phase 4 (written at the Phase 4 close, 2026-10-08)
+
+**Built and standing:** terms, result settings and grade bands per year; class subject lists;
+class tests and per-section exams entered on the phone offline; result sheets submitted per
+section and approved from the Approvals inbox; composition by one set of pure functions
+(`packages/shared/src/results/`); the final result; publication to families by WhatsApp, SMS or
+the app; report cards (native, printed, withheld for dues when a school turns it on);
+corrections as new versions; parent and student views; result reports; numbered certificates
+(the leaving certificate dues-gated); promotion sheets, year-end apply and the year-close guard.
+
+**What Phase 5 must use rather than rebuild:**
+- **The period timetable attaches to `class_subjects`** (a period names a class-subject and a
+  teacher); Phase 2's R120 (who may mark a period) and R129 (unrecorded registers) tighten from it.
+  `MarksScope` is the subject-aware scope the timetable and period attendance should reuse.
+- **Merit lists, GPA, cross-section or historical reports read `results` and `result_subjects`**
+  (stored figures, settings snapshot on the sheet); add columns, never recompute.
+- **Past-results import** writes `results`/`result_subjects` rows on sheets created for the
+  imported year, with a provenance column — it must not invent marks.
+- **Events and PTM**: the Approvals inbox and `GET /me/approvals` take new sections; announcements
+  carry the invitations.
+- **Year-end extras** (fee-structure copy, capacity planning) hang off `promotion_sheets`.
+
+**Recorded limitations from the gate:**
+- Tablet viewport proof for the Phase 4 screens was missing at the gate (`e2e/responsive.spec.ts`
+  listed none newer than Phase 2 — the precedent Phase 3 accepted); added after the gate if the
+  follow-up commit says so.
+- R277 (attendance on the card) was proven inside the R296 test without its own name; named after
+  the gate if the follow-up commit says so.
+
+**For the owner to confirm (defaults built):**
+- Position within the section, not the whole class (register-style item 36).
+- Result messages go to the fee-payer guardians, else the primary contact, else every guardian
+  with a phone (the receipt rule) — or to every guardian?
+- A suspended pupil must be reactivated before being marked "not continuing".
+- The optional `pass_rule = overall` (default per subject, as rule 26).
+- Grace marks are not built (item 35); the promotion override covers borderline cases.
+- The school's real grade bands and pass mark (item 32; default A+ 90 … F below 40, pass 40 %).
+- The B-Form number prints on the leaving certificate (item 33, default on).
+- Repeat-year fees for a detained pupil follow the class as normal (item 34).
+- Sole-principal self-approval of sheets and corrections, recorded `self_approved` (rule 27).
+
+**Not built by design (plan §6):** the period timetable, events and PTM, past-results import,
+merit lists across sections, GPA, an audit-log screen. Guardian merge still has no verb.
 
 ## What Phase 4 inherits from Phase 3 (written at the Phase 3 close, 2026-10-07)
 
@@ -301,7 +343,14 @@ Replaces plan §0 rule 2's "every slice ends with a full gate" for the rest of P
 - **Full `phase-gate` once**, at slice 8. Each wave ends with the main thread's own full run
   (lint, typecheck, all tests, web build, Playwright, hook dry run) before committing.
 
-## 2026-10-07/08 — Phase 4 built: waves M-P and the close (Fable 5.1 plans and reviews, Opus 5.5 builds)
+## 2026-10-07/08 — Phase 4 built: waves M-P and the close (Fable 5.1 plans and reviews, Opus 5.5 builds) — DONE, phase gate PASS on `55255eb`
+
+**Close (slice 36):** `55255eb` — the whole-phase review fixes ("Ab"/"Ex" on cards, exam
+dates and cover entry, promotion own-child refusal, result.approve deciders, reports need
+school-wide scope, the rules-locked flag), performance (submit-marks batched, two whole-table
+scans removed, a notify-sweep index), complete R296/R300 scripts, `revised_after_apply` only on
+changed figures, docs. CI run 37822174131 green; `phase-gate` PASS (limitations in "What
+Phase 5 inherits").
 
 **Waves and commits.** M (`87c5bff`): groundwork (message types, terms, result settings with
 bands, class subjects, `asms_seed_year_results` for every year, the result-composition functions,

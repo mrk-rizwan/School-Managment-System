@@ -6,7 +6,7 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. `phase-4-academic.md` is the current one (rules 26-31). Phases 1-3 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, see `docs/WORKLOG.md`), and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
+- `docs/plans/` — build plans per phase. Phases 1-4 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`, `phase-4-academic.md` — rules 26-31; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, Phase 4 closed 2026-10-08, see `docs/WORKLOG.md`); Phase 5 has no plan yet, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
