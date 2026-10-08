@@ -80,7 +80,7 @@ describe('R296: the scripted section (slice 31)', () => {
     await closeTestDb();
   });
 
-  it('stores exactly what the shared functions give, tells every family once, and composes the final', async () => {
+  it('stores exactly what the shared functions give, tells every family once, and composes the final (R277: attendance on the result equals GET /students/:id/attendance)', async () => {
     // ---------------------------------------------------------------------------- the school
     const school: TestSchool = await createSchool();
     await db.schoolSettings.create({

@@ -151,7 +151,8 @@ corrections as new versions; parent and student views; result reports; numbered 
   carry the invitations.
 - **Year-end extras** (fee-structure copy, capacity planning) hang off `promotion_sheets`.
 
-**Recorded limitations from the gate:**
+**Recorded limitations from the gate (both closed on 2026-10-09 in the follow-up commit: ten Phase 4
+screens added to the tablet check, R277 named):**
 - Tablet viewport proof for the Phase 4 screens was missing at the gate (`e2e/responsive.spec.ts`
   listed none newer than Phase 2 — the precedent Phase 3 accepted); added after the gate if the
   follow-up commit says so.

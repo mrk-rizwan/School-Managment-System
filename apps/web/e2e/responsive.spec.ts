@@ -35,6 +35,15 @@ import type {
 } from '../lib/api/school-messaging-contract';
 import type { GuardianDetailDto, GuardianStudentDto } from '../lib/api/school-guardians-contract';
 import type { CustomRoleDto } from '../lib/api/school-roles-contract';
+import type { AssessmentDto, AssessmentMarksDto } from '../lib/api/school-assessments-contract';
+import type { CertificateDto } from '../lib/api/school-certificates-contract';
+import type { MyAssessmentMarkDto, MyChildResultsDto, ResultDto } from '../lib/api/school-my-results-contract';
+import type { PromotionDecisionDto, PromotionSheetDetailDto } from '../lib/api/school-promotion-contract';
+import type {
+  MarkCorrectionDto,
+  ResultPreviewRowDto,
+  ResultSheetDetailDto,
+} from '../lib/api/school-results-contract';
 import type { StaffDto, TeacherAssignmentDto } from '../lib/api/school-staff-contract';
 import type {
   EnrolmentDto,
@@ -628,6 +637,358 @@ const SCHOOLS = [
   school('s3', 'The City Grammar School, Model Town Campus', 'citygram', 'suspended'),
 ];
 
+// Phase 4: marks, result sheets, corrections, promotion, certificates and the student's own
+// results. Fixtures follow marks/results/report-cards/promotion/certificates/my-results.spec.ts.
+const ASSESSMENT: AssessmentDto = {
+  id: 'as1',
+  academicYearId: 'y1',
+  termId: 't1',
+  termName: 'Mid-term',
+  classId: 'c5',
+  className: 'Class 5',
+  sectionId: 'sec-a',
+  sectionName: 'A',
+  classSubjectId: 'cs-m',
+  subjectId: 'sub-m',
+  subjectName: 'Mathematics',
+  kind: 'test',
+  testType: 'weekly',
+  name: 'Fractions weekly test',
+  maxMarks: 20,
+  heldOn: '2026-09-01',
+  createdByMe: false,
+  markedCount: 2,
+  canEnterMarks: true,
+  lockedAt: null,
+  locked: false,
+  voidedAt: null,
+  voidReason: null,
+  createdAt: STAMP,
+  updatedAt: STAMP,
+};
+const markRow = (enrolmentId: string, fullName: string, rollNo: number, extra: Partial<AssessmentMarksDto['rows'][number]> = {}) => ({
+  enrolmentId,
+  student: { id: `st-${enrolmentId}`, fullName, admissionNo: `10${rollNo}`, rollNo },
+  markId: null,
+  obtained: null,
+  absent: false,
+  excused: false,
+  status: null,
+  enteredAt: null,
+  ownChildOf: null,
+  pendingCorrectionId: null,
+  pendingCorrectionMine: false,
+  ...extra,
+});
+const MARKS_GRID: AssessmentMarksDto = {
+  assessment: ASSESSMENT,
+  rows: [
+    markRow('e1', 'Muhammad Abdullah bin Tariq Chaudhry', 1, { markId: 'm1', obtained: 15, status: 'live', enteredAt: STAMP }),
+    markRow('e2', 'Ali Raza', 2),
+    markRow('e3', 'Sara Malik', 3, { markId: 'm3', absent: true, status: 'live', enteredAt: STAMP }),
+  ],
+};
+const resultSubject = (classSubjectId: string, subjectName: string, obtained: number) => ({
+  classSubjectId,
+  subjectName,
+  testBp: 7500,
+  examBp: obtained * 100,
+  examObtained: obtained,
+  examMax: 100,
+  examAbsent: false,
+  examExcused: false,
+  percentBp: obtained * 100,
+  obtained,
+  max: 100,
+  grade: 'B',
+  status: 'assessed' as const,
+});
+const previewRow = (enrolmentId: string, fullName: string, position: number): ResultPreviewRowDto => ({
+  resultId: null,
+  enrolmentId,
+  studentId: `st-${enrolmentId}`,
+  fullName,
+  admissionNo: `10${position}`,
+  rollNo: position,
+  totalObtained: 149,
+  totalMax: 200,
+  percentBp: 7450,
+  grade: 'B',
+  passed: true,
+  failedSubjects: 0,
+  position,
+  positionOf: 2,
+  attendanceBp: 9230,
+  remark: 'A careful worker who asks good questions.',
+  ownChildFlags: [],
+  missing: 0,
+  subjects: [
+    { ...resultSubject('cs-m', 'Mathematics', 79), ownChildOf: null },
+    { ...resultSubject('cs-e', 'English', 70), ownChildOf: null },
+  ],
+});
+const RESULT_SHEET: ResultSheetDetailDto = {
+  id: 'rs1',
+  academicYearId: 'y1',
+  termId: 't1',
+  termName: 'Mid-term',
+  isFinal: false,
+  classId: 'c5',
+  className: 'Class 5',
+  sectionId: 'sec-a',
+  sectionName: 'A',
+  version: 1,
+  status: 'submitted',
+  submittedAt: STAMP,
+  submittedByName: 'Ayesha Malik',
+  submittedByMe: false,
+  cover: false,
+  decidedAt: null,
+  decidedByName: null,
+  selfApproved: false,
+  returnReason: null,
+  publishedAt: null,
+  publishedByName: null,
+  ownChildFlags: [],
+  createdAt: STAMP,
+  updatedAt: STAMP,
+  source: 'preview',
+  settings: { testWeight: 20, examWeight: 80, passPercent: 40, passRule: 'all_subjects', snapshot: false },
+  subjects: [
+    { classSubjectId: 'cs-m', subjectName: 'Mathematics', sortOrder: 1 },
+    { classSubjectId: 'cs-e', subjectName: 'English', sortOrder: 2 },
+  ],
+  preview: [previewRow('e1', 'Muhammad Abdullah bin Tariq Chaudhry', 1), previewRow('e2', 'Ali Raza', 2)],
+  flags: { cover: false, selfApproved: false, missing: [], missingCount: 0, examsNotSetUp: [] },
+  canRemark: false,
+  canSubmit: false,
+  canDecide: true,
+  canPublish: true,
+};
+const CORRECTIONS: MarkCorrectionDto[] = [
+  {
+    id: 'mc1',
+    status: 'pending',
+    assessmentId: 'ex1',
+    assessmentName: 'Mid-term exam',
+    kind: 'exam',
+    subjectName: 'Mathematics',
+    heldOn: '2026-09-01',
+    classId: 'c5',
+    className: 'Class 5',
+    sectionId: 'sec-a',
+    sectionName: 'A',
+    termId: 't1',
+    termName: 'Mid-term',
+    enrolmentId: 'e1',
+    studentId: 'st-e1',
+    studentName: 'Muhammad Abdullah bin Tariq Chaudhry',
+    admissionNo: '101',
+    maxMarks: 100,
+    from: { obtained: 55, absent: false, excused: false },
+    to: { obtained: 95, absent: false, excused: false },
+    reason: 'Paper re-totalled; the second page was missed',
+    requestedByName: 'Ayesha Malik',
+    requestedByMe: false,
+    requestedAt: STAMP,
+    decidedByName: null,
+    decidedAt: null,
+    withdrawn: false,
+  },
+];
+const decision = (id: string, studentName: string, extra: Partial<PromotionDecisionDto> = {}): PromotionDecisionDto => ({
+  id,
+  enrolmentId: `e-${id}`,
+  studentId: `st-${id}`,
+  studentName,
+  admissionNo: '1001',
+  studentStatus: 'active',
+  rollNo: 1,
+  enrolmentStatus: 'active',
+  resultId: 'r1',
+  resultSuperseded: false,
+  percentBp: 7850,
+  grade: 'B',
+  passed: true,
+  proposed: 'promote',
+  decision: 'promote',
+  reason: null,
+  targetClassId: 'c6',
+  targetClassName: 'Class 6',
+  targetSectionId: 'sec-6a',
+  targetSectionName: 'A',
+  arrearsFlag: true,
+  decidedByName: null,
+  decidedAt: null,
+  appliedAt: null,
+  skipped: false,
+  newEnrolmentId: null,
+  revisedAfterApply: false,
+  ...extra,
+});
+const PROMOTION_SHEET: PromotionSheetDetailDto = {
+  id: 'ps1',
+  academicYearId: 'y1',
+  academicYearName: '2026-27',
+  classId: 'c5',
+  className: 'Class 5',
+  classIsFinal: false,
+  sectionId: 'sec-a',
+  sectionName: 'A',
+  targetYearId: 'y2',
+  targetYearName: '2026-27 (September)',
+  status: 'open',
+  rows: 2,
+  undecided: 1,
+  openedByName: 'Amina Principal',
+  openedAt: STAMP,
+  appliedByName: null,
+  appliedAt: null,
+  updatedAt: STAMP,
+  targetYearHasClasses: true,
+  decisions: [
+    decision('d1', 'Muhammad Abdullah bin Tariq Chaudhry'),
+    decision('d2', 'Hira Tariq', {
+      rollNo: 2,
+      percentBp: 3000,
+      grade: 'F',
+      passed: false,
+      proposed: 'detain',
+      decision: null,
+      arrearsFlag: false,
+      targetClassId: null,
+      targetClassName: null,
+      targetSectionId: null,
+      targetSectionName: null,
+    }),
+  ],
+};
+const certificate = (id: string, extra: Partial<CertificateDto> = {}): CertificateDto => ({
+  id,
+  studentId: 'st-s1',
+  studentName: 'Muhammad Abdullah bin Tariq Chaudhry',
+  admissionNo: '1001',
+  type: 'character',
+  number: 1,
+  label: 'CC-0001',
+  issueNo: 1,
+  reissueOfId: null,
+  academicYearId: 'y1',
+  academicYearName: '2026-27',
+  title: 'Character Certificate',
+  duesStatus: 'not_required',
+  reason: null,
+  issuedOn: '2026-09-01',
+  issuedByName: 'Bilal Office',
+  printedCount: 0,
+  voidedAt: null,
+  voidedByName: null,
+  voidReason: null,
+  createdAt: STAMP,
+  body: {
+    schoolName: 'Green Valley Higher Secondary School',
+    studentName: 'Muhammad Abdullah bin Tariq Chaudhry',
+    fatherName: 'Tariq Chaudhry',
+    admissionNo: '1001',
+    gender: 'male',
+    dateOfBirth: '2016-05-04',
+    admittedOn: '2025-04-01',
+    studentStatus: 'withdrawn',
+    academicYearName: '2026-27',
+    className: 'Class 5',
+    sectionName: 'A',
+    attendedFrom: '2025-04-01',
+    attendedTo: '2026-09-01',
+    enrolments: [],
+    conduct: 'Good',
+    remarks: null,
+    signatoryName: 'Amina Principal',
+    result: null,
+  },
+  ...extra,
+});
+const CERTIFICATES = [
+  certificate('cert1', { type: 'leaving', label: 'LC-0001', title: 'School Leaving Certificate', duesStatus: 'override', reason: 'Family moving abroad' }),
+  certificate('cert2', { issueNo: 2, reissueOfId: 'cert0', reason: 'Lost' }),
+];
+const STUDENT_ME: MeDto = {
+  ...PRINCIPAL_ME,
+  id: 'u-student',
+  fullName: 'Muhammad Abdullah bin Tariq Chaudhry',
+  roles: ['student'],
+  capabilities: [],
+  capabilityScopes: [],
+  capacities: ['student'],
+};
+const MY_RESULT_SUMMARY = {
+  id: 'r1',
+  academicYearId: 'y1',
+  academicYearName: '2026-27',
+  termId: 't1',
+  termName: 'Mid-term',
+  isFinal: false,
+  className: 'Class 5',
+  sectionName: 'A',
+  percentBp: 7450,
+  grade: 'B',
+  revised: false,
+  publishedAt: STAMP,
+};
+const MY_RESULTS: MyChildResultsDto = {
+  studentId: 'st-s1',
+  academicYearId: 'y1',
+  years: [{ id: 'y1', name: '2026-27' }],
+  terms: [MY_RESULT_SUMMARY],
+  final: null,
+  withheld: false,
+  outstanding: null,
+};
+const MY_CARD: ResultDto = {
+  ...MY_RESULT_SUMMARY,
+  sheetId: 'rs1',
+  sheetVersion: 1,
+  schoolName: 'Green Valley Higher Secondary School',
+  classId: 'c5',
+  sectionId: 'sec-a',
+  enrolmentId: 'e1',
+  studentId: 'st-s1',
+  studentName: 'Muhammad Abdullah bin Tariq Chaudhry',
+  admissionNo: '1001',
+  rollNo: 1,
+  totalObtained: 149,
+  totalMax: 200,
+  passed: true,
+  failedSubjects: 0,
+  position: 1,
+  positionOf: 2,
+  attendanceBp: 9230,
+  remark: 'A steady, careful worker.',
+  showPosition: true,
+  showAttendance: true,
+  showRemark: true,
+  supersededAt: null,
+  subjects: [
+    { ...resultSubject('cs-m', 'Mathematics', 79), sortOrder: 1 },
+    { ...resultSubject('cs-e', 'English', 70), sortOrder: 2 },
+  ],
+};
+const MY_TESTS: MyAssessmentMarkDto[] = [
+  {
+    markId: 'm1',
+    assessmentId: 'as1',
+    name: 'Fractions weekly test',
+    testType: 'weekly',
+    heldOn: '2026-09-01',
+    termId: 't1',
+    termName: 'Mid-term',
+    subjectName: 'Mathematics',
+    maxMarks: 20,
+    obtained: 15,
+    absent: false,
+    excused: false,
+  },
+];
+
 const page1 = <T,>(data: T[]) => ({ data, page: 1, limit: 25, total: data.length });
 const errorBody = (code: ApiErrorEnvelope['error']['code'], message: string): ApiErrorEnvelope => ({
   error: { code, message, details: null, requestId: 'req-test' },
@@ -710,6 +1071,13 @@ async function mockApi(page: Page, session: Session) {
       '/fee-heads': [],
       '/fee-structures': [],
       '/payment-accounts': [],
+      // Phase 4: marks, results, corrections, promotion, certificates, the student's own tests.
+      '/assessments': [ASSESSMENT],
+      '/result-sheets': [RESULT_SHEET],
+      '/mark-corrections': CORRECTIONS,
+      '/promotion-sheets': [PROMOTION_SHEET],
+      '/certificates': CERTIFICATES,
+      '/me/student/assessments': MY_TESTS,
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -734,6 +1102,11 @@ async function mockApi(page: Page, session: Session) {
       '/announcements/a1/delivery': DELIVERY,
       '/announcements/a2': ANNOUNCEMENTS[1],
       '/me/inbox/m1': INBOX[0],
+      '/assessments/as1/marks': MARKS_GRID,
+      '/result-sheets/rs1': RESULT_SHEET,
+      '/promotion-sheets/ps1': PROMOTION_SHEET,
+      '/me/student/results': MY_RESULTS,
+      '/me/student/results/r1': { withheld: false, outstanding: null, result: MY_CARD },
     };
     if (one[path]) return json(200, one[path]);
     unmocked.push(`${method} ${path}`);
@@ -746,7 +1119,7 @@ type Screen = {
   path: string;
   /** The screen's main heading: the page h1 inside the shell, the card title on sign-in screens. */
   heading: string;
-  session: 'none' | 'school' | 'platform' | 'platform-enrolment' | 'platform-must-change';
+  session: 'none' | 'school' | 'student' | 'platform' | 'platform-enrolment' | 'platform-must-change';
 };
 
 const SCREENS: Screen[] = [
@@ -795,6 +1168,17 @@ const SCREENS: Screen[] = [
   { path: '/announcements/a2/edit', heading: 'Edit announcement', session: 'school' },
   { path: '/inbox', heading: 'Inbox', session: 'school' },
   { path: '/inbox/m1', heading: INBOX[0].title, session: 'school' },
+  // Phase 4: academic records.
+  { path: '/marks', heading: 'Marks', session: 'school' },
+  { path: '/marks/as1', heading: ASSESSMENT.name, session: 'school' },
+  { path: '/results/sheets', heading: 'Result sheets', session: 'school' },
+  { path: '/results/sheets/rs1', heading: 'Class 5 A · Mid-term', session: 'school' },
+  { path: '/results/reports', heading: 'Result reports', session: 'school' },
+  { path: '/results/corrections', heading: 'Mark corrections', session: 'school' },
+  { path: '/promotion', heading: 'Promotion', session: 'school' },
+  { path: '/promotion/ps1', heading: 'Promotion · Class 5 A', session: 'school' },
+  { path: '/certificates', heading: 'Certificates', session: 'school' },
+  { path: '/my-results', heading: 'My results', session: 'student' },
   // Platform console
   { path: '/platform/login', heading: 'Platform sign in', session: 'none' },
   { path: '/platform/enrol', heading: 'Set up your authenticator', session: 'platform-enrolment' },
@@ -815,6 +1199,8 @@ function sessionFor(kind: Screen['session']): Session {
       return { school: null, platform: null };
     case 'school':
       return { school: PRINCIPAL_ME, platform: null };
+    case 'student':
+      return { school: STUDENT_ME, platform: null };
     case 'platform':
       return { school: null, platform: FULL_PLATFORM_ME };
     case 'platform-enrolment':
