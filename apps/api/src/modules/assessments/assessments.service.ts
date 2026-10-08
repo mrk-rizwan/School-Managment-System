@@ -14,6 +14,7 @@ import {
   AssessmentRepository,
   examKey,
   scopeReaches,
+  sectionTermKey,
   type AssessmentRecord,
   type NewExam,
 } from '../../repositories/assessment.repository';
@@ -46,6 +47,7 @@ import {
   assessmentLocked,
   assessmentOutsideTerm,
   assessmentVoided,
+  resultSheetNotDraft,
   subjectNotAssigned,
   toAssessmentDto,
 } from './assessments.shared';
@@ -148,6 +150,7 @@ export class AssessmentsService {
       readScope,
       rows.map((row) => row.id),
     );
+    const lockedPairs = await this.assessments.lockingSheets(schoolId, rows);
     // One mint per distinct date (a page of tests spans a few dates).
     const writeScopes: {
       on: number;
@@ -162,6 +165,8 @@ export class AssessmentsService {
         writeScopes.push(minted);
       }
       const write = minted.scope;
+      const locked =
+        row.lockedAt !== null || lockedPairs.has(sectionTermKey(row.sectionId, row.termId));
       dtos.push(
         toAssessmentDto(row, {
           createdByMe: row.createdBy === session.access.userId,
@@ -169,8 +174,9 @@ export class AssessmentsService {
           canEnterMarks:
             write !== null &&
             row.voidedAt === null &&
-            row.lockedAt === null &&
+            !locked &&
             scopeReaches(write, 'write', row.sectionId, row.subjectId),
+          locked,
         }),
       );
     }
@@ -247,6 +253,11 @@ export class AssessmentsService {
       (t) => t.startsOn <= heldOn && heldOn <= t.endsOn,
     );
     if (!term) throw assessmentOutsideTerm(null);
+    // Slice 30: no new test once the section's sheet for the term is submitted (the database's
+    // assessments_sheet_guard behind it).
+    const locking = await this.assessments.lockingSheets(schoolId, [{ sectionId, termId: term.id }]);
+    const lockingSheetId = locking.get(sectionTermKey(sectionId, term.id));
+    if (lockingSheetId !== undefined) throw resultSheetNotDraft(lockingSheetId);
 
     const row = await this.assessments.create(schoolId, scope, {
       academicYearId: year.id,
@@ -265,7 +276,12 @@ export class AssessmentsService {
     if (!row) throw notFound();
     await recordSubject(row.id);
     // Creating a test writes no audit row: the row itself records who and when (§7.1).
-    return toAssessmentDto(row, { createdByMe: true, markedCount: 0, canEnterMarks: true });
+    return toAssessmentDto(row, {
+      createdByMe: true,
+      markedCount: 0,
+      canEnterMarks: true,
+      locked: false,
+    });
   }
 
   // ------------------------------------------------------------------------------ edit, void
@@ -368,11 +384,19 @@ export class AssessmentsService {
     if (!isCreator && !session.access.capabilities.has(Capability.ASSESSMENT_DEFINE))
       throw notAuthor();
     if (row.voidedAt !== null) throw assessmentVoided(row.id);
-    if (row.lockedAt !== null) throw assessmentLocked(row.id);
+    if (row.lockedAt !== null || (await this.sheetLocks(schoolId, row))) throw assessmentLocked(row.id);
     const year = await this.years.findById(schoolId, row.academicYearId);
     if (!year) throw notFound();
     if (year.status === 'closed') throw yearClosed();
     return { scope, row };
+  }
+
+  /** Whether the assessment's section-term sheet locks it (submitted or later, R265). */
+  async sheetLocks(
+    schoolId: SchoolId,
+    row: Pick<AssessmentRecord, 'sectionId' | 'termId'>,
+  ): Promise<boolean> {
+    return (await this.assessments.lockingSheets(schoolId, [row])).size > 0;
   }
 
   // ------------------------------------------------------------------------------- set-up
@@ -433,10 +457,15 @@ export class AssessmentsService {
     for (const klass of classes) {
       const subjects = await this.classSubjects.liveForClass(schoolId, klass.id);
       const sections = await this.sections.listLive(schoolId, klass.id);
+      // A section whose sheet for the term is submitted or later takes no new exam (R265).
+      const locked = await this.assessments.lockingSheets(
+        schoolId,
+        sections.map((section) => ({ sectionId: section.id, termId })),
+      );
       for (const section of sections) {
         for (const subject of subjects) {
           if (!scopeReaches(scope, 'write', section.id, subject.subjectId)) continue;
-          if (skippedClassIds.has(klass.id)) {
+          if (skippedClassIds.has(klass.id) || locked.has(sectionTermKey(section.id, termId))) {
             skipped++;
           } else if (existing.has(examKey(section.id, subject.id))) {
             present++;

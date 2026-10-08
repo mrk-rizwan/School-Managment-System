@@ -7,5 +7,5 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${TEACHER_CNIC}
+      IDENTITY: ${MAESTRO_TEACHER_CNIC}
 - runFlow: common/open-register.yaml

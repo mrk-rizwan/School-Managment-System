@@ -60,10 +60,13 @@ start_api() {
 flow() { # name, file, extra -e args...
   local name="$1" file="$2"
   shift 2
-  if ! maestro test --format junit --output "$out/$name.xml" --debug-output "$out/$name" \
-    -e SCHOOL_CODE="$SCHOOL_CODE" -e PRINCIPAL_CNIC="$PRINCIPAL_CNIC" \
-    -e TEACHER_CNIC="$TEACHER_CNIC" -e GUARDIAN_CNIC="$GUARDIAN_CNIC" \
-    "$@" "$flows/$file"; then
+  # The identity digits reach Maestro through its MAESTRO_-prefixed environment variables (the
+  # flows read ${MAESTRO_PRINCIPAL_CNIC} etc.), never through `-e` on its command line, so they
+  # appear in no process listing (the slice-31 security review).
+  if ! MAESTRO_PRINCIPAL_CNIC="$PRINCIPAL_CNIC" MAESTRO_TEACHER_CNIC="$TEACHER_CNIC" \
+    MAESTRO_GUARDIAN_CNIC="$GUARDIAN_CNIC" \
+    maestro test --format junit --output "$out/$name.xml" --debug-output "$out/$name" \
+    -e SCHOOL_CODE="$SCHOOL_CODE" "$@" "$flows/$file"; then
     # Evidence in the job log itself, in case the artifact upload never runs. The app's log is
     # scrubbed of identity numbers and tokens (src/platform/scrub.ts); the API logs no values.
     echo "::group::flow $name failed: API log, worker log, app log"
@@ -252,3 +255,26 @@ claim_status="$(get "$principal_token" "/payment-claims/$CLAIM_ID" | json 'b.sta
 if [ "$claim_status" != "verified" ]; then echo "the claim is '$claim_status', wanted verified"; exit 1; fi
 handover_status="$(get "$principal_token" "/cash-handovers/$HANDOVER_ID" | json 'b.status')"
 if [ "$handover_status" != "confirmed" ]; then echo "the handover is '$handover_status', wanted confirmed"; exit 1; fi
+
+# --- Phase 4 slice 31: the principal approves a result sheet on the phone ----------------------
+# Seeded over curl: the exams of the term holding today (Class 5), a mark for every gap the 5 A
+# sheet lists (entered by the principal, whose marks.enter is school-wide), and the 5 A sheet,
+# opened and submitted by its class teacher. The flow approves it from Approvals → Results.
+TERM_ID="$(get "$principal_token" "/academic-years/$year_id/terms" \
+  | json "(b.data.find(t=>t.startsOn<='$today'&&t.endsOn>='$today')||{}).id")"
+if [ -z "$TERM_ID" ] || [ "$TERM_ID" = "undefined" ]; then echo "no term of the year holds $today"; exit 1; fi
+printf '{"classIds":["%s"]}' "$CLASS_5" | post_as "$principal_token" "/terms/$TERM_ID/set-up-exams" '' >/dev/null
+SHEET_ID="$(printf '{"termId":"%s"}' "$TERM_ID" | post_as "$teacher_token" "/sections/$SECTION_A/result-sheets" '' | json 'b.id')"
+gaps="$(get "$teacher_token" "/result-sheets/$SHEET_ID" | json "b.flags.missing.map(g=>g.assessmentId+' '+g.enrolmentId).join('\n')")"
+while read -r assessment enrolment; do
+  [ -z "$assessment" ] && continue
+  # An absence is a valid entry on any assessment, whatever its maximum.
+  printf '{"entries":[{"enrolmentId":"%s","absent":true,"clientEntryKey":"%s","basedOnMarkId":null}]}' \
+    "$enrolment" "maestro-result-$(node -e "console.log(require('node:crypto').randomBytes(9).toString('hex').replace(/[0-9]/g,'x'))")" \
+    | post_as "$principal_token" "/assessments/$assessment/submit-marks" '' >/dev/null
+done <<<"$gaps"
+submitted="$(printf '{}' | post_as "$teacher_token" "/result-sheets/$SHEET_ID/submit" '' | json 'b.status')"
+if [ "$submitted" != "submitted" ]; then echo "the 5 A sheet is '$submitted', wanted submitted"; exit 1; fi
+flow principal-approve-result principal-approve-result.yaml "${ids[@]}" -e SHEET_ID="$SHEET_ID"
+sheet_status="$(get "$principal_token" "/result-sheets/$SHEET_ID" | json 'b.status')"
+if [ "$sheet_status" != "published" ]; then echo "the sheet is '$sheet_status', wanted published"; exit 1; fi

@@ -1,0 +1,40 @@
+# Phase 4 slice 31 (plan §3.8, §0.30) — CI only. ci-run.sh seeds over curl the term exams of
+# Class 5, the marks of 5 A (every gap the sheet lists, entered by the principal), and the 5 A
+# result sheet, opened and submitted by the class teacher. The principal opens the Approvals tab,
+# the sheet from its Results section (the preview names the students), and approves it; holding
+# result.publish, the approval publishes it. ci-run.sh then checks over curl that the sheet is
+# published. Env: SCHOOL_CODE, MAESTRO_PRINCIPAL_CNIC, SHEET_ID.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${MAESTRO_PRINCIPAL_CNIC}
+- tapOn:
+    id: 'tabs.approvals'
+- scrollUntilVisible:
+    element:
+      id: 'approvals.result.${SHEET_ID}'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'approvals.result.${SHEET_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'sheet.status'
+      text: 'Waiting for approval.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'sheet.approve'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'sheet.approve'
+- extendedWaitUntil:
+    visible:
+      id: 'sheet.status'
+      text: 'Published.*'
+    timeout: 30000

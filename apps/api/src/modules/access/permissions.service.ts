@@ -186,7 +186,14 @@ export class PermissionsService {
     if (blocked.length === 0) return null;
     const today = await this.clock.today(schoolId);
     const since = dayStart(await this.clock.timezone(schoolId), today);
-    if (!(await this.audit.existsForActorSince(schoolId, access.userId, DEFAULT_PASSWORD_BLOCKED_ACTION, since))) {
+    if (
+      !(await this.audit.existsForActorSince(
+        schoolId,
+        access.userId,
+        DEFAULT_PASSWORD_BLOCKED_ACTION,
+        since,
+      ))
+    ) {
       await this.audit.record(schoolId, {
         actorUserId: access.userId,
         action: DEFAULT_PASSWORD_BLOCKED_ACTION,
@@ -214,6 +221,14 @@ export class PermissionsService {
    */
   async isSolePrincipal(schoolId: SchoolId, userId: bigint): Promise<boolean> {
     await this.settings.lock(schoolId);
+    return this.userRoles.isLastActivePrincipal(schoolId, userId);
+  }
+
+  /**
+   * The same question without the lock, for a read (a GET's `canDecide`, contracts/slice-31.md
+   * §2.2): a GET takes no lock, and the decision re-asks isSolePrincipal under it.
+   */
+  isSolePrincipalForRead(schoolId: SchoolId, userId: bigint): Promise<boolean> {
     return this.userRoles.isLastActivePrincipal(schoolId, userId);
   }
 
@@ -329,7 +344,12 @@ export class PermissionsService {
    * read to `all`. Never pass it where a write is scoped: the type refuses it (scope.ts).
    */
   marksReadScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'read'> | null> {
-    return this.marksScope(session, 'read', [Capability.MARKS_ENTER, Capability.MARKS_VIEW_ALL], on);
+    return this.marksScope(
+      session,
+      'read',
+      [Capability.MARKS_ENTER, Capability.MARKS_VIEW_ALL],
+      on,
+    );
   }
 
   /**
@@ -339,6 +359,21 @@ export class PermissionsService {
    */
   marksWriteScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'write'> | null> {
     return this.marksScope(session, 'write', [Capability.MARKS_ENTER], on);
+  }
+
+  /**
+   * Phase 4 slice 31 (§3.1): the result-sheet read scope on `on`: marks.enter, marks.view_all or
+   * result.approve, any-of, read mode. A school-wide key (the principal's result.approve, an office
+   * grant of marks.view_all) reads every section; a teacher reads the sections they class-teach or
+   * cover on `on` (the sheet repository's predicate).
+   */
+  sheetReadScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'read'> | null> {
+    return this.marksScope(
+      session,
+      'read',
+      [Capability.MARKS_ENTER, Capability.MARKS_VIEW_ALL, Capability.RESULT_APPROVE],
+      on,
+    );
   }
 
   /**
@@ -363,7 +398,9 @@ export class PermissionsService {
       access.lines.some((line) => line.capability === key && line.scope === 'assigned_sections');
     if (held.some((key) => !teacherOnly(key))) return marksScopeAll(mode, on);
     const sections =
-      access.staffId === null ? new Map() : await this.assignments.sectionsOn(schoolId, access.staffId, on);
+      access.staffId === null
+        ? new Map()
+        : await this.assignments.sectionsOn(schoolId, access.staffId, on);
     return marksScopeSections(mode, on, sections);
   }
 
@@ -376,7 +413,10 @@ export class PermissionsService {
    */
   async refuseOutsideDate(session: SchoolSessionContext, sectionId: bigint): Promise<never> {
     const { staffId } = session.access;
-    if (staffId !== null && (await this.assignments.everAssigned(session.schoolId, staffId, sectionId))) {
+    if (
+      staffId !== null &&
+      (await this.assignments.everAssigned(session.schoolId, staffId, sectionId))
+    ) {
       throw notAssignedOnDate();
     }
     throw notFound();

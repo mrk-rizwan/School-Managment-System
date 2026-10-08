@@ -23,6 +23,9 @@ const SECURE: Record<string, boolean> = {
   'marks/[sectionId]/index.tsx': false,
   'marks/[sectionId]/new.tsx': false,
   'marks/test/[id].tsx': true,
+  // Slice 31: the term picker names no child; the sheet's preview does.
+  'marks/[sectionId]/sheet.tsx': false,
+  'marks/sheet/[id].tsx': true,
   // Parent (§5.1–5.4)
   'children/index.tsx': true,
   'children/[studentId]/attendance.tsx': true,
@@ -48,6 +51,7 @@ const SECURE: Record<string, boolean> = {
   'announce/[id].tsx': false,
   // Phase 3 slice 27: the Approvals tab names children (deposit slips) and shows money and slips
   'approvals/index.tsx': true,
+  'approvals/sheet/[id].tsx': true,
   // Not secure: the user's own data, no child's name
   'home/index.tsx': false,
   'home/my-attendance.tsx': false,

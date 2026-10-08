@@ -17,6 +17,7 @@ import { ChargeGeneration } from '../modules/fees/charge-generation';
 import { PayrollPrepare } from '../modules/payroll/payroll-prepare.job';
 import { FeeReminders } from '../modules/finance-reports/fee-reminders';
 import { ClaimsService } from '../modules/payments/claims.service';
+import { ResultNotifyJob } from '../modules/results/result-notify.job';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
@@ -67,6 +68,8 @@ export class JobRunner {
     private readonly feeReminders: FeeReminders,
     // Slice 21 (phase-3-financial.md §3.7, R200).
     private readonly claims: ClaimsService,
+    // Phase 4 slice 31 (phase-4-academic.md §3.6).
+    private readonly resultNotify: ResultNotifyJob,
   ) {}
 
   /**
@@ -111,6 +114,17 @@ export class JobRunner {
         await this.tenancy.runAsSchool(job.schoolId, () => this.charges.run(job.schoolId, job.ids.runId, now));
         return 'done';
       }
+      // Phase 4 slice 31 (§3.6): a published sheet's family messages; slice 32 adds a corrected
+      // result's (`resultId`).
+      case JOB.resultNotify: {
+        const job =
+          (await this.tenancy.fromQueuePayload(payload, ['sheetId'])) ??
+          (await this.tenancy.fromQueuePayload(payload, ['resultId']));
+        if (!job) return this.dropped(name);
+        const target = 'sheetId' in job.ids ? { sheetId: job.ids.sheetId } : { resultId: job.ids.resultId };
+        await this.tenancy.runAsSchool(job.schoolId, () => this.resultNotify.run(job.schoolId, target, now));
+        return 'done';
+      }
       default:
         return this.dropped(name);
     }
@@ -153,6 +167,8 @@ export class JobRunner {
           await this.announcementSend.sweep(schoolId, plannedAt);
           // R252: a charge run queued 10 minutes or running 15 is failed `stale`.
           await this.charges.staleSweep(schoolId, plannedAt);
+          // §3.6: a published sheet whose result-notify job was lost after commit.
+          await this.resultNotify.sweep(schoolId, plannedAt);
         });
         return 'done';
       case JOB.registerDeadlineSweep:

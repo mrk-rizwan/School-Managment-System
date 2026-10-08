@@ -967,6 +967,27 @@
         ],
         "type": "object"
       },
+      "ApprovalResultsDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResultSheetDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
       "ApprovalsDto": {
         "properties": {
           "claims": {
@@ -980,6 +1001,9 @@
           },
           "leave": {
             "$ref": "#/components/schemas/ApprovalLeaveDto"
+          },
+          "results": {
+            "$ref": "#/components/schemas/ApprovalResultsDto"
           }
         },
         "type": "object"
@@ -1085,6 +1109,10 @@
               }
             ]
           },
+          "locked": {
+            "description": "Locked (R265): a test with lockedAt, or any assessment whose section's sheet for the term is submitted, approved or published; it takes no mark, only a correction (slice 32)",
+            "type": "boolean"
+          },
           "lockedAt": {
             "description": "A test locked by its submitted sheet",
             "format": "date-time",
@@ -1168,6 +1196,7 @@
           "markedCount",
           "canEnterMarks",
           "lockedAt",
+          "locked",
           "voidedAt",
           "voidReason",
           "createdAt",
@@ -5001,6 +5030,20 @@
           "date",
           "category",
           "text"
+        ],
+        "type": "object"
+      },
+      "CreateResultSheetDto": {
+        "properties": {
+          "termId": {
+            "description": "The term; null for the year's final sheet",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "termId"
         ],
         "type": "object"
       },
@@ -9954,6 +9997,40 @@
         ],
         "type": "object"
       },
+      "OwnChildFlagDto": {
+        "properties": {
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OwnChildRole"
+              }
+            ]
+          },
+          "userId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "userName": {
+            "description": "The user's display name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "role",
+          "userName"
+        ],
+        "type": "object"
+      },
+      "OwnChildRole": {
+        "enum": [
+          "mark_author",
+          "remark_author",
+          "submitter",
+          "approver"
+        ],
+        "type": "string"
+      },
       "PassRule": {
         "enum": [
           "all_subjects",
@@ -11982,6 +12059,196 @@
         ],
         "type": "object"
       },
+      "ResultPreviewRowDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "attendanceBp": {
+            "description": "92.3 % = 9230",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "failedSubjects": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "missing": {
+            "description": "Assessments applying to the student with no mark yet",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ownChildFlags": {
+            "items": {
+              "$ref": "#/components/schemas/OwnChildFlagDto"
+            },
+            "type": "array"
+          },
+          "passed": {
+            "description": "Null when nothing is assessed",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "position": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "positionOf": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "remark": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/ResultPreviewSubjectDto"
+            },
+            "type": "array"
+          },
+          "totalMax": {
+            "type": "integer"
+          },
+          "totalObtained": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "studentId",
+          "fullName",
+          "admissionNo",
+          "rollNo",
+          "totalObtained",
+          "totalMax",
+          "percentBp",
+          "grade",
+          "passed",
+          "failedSubjects",
+          "position",
+          "positionOf",
+          "attendanceBp",
+          "remark",
+          "ownChildFlags",
+          "missing",
+          "subjects"
+        ],
+        "type": "object"
+      },
+      "ResultPreviewSubjectDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "examAbsent": {
+            "type": "boolean"
+          },
+          "examBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "examExcused": {
+            "type": "boolean"
+          },
+          "examMax": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "examObtained": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "max": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "obtained": {
+            "description": "Printed obtained = round(percent × max)",
+            "nullable": true,
+            "type": "integer"
+          },
+          "ownChildOf": {
+            "description": "A mark author of the subject who is the student's guardian",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSubjectStatus"
+              }
+            ]
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "testBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "subjectName",
+          "testBp",
+          "examBp",
+          "examObtained",
+          "examMax",
+          "examAbsent",
+          "examExcused",
+          "percentBp",
+          "obtained",
+          "max",
+          "grade",
+          "status",
+          "ownChildOf"
+        ],
+        "type": "object"
+      },
       "ResultSettingsDto": {
         "properties": {
           "academicYearId": {
@@ -12061,6 +12328,480 @@
           "updatedAt"
         ],
         "type": "object"
+      },
+      "ResultSheetDetailDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "canDecide": {
+            "description": "The caller may approve or return it now",
+            "type": "boolean"
+          },
+          "canPublish": {
+            "description": "The caller may publish it now",
+            "type": "boolean"
+          },
+          "canRemark": {
+            "description": "The caller may write remarks now: the sheet's author while it is draft or returned (the final sheet included)",
+            "type": "boolean"
+          },
+          "canSubmit": {
+            "description": "The caller may submit it now (a term sheet; the final is approved directly)",
+            "type": "boolean"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "cover": {
+            "description": "Submitted under a cover assignment (the class teacher's cover, R175)",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "decidedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "flags": {
+            "$ref": "#/components/schemas/ResultSheetFlagsDto"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "isFinal": {
+            "description": "The final sheet of the year (no term)",
+            "type": "boolean"
+          },
+          "ownChildFlags": {
+            "description": "A guardian of a student on the sheet among its contributors (mark authors, the remark writer, the submitter, the caller as approver), recomputed from live rows (R276); distinct by user and role. In the list, carried only by `status=submitted` (the approvals queue, paged at most 10); other lists carry none",
+            "items": {
+              "$ref": "#/components/schemas/OwnChildFlagDto"
+            },
+            "type": "array"
+          },
+          "preview": {
+            "items": {
+              "$ref": "#/components/schemas/ResultPreviewRowDto"
+            },
+            "type": "array"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "publishedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "returnReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "selfApproved": {
+            "description": "Approved by its own submitter, the sole principal (§1.1)",
+            "type": "boolean"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ResultSheetSettingsDto"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSheetPreviewSource"
+              }
+            ],
+            "description": "preview: the shared composition over the live marks, never stored (draft, submitted, returned); stored: the results stored at approval"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSheetStatus"
+              }
+            ]
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/ResultSheetSubjectDto"
+            },
+            "type": "array"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "submittedByMe": {
+            "description": "The caller submitted it",
+            "type": "boolean"
+          },
+          "submittedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "termId": {
+            "description": "Null for the final sheet of the year",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "description": "The term's name; null for the final sheet",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "termId",
+          "termName",
+          "isFinal",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "version",
+          "status",
+          "submittedAt",
+          "submittedByName",
+          "submittedByMe",
+          "cover",
+          "decidedAt",
+          "decidedByName",
+          "selfApproved",
+          "returnReason",
+          "publishedAt",
+          "publishedByName",
+          "ownChildFlags",
+          "createdAt",
+          "updatedAt",
+          "source",
+          "settings",
+          "subjects",
+          "preview",
+          "flags",
+          "canRemark",
+          "canSubmit",
+          "canDecide",
+          "canPublish"
+        ],
+        "type": "object"
+      },
+      "ResultSheetDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "cover": {
+            "description": "Submitted under a cover assignment (the class teacher's cover, R175)",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "decidedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "isFinal": {
+            "description": "The final sheet of the year (no term)",
+            "type": "boolean"
+          },
+          "ownChildFlags": {
+            "description": "A guardian of a student on the sheet among its contributors (mark authors, the remark writer, the submitter, the caller as approver), recomputed from live rows (R276); distinct by user and role. In the list, carried only by `status=submitted` (the approvals queue, paged at most 10); other lists carry none",
+            "items": {
+              "$ref": "#/components/schemas/OwnChildFlagDto"
+            },
+            "type": "array"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "publishedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "returnReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "selfApproved": {
+            "description": "Approved by its own submitter, the sole principal (§1.1)",
+            "type": "boolean"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSheetStatus"
+              }
+            ]
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "submittedByMe": {
+            "description": "The caller submitted it",
+            "type": "boolean"
+          },
+          "submittedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "termId": {
+            "description": "Null for the final sheet of the year",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "description": "The term's name; null for the final sheet",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "termId",
+          "termName",
+          "isFinal",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "version",
+          "status",
+          "submittedAt",
+          "submittedByName",
+          "submittedByMe",
+          "cover",
+          "decidedAt",
+          "decidedByName",
+          "selfApproved",
+          "returnReason",
+          "publishedAt",
+          "publishedByName",
+          "ownChildFlags",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ResultSheetFlagsDto": {
+        "properties": {
+          "cover": {
+            "type": "boolean"
+          },
+          "examsNotSetUp": {
+            "description": "Class-subjects with no exam for the section (EXAM_NOT_SET_UP)",
+            "items": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing": {
+            "description": "Gaps that refuse a submission (R268)",
+            "items": {
+              "$ref": "#/components/schemas/ResultSheetGapDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "missingCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ownChild": {
+            "items": {
+              "$ref": "#/components/schemas/OwnChildFlagDto"
+            },
+            "type": "array"
+          },
+          "selfApproved": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ownChild",
+          "cover",
+          "selfApproved",
+          "missing",
+          "missingCount",
+          "examsNotSetUp"
+        ],
+        "type": "object"
+      },
+      "ResultSheetGapDto": {
+        "properties": {
+          "assessmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "assessmentId"
+        ],
+        "type": "object"
+      },
+      "ResultSheetPreviewSource": {
+        "description": "preview: the shared composition over the live marks, never stored (draft, submitted, returned); stored: the results stored at approval",
+        "enum": [
+          "preview",
+          "stored"
+        ],
+        "type": "string"
+      },
+      "ResultSheetSettingsDto": {
+        "properties": {
+          "examWeight": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "passPercent": {
+            "type": "integer"
+          },
+          "passRule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassRule"
+              }
+            ]
+          },
+          "snapshot": {
+            "description": "The snapshot stored at approval (true), or the year’s live settings (false)",
+            "type": "boolean"
+          },
+          "testWeight": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "testWeight",
+          "examWeight",
+          "passPercent",
+          "passRule",
+          "snapshot"
+        ],
+        "type": "object"
+      },
+      "ResultSheetSort": {
+        "enum": [
+          "-updatedAt",
+          "updatedAt",
+          "submittedAt"
+        ],
+        "type": "string"
+      },
+      "ResultSheetStatus": {
+        "enum": [
+          "draft",
+          "submitted",
+          "returned",
+          "approved",
+          "published"
+        ],
+        "type": "string"
+      },
+      "ResultSheetSubjectDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "subjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "subjectName",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "ResultSubjectStatus": {
+        "enum": [
+          "assessed",
+          "not_assessed"
+        ],
+        "type": "string"
       },
       "ReversalDto": {
         "properties": {
@@ -12847,6 +13588,26 @@
             "type": "array"
           }
         },
+        "type": "object"
+      },
+      "SheetRemarkDto": {
+        "properties": {
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "remark": {
+            "description": "null clears it",
+            "maxLength": 300,
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "remark"
+        ],
         "type": "object"
       },
       "ShortfallResolution": {
@@ -15413,6 +16174,22 @@
             "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "UpdateResultSheetDto": {
+        "properties": {
+          "remarks": {
+            "items": {
+              "$ref": "#/components/schemas/SheetRemarkDto"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "remarks"
+        ],
         "type": "object"
       },
       "UpdateSchoolSettingsDto": {
@@ -42334,6 +43111,767 @@
         ]
       }
     },
+    "/api/v1/result-sheets": {
+      "get": {
+        "operationId": "ResultsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "true: the final sheets only",
+            "in": "query",
+            "name": "final",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ResultSheetStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ResultSheetSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ResultSheetDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-sheets/{id}": {
+      "get": {
+        "operationId": "ResultsController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      },
+      "patch": {
+        "operationId": "ResultsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResultSheetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-sheets/{id}/approve": {
+      "post": {
+        "operationId": "ResultsController_approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-sheets/{id}/publish": {
+      "post": {
+        "operationId": "ResultsController_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-sheets/{id}/return": {
+      "post": {
+        "operationId": "ResultsController_return",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-sheets/{id}/submit": {
+      "post": {
+        "operationId": "ResultsController_submit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
     "/api/v1/salary-advances": {
       "get": {
         "operationId": "SalaryAdvancesController_list",
@@ -43686,6 +45224,127 @@
         },
         "tags": [
           "attendance"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/result-sheets": {
+      "post": {
+        "operationId": "ResultsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResultSheetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": "The open version, already created"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
         ]
       }
     },

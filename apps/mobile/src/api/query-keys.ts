@@ -61,6 +61,9 @@ export const queryKeys = {
 
   // Phase 3 slice 27: the Approvals tab (online only, never cached on the phone).
   approvals: ['me', 'approvals'] as const,
+  /** Phase 4 slice 31: a result sheet (online only, never cached on the phone). */
+  resultSheet: (id: string) => ['result-sheets', id] as const,
+  yearTerms: (yearId: string) => ['academic-years', yearId, 'terms'] as const,
 
   // Everyone (16b): the inbox
   inbox: (category: string, page: number) => ['me', 'inbox', category, page] as const,

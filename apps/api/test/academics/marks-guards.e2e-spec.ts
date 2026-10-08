@@ -231,9 +231,11 @@ describe('wave N assessment and mark guards (raw SQL)', () => {
     expect(await refusedBy(`UPDATE assessments SET kind = 'test' WHERE school_id = $1 AND id = $2`, [f.school.id, exam.id])).toBe(
       'assessments_kind_immutable',
     );
-    expect(await refusedBy(`UPDATE assessments SET locked_at = NULL WHERE school_id = $1 AND id = $2`, [f.school.id, locked.id])).toBe(
-      'assessments_locked_at_frozen',
-    );
+    // Wave O (R269): locked_at is set once and never moved; a return clears it.
+    expect(
+      await refusedBy(`UPDATE assessments SET locked_at = locked_at + interval '1 hour' WHERE school_id = $1 AND id = $2`, [f.school.id, locked.id]),
+    ).toBe('assessments_locked_at_frozen');
+    expect(await refusedBy(`UPDATE assessments SET locked_at = NULL WHERE school_id = $1 AND id = $2`, [f.school.id, locked.id])).toBeNull();
     expect(
       await refusedBy(`UPDATE assessments SET voided_at = NULL, voided_by = NULL, void_reason = NULL WHERE school_id = $1 AND id = $2`, [
         f.school.id,

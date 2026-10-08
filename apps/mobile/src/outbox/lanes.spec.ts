@@ -44,6 +44,13 @@ test('the online-only list after Phase 3 (§3.9, R226)', () => {
       'edit_assessment',
       'void_assessment',
       'excuse_mark',
+      // Phase 4 slice 31: every result-sheet action.
+      'open_result_sheet',
+      'save_result_remarks',
+      'submit_result_sheet',
+      'approve_result_sheet',
+      'return_result_sheet',
+      'publish_result_sheet',
     ].sort(),
   );
 });

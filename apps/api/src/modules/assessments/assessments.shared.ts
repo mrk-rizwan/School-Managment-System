@@ -53,7 +53,17 @@ export interface AssessmentView {
   createdByMe: boolean;
   markedCount: number;
   canEnterMarks: boolean;
+  /** lockedAt set, or the section-term sheet submitted or later (R265). */
+  locked: boolean;
 }
+
+export const resultSheetNotDraft = (sheetId: bigint): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.RESULT_SHEET_NOT_DRAFT,
+    'The section’s result sheet for this term has been submitted: no new test can be added.',
+    { sheetId: sheetId.toString() },
+  );
 
 export function toAssessmentDto(row: AssessmentRecord, view: AssessmentView): AssessmentDto {
   return {
@@ -77,6 +87,7 @@ export function toAssessmentDto(row: AssessmentRecord, view: AssessmentView): As
     markedCount: view.markedCount,
     canEnterMarks: view.canEnterMarks,
     lockedAt: row.lockedAt,
+    locked: view.locked,
     voidedAt: row.voidedAt,
     voidReason: row.voidReason,
     createdAt: row.createdAt,

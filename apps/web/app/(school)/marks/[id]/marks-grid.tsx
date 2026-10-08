@@ -186,8 +186,8 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
           <AlertDescription>
             {assessment.voidedAt
               ? 'This assessment has been voided.'
-              : assessment.lockedAt
-                ? 'This test is locked: its result sheet has been submitted.'
+              : assessment.locked
+                ? 'Locked: the result sheet for this term has been submitted.'
                 : 'You can read these marks but not enter them: you do not teach this subject in this section.'}
           </AlertDescription>
         </Alert>

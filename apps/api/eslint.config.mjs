@@ -131,6 +131,12 @@ const IMPORTS = {
     regex: `(^|/)repositories/(assessment|mark)\\.repository${EXT}$`,
     message: 'The assessment and mark repositories are imported only from src/modules/assessments/**.',
   },
+  // Phase 4 slice 31 (§5.1): the result-sheet, result and read-only mark-reads repositories are
+  // the results module's (it reads marks only through MarkReadsRepository).
+  resultRepositories: {
+    regex: `(^|/)repositories/(result-sheet|result|mark-reads)\.repository${EXT}$`,
+    message: 'The result-sheet, result and mark-reads repositories are imported only from src/modules/results/**.',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -329,6 +335,10 @@ const RAW_SQL_FILES = [
   // Phase 4 slice 34: the cert_<type> counter's upsert (R289), filtered on school_id like the
   // receipt counter's (test/certificates/certificates.e2e-spec.ts).
   'src/repositories/certificate.repository.ts',
+  // Phase 4 slice 31 review: ResultSheetRepository.lockTestRows, the assessments a submission or
+  // a return locks or unlocks taken FOR UPDATE in id order (contracts/slice-31.md §2.4), filtered
+  // on school_id (test/results/isolation.spec.ts, test/results/result-sheets.e2e-spec.ts).
+  'src/repositories/result-sheet.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -710,6 +720,26 @@ export default tseslint.config(
     // widening of their block. Its suites probe the same.
     files: ['src/modules/assessments/**/*.ts', 'test/assessments/**/*.ts'],
     rules: restrictImports({ exempt: ['academicSetupRepositories', 'assessmentRepositories'] }),
+  },
+  {
+    // Slice 31 (§5.1): the results module owns the sheet, result and mark-reads repositories,
+    // reads the slice-29 set-up repositories (terms, class subjects, result settings) — a recorded
+    // widening of their block — and reads dues only through FinanceReportsService.clearance. Its
+    // suites probe the same.
+    files: ['src/modules/results/**/*.ts', 'test/results/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['academicSetupRepositories', 'resultRepositories'],
+      extra: [{ ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/results/** reads dues only through FinanceReportsService.clearance (§5.1).' }],
+    }),
+  },
+  {
+    // The results suites also probe AssessmentRepository.sheetLockedStudents, the assessments
+    // module's read of result_sheet_locks (the slice-31 review, its isolation test).
+    files: ['test/results/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['academicSetupRepositories', 'resultRepositories', 'assessmentRepositories'],
+      extra: [{ ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/results/** reads dues only through FinanceReportsService.clearance (§5.1).' }],
+    }),
   },
   {
     // Slice 34 (§5.1): the certificates module owns its repository and reads dues only through

@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
 import type { Scope } from '../tenancy/scope';
-import type {
-  ContactCapability,
-  GuardianRelationship,
+import {
   Prisma,
-  StudentStatus,
+  type ContactCapability,
+  type GuardianRelationship,
+  type StudentStatus,
 } from './generated/prisma/client';
 import type { PrismaTxAdapter } from './prisma';
 import { studentInScope } from './student.repository';
@@ -273,6 +273,32 @@ export class StudentGuardianRepository {
           AND sg.ended_at IS NULL
       ) AS linked`;
     return rows[0]?.linked === true;
+  }
+
+  /**
+   * Phase 4 (§0.28, R276): of `userIds` and `studentIds`, the pairs where the user is a guardian
+   * (merge-resolved, as userIsLiveGuardianOf) with a live link to the student: the own-child
+   * flags of a result sheet. One statement; every table filtered on school_id.
+   */
+  async guardianPairs(
+    schoolId: SchoolId,
+    userIds: readonly bigint[],
+    studentIds: readonly bigint[],
+  ): Promise<{ userId: bigint; studentId: bigint }[]> {
+    if (userIds.length === 0 || studentIds.length === 0) return [];
+    const rows = await this.txHost.tx.$queryRaw<{ user_id: bigint; student_id: bigint }[]>`
+      SELECT DISTINCT u.id AS user_id, sg.student_id
+        FROM users u
+        CROSS JOIN LATERAL asms_guardian_merge_family(${schoolId}::bigint, u.guardian_id) AS fam(id)
+        JOIN student_guardians sg
+          ON sg.school_id = ${schoolId}::bigint AND sg.guardian_id = fam.id
+       WHERE u.school_id = ${schoolId}::bigint
+         AND u.id IN (${Prisma.join([...userIds])})
+         AND u.guardian_id IS NOT NULL
+         AND sg.student_id IN (${Prisma.join([...studentIds])})
+         AND sg.ended_at IS NULL
+       ORDER BY 1, 2`;
+    return rows.map((r) => ({ userId: r.user_id, studentId: r.student_id }));
   }
 
   /** The guardian is the primary contact on some live link (R30: the phone must stay). */

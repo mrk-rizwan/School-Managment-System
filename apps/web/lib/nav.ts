@@ -24,6 +24,7 @@ import {
   ReceiptIcon,
   WalletIcon,
   FileTextIcon,
+  GraduationCapIcon,
   ChartColumnIcon,
   MegaphoneIcon,
   MessageSquareIcon,
@@ -76,6 +77,13 @@ export const schoolNav: NavItem[] = [
   // Phase 4 slice 30: tests and exams of the caller's sections and subjects, or the school's with
   // marks.view_all (contracts/slice-30.md §8).
   { href: '/marks', label: 'Marks', icon: ClipboardPenLineIcon, capability: ['marks.enter', 'marks.view_all'] },
+  // Phase 4 slice 31: the section result sheets the caller reads (contracts/slice-31.md §9).
+  {
+    href: '/results/sheets',
+    label: 'Results',
+    icon: GraduationCapIcon,
+    capability: ['marks.enter', 'marks.view_all', 'result.approve'],
+  },
   // Senders read their own announcements, or every one with .school (contracts/slice-14.md §1.1).
   {
     href: '/announcements',

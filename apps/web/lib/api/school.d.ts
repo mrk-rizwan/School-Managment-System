@@ -3156,6 +3156,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/result-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-sheets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ResultsController_update"];
+        trace?: never;
+    };
+    "/api/v1/result-sheets/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-sheets/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-sheets/{id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsController_return"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-sheets/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/salary-advances": {
         parameters: {
             query?: never;
@@ -3294,6 +3390,22 @@ export interface paths {
         get: operations["AttendanceController_register"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sections/{id}/result-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResultsController_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4332,11 +4444,17 @@ export interface components {
             count: number;
             items: components["schemas"]["LeaveRequestDto"][];
         };
+        ApprovalResultsDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["ResultSheetDto"][];
+        };
         ApprovalsDto: {
             claims?: components["schemas"]["ApprovalClaimsDto"];
             expenses?: components["schemas"]["ApprovalExpensesDto"];
             handovers?: components["schemas"]["ApprovalHandoversDto"];
             leave?: components["schemas"]["ApprovalLeaveDto"];
+            results?: components["schemas"]["ApprovalResultsDto"];
         };
         ApproveConcessionDto: {
             /**
@@ -4379,6 +4497,8 @@ export interface components {
             heldOn: string;
             id: string;
             kind: components["schemas"]["AssessmentKind"];
+            /** @description Locked (R265): a test with lockedAt, or any assessment whose section's sheet for the term is submitted, approved or published; it takes no mark, only a correction (slice 32) */
+            locked: boolean;
             /**
              * Format: date-time
              * @description A test locked by its submitted sheet
@@ -5407,6 +5527,10 @@ export interface components {
             text: string;
             /** @description Default: the school’s remarkDefaultVisibility */
             visibility?: components["schemas"]["RemarkVisibility"];
+        };
+        CreateResultSheetDto: {
+            /** @description The term; null for the year's final sheet */
+            termId: string | null;
         };
         CreateSalaryStructureDto: {
             /** @description Whole rupees */
@@ -6623,6 +6747,14 @@ export interface components {
             /** @description Whole rupees */
             total: number;
         };
+        OwnChildFlagDto: {
+            role: components["schemas"]["OwnChildRole"];
+            userId: string;
+            /** @description The user's display name */
+            userName: string;
+        };
+        /** @enum {string} */
+        OwnChildRole: "mark_author" | "remark_author" | "submitter" | "approver";
         /** @enum {string} */
         PassRule: "all_subjects" | "overall";
         PaymentAccountDto: {
@@ -7120,6 +7252,47 @@ export interface components {
             /** @description explained_by_void only: the void of a payment in this handover */
             reversalId?: string;
         };
+        ResultPreviewRowDto: {
+            admissionNo: string;
+            /** @description 92.3 % = 9230 */
+            attendanceBp: number | null;
+            enrolmentId: string;
+            failedSubjects: number;
+            fullName: string;
+            grade: string | null;
+            /** @description Assessments applying to the student with no mark yet */
+            missing: number;
+            ownChildFlags: components["schemas"]["OwnChildFlagDto"][];
+            /** @description Null when nothing is assessed */
+            passed: boolean | null;
+            percentBp: number | null;
+            position: number | null;
+            positionOf: number | null;
+            remark: string | null;
+            rollNo: number | null;
+            studentId: string;
+            subjects: components["schemas"]["ResultPreviewSubjectDto"][];
+            totalMax: number;
+            totalObtained: number;
+        };
+        ResultPreviewSubjectDto: {
+            classSubjectId: string;
+            examAbsent: boolean;
+            examBp: number | null;
+            examExcused: boolean;
+            examMax: number | null;
+            examObtained: number | null;
+            grade: string | null;
+            max: number;
+            /** @description Printed obtained = round(percent × max) */
+            obtained: number | null;
+            /** @description A mark author of the subject who is the student's guardian */
+            ownChildOf: string | null;
+            percentBp: number | null;
+            status: components["schemas"]["ResultSubjectStatus"];
+            subjectName: string;
+            testBp: number | null;
+        };
         ResultSettingsDto: {
             academicYearId: string;
             /** @description Descending minimums; the last at 0 */
@@ -7142,6 +7315,134 @@ export interface components {
             /** @description Withhold the report card from the family until dues are cleared */
             withholdCardForDues: boolean;
         };
+        ResultSheetDetailDto: {
+            academicYearId: string;
+            /** @description The caller may approve or return it now */
+            canDecide: boolean;
+            /** @description The caller may publish it now */
+            canPublish: boolean;
+            /** @description The caller may write remarks now: the sheet's author while it is draft or returned (the final sheet included) */
+            canRemark: boolean;
+            /** @description The caller may submit it now (a term sheet; the final is approved directly) */
+            canSubmit: boolean;
+            classId: string;
+            className: string;
+            /** @description Submitted under a cover assignment (the class teacher's cover, R175) */
+            cover: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            flags: components["schemas"]["ResultSheetFlagsDto"];
+            id: string;
+            /** @description The final sheet of the year (no term) */
+            isFinal: boolean;
+            /** @description A guardian of a student on the sheet among its contributors (mark authors, the remark writer, the submitter, the caller as approver), recomputed from live rows (R276); distinct by user and role. In the list, carried only by `status=submitted` (the approvals queue, paged at most 10); other lists carry none */
+            ownChildFlags: components["schemas"]["OwnChildFlagDto"][];
+            preview: components["schemas"]["ResultPreviewRowDto"][];
+            /** Format: date-time */
+            publishedAt: string | null;
+            publishedByName: string | null;
+            returnReason: string | null;
+            sectionId: string;
+            sectionName: string;
+            /** @description Approved by its own submitter, the sole principal (§1.1) */
+            selfApproved: boolean;
+            settings: components["schemas"]["ResultSheetSettingsDto"];
+            /** @description preview: the shared composition over the live marks, never stored (draft, submitted, returned); stored: the results stored at approval */
+            source: components["schemas"]["ResultSheetPreviewSource"];
+            status: components["schemas"]["ResultSheetStatus"];
+            subjects: components["schemas"]["ResultSheetSubjectDto"][];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** @description The caller submitted it */
+            submittedByMe: boolean;
+            submittedByName: string | null;
+            /** @description Null for the final sheet of the year */
+            termId: string | null;
+            /** @description The term's name; null for the final sheet */
+            termName: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        ResultSheetDto: {
+            academicYearId: string;
+            classId: string;
+            className: string;
+            /** @description Submitted under a cover assignment (the class teacher's cover, R175) */
+            cover: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            id: string;
+            /** @description The final sheet of the year (no term) */
+            isFinal: boolean;
+            /** @description A guardian of a student on the sheet among its contributors (mark authors, the remark writer, the submitter, the caller as approver), recomputed from live rows (R276); distinct by user and role. In the list, carried only by `status=submitted` (the approvals queue, paged at most 10); other lists carry none */
+            ownChildFlags: components["schemas"]["OwnChildFlagDto"][];
+            /** Format: date-time */
+            publishedAt: string | null;
+            publishedByName: string | null;
+            returnReason: string | null;
+            sectionId: string;
+            sectionName: string;
+            /** @description Approved by its own submitter, the sole principal (§1.1) */
+            selfApproved: boolean;
+            status: components["schemas"]["ResultSheetStatus"];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** @description The caller submitted it */
+            submittedByMe: boolean;
+            submittedByName: string | null;
+            /** @description Null for the final sheet of the year */
+            termId: string | null;
+            /** @description The term's name; null for the final sheet */
+            termName: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        ResultSheetFlagsDto: {
+            cover: boolean;
+            /** @description Class-subjects with no exam for the section (EXAM_NOT_SET_UP) */
+            examsNotSetUp: string[];
+            /** @description Gaps that refuse a submission (R268) */
+            missing: components["schemas"]["ResultSheetGapDto"][];
+            missingCount: number;
+            ownChild: components["schemas"]["OwnChildFlagDto"][];
+            selfApproved: boolean;
+        };
+        ResultSheetGapDto: {
+            assessmentId: string;
+            enrolmentId: string;
+        };
+        /**
+         * @description preview: the shared composition over the live marks, never stored (draft, submitted, returned); stored: the results stored at approval
+         * @enum {string}
+         */
+        ResultSheetPreviewSource: "preview" | "stored";
+        ResultSheetSettingsDto: {
+            examWeight: number | null;
+            passPercent: number;
+            passRule: components["schemas"]["PassRule"];
+            /** @description The snapshot stored at approval (true), or the year’s live settings (false) */
+            snapshot: boolean;
+            testWeight: number | null;
+        };
+        /** @enum {string} */
+        ResultSheetSort: "-updatedAt" | "updatedAt" | "submittedAt";
+        /** @enum {string} */
+        ResultSheetStatus: "draft" | "submitted" | "returned" | "approved" | "published";
+        ResultSheetSubjectDto: {
+            classSubjectId: string;
+            sortOrder: number;
+            subjectName: string;
+        };
+        /** @enum {string} */
+        ResultSubjectStatus: "assessed" | "not_assessed";
         ReversalDto: {
             academicYearId: string;
             /** @description Whole rupees */
@@ -7334,6 +7635,11 @@ export interface components {
         SetUpExamsDto: {
             /** @description Default: every class of the term's year that is not archived */
             classIds?: string[];
+        };
+        SheetRemarkDto: {
+            enrolmentId: string;
+            /** @description null clears it */
+            remark: string | null;
         };
         /** @enum {string} */
         ShortfallResolution: "recovered" | "written_off" | "explained_by_void";
@@ -8033,6 +8339,9 @@ export interface components {
             showRemark?: boolean;
             testWeight?: number;
             withholdCardForDues?: boolean;
+        };
+        UpdateResultSheetDto: {
+            remarks: components["schemas"]["SheetRemarkDto"][];
         };
         UpdateSchoolSettingsDto: {
             /** @example 09:30 */
@@ -25674,6 +25983,518 @@ export interface operations {
             };
         };
     };
+    ResultsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                termId?: string;
+                /** @description true: the final sheets only */
+                final?: "true" | "false";
+                classId?: string;
+                sectionId?: string;
+                status?: components["schemas"]["ResultSheetStatus"];
+                sort?: components["schemas"]["ResultSheetSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResultSheetDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateResultSheetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_return: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     SalaryAdvancesController_list: {
         parameters: {
             query?: {
@@ -26578,6 +27399,96 @@ export interface operations {
                 };
             };
             426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateResultSheetDto"];
+            };
+        };
+        responses: {
+            /** @description The open version, already created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

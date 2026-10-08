@@ -1,6 +1,6 @@
-// Constraint → refusal mappings for Phase 4 slice 29 (contracts/slice-29.md §5), merged into
-// BY_CONSTRAINT (prisma-errors.ts). The services check first; these answer the race losers and
-// any write that reaches the database's line.
+// Constraint → refusal mappings for Phase 4 slices 29-31 (contracts/slice-29.md §5, slice-30.md
+// §6, slice-31.md §8), merged into BY_CONSTRAINT (prisma-errors.ts). The services check first;
+// these answer the race losers and any write that reaches the database's line.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
 import { fieldInvalid } from './constraints.shared';
@@ -63,4 +63,41 @@ export const SLICE_29_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   // Slice 34 (contracts/slice-34.md §5): two reissues of one number through different rows at
   // once; the loser retries. Numbers themselves are taken under the counter's row lock.
   certificates_school_id_type_number_issue_no_key: concurrentUpdate,
+  // Slice 31 (contracts/slice-31.md §8, migration 20261008120000_wave_o_result_sheets): the
+  // services check first under the sheet's row lock; these answer a race loser or a write that
+  // reaches the database's line.
+  result_sheets_open_key: () =>
+    new ApiException(409, ErrorCode.RESULT_SHEET_VERSION_OPEN, 'This section already has an open sheet for the term.', { sheetId: null }),
+  result_sheets_version_key: concurrentUpdate,
+  result_sheets_status_transition: () =>
+    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'The sheet has moved on since it was read.', { sheetId: null }),
+  result_sheets_not_self: () =>
+    new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot decide a sheet you submitted.', { reason: 'submitter' }),
+  result_sheets_self_approved_unwarranted: () =>
+    new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'You cannot decide a sheet you submitted.', { reason: 'submitter' }),
+  result_sheet_remarks_open: () =>
+    new ApiException(409, ErrorCode.RESULT_SHEET_NOT_DRAFT, 'Remarks are written only while the sheet is a draft or returned.', { sheetId: null }),
+  result_sheet_remarks_school_id_sheet_id_enrolment_id_key: concurrentUpdate,
+  results_live_key: concurrentUpdate,
+  results_sheet_enrolment_key: concurrentUpdate,
+  result_settings_locked: () =>
+    new ApiException(409, ErrorCode.RESULT_SETTINGS_LOCKED, 'A result sheet of this year is approved: the result settings are frozen.', { academicYearId: null }),
+  academic_terms_results_locked: () =>
+    new ApiException(409, ErrorCode.RESULT_SETTINGS_LOCKED, 'A result sheet of this year is approved: its terms are frozen.', { academicYearId: null }),
+  class_subjects_frozen: () =>
+    new ApiException(409, ErrorCode.CLASS_SUBJECTS_FROZEN, 'A result sheet of this class is under review: its subject list is frozen.', { classId: null }),
+  assessments_sheet_not_draft: () =>
+    new ApiException(409, ErrorCode.RESULT_SHEET_NOT_DRAFT, 'The section’s result sheet for the term has been submitted.', { sheetId: null }),
+  // The slice-31 review (migrations 20261008140000, 20261008150000): the submission record and
+  // the lock rows are written by the services under the sheet's row lock; these answer a write
+  // that reaches the database's line or a race loser.
+  result_sheets_submission_frozen: () =>
+    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'The sheet has moved on since it was read.', { sheetId: null }),
+  result_sheet_locks_sheet_submitted: concurrentUpdate,
+  result_sheet_locks_release_returned: concurrentUpdate,
+  result_sheet_locks_test_of_class_term: concurrentUpdate,
+  result_sheet_locks_open_test_key: concurrentUpdate,
+  result_sheet_locks_open_student_key: concurrentUpdate,
+  assessments_void_locked: () =>
+    new ApiException(409, ErrorCode.ASSESSMENT_LOCKED, 'This assessment is locked: its result sheet has been submitted.', { assessmentId: null }),
 };

@@ -313,6 +313,68 @@ export class AssessmentRepository {
   }
 
   /**
+   * Of the given section-term pairs, those whose result sheet locks their assessments (submitted,
+   * approved or published, any version), with the locking sheet's id. Reads result_sheets only by
+   * section and term, so it reveals nothing beyond what the caller already reads.
+   */
+  async lockingSheets(
+    schoolId: SchoolId,
+    pairs: readonly { sectionId: bigint; termId: bigint }[],
+  ): Promise<Map<string, bigint>> {
+    if (pairs.length === 0) return new Map();
+    const rows = await this.txHost.tx.resultSheet.findMany({
+      where: {
+        schoolId,
+        status: { in: ['submitted', 'approved', 'published'] },
+        OR: pairs.map((pair) => ({ sectionId: pair.sectionId, termId: pair.termId })),
+      },
+      select: { id: true, sectionId: true, termId: true },
+      orderBy: { id: 'asc' },
+    });
+    const locked = new Map<string, bigint>();
+    for (const row of rows) {
+      if (row.termId === null) continue;
+      const key = sectionTermKey(row.sectionId, row.termId);
+      if (!locked.has(key)) locked.set(key, row.id);
+    }
+    return locked;
+  }
+
+  /**
+   * Of `studentIds`, those a submitted (or later) sheet of the class-term has locked (its roster
+   * at submission, contracts/slice-31.md §2.4, its unreleased result_sheet_locks rows): their marks on any assessment of the class-term
+   * are locked whatever its section (a moved student's old-section marks). The service's twin of
+   * asms_mark_student_locked.
+   */
+  async sheetLockedStudents(
+    schoolId: SchoolId,
+    row: { classId: bigint; termId: bigint },
+    studentIds: readonly bigint[],
+  ): Promise<Set<bigint>> {
+    if (studentIds.length === 0) return new Set();
+    const sheets = await this.txHost.tx.resultSheet.findMany({
+      where: {
+        schoolId,
+        classId: row.classId,
+        termId: row.termId,
+        status: { in: ['submitted', 'approved', 'published'] },
+      },
+      select: { id: true },
+    });
+    if (sheets.length === 0) return new Set();
+    const locks = await this.txHost.tx.resultSheetLock.findMany({
+      where: {
+        schoolId,
+        sheetId: { in: sheets.map((s) => s.id) },
+        studentId: { in: [...studentIds] },
+        releasedAt: null,
+      },
+      select: { studentId: true },
+    });
+    return new Set(locks.flatMap((l) => (l.studentId === null ? [] : [l.studentId])));
+  }
+
+  /**
    * The live (non-voided) exams of a term among `classIds`, as `section:classSubject` pairs; only
    * those the write scope reaches.
    */
@@ -364,6 +426,14 @@ export class AssessmentRepository {
     return count;
   }
 }
+
+/**
+ * The section-term pairs of `rows` whose result sheet has been submitted and not returned
+ * (submitted, approved or published, any version): the assessment lock's sheet half (§3.2,
+ * R265; the database's asms_assessment_sheet_locked). Keys are `section:term`.
+ */
+export const sectionTermKey = (sectionId: bigint, termId: bigint): string =>
+  `${sectionId}:${termId}`;
 
 /** The set-up's key of one exam: a section and a class-subject. */
 export const examKey = (sectionId: bigint, classSubjectId: bigint): string =>

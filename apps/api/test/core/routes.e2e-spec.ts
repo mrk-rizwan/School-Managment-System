@@ -317,6 +317,14 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/assessments/:id/void': ['assessment.voided'],
   'POST /api/v1/marks/:id/excuse': ['mark.excused'],
   'POST /api/v1/terms/:id/set-up-exams': ['exams.set_up'],
+  // Phase 4 slice 31 (contracts/slice-31.md §7). A repeated create answers the open version and
+  // writes no row; remarks are a draft's text, recorded by their row (written_by).
+  'POST /api/v1/sections/:id/result-sheets': ['result_sheet.created'],
+  'PATCH /api/v1/result-sheets/:id': 'none: a term remark is a draft sheet text recorded by its row (written_by); plan §7.1 audits the sheet transitions',
+  'POST /api/v1/result-sheets/:id/submit': ['result_sheet.submitted'],
+  'POST /api/v1/result-sheets/:id/return': ['result_sheet.returned'],
+  'POST /api/v1/result-sheets/:id/approve': ['result_sheet.approved', 'result_sheet.published'],
+  'POST /api/v1/result-sheets/:id/publish': ['result_sheet.published'],
   'POST /api/v1/admissions': ['guardian.created', 'student.admitted', 'charge.admission_fee', 'concession.created'],
   'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
   'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],

@@ -300,6 +300,33 @@ export class TeacherAssignmentRepository {
     return count > 0;
   }
 
+  /**
+   * Phase 4 slice 31 (§7.1): the live cover assignment by which the staff member holds the
+   * section on `on`, if any (a cover's submission records it).
+   */
+  async coverAssignmentOn(
+    schoolId: SchoolId,
+    staffId: bigint,
+    sectionId: bigint,
+    on: Date,
+  ): Promise<bigint | null> {
+    const row = await this.txHost.tx.teacherAssignment.findFirst({
+      where: { schoolId, staffId, sectionId, role: 'cover', ...liveOverlapping(on, on) },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return row?.id ?? null;
+  }
+
+  /** Phase 4 slice 31 (§1.1 "Who submits"): the section has a live class teacher on `on`. */
+  async hasClassTeacherOn(schoolId: SchoolId, sectionId: bigint, on: Date): Promise<boolean> {
+    const row = await this.txHost.tx.teacherAssignment.findFirst({
+      where: { schoolId, sectionId, role: 'class_teacher', ...liveOverlapping(on, on) },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
   /** The roles in one section on `on`; all false and no subjects when none (§7.1). */
   async rolesOn(
     schoolId: SchoolId,

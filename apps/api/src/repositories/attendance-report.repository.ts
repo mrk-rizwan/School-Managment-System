@@ -151,6 +151,25 @@ function teachingDaysSql(schoolId: SchoolId, from: Date, to: Date, weeklyOffDays
                           AND g.d::date BETWEEN h.starts_on AND h.ends_on)`;
 }
 
+/** dayValue() (§5.2) as SQL over an attendance_day_status alias `ds`; null leaves the denominator. */
+function dayValueSql(settings: AttendanceValueSettings): Prisma.Sql {
+  return Prisma.sql`CASE ds.status
+                 WHEN 'present' THEN 1::numeric
+                 WHEN 'absent' THEN 0::numeric
+                 WHEN 'late' THEN CASE ${settings.lateCountsAs}::text
+                   WHEN 'present' THEN 1::numeric
+                   WHEN 'half_day' THEN 0.5::numeric
+                   ELSE CASE WHEN ds.first_late_arrived_at IS NOT NULL
+                                  AND ${sqlTime(settings.lateCutoffTime)} IS NOT NULL
+                                  AND ds.first_late_arrived_at > ${sqlTime(settings.lateCutoffTime)}
+                             THEN 0::numeric ELSE 1::numeric END
+                 END
+                 WHEN 'on_leave' THEN CASE WHEN ${settings.leaveCountsAs}::text = 'absent'
+                                           THEN 0::numeric ELSE NULL END
+                 WHEN 'partial' THEN (ds.periods_present + ds.periods_late)::numeric / ds.periods_recorded
+               END`;
+}
+
 @Injectable()
 export class AttendanceReportRepository {
   constructor(private readonly txHost: TransactionHost<PrismaTxAdapter>) {}
@@ -383,21 +402,7 @@ export class AttendanceReportRepository {
       ),
       valued AS (
         SELECT DISTINCT ON (ds.student_id, ds.date) ds.student_id, ds.date,
-               CASE ds.status
-                 WHEN 'present' THEN 1::numeric
-                 WHEN 'absent' THEN 0::numeric
-                 WHEN 'late' THEN CASE ${settings.lateCountsAs}::text
-                   WHEN 'present' THEN 1::numeric
-                   WHEN 'half_day' THEN 0.5::numeric
-                   ELSE CASE WHEN ds.first_late_arrived_at IS NOT NULL
-                                  AND ${sqlTime(settings.lateCutoffTime)} IS NOT NULL
-                                  AND ds.first_late_arrived_at > ${sqlTime(settings.lateCutoffTime)}
-                             THEN 0::numeric ELSE 1::numeric END
-                 END
-                 WHEN 'on_leave' THEN CASE WHEN ${settings.leaveCountsAs}::text = 'absent'
-                                           THEN 0::numeric ELSE NULL END
-                 WHEN 'partial' THEN (ds.periods_present + ds.periods_late)::numeric / ds.periods_recorded
-               END AS value
+               ${dayValueSql(settings)} AS value
           FROM attendance_day_status ds
           JOIN cohort ON cohort.student_id = ds.student_id
           JOIN teaching t ON t.date = ds.date
@@ -438,5 +443,45 @@ export class AttendanceReportRepository {
         teachingDays: r.teaching_days,
       })),
     };
+  }
+  /**
+   * Phase 4 slice 31 (R277): the attendance percentage of each of `studentIds` over [from, to] by
+   * the rules of GET /students/:id/attendance (§5.3) in one statement: teaching days are the range
+   * minus weekly-off days and published holidays; a day counts when the student had any enrolment
+   * in force on it and something was recorded; the value is dayValue(). One decimal, half-up;
+   * null when nothing counted. A student absent from the answer counted nothing.
+   */
+  async percentageForStudents(
+    schoolId: SchoolId,
+    query: {
+      studentIds: readonly bigint[];
+      from: Date;
+      to: Date;
+      weeklyOffDays: readonly number[];
+      settings: AttendanceValueSettings;
+    },
+  ): Promise<Map<bigint, number | null>> {
+    if (query.studentIds.length === 0) return new Map();
+    const rows = await this.txHost.tx.$queryRaw<{ student_id: bigint; percentage: number | null }[]>`
+      WITH teaching AS (${teachingDaysSql(schoolId, query.from, query.to, query.weeklyOffDays)}),
+      valued AS (
+        SELECT DISTINCT ON (ds.student_id, ds.date) ds.student_id, ds.date,
+               ${dayValueSql(query.settings)} AS value
+          FROM attendance_day_status ds
+          JOIN teaching t ON t.date = ds.date
+         WHERE ds.school_id = ${schoolId}
+           AND ds.student_id IN (${Prisma.join([...query.studentIds])})
+           AND ds.date BETWEEN ${sqlDate(query.from)} AND ${sqlDate(query.to)}
+           AND EXISTS (SELECT 1 FROM enrolments ee
+                        WHERE ee.school_id = ${schoolId} AND ee.student_id = ds.student_id
+                          AND ee.started_on <= ds.date AND (ee.ended_on IS NULL OR ee.ended_on >= ds.date))
+         ORDER BY ds.student_id, ds.date, ds.id
+      )
+      SELECT student_id,
+             CASE WHEN count(value) = 0 THEN NULL
+                  ELSE round(sum(value) * 100 / count(value), 1)::float8 END AS percentage
+        FROM valued
+       GROUP BY student_id`;
+    return new Map(rows.map((r) => [r.student_id, r.percentage === null ? null : Number(r.percentage)]));
   }
 }

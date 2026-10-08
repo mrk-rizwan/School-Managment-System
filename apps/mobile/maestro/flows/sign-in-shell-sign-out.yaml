@@ -1,6 +1,6 @@
 # slice-15 §13.3 — CI only (the mobile job). Signs in as the seeded principal, sees the shell,
 # opens the calendar, signs out, and finds the school code remembered.
-# Env (from the CI job): SCHOOL_CODE, PRINCIPAL_CNIC (the default password is the same digits).
+# Env (from the CI job): SCHOOL_CODE, MAESTRO_PRINCIPAL_CNIC (the default password is the same digits).
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -14,10 +14,10 @@ appId: pk.asms.app.dev
 - inputText: ${SCHOOL_CODE}
 - tapOn:
     id: 'signIn.identity'
-- inputText: ${PRINCIPAL_CNIC}
+- inputText: ${MAESTRO_PRINCIPAL_CNIC}
 - tapOn:
     id: 'signIn.password'
-- inputText: ${PRINCIPAL_CNIC}
+- inputText: ${MAESTRO_PRINCIPAL_CNIC}
 - hideKeyboard
 - tapOn:
     id: 'signIn.submit'

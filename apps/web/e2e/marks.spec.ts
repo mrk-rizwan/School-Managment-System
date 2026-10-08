@@ -62,6 +62,7 @@ const test1: AssessmentDto = {
   markedCount: 1,
   canEnterMarks: true,
   lockedAt: null,
+  locked: false,
   voidedAt: null,
   voidReason: null,
   createdAt: STAMP,

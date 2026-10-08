@@ -3,7 +3,7 @@
 # The phone says the claim and the slip are saved on the device; when the connection returns both
 # reach the school (the server lists the claim, "Waiting for the office", and the on-phone section goes). ci-run.sh then verifies the claim over curl as the
 # principal (payment.verify), and parent-receipt.yaml shows the receipt that verification issued.
-# Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
+# Env: SCHOOL_CODE, MAESTRO_GUARDIAN_CNIC, STUDENT_ID.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -13,7 +13,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${GUARDIAN_CNIC}
+      IDENTITY: ${MAESTRO_GUARDIAN_CNIC}
 - tapOn:
     id: 'tabs.children'
 - tapOn:

@@ -42,6 +42,9 @@ export const JOB = {
   feeReminder: 'fee-reminder',
   // Phase 3 slice 21 (§3.7, R200): daily, deposit claims still without their slip after 24 h expire.
   claimImageSweep: 'claim-image-sweep',
+  // Phase 4 slice 31 (phase-4-academic.md §3.6): a published sheet's (or, slice 32, a corrected
+  // result's) family messages, on the messaging queue.
+  resultNotify: 'result-notify',
 } as const;
 
 /*
@@ -109,6 +112,19 @@ export const announcementSendJobId = (announcementId: bigint, scheduledAt: Date,
  * runs it again.
  */
 export const chargeRunJobId = (runId: bigint): string => `charge-run-${runId}`;
+
+/**
+ * `result-notify-<sheetId>` (§3.6): a published sheet's messages. The outbox sweep's recovery of a
+ * lost one carries its minute (`...-s<minute>`); a replay finds its rows already claimed.
+ */
+export const resultNotifyJobId = (sheetId: bigint, sweepMinute?: number): string =>
+  `result-notify-${sheetId}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
+
+/** Ids only (R113): the sheet whose published rows are told. */
+export interface ResultNotifyPayload {
+  schoolId: string;
+  sheetId: string;
+}
 
 export interface ChargeRunPayload {
   schoolId: string;

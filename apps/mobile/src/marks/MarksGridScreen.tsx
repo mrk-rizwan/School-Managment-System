@@ -113,8 +113,8 @@ function ServerGrid({ assessmentId, secure }: { assessmentId: string; secure: bo
       readOnlyReason={
         a.voidedAt
           ? 'This test was voided.'
-          : a.lockedAt
-            ? 'This test is locked: its result sheet was submitted.'
+          : a.locked
+            ? 'Locked: the result sheet for this term was submitted.'
             : 'Viewing only: you do not teach this subject here.'
       }
       banner={cachedOfflineBanner(grid.data, online, grid.isError)}

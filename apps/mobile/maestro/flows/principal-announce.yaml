@@ -1,7 +1,7 @@
 # slice-16 §15.2 (16b) — CI only. The principal writes a short notice to section 5 A, sees the
 # people and SMS units it will reach before sending, sends it, and finds it on the list; then the
 # guardian of 5 A roll 1 signs in and finds it in the inbox.
-# Env: SCHOOL_CODE, PRINCIPAL_CNIC, GUARDIAN_CNIC, CLASS_ID, SECTION_A.
+# Env: SCHOOL_CODE, MAESTRO_PRINCIPAL_CNIC, MAESTRO_GUARDIAN_CNIC, CLASS_ID, SECTION_A.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -9,7 +9,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${PRINCIPAL_CNIC}
+      IDENTITY: ${MAESTRO_PRINCIPAL_CNIC}
 - tapOn:
     id: 'tabs.announce'
 - tapOn:
@@ -65,7 +65,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${GUARDIAN_CNIC}
+      IDENTITY: ${MAESTRO_GUARDIAN_CNIC}
 - tapOn:
     id: 'tabs.inbox'
 - extendedWaitUntil:

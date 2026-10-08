@@ -180,6 +180,11 @@ model School {
   assessments                   Assessment[]                   @ignore
   marks                         Mark[]                         @ignore
   certificates                  Certificate[]                  @ignore
+  resultSheets                  ResultSheet[]                  @ignore
+  resultSheetRemarks            ResultSheetRemark[]            @ignore
+  resultSheetLocks              ResultSheetLock[]              @ignore
+  results                       Result[]                       @ignore
+  resultSubjects                ResultSubject[]                @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -402,6 +407,7 @@ model AcademicYear {
   terms           AcademicTerm[]
   resultSettings  ResultSettings?
   certificates    Certificate[]
+  resultSheets    ResultSheet[]
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -437,6 +443,7 @@ model Class {
   subjects                ClassSubject[]
   termSkips               TermSkip[]
   assessments             Assessment[]
+  resultSheets            ResultSheet[]
   sections                Section[]
   teacherAssignments      TeacherAssignment[]
   enrolments              Enrolment[]
@@ -479,6 +486,7 @@ model Section {
   announcementAudiences   AnnouncementAudience[]
   chargeCampaignAudiences ChargeCampaignAudience[]
   assessments             Assessment[]
+  resultSheets            ResultSheet[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -710,6 +718,7 @@ model TeacherAssignment {
   coversAssignment TeacherAssignment?  @relation("CoverOf", fields: [schoolId, coversAssignmentId, sectionId], references: [schoolId, id, sectionId], map: "teacher_assignments_covers_assignment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   coveredBy        TeacherAssignment[] @relation("CoverOf")
   leaveCovered     LeaveRequest[]
+  resultSheets     ResultSheet[]
 
   @@unique([schoolId, id], map: "teacher_assignments_school_id_id_key")
   /// Target of the cover FK: a cover names a class-teacher row of its own section.
@@ -838,6 +847,12 @@ model User {
   marksDecided              Mark[]                  @relation("MarkDecidedBy")
   certificatesIssued        Certificate[]           @relation("CertificateIssuedBy")
   certificatesVoided        Certificate[]           @relation("CertificateVoidedBy")
+  resultSheetsCreated       ResultSheet[]           @relation("ResultSheetCreatedBy")
+  resultSheetsSubmitted     ResultSheet[]           @relation("ResultSheetSubmittedBy")
+  resultSheetsDecided       ResultSheet[]           @relation("ResultSheetDecidedBy")
+  resultSheetsPublished     ResultSheet[]           @relation("ResultSheetPublishedBy")
+  resultSheetRemarksWritten ResultSheetRemark[]     @relation("ResultSheetRemarkWrittenBy")
+  resultSubjectsOwnChildOf  ResultSubject[]         @relation("ResultSubjectOwnChildOf")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1066,6 +1081,7 @@ model Student {
   receiptLines                  ReceiptLine[]
   paymentClaims                 PaymentClaim[]
   certificates                  Certificate[]
+  resultSheetLocks              ResultSheetLock[]
 
   @@unique([schoolId, id], map: "students_school_id_id_key")
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
@@ -1165,6 +1181,8 @@ model Enrolment {
   concessions           Concession[]
   charges               Charge[]
   marks                 Mark[]
+  resultSheetRemarks    ResultSheetRemark[]
+  results               Result[]
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -4176,11 +4194,13 @@ model AcademicTerm {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school        School       @relation(fields: [schoolId], references: [id], map: "academic_terms_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  academicYear  AcademicYear @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  createdByUser User?        @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school        School        @relation(fields: [schoolId], references: [id], map: "academic_terms_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear  AcademicYear  @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User?         @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   skips         TermSkip[]
   assessments   Assessment[]
+  resultSheets  ResultSheet[]
+  results       Result[]
 
   @@unique([schoolId, id], map: "academic_terms_school_id_id_key")
   /// Target of (school_id, term_id, academic_year_id) FKs: a row naming a term names its year.
@@ -4274,11 +4294,12 @@ model ClassSubject {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school         School       @relation(fields: [schoolId], references: [id], map: "class_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  class          Class        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_subjects_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  subject        Subject      @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "class_subjects_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  archivedByUser User?        @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school         School          @relation(fields: [schoolId], references: [id], map: "class_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class          Class           @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_subjects_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  subject        Subject         @relation(fields: [schoolId, subjectId], references: [schoolId, id], map: "class_subjects_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  archivedByUser User?           @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   assessments    Assessment[]
+  resultSubjects ResultSubject[]
 
   @@unique([schoolId, id], map: "class_subjects_school_id_id_key")
   /// Target of (school_id, class_subject_id, class_id) FKs: a row naming a class-subject names its class.
@@ -4383,6 +4404,7 @@ model Assessment {
   voidedByUser  User?        @relation("AssessmentVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "assessments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   marksOfYear   Mark[]       @relation("MarkAssessmentYear")
   marksOfMax    Mark[]       @relation("MarkAssessmentMax")
+  sheetLocks    ResultSheetLock[]
 
   @@unique([schoolId, id], map: "assessments_school_id_id_key")
   /// Target of marks (school_id, assessment_id, academic_year_id): a mark names its year.
@@ -4513,4 +4535,272 @@ model Certificate {
   @@index([schoolId, issuedBy], map: "certificates_school_id_issued_by_idx")
   @@index([schoolId, voidedBy], map: "certificates_school_id_voided_by_idx")
   @@map("certificates")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 wave O (phase-4-academic.md §3.2, §4 "Slice 31"): result sheets, their remarks, the
+// stored results and their subjects. Hand-written CHECKs, triggers and the expression and
+// partial indexes are in migration 20261008120000_wave_o_result_sheets and listed in
+// test/guardrails/schema-checks.ts (WAVE_O_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// result_sheets.status (§3.2). A version inserted by a correction (slice 32) is born `published`.
+enum ResultSheetStatus {
+  draft
+  submitted
+  returned
+  approved
+  published
+
+  @@map("result_sheet_status")
+}
+
+/// A subject on a stored result: `not_assessed` iff it has no percentage, printed "—".
+enum ResultSubjectStatus {
+  assessed
+  not_assessed
+
+  @@map("result_subject_status")
+}
+
+/// Tenant: one version of a section's term sheet, or of its final sheet (`term_id` null) (rule 27,
+/// §3.2 "Result sheets"). One open (not published) version per section and term
+/// (result_sheets_open_key, COALESCE(term_id, 0)); versions numbered from 1, a later one names the
+/// one it supersedes. Status moves only along asms_status_transition's six edges; the approver is
+/// never the submitter (trigger result_sheets_not_self, the sole-principal exception recorded
+/// `self_approved`). The settings snapshot is written at approval and frozen while approved or
+/// published.
+model ResultSheet {
+  id                         BigInt            @id(map: "result_sheets_pkey") @default(autoincrement())
+  schoolId                   BigInt            @map("school_id")
+  academicYearId             BigInt            @map("academic_year_id")
+  /// Null for the final sheet of the year.
+  termId                     BigInt?           @map("term_id")
+  classId                    BigInt            @map("class_id")
+  sectionId                  BigInt            @map("section_id")
+  version                    Int               @default(1) @db.SmallInt
+  status                     ResultSheetStatus @default(draft)
+  createdBy                  BigInt            @map("created_by")
+  /// Null on the final sheet (it has no submitter).
+  submittedBy                BigInt?           @map("submitted_by")
+  submittedAt                DateTime?         @map("submitted_at") @db.Timestamptz(3)
+  /// The cover assignment the class-teacher scope came from, when the submitter covered (§7.1).
+  submittedUnderAssignmentId BigInt?           @map("submitted_under_assignment_id")
+  /// The latest decision (approve or return); cleared by a resubmission.
+  decidedBy                  BigInt?           @map("decided_by")
+  decidedAt                  DateTime?         @map("decided_at") @db.Timestamptz(3)
+  selfApproved               Boolean           @default(false) @map("self_approved")
+  returnReason               String?           @map("return_reason") @db.VarChar(500)
+  publishedBy                BigInt?           @map("published_by")
+  publishedAt                DateTime?         @map("published_at") @db.Timestamptz(3)
+  supersedesId               BigInt?           @map("supersedes_id")
+  /// The settings snapshot (§3.2), written at approval.
+  testWeight                 Int?              @map("test_weight") @db.SmallInt
+  examWeight                 Int?              @map("exam_weight") @db.SmallInt
+  passPercent                Int?              @map("pass_percent") @db.SmallInt
+  passRule                   PassRule?         @map("pass_rule")
+  bands                      Json?
+  /// The final sheet's term weights: [{ termId, weight, held }].
+  termWeights                Json?             @map("term_weights")
+  createdAt                  DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School              @relation(fields: [schoolId], references: [id], map: "result_sheets_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear    AcademicYear        @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "result_sheets_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  term            AcademicTerm?       @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "result_sheets_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class           Class               @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "result_sheets_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section         Section             @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "result_sheets_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser   User                @relation("ResultSheetCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "result_sheets_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  submittedByUser User?               @relation("ResultSheetSubmittedBy", fields: [schoolId, submittedBy], references: [schoolId, id], map: "result_sheets_submitted_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser   User?               @relation("ResultSheetDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "result_sheets_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  publishedByUser User?               @relation("ResultSheetPublishedBy", fields: [schoolId, publishedBy], references: [schoolId, id], map: "result_sheets_published_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  submittedUnder  TeacherAssignment?  @relation(fields: [schoolId, submittedUnderAssignmentId, sectionId], references: [schoolId, id, sectionId], map: "result_sheets_submitted_under_assignment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedes      ResultSheet?        @relation("ResultSheetSupersedes", fields: [schoolId, supersedesId, sectionId], references: [schoolId, id, sectionId], map: "result_sheets_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersededBy    ResultSheet[]       @relation("ResultSheetSupersedes")
+  remarks         ResultSheetRemark[]
+  locks           ResultSheetLock[]
+  resultsOfTerm   Result[]            @relation("ResultSheetTerm")
+  results         Result[]            @relation("ResultSheetRow")
+
+  @@unique([schoolId, id], map: "result_sheets_school_id_id_key")
+  /// Target of results (school_id, sheet_id, term_id): a result names its sheet's term.
+  @@unique([schoolId, id, termId], map: "result_sheets_school_id_id_term_id_key")
+  /// Target of supersedes_id: a version supersedes one of the same section.
+  @@unique([schoolId, id, sectionId], map: "result_sheets_school_id_id_section_id_key")
+  /// The approvals queue: submitted sheets, oldest first.
+  @@index([schoolId, status, submittedAt], map: "result_sheets_school_id_status_submitted_at_idx")
+  @@index([schoolId, academicYearId, sectionId], map: "result_sheets_school_id_academic_year_id_section_id_idx")
+  @@index([schoolId, termId, academicYearId], map: "result_sheets_school_id_term_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "result_sheets_school_id_class_id_idx")
+  @@index([schoolId, sectionId, classId], map: "result_sheets_school_id_section_id_class_id_idx")
+  @@index([schoolId, createdBy], map: "result_sheets_school_id_created_by_idx")
+  @@index([schoolId, submittedBy], map: "result_sheets_school_id_submitted_by_idx")
+  @@index([schoolId, decidedBy], map: "result_sheets_school_id_decided_by_idx")
+  @@index([schoolId, publishedBy], map: "result_sheets_school_id_published_by_idx")
+  @@index([schoolId, submittedUnderAssignmentId, sectionId], map: "result_sheets_school_id_submitted_under_idx")
+  @@index([schoolId, supersedesId, sectionId], map: "result_sheets_school_id_supersedes_id_idx")
+  @@map("result_sheets")
+}
+
+/// Tenant: the class teacher's term remark for one student on a sheet (§1.1: at most 300
+/// characters, printed on the card). Written only while the sheet is draft or returned (trigger
+/// result_sheet_remarks_open); approval copies the text into results.remark.
+model ResultSheetRemark {
+  id          BigInt   @id(map: "result_sheet_remarks_pkey") @default(autoincrement())
+  schoolId    BigInt   @map("school_id")
+  sheetId     BigInt   @map("sheet_id")
+  enrolmentId BigInt   @map("enrolment_id")
+  /// Null once cleared (the row stays).
+  remark      String?  @db.VarChar(300)
+  /// The last writer (the own-child flags read it).
+  writtenBy   BigInt   @map("written_by")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School      @relation(fields: [schoolId], references: [id], map: "result_sheet_remarks_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  sheet         ResultSheet @relation(fields: [schoolId, sheetId], references: [schoolId, id], map: "result_sheet_remarks_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment     Enrolment   @relation(fields: [schoolId, enrolmentId], references: [schoolId, id], map: "result_sheet_remarks_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  writtenByUser User        @relation("ResultSheetRemarkWrittenBy", fields: [schoolId, writtenBy], references: [schoolId, id], map: "result_sheet_remarks_written_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "result_sheet_remarks_school_id_id_key")
+  @@unique([schoolId, sheetId, enrolmentId], map: "result_sheet_remarks_school_id_sheet_id_enrolment_id_key")
+  @@index([schoolId, enrolmentId], map: "result_sheet_remarks_school_id_enrolment_id_idx")
+  @@index([schoolId, writtenBy], map: "result_sheet_remarks_school_id_written_by_idx")
+  @@map("result_sheet_remarks")
+}
+
+/// What a submission locked (contracts/slice-31.md §2.4): one row per test the sheet holds (its
+/// section's, and any other section's carrying a live mark of a roster student) and one per
+/// roster student, whose marks on any assessment of the class-term are then locked. Written in the
+/// submitting transaction; a return releases its rows (released_at), never deletes them. A test
+/// keeps locked_at while any unreleased row names it.
+model ResultSheetLock {
+  id           BigInt    @id(map: "result_sheet_locks_pkey") @default(autoincrement())
+  schoolId     BigInt    @map("school_id")
+  sheetId      BigInt    @map("sheet_id")
+  /// Exactly one of assessment_id (a test) and student_id (a roster student).
+  assessmentId BigInt?   @map("assessment_id")
+  studentId    BigInt?   @map("student_id")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  releasedAt   DateTime? @map("released_at") @db.Timestamptz(3)
+
+  school     School      @relation(fields: [schoolId], references: [id], map: "result_sheet_locks_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  sheet      ResultSheet @relation(fields: [schoolId, sheetId], references: [schoolId, id], map: "result_sheet_locks_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assessment Assessment? @relation(fields: [schoolId, assessmentId], references: [schoolId, id], map: "result_sheet_locks_assessment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student    Student?    @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "result_sheet_locks_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "result_sheet_locks_school_id_id_key")
+  @@index([schoolId, sheetId], map: "result_sheet_locks_school_id_sheet_id_idx")
+  @@index([schoolId, assessmentId, releasedAt], map: "result_sheet_locks_school_id_assessment_id_idx")
+  @@index([schoolId, studentId, releasedAt], map: "result_sheet_locks_school_id_student_id_idx")
+  @@map("result_sheet_locks")
+}
+
+/// Tenant: a stored result — one student's term (or final) result on one sheet version, every
+/// figure the card prints (rule 26, §0.25). Hangs off the enrolment in force on the term's last
+/// day. A full row set per version; one live row per enrolment and term (results_live_key,
+/// COALESCE(term_id, 0) WHERE superseded_at IS NULL). Frozen after insert except published_at,
+/// superseded_at, superseded_by and notified_at.
+model Result {
+  id             BigInt    @id(map: "results_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  sheetId        BigInt    @map("sheet_id")
+  enrolmentId    BigInt    @map("enrolment_id")
+  studentId      BigInt    @map("student_id")
+  academicYearId BigInt    @map("academic_year_id")
+  /// Null on a final result.
+  termId         BigInt?   @map("term_id")
+  /// Σ printed obtained over the assessed subjects.
+  totalObtained  Int       @map("total_obtained")
+  totalMax       Int       @map("total_max")
+  /// 0-10000, null when nothing is assessed.
+  percentBp      Int?      @map("percent_bp")
+  grade          String?   @db.VarChar(4)
+  /// Null when nothing is assessed.
+  passed         Boolean?
+  /// The number of assessed subjects below the pass mark.
+  failedSubjects Int       @default(0) @map("failed_subjects") @db.SmallInt
+  position       Int?      @db.SmallInt
+  positionOf     Int?      @map("position_of") @db.SmallInt
+  /// The attendance percentage over the result's dates in basis points (92.3 % = 9230), or null.
+  attendanceBp   Int?      @map("attendance_bp")
+  remark         String?   @db.VarChar(300)
+  /// [{ userId, role }]: a guardian of the student among the contributors (§0.28), recomputed at
+  /// every composition.
+  ownChildFlags  Json      @default("[]") @map("own_child_flags")
+  /// Figures changed from the row it supersedes (a correction's version, slice 32).
+  revised        Boolean   @default(false)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(3)
+  supersededAt   DateTime? @map("superseded_at") @db.Timestamptz(3)
+  supersededBy   BigInt?   @map("superseded_by")
+  supersedesId   BigInt?   @map("supersedes_id")
+  /// Set by the result-notify job's claim (§3.6).
+  notifiedAt     DateTime? @map("notified_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School          @relation(fields: [schoolId], references: [id], map: "results_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  sheet           ResultSheet     @relation("ResultSheetRow", fields: [schoolId, sheetId], references: [schoolId, id], map: "results_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sheetOfTerm     ResultSheet?    @relation("ResultSheetTerm", fields: [schoolId, sheetId, termId], references: [schoolId, id, termId], map: "results_sheet_term_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment       Enrolment       @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "results_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  term            AcademicTerm?   @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "results_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedes      Result?         @relation("ResultSupersedes", fields: [schoolId, supersedesId, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedesOf    Result[]        @relation("ResultSupersedes")
+  supersededByRow Result?         @relation("ResultSupersededBy", fields: [schoolId, supersededBy, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_superseded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersededByOf  Result[]        @relation("ResultSupersededBy")
+  subjects        ResultSubject[]
+
+  @@unique([schoolId, id], map: "results_school_id_id_key")
+  /// Target of (school_id, result_id, enrolment_id) FKs (promotion decisions, the supersedes chain).
+  @@unique([schoolId, id, enrolmentId], map: "results_school_id_id_enrolment_id_key")
+  @@index([schoolId, sheetId], map: "results_school_id_sheet_id_idx")
+  @@index([schoolId, sheetId, termId], map: "results_school_id_sheet_id_term_id_idx")
+  @@index([schoolId, studentId, publishedAt], map: "results_school_id_student_id_published_at_idx")
+  @@index([schoolId, enrolmentId, publishedAt], map: "results_school_id_enrolment_id_published_at_idx")
+  @@index([schoolId, enrolmentId, studentId, academicYearId], map: "results_school_id_enrolment_id_idx")
+  @@index([schoolId, termId, academicYearId], map: "results_school_id_term_id_academic_year_id_idx")
+  @@index([schoolId, supersedesId, enrolmentId], map: "results_school_id_supersedes_id_idx")
+  @@index([schoolId, supersededBy, enrolmentId], map: "results_school_id_superseded_by_idx")
+  @@map("results")
+}
+
+/// Tenant: one subject of a stored result, its name and print order snapshotted (§3.2). Frozen
+/// after insert.
+model ResultSubject {
+  id             BigInt              @id(map: "result_subjects_pkey") @default(autoincrement())
+  schoolId       BigInt              @map("school_id")
+  resultId       BigInt              @map("result_id")
+  classId        BigInt              @map("class_id")
+  classSubjectId BigInt              @map("class_subject_id")
+  subjectName    String              @map("subject_name") @db.VarChar(100)
+  sortOrder      Int                 @map("sort_order") @db.SmallInt
+  testBp         Int?                @map("test_bp")
+  examBp         Int?                @map("exam_bp")
+  examObtained   Int?                @map("exam_obtained") @db.SmallInt
+  /// Null when the subject had no exam for the student (a final result has none).
+  examMax        Int?                @map("exam_max") @db.SmallInt
+  examAbsent     Boolean             @default(false) @map("exam_absent")
+  examExcused    Boolean             @default(false) @map("exam_excused")
+  percentBp      Int?                @map("percent_bp")
+  /// Printed obtained = round(percent × max).
+  obtained       Int?                @db.SmallInt
+  max            Int                 @db.SmallInt
+  grade          String?             @db.VarChar(4)
+  status         ResultSubjectStatus
+  /// A mark author of this subject who is a guardian of the student (display).
+  ownChildOf     BigInt?             @map("own_child_of")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school         School       @relation(fields: [schoolId], references: [id], map: "result_subjects_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  result         Result       @relation(fields: [schoolId, resultId], references: [schoolId, id], map: "result_subjects_result_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  classSubject   ClassSubject @relation(fields: [schoolId, classSubjectId, classId], references: [schoolId, id, classId], map: "result_subjects_class_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  ownChildOfUser User?        @relation("ResultSubjectOwnChildOf", fields: [schoolId, ownChildOf], references: [schoolId, id], map: "result_subjects_own_child_of_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "result_subjects_school_id_id_key")
+  @@unique([schoolId, resultId, classSubjectId], map: "result_subjects_school_id_result_id_class_subject_id_key")
+  /// The subject report and CLASS_SUBJECT_IN_USE.
+  @@index([schoolId, classSubjectId, resultId], map: "result_subjects_school_id_class_subject_id_result_id_idx")
+  @@index([schoolId, classSubjectId, classId], map: "result_subjects_school_id_class_subject_id_class_id_idx")
+  @@index([schoolId, ownChildOf], map: "result_subjects_school_id_own_child_of_idx")
+  @@map("result_subjects")
 }

@@ -46,6 +46,15 @@ export function markSubjects(
   ];
 }
 
+/**
+ * The academic year of the caller's class-teacher or cover assignment on the section, or null
+ * when they hold neither (only the class teacher, or cover, opens the sheet on the phone).
+ */
+export function sheetYearOf(me: Pick<MeDto, 'assignments'>, sectionId: string): string | null {
+  const a = me.assignments.find((x) => x.sectionId === sectionId && (x.role === 'class_teacher' || x.role === 'cover'));
+  return a?.academicYearId ?? null;
+}
+
 const kindLine = (a: Pick<AssessmentDto, 'kind' | 'testType'>) =>
   a.kind === 'exam'
     ? 'Exam'
@@ -73,6 +82,8 @@ export function SectionAssessmentsScreen({
     listLocalAssessments(sectionId),
   );
   const subjects = me ? markSubjects(me.body, sectionId, classId) : [];
+  // Slice 31: the class teacher (or cover) opens the section's result sheet from here.
+  const sheetYearId = me ? sheetYearOf(me.body, sectionId) : null;
   const mayCreate = subjects === 'all' || subjects.length > 0;
   const tests = list.data?.body.data ?? [];
   const mine = local.data ?? [];
@@ -94,17 +105,31 @@ export function SectionAssessmentsScreen({
         void list.refetch().finally(() => setRefreshing(false));
       }}
       footer={
-        mayCreate ? (
-          <Button
-            label="New test"
-            onPress={() =>
-              router.push({
-                pathname: '/marks/[sectionId]/new',
-                params: { sectionId, ...(classId ? { classId } : {}) },
-              })
-            }
-            testID="marks.new"
-          />
+        mayCreate || sheetYearId !== null ? (
+          <View style={styles.actions}>
+            {mayCreate ? (
+              <Button
+                label="New test"
+                onPress={() =>
+                  router.push({
+                    pathname: '/marks/[sectionId]/new',
+                    params: { sectionId, ...(classId ? { classId } : {}) },
+                  })
+                }
+                testID="marks.new"
+              />
+            ) : null}
+            {sheetYearId !== null ? (
+              <Button
+                label="Result sheet"
+                variant="secondary"
+                onPress={() =>
+                  router.push({ pathname: '/marks/[sectionId]/sheet', params: { sectionId, yearId: sheetYearId } })
+                }
+                testID="marks.resultSheet"
+              />
+            ) : null}
+          </View>
         ) : null
       }
       testID="marks.section.screen"

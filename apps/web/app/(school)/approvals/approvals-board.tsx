@@ -123,6 +123,9 @@ function Tiles({ approvals }: { approvals: ApprovalsDto }) {
       {approvals.handovers && <Tile label="Open custody" value={approvals.handovers.count} detail="Handovers to count" href="/fees/handovers" testId="handovers" />}
       {approvals.expenses && <Tile label="Pending expenses" value={approvals.expenses.count} href="/expenses" testId="expenses" />}
       {approvals.leave && <Tile label="Pending leave" value={approvals.leave.count} href="/leave" testId="leave" />}
+      {approvals.results && (
+        <Tile label="Result sheets" value={approvals.results.count} href="/results/sheets" testId="results" />
+      )}
       {reports && <Tile label="Today's collections" value={figure(collections, formatRupees)} href="/reports/collections" testId="collections" />}
       {reports && <Tile label="Outstanding" value={figure(outstanding, formatRupees)} detail="This academic year" href="/reports/outstanding" testId="outstanding" />}
       {charges && <Tile label="Charges voided" value={figure(voided)} detail="Last 7 days" href="/fees/charges" testId="voided" />}
@@ -198,12 +201,12 @@ function Row({ title, detail, amount, badge }: { title: string; detail: string; 
 }
 
 function Queues({ approvals }: { approvals: ApprovalsDto }) {
-  const { claims, handovers, expenses, leave } = approvals;
-  if (!claims && !handovers && !expenses && !leave) {
+  const { claims, handovers, expenses, leave, results } = approvals;
+  if (!claims && !handovers && !expenses && !leave && !results) {
     return (
       <Card>
         <CardContent>
-          <EmptyState title="Nothing for you to approve" description="Deposit slips, cash handovers, expenses and leave come here for those who decide them." />
+          <EmptyState title="Nothing for you to approve" description="Deposit slips, cash handovers, expenses, leave and result sheets come here for those who decide them." />
         </CardContent>
       </Card>
     );
@@ -244,6 +247,35 @@ function Queues({ approvals }: { approvals: ApprovalsDto }) {
               detail={`${e.description} · ${e.recordedByName}, ${formatDate(e.spentOn)}`}
               amount={formatRupees(e.amount)}
             />
+          ))}
+        </Queue>
+      )}
+      {results && (
+        <Queue title="Result sheets" count={results.count} href="/results/sheets" testId="results" empty="No result sheets are waiting.">
+          {results.items.map((r) => (
+            <li key={r.id} className="py-2">
+              <Link href={`/results/sheets/${r.id}`} className="flex items-start justify-between gap-3 hover:underline">
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-medium">
+                    {r.className} {r.sectionName} · {r.isFinal ? 'Final result' : r.termName}
+                    {r.ownChildFlags.length > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        own child
+                      </Badge>
+                    )}
+                    {r.cover && (
+                      <Badge variant="outline" className="ml-2">
+                        cover
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.submittedByName ? `Submitted by ${r.submittedByName}` : 'Waiting'}
+                    {r.submittedAt ? `, ${formatDateTime(r.submittedAt)}` : ''}
+                  </span>
+                </span>
+              </Link>
+            </li>
           ))}
         </Queue>
       )}

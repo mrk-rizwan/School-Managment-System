@@ -150,7 +150,10 @@ export class MarksService {
       (found) => this.assessments.lockIfUnchanged(schoolId, scope, found),
     );
     if (row.voidedAt !== null) throw assessmentVoided(row.id);
-    if (row.lockedAt !== null) throw assessmentLocked(row.id);
+    // R265: a test with locked_at, or any assessment whose section-term sheet is submitted or later.
+    if (row.lockedAt !== null || (await this.views.sheetLocks(schoolId, row))) {
+      throw assessmentLocked(row.id);
+    }
     const year = await this.years.findById(schoolId, row.academicYearId);
     if (!year) throw notFound();
     if (year.status === 'closed') throw yearClosed();
@@ -165,6 +168,13 @@ export class MarksService {
     );
     const live = new Map(
       (await this.marks.liveForAssessment(schoolId, scope, id)).map((m) => [m.enrolmentId, m]),
+    );
+    // §2.4: a student a submitted (or later) sheet of the class-term has locked takes no new mark
+    // here either, whatever this assessment's section (a moved student's old-section marks).
+    const lockedStudents = await this.assessments.sheetLockedStudents(
+      schoolId,
+      row,
+      [...roster.values()].map((r) => r.studentId),
     );
     const keyed = new Map<string, MarkRecord>();
     for (const mark of await this.marks.findByEntryKeys(
@@ -211,6 +221,7 @@ export class MarksService {
         answer('unchanged', current.id);
         continue;
       }
+      if (lockedStudents.has(student.studentId)) throw assessmentLocked(row.id);
       if (current && !(await this.marks.supersede(schoolId, scope, row, current.id))) {
         answer('changed_elsewhere', null);
         continue;

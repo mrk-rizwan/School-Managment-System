@@ -28,6 +28,8 @@ const EXEMPT = new Set([
   // Phase 4 wave N: the guards of the assessment, mark and certificate tables.
   join(apiRoot, 'test', 'academics', 'marks-guards.e2e-spec.ts'),
   join(apiRoot, 'test', 'academics', 'certificate-guards.e2e-spec.ts'),
+  // Phase 4 wave O: the guards of the result sheet, remark, result and result-subject tables.
+  join(apiRoot, 'test', 'results', 'sheet-guards.e2e-spec.ts'),
 ]);
 
 function testFiles(dir: string): string[] {

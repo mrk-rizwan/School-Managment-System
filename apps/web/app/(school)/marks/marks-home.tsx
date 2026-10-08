@@ -173,7 +173,7 @@ function AssessmentTable({ rows, total }: { rows: AssessmentDto[]; total: number
                   {a.name}
                 </Link>
                 <span className="ml-2 text-xs text-muted-foreground">{kindLabel(a)}</span>
-                {a.lockedAt && (
+                {a.locked && (
                   <Badge variant="outline" className="ml-2">
                     Locked
                   </Badge>

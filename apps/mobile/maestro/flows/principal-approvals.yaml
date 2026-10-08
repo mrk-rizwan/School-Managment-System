@@ -3,7 +3,7 @@
 # opens the Approvals tab, shows the slip on a tap, verifies the claim (keeping it as the child's
 # advance when nothing is owed), then confirms the handover at the expected amount. ci-run.sh then
 # checks over curl that the claim is verified and the handover confirmed.
-# Env: SCHOOL_CODE, PRINCIPAL_CNIC, CLAIM_ID, HANDOVER_ID.
+# Env: SCHOOL_CODE, MAESTRO_PRINCIPAL_CNIC, CLAIM_ID, HANDOVER_ID.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -11,7 +11,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${PRINCIPAL_CNIC}
+      IDENTITY: ${MAESTRO_PRINCIPAL_CNIC}
 # Approvals is the principal's second tab since slice 27 (Inbox moved under More).
 - tapOn:
     id: 'tabs.approvals'

@@ -70,6 +70,7 @@ const ASSESSMENT: AssessmentDto = {
   markedCount: 1,
   canEnterMarks: true,
   lockedAt: null,
+  locked: false,
   voidedAt: null,
   voidReason: null,
   createdAt: '2026-10-04T04:00:00.000Z',

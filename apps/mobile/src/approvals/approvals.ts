@@ -1,6 +1,6 @@
 import { ApiError, ErrorCode, formatDateTime, formatDay, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { api, isNetworkError, unwrap } from '../api/client';
-import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto } from '../api/contracts';
+import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, ResultSheetDto } from '../api/contracts';
 
 // The Approvals tab (phase-3-financial.md slice 27, R226, R227): GET /me/approvals holds only the
 // sections whose key the user has, each its queue's first ten rows and total. Every decision is
@@ -59,3 +59,7 @@ export function confirmedMessage(expected: number, counted: number): string {
   if (counted > expected) return `Handover confirmed, ${formatRupees(counted - expected)} over.`;
   return 'Handover confirmed.';
 }
+
+/** A waiting result sheet (slice 31): who submitted it and when. */
+export const resultLine = (r: ResultSheetDto): string =>
+  `${r.submittedByName ? `Submitted by ${r.submittedByName}` : 'Waiting'}${r.submittedAt ? `, ${formatDateTime(r.submittedAt)}` : ''}`;

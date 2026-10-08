@@ -168,7 +168,8 @@ describe('lint boundaries (R61)', () => {
     ['marks-scope-mint-import.ts', 'src/modules/assessments/assessments.service.ts'],
     ['marks-scope-mint-import.ts', 'src/repositories/mark.repository.ts'],
     ['academic-setup-repository-import.ts', 'src/modules/fees/fee-heads.service.ts'],
-    ['academic-setup-repository-import.ts', 'src/modules/results/results.service.ts'],
+    // Slice 31 widened the set-up block to the results module (a recorded change); promotion is not yet.
+    ['academic-setup-repository-import.ts', 'src/modules/promotion/promotion.service.ts'],
     ['academic-setup-repository-import.ts', 'src/jobs/charge-generate.ts'],
   ])('refuses %s at %s (Phase 4)', async (fixture, virtualPath) => {
     expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
@@ -215,6 +216,27 @@ describe('lint boundaries (R61)', () => {
     ['assessment-repository-import.ts', 'test/assessments/support.ts'],
     ['academic-setup-repository-import.ts', 'src/modules/assessments/assessments.service.ts'],
   ])('allows %s at %s (slice 30)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 31 (§5.1): the sheet, result and read-only mark-reads repositories are the results
+  // module's; the results module never imports the assessment and mark repositories (it reads
+  // marks through MarkReadsRepository) nor a money repository (dues only through clearance).
+  it.each([
+    ['result-repository-import.ts', 'src/modules/assessments/marks.service.ts'],
+    ['result-repository-import.ts', 'src/modules/approvals/approvals.service.ts'],
+    ['result-repository-import.ts', 'src/modules/certificates/certificates.service.ts'],
+    ['assessment-repository-import.ts', 'src/modules/results/result-composer.ts'],
+    ['money-repository-import.ts', 'src/modules/results/result-sheets.service.ts'],
+  ])('refuses %s at %s (slice 31)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['result-repository-import.ts', 'src/modules/results/result-sheets.service.ts'],
+    ['result-repository-import.ts', 'test/results/support.ts'],
+    ['academic-setup-repository-import.ts', 'src/modules/results/result-composer.ts'],
+  ])('allows %s at %s (slice 31)', async (fixture, virtualPath) => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 

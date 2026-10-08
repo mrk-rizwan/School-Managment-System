@@ -2,7 +2,7 @@
 # worker's rollup says the child was absent today. The parent sees it on the child's card, opens
 # the month, opens the seeded diary entry's photo (thumbnail, on a tap), the remarks, and (16b)
 # the inbox, which opens whatever the school has sent (an empty inbox says so).
-# Env: SCHOOL_CODE, GUARDIAN_CNIC, STUDENT_ID.
+# Env: SCHOOL_CODE, MAESTRO_GUARDIAN_CNIC, STUDENT_ID.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -10,7 +10,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${GUARDIAN_CNIC}
+      IDENTITY: ${MAESTRO_GUARDIAN_CNIC}
 - tapOn:
     id: 'tabs.children'
 - extendedWaitUntil:

@@ -26,6 +26,7 @@ interface Approvals {
   handovers?: Section;
   expenses?: Section;
   leave?: Section;
+  results?: Section;
 }
 interface Page {
   data: { id: string }[];
@@ -121,10 +122,12 @@ describe('slice 27: the Approvals read (e2e)', () => {
 
   const ids = (s: Section | undefined) => (s?.items ?? []).map((i) => i.id);
 
-  it('R227: the principal sees all four sections; each count is its queue\'s total and each item list its first page', async () => {
+  it('R227, R278: the principal sees all five sections; each count is its queue\'s total and each item list its first page', async () => {
     const { w, claimId, handoverId, expenseId, leaveId } = await busySchool();
     const mine = await approvals(w.principal);
-    expect(Object.keys(mine).sort()).toEqual(['claims', 'expenses', 'handovers', 'leave']);
+    // Phase 4 slice 31 adds `results` (result.approve); none is waiting here.
+    expect(Object.keys(mine).sort()).toEqual(['claims', 'expenses', 'handovers', 'leave', 'results']);
+    expect(mine.results).toEqual({ count: 0, items: [] });
     expect([ids(mine.claims), ids(mine.handovers), ids(mine.expenses), ids(mine.leave)]).toEqual([
       [claimId],
       [handoverId],

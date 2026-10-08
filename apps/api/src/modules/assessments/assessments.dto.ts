@@ -83,6 +83,11 @@ export class AssessmentDto {
     description: 'A test locked by its submitted sheet',
   })
   lockedAt: Date | null;
+  @ApiProperty({
+    description:
+      "Locked (R265): a test with lockedAt, or any assessment whose section's sheet for the term is submitted, approved or published; it takes no mark, only a correction (slice 32)",
+  })
+  locked: boolean;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) voidedAt: Date | null;
   @ApiProperty({ type: String, nullable: true }) voidReason: string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt: Date;

@@ -11,6 +11,8 @@ import { CashHandoversService } from '../payments/cash-handovers.service';
 import { ListClaimsQueryDto } from '../payments/claims.dto';
 import { ClaimsService } from '../payments/claims.service';
 import { ListHandoversQueryDto } from '../payments/payments.dto';
+import { ResultSheetsService } from '../results/result-sheets.service';
+import { ListResultSheetsQueryDto } from '../results/results.dto';
 import type { ApprovalsDto } from './approvals.dto';
 
 /** The first page of each section (phase-3-financial.md slice 27). */
@@ -38,6 +40,7 @@ export class ApprovalsService {
     private readonly handovers: CashHandoversService,
     private readonly expenses: ExpensesService,
     private readonly leave: LeaveRequestsService,
+    private readonly resultSheets: ResultSheetsService,
   ) {}
 
   async forCaller(session: SchoolSessionContext): Promise<ApprovalsDto> {
@@ -57,6 +60,12 @@ export class ApprovalsService {
     }
     if (holds(Capability.STAFF_LEAVE_APPROVE)) {
       dto.leave = section(await this.leave.list(firstPage(ListLeaveRequestsQueryDto, { status: 'pending' })));
+    }
+    if (holds(Capability.RESULT_APPROVE)) {
+      // R278: exactly GET /result-sheets?status=submitted for the holder (its default sort).
+      dto.results = section(
+        await this.resultSheets.list(session, firstPage(ListResultSheetsQueryDto, { status: 'submitted' })),
+      );
     }
     return dto;
   }

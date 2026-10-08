@@ -1,7 +1,7 @@
 # slice-16 §15.2 (16b) — CI only. The principal opens Today, sees the unrecorded 5 B register
 # with its class teacher, records it from "Record now" (pre-filled present), and after "Saved on
 # server" the row is gone from Today. ci-run.sh then checks over curl that the server has it.
-# Env: SCHOOL_CODE, PRINCIPAL_CNIC, SECTION_B.
+# Env: SCHOOL_CODE, MAESTRO_PRINCIPAL_CNIC, SECTION_B.
 appId: pk.asms.app.dev
 ---
 - launchApp:
@@ -9,7 +9,7 @@ appId: pk.asms.app.dev
 - runFlow:
     file: common/sign-in.yaml
     env:
-      IDENTITY: ${PRINCIPAL_CNIC}
+      IDENTITY: ${MAESTRO_PRINCIPAL_CNIC}
 - tapOn:
     id: 'tabs.today'
 - extendedWaitUntil:

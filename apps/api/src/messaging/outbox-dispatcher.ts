@@ -9,6 +9,7 @@ import {
   announcementSendJobId,
   chargeRunJobId,
   healthJobId,
+  resultNotifyJobId,
   JOB,
   messageJobId,
   QUEUE,
@@ -19,6 +20,7 @@ import {
   type ChargeRunPayload,
   type HealthJobPayload,
   type MessageJobPayload,
+  type ResultNotifyPayload,
   type RollupJobPayload,
 } from './queues';
 
@@ -29,7 +31,8 @@ type Payload =
   | AlertJobPayload
   | RollupJobPayload
   | AnnouncementSendPayload
-  | ChargeRunPayload;
+  | ChargeRunPayload
+  | ResultNotifyPayload;
 
 /** A scheduled announcement's send at its time (contracts/slice-14.md §5.6). */
 export interface AnnouncementSendJob {
@@ -216,6 +219,22 @@ export class OutboxDispatcher implements OnModuleDestroy {
           opts: { jobId: chargeRunJobId(runId) },
         },
       ]),
+    );
+  }
+
+  /** After the ambient transaction commits: a published sheet's `result-notify` job (§3.6). */
+  resultNotifyAfterCommit(schoolId: SchoolId, sheetId: bigint): void {
+    this.afterCommit.register(() => this.resultNotify(schoolId, [sheetId]));
+  }
+
+  /** At once (the sweep): `result-notify` jobs for sheets with published rows still untold. */
+  async resultNotify(schoolId: SchoolId, sheetIds: readonly bigint[], sweepMinute?: number): Promise<void> {
+    await this.add(
+      sheetIds.map((sheetId) => ({
+        name: JOB.resultNotify,
+        data: { schoolId: schoolId.toString(), sheetId: sheetId.toString() } satisfies ResultNotifyPayload,
+        opts: { jobId: resultNotifyJobId(sheetId, sweepMinute) },
+      })),
     );
   }
 

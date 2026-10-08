@@ -1,5 +1,6 @@
 import { Capability, formatDay, formatRupees } from '@asms/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { api, unwrap } from '../api/client';
@@ -35,7 +36,9 @@ import {
   leavePeriod,
   leaveTitle,
   methodWord,
+  resultLine,
 } from './approvals';
+import { sheetTitle } from '../results/results';
 
 // The Approvals tab (phase-3-financial.md slice 27, R226, R227): one screen, the four queues the
 // user may act on, each row opening its decision. Online only: offline the screen reads nothing
@@ -57,6 +60,7 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
   const { me } = useSession();
   const [open, setOpen] = useState<Open | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
   const approvals = useQuery({ queryKey: queryKeys.approvals, queryFn: fetchApprovals, enabled: online });
 
   const refresh = () => void client.invalidateQueries({ queryKey: queryKeys.approvals });
@@ -87,7 +91,7 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
         <LoadingState />
       ) : approvals.isError || !data ? (
         <ErrorState error={approvals.error} onRetry={() => void approvals.refetch()} />
-      ) : !data.claims && !data.handovers && !data.expenses && !data.leave ? (
+      ) : !data.claims && !data.handovers && !data.expenses && !data.leave && !data.results ? (
         <EmptyState title="Nothing for you to approve" />
       ) : (
         <>
@@ -127,6 +131,20 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
                   detail={expenseLine(e)}
                   onPress={() => setOpen({ kind: 'expense', row: e })}
                   testID={`approvals.expense.${e.id}`}
+                />
+              ))}
+            </Section>
+          ) : null}
+          {data.results ? (
+            <Section title="Result sheets" count={data.results.count} testID="approvals.results" empty="No result sheets are waiting.">
+              {data.results.items.map((r) => (
+                <ListRow
+                  key={r.id}
+                  title={sheetTitle(r)}
+                  detail={resultLine(r)}
+                  value={r.ownChildFlags.length > 0 ? 'Own child' : r.cover ? 'Cover' : null}
+                  onPress={() => router.push({ pathname: '/approvals/sheet/[id]', params: { id: r.id } })}
+                  testID={`approvals.result.${r.id}`}
                 />
               ))}
             </Section>
