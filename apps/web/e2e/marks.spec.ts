@@ -84,6 +84,8 @@ const row = (
   status: null,
   enteredAt: null,
   ownChildOf: null,
+  pendingCorrectionId: null,
+  pendingCorrectionMine: false,
   ...extra,
 });
 

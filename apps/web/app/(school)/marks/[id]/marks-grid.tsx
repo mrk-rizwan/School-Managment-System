@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -27,9 +28,11 @@ import {
   type AssessmentMarksDto,
   type MarkEntryBody,
 } from '@/lib/api/school-assessments-contract';
+import { resultsApi } from '@/lib/api/school-results-contract';
 import { formatDay } from '@/lib/format';
 import { useCapabilities } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
+import { correctionErrorMessage } from '../../results/_lib/results-ui';
 import { kindLabel, marksErrorMessage, marksKeys } from '../_lib/marks-ui';
 
 // contracts/slice-30.md §8, the marks grid: one row per student on the grid (the section on
@@ -82,6 +85,13 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [excusing, setExcusing] = useState<AssessmentMarkRowDto | null>(null);
+  const [withdrawing, setWithdrawing] = useState<AssessmentMarkRowDto | null>(null);
+  // Slice 32: a correction of a locked mark on a published result, keyed once per opened dialog.
+  const [correcting, setCorrecting] = useState<{
+    row: AssessmentMarkRowDto;
+    key: string;
+    draft: Draft;
+  } | null>(null);
 
   const draftOf = (row: AssessmentMarkRowDto) => drafts.get(row.enrolmentId) ?? savedDraft(row);
   const changed = rows.filter(
@@ -163,6 +173,42 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
     onError: toastApiError,
   });
 
+  const correct = useMutation({
+    mutationFn: ({ markId, key, draft, reason }: { markId: string; key: string; draft: Draft; reason: string }) =>
+      unwrap(
+        resultsApi.POST('/api/v1/marks/{id}/correct', {
+          params: { path: { id: markId }, header: { 'Idempotency-Key': key } },
+          body: draft.absent ? { absent: true, reason } : { obtained: Number(draft.obtained), reason },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success('Correction sent. The principal decides it; the mark changes once approved.');
+      setCorrecting(null);
+      reload();
+    },
+    onError: (failure) => toast.error(correctionErrorMessage(failure)),
+  });
+  const withdraw = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      unwrap(
+        resultsApi.POST('/api/v1/mark-corrections/{id}/withdraw', {
+          params: { path: { id } },
+          body: { reason },
+        }),
+      ),
+    onSuccess: () => {
+      toast.success('Correction withdrawn. The mark stays as it was.');
+      setWithdrawing(null);
+      reload();
+    },
+    onError: (failure) => toast.error(correctionErrorMessage(failure)),
+  });
+  const correctionDraftBad =
+    correcting !== null &&
+    !correcting.draft.absent &&
+    (!/^[0-9]{1,4}$/.test(correcting.draft.obtained.trim()) ||
+      Number(correcting.draft.obtained) > assessment.maxMarks);
+
   /** Enter and ↓ move to the next row's mark, ↑ to the previous one. */
   const move = (index: number, step: number) => {
     document.querySelector<HTMLInputElement>(`[data-mark-input="${index + step}"]`)?.focus();
@@ -170,6 +216,8 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
 
   const marked = rows.filter((row) => row.status === 'live').length;
   const mayExcuse = can(Capability.RESULT_APPROVE);
+  // A locked mark is changed only by a correction once the result is published (the API checks).
+  const mayCorrect = can(Capability.MARKS_ENTER) && assessment.locked && !assessment.voidedAt;
 
   return (
     <div className="grid gap-4">
@@ -255,6 +303,11 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
                           Your child
                         </Badge>
                       )}
+                      {row.pendingCorrectionId && (
+                        <Badge variant="outline" className="ml-2">
+                          Correction waiting
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="px-4">
                       <Input
@@ -291,6 +344,22 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
                       {mayExcuse && row.markId && row.absent && !row.excused && (
                         <Button variant="ghost" size="sm" onClick={() => setExcusing(row)}>
                           Excuse
+                        </Button>
+                      )}
+                      {row.pendingCorrectionId && row.pendingCorrectionMine && (
+                        <Button variant="ghost" size="sm" onClick={() => setWithdrawing(row)}>
+                          Withdraw correction
+                        </Button>
+                      )}
+                      {mayCorrect && row.markId && !row.pendingCorrectionId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setCorrecting({ row, key: newIdempotencyKey(), draft: savedDraft(row) })
+                          }
+                        >
+                          Request correction
                         </Button>
                       )}
                     </TableCell>
@@ -331,6 +400,62 @@ function MarksGrid({ data }: { data: AssessmentMarksDto }) {
           excusing?.markId && excuse.mutate({ markId: excusing.markId, reason })
         }
       />
+      <ConfirmWithReasonDialog
+        open={withdrawing !== null}
+        onOpenChange={(open) => !open && setWithdrawing(null)}
+        title={`Withdraw your correction of ${withdrawing?.student.fullName ?? ''}'s mark`}
+        description="The correction is closed undecided and the mark stays as it was. You can ask again later."
+        confirmLabel="Withdraw correction"
+        minLength={3}
+        pending={withdraw.isPending}
+        onConfirm={(reason) =>
+          withdrawing?.pendingCorrectionId && withdraw.mutate({ id: withdrawing.pendingCorrectionId, reason })
+        }
+      />
+      <ConfirmWithReasonDialog
+        open={correcting !== null}
+        onOpenChange={(open) => !open && setCorrecting(null)}
+        title={`Correct ${correcting?.row.student.fullName ?? ''}'s mark`}
+        description="The result is published. A correction is decided by the principal; once approved the report card is reissued and the family told."
+        confirmLabel="Send correction"
+        minLength={3}
+        pending={correct.isPending}
+        confirmDisabled={correctionDraftBad}
+        onConfirm={(reason) =>
+          correcting?.row.markId &&
+          correct.mutate({ markId: correcting.row.markId, key: correcting.key, draft: correcting.draft, reason })
+        }
+      >
+        {correcting && (
+          <div className="flex items-end gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="correction-mark">Corrected mark (out of {assessment.maxMarks})</Label>
+              <Input
+                id="correction-mark"
+                inputMode="numeric"
+                className="w-28 tabular-nums"
+                disabled={correcting.draft.absent}
+                value={correcting.draft.absent ? '' : correcting.draft.obtained}
+                aria-invalid={correctionDraftBad ? true : undefined}
+                onChange={(e) =>
+                  setCorrecting({ ...correcting, draft: { ...correcting.draft, obtained: e.target.value } })
+                }
+              />
+            </div>
+            <label className="flex items-center gap-2 pb-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={correcting.draft.absent}
+                onChange={(e) =>
+                  setCorrecting({ ...correcting, draft: { ...correcting.draft, absent: e.target.checked } })
+                }
+              />
+              Absent
+            </label>
+          </div>
+        )}
+      </ConfirmWithReasonDialog>
     </div>
   );
 }

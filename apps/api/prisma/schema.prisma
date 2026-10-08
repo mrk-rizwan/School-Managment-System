@@ -185,6 +185,8 @@ model School {
   resultSheetLocks              ResultSheetLock[]              @ignore
   results                       Result[]                       @ignore
   resultSubjects                ResultSubject[]                @ignore
+  promotionSheets               PromotionSheet[]               @ignore
+  promotionDecisions            PromotionDecision[]            @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -408,6 +410,8 @@ model AcademicYear {
   resultSettings  ResultSettings?
   certificates    Certificate[]
   resultSheets    ResultSheet[]
+  promotionSheets PromotionSheet[] @relation("PromotionSheetYear")
+  promotionsInto  PromotionSheet[] @relation("PromotionSheetTargetYear")
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -444,6 +448,8 @@ model Class {
   termSkips               TermSkip[]
   assessments             Assessment[]
   resultSheets            ResultSheet[]
+  promotionSheets         PromotionSheet[]
+  promotionTargets        PromotionDecision[]
   sections                Section[]
   teacherAssignments      TeacherAssignment[]
   enrolments              Enrolment[]
@@ -487,6 +493,8 @@ model Section {
   chargeCampaignAudiences ChargeCampaignAudience[]
   assessments             Assessment[]
   resultSheets            ResultSheet[]
+  promotionSheets         PromotionSheet[]
+  promotionTargets        PromotionDecision[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -853,6 +861,9 @@ model User {
   resultSheetsPublished     ResultSheet[]           @relation("ResultSheetPublishedBy")
   resultSheetRemarksWritten ResultSheetRemark[]     @relation("ResultSheetRemarkWrittenBy")
   resultSubjectsOwnChildOf  ResultSubject[]         @relation("ResultSubjectOwnChildOf")
+  promotionSheetsOpened     PromotionSheet[]        @relation("PromotionSheetOpenedBy")
+  promotionSheetsApplied    PromotionSheet[]        @relation("PromotionSheetAppliedBy")
+  promotionDecisionsDecided PromotionDecision[]     @relation("PromotionDecisionDecidedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1183,6 +1194,8 @@ model Enrolment {
   marks                 Mark[]
   resultSheetRemarks    ResultSheetRemark[]
   results               Result[]
+  promotionDecisions    PromotionDecision[]   @relation("PromotionDecisionEnrolment")
+  promotedInto          PromotionDecision[]   @relation("PromotionDecisionNewEnrolment")
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -4395,15 +4408,15 @@ model Assessment {
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school        School       @relation(fields: [schoolId], references: [id], map: "assessments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  term          AcademicTerm @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  class         Class        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  section       Section      @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "assessments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  classSubject  ClassSubject @relation(fields: [schoolId, classSubjectId, classId], references: [schoolId, id, classId], map: "assessments_class_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  createdByUser User         @relation("AssessmentCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "assessments_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  voidedByUser  User?        @relation("AssessmentVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "assessments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  marksOfYear   Mark[]       @relation("MarkAssessmentYear")
-  marksOfMax    Mark[]       @relation("MarkAssessmentMax")
+  school        School            @relation(fields: [schoolId], references: [id], map: "assessments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  term          AcademicTerm      @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class         Class             @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "assessments_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section       Section           @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "assessments_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  classSubject  ClassSubject      @relation(fields: [schoolId, classSubjectId, classId], references: [schoolId, id, classId], map: "assessments_class_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User              @relation("AssessmentCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "assessments_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?             @relation("AssessmentVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "assessments_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  marksOfYear   Mark[]            @relation("MarkAssessmentYear")
+  marksOfMax    Mark[]            @relation("MarkAssessmentMax")
   sheetLocks    ResultSheetLock[]
 
   @@unique([schoolId, id], map: "assessments_school_id_id_key")
@@ -4739,16 +4752,17 @@ model Result {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school          School          @relation(fields: [schoolId], references: [id], map: "results_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  sheet           ResultSheet     @relation("ResultSheetRow", fields: [schoolId, sheetId], references: [schoolId, id], map: "results_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  sheetOfTerm     ResultSheet?    @relation("ResultSheetTerm", fields: [schoolId, sheetId, termId], references: [schoolId, id, termId], map: "results_sheet_term_fkey", onDelete: Restrict, onUpdate: Restrict)
-  enrolment       Enrolment       @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "results_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  term            AcademicTerm?   @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "results_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  supersedes      Result?         @relation("ResultSupersedes", fields: [schoolId, supersedesId, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  supersedesOf    Result[]        @relation("ResultSupersedes")
-  supersededByRow Result?         @relation("ResultSupersededBy", fields: [schoolId, supersededBy, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_superseded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  supersededByOf  Result[]        @relation("ResultSupersededBy")
-  subjects        ResultSubject[]
+  school             School              @relation(fields: [schoolId], references: [id], map: "results_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  sheet              ResultSheet         @relation("ResultSheetRow", fields: [schoolId, sheetId], references: [schoolId, id], map: "results_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sheetOfTerm        ResultSheet?        @relation("ResultSheetTerm", fields: [schoolId, sheetId, termId], references: [schoolId, id, termId], map: "results_sheet_term_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment          Enrolment           @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "results_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  term               AcademicTerm?       @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "results_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedes         Result?             @relation("ResultSupersedes", fields: [schoolId, supersedesId, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedesOf       Result[]            @relation("ResultSupersedes")
+  supersededByRow    Result?             @relation("ResultSupersededBy", fields: [schoolId, supersededBy, enrolmentId], references: [schoolId, id, enrolmentId], map: "results_superseded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersededByOf     Result[]            @relation("ResultSupersededBy")
+  subjects           ResultSubject[]
+  promotionDecisions PromotionDecision[]
 
   @@unique([schoolId, id], map: "results_school_id_id_key")
   /// Target of (school_id, result_id, enrolment_id) FKs (promotion decisions, the supersedes chain).
@@ -4803,4 +4817,119 @@ model ResultSubject {
   @@index([schoolId, classSubjectId, classId], map: "result_subjects_school_id_class_subject_id_class_id_idx")
   @@index([schoolId, ownChildOf], map: "result_subjects_school_id_own_child_of_idx")
   @@map("result_subjects")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 4 wave P (phase-4-academic.md §3.2 "Promotion", §4 "Slice 35"): the year-end promotion
+// sheet of a section and its per-student decisions. Hand-written CHECKs, triggers and the open
+// partial unique are in migration 20261008170000_wave_p_promotion and listed in
+// test/guardrails/schema-checks.ts (WAVE_P_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// A year-end outcome (rule 30): promote into the next class, detain (repeat), complete (alumni),
+/// or not continuing (withdrawn).
+enum PromotionOutcome {
+  promote
+  detain
+  complete
+  not_continuing
+
+  @@map("promotion_outcome")
+}
+
+enum PromotionSheetStatus {
+  open
+  applied
+  cancelled
+
+  @@map("promotion_sheet_status")
+}
+
+/// Tenant: one section's promotion sheet into a target year (rule 30). One open sheet per section
+/// (promotion_sheets_open_key); open -> applied only; frozen once applied.
+model PromotionSheet {
+  id             BigInt               @id(map: "promotion_sheets_pkey") @default(autoincrement())
+  schoolId       BigInt               @map("school_id")
+  academicYearId BigInt               @map("academic_year_id")
+  classId        BigInt               @map("class_id")
+  sectionId      BigInt               @map("section_id")
+  /// The year the promoted and detained students move into (planned or active when opened).
+  targetYearId   BigInt               @map("target_year_id")
+  status         PromotionSheetStatus @default(open)
+  openedBy       BigInt               @map("opened_by")
+  openedAt       DateTime             @default(now()) @map("opened_at") @db.Timestamptz(3)
+  appliedBy      BigInt?              @map("applied_by")
+  appliedAt      DateTime?            @map("applied_at") @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School              @relation(fields: [schoolId], references: [id], map: "promotion_sheets_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear  AcademicYear        @relation("PromotionSheetYear", fields: [schoolId, academicYearId], references: [schoolId, id], map: "promotion_sheets_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  targetYear    AcademicYear        @relation("PromotionSheetTargetYear", fields: [schoolId, targetYearId], references: [schoolId, id], map: "promotion_sheets_target_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class         Class               @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "promotion_sheets_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section       Section             @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "promotion_sheets_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  openedByUser  User                @relation("PromotionSheetOpenedBy", fields: [schoolId, openedBy], references: [schoolId, id], map: "promotion_sheets_opened_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  appliedByUser User?               @relation("PromotionSheetAppliedBy", fields: [schoolId, appliedBy], references: [schoolId, id], map: "promotion_sheets_applied_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decisions     PromotionDecision[]
+
+  @@unique([schoolId, id], map: "promotion_sheets_school_id_id_key")
+  /// Target of promotion_decisions (school_id, sheet_id, target_year_id): a decision names its sheet's target year.
+  @@unique([schoolId, id, targetYearId], map: "promotion_sheets_school_id_id_target_year_id_key")
+  @@index([schoolId, academicYearId, openedAt], map: "promotion_sheets_school_id_academic_year_id_idx")
+  @@index([schoolId, targetYearId], map: "promotion_sheets_school_id_target_year_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "promotion_sheets_school_id_class_id_idx")
+  @@index([schoolId, sectionId, classId], map: "promotion_sheets_school_id_section_id_idx")
+  @@index([schoolId, openedBy], map: "promotion_sheets_school_id_opened_by_idx")
+  @@index([schoolId, appliedBy], map: "promotion_sheets_school_id_applied_by_idx")
+  @@map("promotion_sheets")
+}
+
+/// Tenant: one student's row on a promotion sheet (§3.2). `proposed` comes from the result,
+/// `decision` is what apply does (a different decision, or one with no proposal, carries a
+/// reason). Frozen once applied, except revised_after_apply, which a later supersession of the
+/// result sets (trigger results_promotion_revised).
+model PromotionDecision {
+  id                BigInt            @id(map: "promotion_decisions_pkey") @default(autoincrement())
+  schoolId          BigInt            @map("school_id")
+  sheetId           BigInt            @map("sheet_id")
+  targetYearId      BigInt            @map("target_year_id")
+  enrolmentId       BigInt            @map("enrolment_id")
+  studentId         BigInt            @map("student_id")
+  /// The final (or only held term's) live result the proposal was read from; null when none.
+  resultId          BigInt?           @map("result_id")
+  proposed          PromotionOutcome?
+  decision          PromotionOutcome?
+  reason            String?           @db.VarChar(500)
+  targetClassId     BigInt?           @map("target_class_id")
+  targetSectionId   BigInt?           @map("target_section_id")
+  /// The enrolment apply opened in the target year (promote, detain).
+  newEnrolmentId    BigInt?           @map("new_enrolment_id")
+  /// The dues endpoint showed money owed when the sheet opened (a flag, never a block).
+  arrearsFlag       Boolean           @default(false) @map("arrears_flag")
+  decidedBy         BigInt?           @map("decided_by")
+  decidedAt         DateTime?         @map("decided_at") @db.Timestamptz(3)
+  appliedAt         DateTime?         @map("applied_at") @db.Timestamptz(3)
+  revisedAfterApply Boolean           @default(false) @map("revised_after_apply")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School         @relation(fields: [schoolId], references: [id], map: "promotion_decisions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  sheet         PromotionSheet @relation(fields: [schoolId, sheetId, targetYearId], references: [schoolId, id, targetYearId], map: "promotion_decisions_sheet_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment     Enrolment      @relation("PromotionDecisionEnrolment", fields: [schoolId, enrolmentId, studentId], references: [schoolId, id, studentId], map: "promotion_decisions_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  result        Result?        @relation(fields: [schoolId, resultId, enrolmentId], references: [schoolId, id, enrolmentId], map: "promotion_decisions_result_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  targetClass   Class?         @relation(fields: [schoolId, targetClassId, targetYearId], references: [schoolId, id, academicYearId], map: "promotion_decisions_target_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  targetSection Section?       @relation(fields: [schoolId, targetSectionId, targetClassId], references: [schoolId, id, classId], map: "promotion_decisions_target_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  newEnrolment  Enrolment?     @relation("PromotionDecisionNewEnrolment", fields: [schoolId, newEnrolmentId, studentId, targetYearId], references: [schoolId, id, studentId, academicYearId], map: "promotion_decisions_new_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser User?          @relation("PromotionDecisionDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "promotion_decisions_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "promotion_decisions_school_id_id_key")
+  @@unique([schoolId, sheetId, enrolmentId], map: "promotion_decisions_school_id_sheet_id_enrolment_id_key")
+  @@index([schoolId, sheetId, targetYearId], map: "promotion_decisions_school_id_sheet_id_idx")
+  @@index([schoolId, enrolmentId, studentId], map: "promotion_decisions_school_id_enrolment_id_idx")
+  @@index([schoolId, resultId, enrolmentId], map: "promotion_decisions_school_id_result_id_idx")
+  @@index([schoolId, targetClassId, targetYearId], map: "promotion_decisions_school_id_target_class_id_idx")
+  @@index([schoolId, targetSectionId, targetClassId], map: "promotion_decisions_school_id_target_section_id_idx")
+  @@index([schoolId, newEnrolmentId, studentId, targetYearId], map: "promotion_decisions_school_id_new_enrolment_id_idx")
+  @@index([schoolId, decidedBy], map: "promotion_decisions_school_id_decided_by_idx")
+  @@map("promotion_decisions")
 }

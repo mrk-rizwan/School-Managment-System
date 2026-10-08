@@ -1,6 +1,6 @@
 'use client';
 
-import { TERM_REMARK_MAX } from '@asms/shared';
+import { Capability, TERM_REMARK_MAX } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -20,9 +20,16 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { unwrap } from '@/lib/api/client';
-import { resultsApi, type ResultSheetDetailDto } from '@/lib/api/school-results-contract';
-import { formatDateTime } from '@/lib/format';
 import {
+  resultCardPrintPath,
+  resultSheetPrintPath,
+  resultsApi,
+  type ResultSheetDetailDto,
+} from '@/lib/api/school-results-contract';
+import { formatDateTime } from '@/lib/format';
+import { useCapabilities } from '@/lib/school-session';
+import {
+  openPrint,
   percentLabel,
   resultErrorMessage,
   resultKeys,
@@ -62,6 +69,9 @@ export function ResultSheetScreen({ id }: { id: string }) {
 
 function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
   const queryClient = useQueryClient();
+  const { can } = useCapabilities();
+  // Slice 32 (R283): the stored rows print as report cards for a marks.view_all holder.
+  const mayPrint = can(Capability.MARKS_VIEW_ALL) && data.source === 'stored';
   const [remarks, setRemarks] = useState<ReadonlyMap<string, string>>(new Map());
   const [returning, setReturning] = useState(false);
   const refresh = (next: ResultSheetDetailDto) => {
@@ -170,6 +180,11 @@ function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
                 Approve
               </Button>
             )}
+            {mayPrint && (
+              <Button variant="outline" onClick={() => openPrint(resultSheetPrintPath(data.id))}>
+                Print report cards
+              </Button>
+            )}
             {data.canPublish && (
               <Button disabled={busy} onClick={() => publish.mutate()}>
                 Publish
@@ -235,6 +250,16 @@ function ResultSheet({ data }: { data: ResultSheetDetailDto }) {
                       {row.rollNo !== null ? `Roll ${row.rollNo} · ` : ''}
                       {row.admissionNo}
                     </span>
+                    {mayPrint && row.resultId && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => openPrint(resultCardPrintPath(row.resultId!))}
+                      >
+                        Print card
+                      </Button>
+                    )}
                     {row.missing > 0 && (
                       <Badge variant="destructive" className="mt-1">
                         {row.missing} missing

@@ -308,6 +308,42 @@ describe('academic structure tenant isolation', () => {
     }
   });
 
+  it('mark corrections (slice 32: pending rows, their reads and decision)', async () => {
+    const schools = await createTwoSchools();
+    const f = await createMarksFixture(schools.a);
+    const assessment = await createAssessment(f);
+    const scope = await fixtureScope(f);
+    const repos = await marksRepositories();
+    try {
+      const target = await repos.assessments.find(f.school.id, scope, assessment.id);
+      if (!target) throw new Error('fixture assessment not found');
+      await expectIsolated(schools, {
+        create: async (schoolId) => {
+          const live = await createMark(f, assessment);
+          const pending = await repos.marks.insertPending(schoolId, scope, target, {
+            enrolmentId: f.enrolmentId,
+            studentId: f.studentId,
+            obtained: 5,
+            absent: false,
+            supersedesId: live.id,
+            correctionReason: 'Re-totalled',
+            enteredBy: f.userId,
+          });
+          return pending.id;
+        },
+        read: (schoolId, id) => repos.marks.findCorrection(schoolId, scope, id),
+        list: async (schoolId) => (await repos.marks.listCorrections(schoolId, scope, {}, { skip: 0, take: 50 })).rows,
+        write: async (schoolId, id) =>
+          (await repos.marks.decide(schoolId, scope, target, id, { status: 'rejected', by: f.userId, at: new Date() })) ? 1 : 0,
+        snapshot: (row) => (row as { state: string } | null)?.state ?? null,
+      });
+      expect(await repos.marks.pendingFor(schools.b.id, scope, assessment.id, f.enrolmentId)).toBeNull();
+      expect(await repos.marks.pendingFor(schools.a.id, scope, assessment.id, f.enrolmentId)).not.toBeNull();
+    } finally {
+      await repos.close();
+    }
+  });
+
   it('certificates', async () => {
     const schools = await createTwoSchools();
     const f = await createMarksFixture(schools.a);

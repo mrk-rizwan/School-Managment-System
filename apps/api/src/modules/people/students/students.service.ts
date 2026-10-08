@@ -9,7 +9,7 @@ import {
 } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../../common/auth/school-session';
 import { FieldEncryption } from '../../../common/crypto/field-encryption';
-import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
+import { ApiException, concurrentUpdate, fieldRefused, notFound } from '../../../common/errors/api-exception';
 import { summariseDatabaseError } from '../../../common/errors/prisma-errors';
 import { bFormAad, identityHash, maskIdentityNumber } from '../../../common/identity';
 import { readLocked } from '../../../common/locking';
@@ -175,8 +175,8 @@ export class StudentsService {
     id: bigint,
     dto: ChangeStatusDto,
   ): Promise<StudentDetailDto> {
-    const { schoolId, userId } = this.context.actor();
-    const row = await this.lock(schoolId, scopeOf(session), id);
+    const actor = this.context.actor();
+    const row = await this.lock(actor.schoolId, scopeOf(session), id);
     const from = row.status;
     const to = dto.status;
     if (READMISSIBLE_STATUSES.includes(from) && to === 'active') {
@@ -188,15 +188,133 @@ export class StudentsService {
     if (!STUDENT_STATUS_TRANSITIONS[from].includes(to)) {
       throw illegalTransition({ from, to }, `A ${from} student cannot become ${to}.`);
     }
+    const updated = await this.recordStatusChange(actor, scopeOf(session), row, to, dto.effectiveOn, dto.reason, {});
+    return this.toDetailDto(actor.schoolId, session, updated);
+  }
 
-    const effectiveOn = fromDateString(dto.effectiveOn);
-    assertNotFuture(effectiveOn, await this.clock.today(schoolId), 'effectiveOn');
-    const active = await this.enrolments.findActiveForStudent(schoolId, scopeOf(session), id);
+  /**
+   * Promotion apply's `not_continuing` (phase-4-academic.md slice 35, R297): the status route's
+   * own withdrawal — an active student becomes `withdrawn`, closing the active enrolment as
+   * `left` — inside the apply transaction. `effectiveOn` is the preferred date (min of today and
+   * the year's end); a student whose enrolment or last status change is later takes that date
+   * instead (contracts/slice-35.md §3), never a future one. The caller re-checked
+   * student.status.change; the audit row carries `source: promotion`.
+   */
+  @Transactional()
+  async withdrawForPromotion(
+    scope: Scope,
+    id: bigint,
+    effectiveOn: string,
+    reason: string,
+  ): Promise<void> {
+    const actor = this.context.actor();
+    const row = await this.lock(actor.schoolId, scope, id);
+    if (row.status !== 'active') throw illegalTransition({ from: row.status, to: 'withdrawn' }, `A ${row.status} student cannot become withdrawn.`);
+    await this.recordStatusChange(actor, scope, row, 'withdrawn', effectiveOn, reason, { source: 'promotion' }, true);
+  }
+
+  /** Several students' row locks at once, in id order (promotion apply's batch). */
+  async lockMany(schoolId: SchoolId, ids: readonly bigint[]): Promise<void> {
+    await this.students.lockMany(schoolId, [...new Set(ids)]);
+  }
+
+  /**
+   * StudentStatusService.promote (phase-4-academic.md §3.2, R297): the only writer of `alumni`,
+   * batched for promotion apply (§7.2, contracts/slice-35.md §7). Each active or suspended
+   * student who completed the final class becomes an alumnus — called while the enrolment is still
+   * active (so a section-scoped caller still reaches the student), before apply completes it. The
+   * same invariants as a single status change, in a fixed number of statements: the rows locked,
+   * the date per student the preferred `effectiveOn` raised to their admission, active enrolment
+   * or last status change (never a future one), the status rows, the sessions of those leaving
+   * `active` revoked, one audit row each with `source: promotion`. The status route still refuses
+   * `alumni` (STUDENT_STATUS_TRANSITIONS is unchanged).
+   */
+  @Transactional()
+  async promoteMany(
+    scope: Scope,
+    items: readonly { studentId: bigint; reason: string }[],
+    effectiveOn: string,
+  ): Promise<void> {
+    if (items.length === 0) return;
+    const { schoolId, userId } = this.context.actor();
+    const ids = items.map((i) => i.studentId);
+    await this.students.lockMany(schoolId, ids);
+    const rows = new Map((await this.students.findManyByIds(schoolId, scope, ids)).map((r) => [r.id, r]));
+    const active = new Map(
+      (await this.enrolments.activeForStudents(schoolId, scope, ids)).map((e) => [e.studentId, e.startedOn]),
+    );
+    const last = await this.statusChanges.latestForStudents(schoolId, ids);
+    const today = await this.clock.today(schoolId);
+    const preferred = fromDateString(effectiveOn);
+    const changes = items.map(({ studentId, reason }) => {
+      const row = rows.get(studentId);
+      if (!row) throw notFound();
+      if (row.status !== 'active' && row.status !== 'suspended') {
+        throw illegalTransition({ from: row.status, to: 'alumni' }, `A ${row.status} student cannot become alumni.`);
+      }
+      const on = [row.admittedOn, active.get(studentId), last.get(studentId)?.effectiveOn].reduce<Date>(
+        (latest, date) => (date !== undefined && date > latest ? date : latest),
+        preferred,
+      );
+      assertNotFuture(on, today, 'effectiveOn');
+      return { row, reason, on };
+    });
+    if ((await this.students.setStatusMany(schoolId, ids, ['active', 'suspended'], 'alumni')) !== ids.length) {
+      throw concurrentUpdate();
+    }
+    await this.statusChanges.recordMany(
+      schoolId,
+      changes.map(({ row, reason, on }) => ({
+        studentId: row.id,
+        fromStatus: row.status,
+        toStatus: 'alumni' as const,
+        reason,
+        changedBy: userId,
+        effectiveOn: on,
+      })),
+    );
+    const leaving = changes.flatMap(({ row }) => (row.status === 'active' && row.userId !== null ? [row.userId] : []));
+    await this.sessions.revokeAllForUsers(schoolId, leaving, new Date());
+    await this.audit.recordMany(
+      schoolId,
+      changes.map(({ row, reason, on }) => ({
+        actorUserId: userId,
+        action: 'student.status_changed',
+        subjectType: SUBJECT,
+        subjectId: row.id,
+        reason,
+        metadata: { from: row.status, to: 'alumni', effectiveOn: toDateString(on), enrolmentClosed: false, source: 'promotion' },
+      })),
+    );
+  }
+
+  /**
+   * The transition itself, on a row locked by the caller: effectiveOn not in the future and not
+   * before admission, the current enrolment or the last change; a withdrawal or transfer closes
+   * the active enrolment; the status-change row; sessions revoked when leaving `active`; audited.
+   */
+  private async recordStatusChange(
+    { schoolId, userId }: Actor,
+    scope: Scope,
+    row: StudentRecord,
+    to: StudentStatus,
+    effectiveOnValue: string,
+    reason: string,
+    extra: AuditMetadata,
+    /** Raise an earlier date to the earliest allowed one instead of refusing it (promotion apply). */
+    clamp = false,
+  ): Promise<StudentRecord> {
+    const id = row.id;
+    const from = row.status;
+    let effectiveOn = fromDateString(effectiveOnValue);
+    const active = await this.enrolments.findActiveForStudent(schoolId, scope, id);
     const last = await this.statusChanges.latestForStudent(schoolId, id);
     const notBefore = [row.admittedOn, active?.startedOn, last?.effectiveOn].reduce<Date>(
       (latest, date) => (date !== undefined && date > latest ? date : latest),
       row.admittedOn,
     );
+    if (clamp && effectiveOn < notBefore) effectiveOn = notBefore;
+    assertNotFuture(effectiveOn, await this.clock.today(schoolId), 'effectiveOn');
     if (effectiveOn < notBefore) {
       throw fieldRefused(
         'effectiveOn',
@@ -214,7 +332,7 @@ export class StudentsService {
       studentId: id,
       fromStatus: from,
       toStatus: to,
-      reason: dto.reason,
+      reason,
       changedBy: userId,
       effectiveOn,
     });
@@ -226,10 +344,10 @@ export class StudentsService {
       action: 'student.status_changed',
       subjectType: SUBJECT,
       subjectId: id,
-      reason: dto.reason,
-      metadata: { from, to, effectiveOn: dto.effectiveOn, enrolmentClosed },
+      reason,
+      metadata: { from, to, effectiveOn: toDateString(effectiveOn), enrolmentClosed, ...extra },
     });
-    return this.toDetailDto(schoolId, session, updated);
+    return updated;
   }
 
   async statusChangeList(

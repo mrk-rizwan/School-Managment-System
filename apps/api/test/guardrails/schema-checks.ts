@@ -1052,6 +1052,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...PHASE_4_BAND_VALUES_OBJECTS(),
   ...WAVE_N_OBJECTS(),
   ...WAVE_O_OBJECTS(),
+  ...WAVE_P_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -3115,7 +3116,8 @@ function WAVE_O_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_school_id_immutable', definition: "BEFORE UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'version', 'supersedes_id', 'created_by', 'created_at')" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_insert_guard', definition: "BEFORE INSERT ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_insert_guard()" },
-    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_not_self', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_not_self()" },
+    // Since the wave P review fixes it covers INSERT too (a correction's version is born decided).
+    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_not_self', definition: "BEFORE INSERT OR UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_not_self()" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_published_frozen', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('published_at', 'published_by')" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_school_id_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_snapshot_frozen', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_unless_status('draft,submitted,returned', 'test_weight', 'exam_weight', 'pass_percent', 'pass_rule', 'bands', 'term_weights')" },
@@ -3147,5 +3149,41 @@ function WAVE_O_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'result_sheet_locks', name: 'result_sheet_locks_released_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('released_at')" },
     { kind: 'trigger', table: 'result_sheet_locks', name: 'result_sheet_locks_school_id_immutable', definition: 'BEFORE UPDATE ON public.result_sheet_locks FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()' },
     ...noDeleteTriggers('result_sheet_locks'),
+  ];
+}
+
+/**
+ * Phase 4 wave P (migration 20261008170000_wave_p_promotion; contracts/slice-35.md §6): the
+ * promotion sheets and decisions, the enrolment status edges and the revised-after-apply trigger.
+ */
+function WAVE_P_OBJECTS(): ExpectedObject[] {
+  return [
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_applied_check', definition: "CHECK ((((applied_at IS NULL) OR (decision IS NOT NULL)) AND ((applied_at IS NULL) OR (decision <> ALL (ARRAY['promote'::promotion_outcome, 'detain'::promotion_outcome])) OR (new_enrolment_id IS NOT NULL)) AND ((new_enrolment_id IS NULL) OR ((applied_at IS NOT NULL) AND (decision = ANY (ARRAY['promote'::promotion_outcome, 'detain'::promotion_outcome])))) AND ((NOT revised_after_apply) OR (applied_at IS NOT NULL))))" },
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_decided_check', definition: "CHECK (((decided_at IS NULL) = (decided_by IS NULL)))" },
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_reason_check', definition: "CHECK (((decision IS NULL) OR (NOT (decision IS DISTINCT FROM proposed)) OR (reason IS NOT NULL)))" },
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_reason_no_id_check', definition: "CHECK ((((reason)::text !~ '[0-9]{13}'::text) AND ((reason)::text !~ '[0-9]{5}-[0-9]{7}-[0-9]'::text)))" },
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_reason_trim_check', definition: "CHECK (((reason IS NULL) OR (((reason)::text = btrim((reason)::text)) AND ((reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'promotion_decisions', name: 'promotion_decisions_target_check', definition: "CHECK ((((target_section_id IS NULL) OR (target_class_id IS NOT NULL)) AND ((decision IS NULL) OR (((decision = ANY (ARRAY['promote'::promotion_outcome, 'detain'::promotion_outcome])) = (target_class_id IS NOT NULL)) AND ((decision = ANY (ARRAY['promote'::promotion_outcome, 'detain'::promotion_outcome])) = (target_section_id IS NOT NULL))))))" },
+    { kind: 'constraint', table: 'promotion_sheets', name: 'promotion_sheets_applied_check', definition: "CHECK ((((status = 'applied'::promotion_sheet_status) = (applied_at IS NOT NULL)) AND ((applied_at IS NULL) = (applied_by IS NULL))))" },
+    { kind: 'constraint', table: 'promotion_sheets', name: 'promotion_sheets_target_year_check', definition: "CHECK ((target_year_id <> academic_year_id))" },
+    { kind: 'trigger', table: 'enrolments', name: 'enrolments_status_transition', definition: "BEFORE UPDATE ON public.enrolments FOR EACH ROW EXECUTE FUNCTION asms_status_transition('active:completed', 'active:left')" },
+    { kind: 'trigger', table: 'promotion_decisions', name: 'promotion_decisions_columns_immutable', definition: "BEFORE UPDATE ON public.promotion_decisions FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('sheet_id', 'target_year_id', 'enrolment_id', 'student_id', 'arrears_flag', 'created_at')" },
+    { kind: 'trigger', table: 'promotion_decisions', name: 'promotion_decisions_guard', definition: "BEFORE INSERT OR UPDATE ON public.promotion_decisions FOR EACH ROW EXECUTE FUNCTION asms_promotion_decision_guard()" },
+    { kind: 'trigger', table: 'promotion_decisions', name: 'promotion_decisions_school_id_immutable', definition: "BEFORE UPDATE ON public.promotion_decisions FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
+    { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_applied_frozen', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('applied_at', 'applied_by', 'status')" },
+    { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'class_id', 'section_id', 'target_year_id', 'opened_by', 'opened_at', 'created_at')" },
+    { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_school_id_immutable', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
+    { kind: 'trigger', table: 'promotion_sheets', name: 'promotion_sheets_status_transition', definition: "BEFORE UPDATE ON public.promotion_sheets FOR EACH ROW EXECUTE FUNCTION asms_status_transition('open:applied', 'open:cancelled')" },
+    { kind: 'trigger', table: 'results', name: 'results_promotion_revised', definition: "AFTER UPDATE OF superseded_at ON public.results FOR EACH ROW WHEN (((old.superseded_at IS NULL) AND (new.superseded_at IS NOT NULL))) EXECUTE FUNCTION asms_promotion_result_revised()" },
+    { kind: 'index', table: 'promotion_sheets', name: 'promotion_sheets_open_key', definition: "ON public.promotion_sheets USING btree (school_id, section_id) WHERE (status = 'open'::promotion_sheet_status)" },
+    { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_applied_frozen'" },
+    { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_sheet_open'" },
+    { kind: 'function', name: 'asms_promotion_decision_guard', definition: "v_refusal := 'promotion_decisions_enrolment_of_section'" },
+    { kind: 'function', name: 'asms_promotion_result_revised', definition: 'd.applied_at IS NOT NULL AND NOT d.revised_after_apply' },
+    ...noDeleteTriggers('promotion_sheets', 'promotion_decisions'),
+    // Wave P review fixes (20261008190000_wave_p_review_fixes): R281 in the database.
+    { kind: 'trigger', table: 'marks', name: 'marks_not_self', definition: "BEFORE UPDATE OF decided_by ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_mark_not_self()" },
+    { kind: 'function', name: 'asms_mark_not_self', definition: "NEW.status = 'live' AND NEW.decided_by IS NOT NULL AND NEW.decided_by = NEW.entered_by" },
+    { kind: 'function', name: 'asms_result_sheet_not_self', definition: "ELSIF TG_OP = 'INSERT' THEN" },
   ];
 }

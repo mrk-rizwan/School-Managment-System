@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { SchoolId } from '../tenancy/school-id';
 import type { Scope } from '../tenancy/scope';
-import type { Gender, Prisma, StudentStatus } from './generated/prisma/client';
+import { Prisma, type Gender, type StudentStatus } from './generated/prisma/client';
 import { escapeLike, type PrismaTxAdapter } from './prisma';
 
 // contracts/slice-6.md §1-§3. The tenant table students. `bForm` is the field-encryption envelope
@@ -261,6 +261,49 @@ export class StudentRepository {
       data: { updatedAt: row.updatedAt },
     });
     return count === 1;
+  }
+
+  /**
+   * Several students' row locks at once, in id order (promotion apply's batch, contracts/
+   * slice-35.md §7): the same lock readLocked's compare-and-set takes, so a writer that read a row
+   * before waits, then finds updated_at moved and reads again. Returns the ids locked.
+   */
+  async lockMany(schoolId: SchoolId, ids: readonly bigint[]): Promise<bigint[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.txHost.tx.$queryRaw<{ id: bigint }[]>`
+      SELECT id FROM students
+       WHERE school_id = ${schoolId} AND id IN (${Prisma.join([...ids])})
+       ORDER BY id
+         FOR UPDATE`;
+    return rows.map((r) => r.id);
+  }
+
+  /** Several students by id, in the caller's scope (absent when outside it). */
+  async findManyByIds(schoolId: SchoolId, scope: Scope, ids: readonly bigint[]): Promise<StudentRecord[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.txHost.tx.student.findMany({
+      where: { schoolId, id: { in: [...ids] }, AND: [studentInScope(scope)] },
+      select: SELECT,
+    });
+    return rows.map(toRecord);
+  }
+
+  /**
+   * One status for several students still in one of `from` (the caller holds their locks).
+   * Returns the rows changed: fewer than asked means one moved meanwhile.
+   */
+  async setStatusMany(
+    schoolId: SchoolId,
+    ids: readonly bigint[],
+    from: readonly StudentStatus[],
+    to: StudentStatus,
+  ): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { count } = await this.txHost.tx.student.updateMany({
+      where: { schoolId, id: { in: [...ids] }, status: { in: [...from] } },
+      data: { status: to },
+    });
+    return count;
   }
 
   /** Plain attributes. The caller holds the row lock. */

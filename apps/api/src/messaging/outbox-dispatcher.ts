@@ -10,6 +10,7 @@ import {
   chargeRunJobId,
   healthJobId,
   resultNotifyJobId,
+  resultRevisedJobId,
   JOB,
   messageJobId,
   QUEUE,
@@ -225,6 +226,22 @@ export class OutboxDispatcher implements OnModuleDestroy {
   /** After the ambient transaction commits: a published sheet's `result-notify` job (§3.6). */
   resultNotifyAfterCommit(schoolId: SchoolId, sheetId: bigint): void {
     this.afterCommit.register(() => this.resultNotify(schoolId, [sheetId]));
+  }
+
+  /**
+   * After the ambient transaction commits: a corrected result's `result-notify { resultId }` job
+   * (contracts/slice-32.md §4: the corrected student alone, `result_revised`).
+   */
+  resultRevisedNotifyAfterCommit(schoolId: SchoolId, resultId: bigint): void {
+    this.afterCommit.register(() =>
+      this.add([
+        {
+          name: JOB.resultNotify,
+          data: { schoolId: schoolId.toString(), resultId: resultId.toString() } satisfies ResultNotifyPayload,
+          opts: { jobId: resultRevisedJobId(resultId) },
+        },
+      ]),
+    );
   }
 
   /** At once (the sweep): `result-notify` jobs for sheets with published rows still untold. */

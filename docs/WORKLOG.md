@@ -22,7 +22,15 @@ writes the production code.** Do not start application code in a planning sessio
   14, 15, 21 closed); the plan `docs/plans/phase-4-academic.md` is written and reviewed by
   `business-rules`, `data-architect`, `security-reviewer` and `api-designer` (every finding folded
   in; 33 days, slices 29-36, R254-R300) and **was approved by the owner on 2026-10-07**
-  ("proceed code", every default as written). **Building: wave M (groundwork + slice 29).**
+  ("proceed code", every default as written). **Built and committed:** wave M (`87c5bff`,
+  groundwork + slice 29 set-up), the edit-dialog fix (`d44ee92`), wave N schema (`dcd9778`) and
+  wave N (`2bc618b`, slice 30 marks offline + slice 34 certificates; CI green), wave O (`4a22fc4`,
+  slice 31 result sheets; CI: mobile green, one Phase 2 test red because ResultsModule re-provided
+  `TeacherAssignmentRepository` — fixed in the working tree, ships with wave P). **In progress:**
+  wave P (slices 32 report cards + corrections + certificate marks table, 33 family views + result
+  reports, 35 promotion + year end; three agents, uncommitted, brief in the session scratchpad
+  `wave-p-brief.md`). Then reviews, fix round, commit, CI, and slice 36 (phase close).
+  Phase 4 = 19.5 / 33 days done.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.

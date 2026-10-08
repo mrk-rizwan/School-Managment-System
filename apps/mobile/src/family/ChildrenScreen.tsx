@@ -48,7 +48,7 @@ function ChildCard({ child }: { child: MyChildDto }) {
   const query = useCachedQuery<StudentAttendanceDto>(read.key, read.path, read.params, read.fetch);
   const data = query.data?.body;
   const day = data?.days.find((d) => d.date === today);
-  const open = (screen: 'attendance' | 'diary' | 'remarks' | 'fees') =>
+  const open = (screen: 'attendance' | 'diary' | 'remarks' | 'fees' | 'results') =>
     router.push({
       pathname: `/children/[studentId]/${screen}`,
       params: { studentId: child.studentId },
@@ -95,6 +95,11 @@ function ChildCard({ child }: { child: MyChildDto }) {
         title="Remarks"
         onPress={() => open('remarks')}
         testID={`children.card.${child.studentId}.remarks`}
+      />
+      <ListRow
+        title="Results"
+        onPress={() => open('results')}
+        testID={`children.card.${child.studentId}.results`}
       />
       <ListRow
         title="Fees"

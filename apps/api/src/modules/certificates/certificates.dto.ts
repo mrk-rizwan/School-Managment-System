@@ -103,6 +103,34 @@ export class CertificateBodyDto implements CertificateBody {
   /** certificate_signatory_name when issued. */
   @ApiProperty()
   signatoryName: string;
+
+  /** The marks table (academic, completion): the published result of the named year, as issued. */
+  @ApiProperty({ type: () => CertificateResultDto, nullable: true })
+  result: CertificateResultDto | null;
+}
+
+export class CertificateResultSubjectDto {
+  @ApiProperty() subjectName: string;
+  @ApiProperty({ type: 'integer', nullable: true, description: 'Printed obtained; null when not assessed' })
+  obtained: number | null;
+  @ApiProperty({ type: 'integer', minimum: 1 }) max: number;
+  @ApiProperty({ type: 'integer', minimum: 0, maximum: 10000, nullable: true, description: '7850 = 78.50 %' })
+  percentBp: number | null;
+  @ApiProperty(NULLABLE_TEXT) grade: string | null;
+}
+
+/** A11: the named year's published final result, else its last published term (snapshotted). */
+export class CertificateResultDto {
+  @ApiProperty({ description: "The term's name, or Final" }) termName: string;
+  @ApiProperty() isFinal: boolean;
+  @ApiProperty() className: string;
+  @ApiProperty() sectionName: string;
+  @ApiProperty({ type: () => CertificateResultSubjectDto, isArray: true }) subjects: CertificateResultSubjectDto[];
+  @ApiProperty({ type: 'integer' }) totalObtained: number;
+  @ApiProperty({ type: 'integer' }) totalMax: number;
+  @ApiProperty({ type: 'integer', minimum: 0, maximum: 10000, nullable: true }) percentBp: number | null;
+  @ApiProperty(NULLABLE_TEXT) grade: string | null;
+  @ApiProperty({ type: Boolean, nullable: true }) passed: boolean | null;
 }
 
 /**

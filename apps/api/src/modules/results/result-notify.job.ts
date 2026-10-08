@@ -73,7 +73,12 @@ export class ResultNotifyJob {
         ...(people.student ? [{ studentId: row.studentId }] : []),
       ];
       const subject = { type: 'result' as const, id: row.id };
-      if (row.revised) {
+      // A revision of a result the family was never told is their first message (slice 32 fix round).
+      const revisedOfTold =
+        row.revised &&
+        row.supersedesId !== null &&
+        (await this.results.chainTold(schoolId, row.supersedesId));
+      if (revisedOfTold) {
         await this.notifications.send(schoolId, {
           type: 'result_revised',
           subject,

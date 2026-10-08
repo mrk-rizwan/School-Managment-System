@@ -240,6 +240,26 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Slice 35 (§5.1): the promotion repository is the promotion module's; that module writes
+  // enrolments and statuses only through EnrolmentsService and StudentsService and reads dues
+  // only through FinanceReportsService.clearance.
+  it.each([
+    ['promotion-repository-import.ts', 'src/modules/academics/academic-years.service.ts'],
+    ['promotion-repository-import.ts', 'src/modules/results/result-sheets.service.ts'],
+    ['student-repository-import.ts', 'src/modules/promotion/promotion.service.ts'],
+    ['money-repository-import.ts', 'src/modules/promotion/promotion.service.ts'],
+  ])('refuses %s at %s (slice 35)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['promotion-repository-import.ts', 'src/modules/promotion/promotion.service.ts'],
+    ['promotion-repository-import.ts', 'test/promotion/support.ts'],
+    ['student-repository-import.ts', 'src/modules/people/students/students.service.ts'],
+  ])('allows %s at %s (slice 35)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
   it('refuses a MarksScope assertion (Phase 4)', async () => {
     expect(
       rules(await lintAs('marks-scope-cast.ts', 'src/modules/assessments/assessments.service.ts')),

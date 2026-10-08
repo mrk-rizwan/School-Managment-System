@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { IdempotencyKeyGuard, IdempotentRequests } from '../../common/idempotency';
 import { SchoolContext } from '../../common/school-context';
 import { MessagingModule } from '../../messaging/messaging.module';
+import { ResultsModule } from '../results/results.module';
 import { AcademicTermRepository } from '../../repositories/academic-term.repository';
 import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AssessmentRepository } from '../../repositories/assessment.repository';
@@ -15,6 +16,8 @@ import { SchoolSettingsRepository } from '../../repositories/school-settings.rep
 import { SectionRepository } from '../../repositories/section.repository';
 import { AssessmentsController, MarksWritesThrottleGuard } from './assessments.controller';
 import { AssessmentsService } from './assessments.service';
+import { MarkCorrectionsController } from './mark-corrections.controller';
+import { MarkCorrectionsService } from './mark-corrections.service';
 import { MarksService } from './marks.service';
 
 /**
@@ -23,8 +26,10 @@ import { MarksService } from './marks.service';
  * assessment and mark repositories (lint, §5.1); it reads the slice-29 set-up repositories.
  */
 @Module({
-  imports: [MessagingModule],
-  controllers: [AssessmentsController],
+  // ResultsModule (slice 32): the correction cascade and the revised card (ResultRevisionService,
+  // ResultCardsService); the results repositories stay that module's.
+  imports: [MessagingModule, ResultsModule],
+  controllers: [AssessmentsController, MarkCorrectionsController],
   providers: [
     SchoolContext,
     IdempotencyKeyGuard,
@@ -32,6 +37,7 @@ import { MarksService } from './marks.service';
     MarksWritesThrottleGuard,
     AssessmentsService,
     MarksService,
+    MarkCorrectionsService,
     AssessmentRepository,
     MarkRepository,
     AcademicTermRepository,

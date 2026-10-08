@@ -64,6 +64,7 @@ const row = (
   fullName: string,
   extra: Partial<ResultPreviewRowDto> = {},
 ): ResultPreviewRowDto => ({
+  resultId: null,
   enrolmentId,
   studentId: `st-${enrolmentId}`,
   fullName,

@@ -28,3 +28,19 @@ export type ResultSheetListQuery = NonNullable<
 
 /** 409 MARKS_INCOMPLETE: the first 100 gaps. */
 export type MarksIncompleteDetails = { missing: { enrolmentId: string; assessmentId: string }[] };
+
+// ---- slice 32 (contracts/slice-32.md): the report card, the prints and mark corrections ----
+
+export type ResultDto = Schemas['ResultDto'];
+export type ResultCardSubjectDto = Schemas['ResultCardSubjectDto'];
+export type MarkCorrectionDto = Schemas['MarkCorrectionDto'];
+export type MarkCorrectionState = Schemas['MarkCorrectionState'];
+export type MarkCorrectionDecisionDto = Schemas['MarkCorrectionDecisionDto'];
+export type CorrectMarkBody = Schemas['CorrectMarkDto'];
+export type MarkCorrectionListQuery = NonNullable<
+  operations['MarkCorrectionsController_list']['parameters']['query']
+>;
+
+/** The print views (R283): opened in a new tab, never fetched into this page's state. */
+export const resultCardPrintPath = (resultId: string) => `/api/v1/results/${resultId}/print`;
+export const resultSheetPrintPath = (sheetId: string) => `/api/v1/result-sheets/${sheetId}/print`;

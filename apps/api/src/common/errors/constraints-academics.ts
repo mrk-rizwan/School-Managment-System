@@ -1,5 +1,5 @@
-// Constraint → refusal mappings for Phase 4 slices 29-31 (contracts/slice-29.md §5, slice-30.md
-// §6, slice-31.md §8), merged into BY_CONSTRAINT (prisma-errors.ts). The services check first;
+// Constraint → refusal mappings for Phase 4 slices 29-31 and 35 (contracts/slice-29.md §5, slice-30.md
+// §6, slice-31.md §8, slice-35.md §6), merged into BY_CONSTRAINT (prisma-errors.ts). The services check first;
 // these answer the race losers and any write that reaches the database's line.
 import { ErrorCode } from '@asms/shared';
 import { ApiException, concurrentUpdate } from './api-exception';
@@ -100,4 +100,17 @@ export const SLICE_29_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
   result_sheet_locks_open_student_key: concurrentUpdate,
   assessments_void_locked: () =>
     new ApiException(409, ErrorCode.ASSESSMENT_LOCKED, 'This assessment is locked: its result sheet has been submitted.', { assessmentId: null }),
+  // Slice 35 (contracts/slice-35.md §6, migration 20261008170000_wave_p_promotion): the service
+  // checks first under the sheet's row lock; these answer a race loser or a write that reaches
+  // the database's line.
+  promotion_sheets_open_key: () =>
+    new ApiException(409, ErrorCode.PROMOTION_SHEET_OPEN, 'This section already has an open promotion sheet.', { sheetId: null }),
+  promotion_sheets_status_transition: () =>
+    new ApiException(409, ErrorCode.PROMOTION_SHEET_NOT_OPEN, 'This promotion sheet has already been applied.', { sheetId: null }),
+  promotion_decisions_sheet_open: () =>
+    new ApiException(409, ErrorCode.PROMOTION_SHEET_NOT_OPEN, 'This promotion sheet has already been applied.', { sheetId: null }),
+  promotion_decisions_applied_frozen: () =>
+    new ApiException(409, ErrorCode.PROMOTION_SHEET_NOT_OPEN, 'This promotion sheet has already been applied.', { sheetId: null }),
+  promotion_decisions_school_id_sheet_id_enrolment_id_key: concurrentUpdate,
+  enrolments_status_transition: concurrentUpdate,
 };

@@ -120,6 +120,16 @@ export class SessionRepository {
     return count;
   }
 
+  /** Every live session of several users (promotion apply's batch of status changes). */
+  async revokeAllForUsers(schoolId: SchoolId, userIds: readonly bigint[], now: Date): Promise<number> {
+    if (userIds.length === 0) return 0;
+    const { count } = await this.txHost.tx.session.updateMany({
+      where: { schoolId, userId: { in: [...userIds] }, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    return count;
+  }
+
   /**
    * Re-checks the request's own session after a user-row lock is held: a session revoked while
    * the request waited for the lock (office reset, principal link, disable) must not finish its

@@ -44,7 +44,7 @@ export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
 export const CERTIFICATE_TYPE_HINTS: Record<CertificateType, string> = {
   leaving: 'Only for a student who has been withdrawn, transferred or has completed school, with dues paid or overridden by a principal.',
   character: 'States the student’s dates at the school and their conduct.',
-  academic: 'States the class and year the student studied in, with the record of attendance.',
+  academic: 'States the class and year the student studied in, with the published result’s marks and the record of attendance.',
   completion: 'States the class the student completed in the year.',
   other: 'A certificate with your own title, for anything the other types do not cover.',
 };
@@ -61,6 +61,8 @@ export function printCertificate(id: string): void {
 export const CERTIFICATE_REFUSALS: RefusalMessages = {
   [ErrorCode.CERTIFICATE_STUDENT_NOT_LEFT]:
     'A leaving certificate needs the student withdrawn, transferred or completed first. Change the student’s status, then issue it.',
+  [ErrorCode.CERTIFICATE_NO_RESULT]:
+    'No result of that academic year is published for the student yet. An academic or completion certificate prints the published result.',
   [ErrorCode.CERTIFICATE_DUES_BLOCK]: (details) =>
     `The student owes ${formatRupees(Number(details.outstanding ?? 0))}. Collect the dues, or ask a principal to override them on the student’s Fees tab.`,
   [ErrorCode.CERTIFICATE_VOIDED]: 'This certificate has been voided. Issue a new one instead.',

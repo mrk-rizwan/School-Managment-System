@@ -1,0 +1,46 @@
+# Phase 4 slice 33 (contracts/slice-33.md §5) — CI only, after principal-approve-result. ci-run.sh
+# reads, as the guardian over curl, the published 5 A result of the child (RESULT_ID). The parent
+# opens the child's Results, sees the published term, opens the report card, and the class tests
+# below the results. Env: SCHOOL_CODE, MAESTRO_GUARDIAN_CNIC, STUDENT_ID, RESULT_ID.
+appId: pk.asms.app.dev
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: common/sign-in.yaml
+    env:
+      IDENTITY: ${MAESTRO_GUARDIAN_CNIC}
+- tapOn:
+    id: 'tabs.children'
+- scrollUntilVisible:
+    element:
+      id: 'children.card.${STUDENT_ID}.results'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'children.card.${STUDENT_ID}.results'
+- extendedWaitUntil:
+    visible:
+      id: 'results.summary.${RESULT_ID}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'Class tests'
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'results.summary.${RESULT_ID}'
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'results.summary.${RESULT_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'reportCard'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'reportCard.share'
+    direction: DOWN
+    timeout: 20000

@@ -48,7 +48,7 @@ export type NavItem = {
   icon: LucideIcon;
   capability: Capability | readonly Capability[] | null;
   /** Shown only to a session holding this capacity (a guardian's own pages, slice 21). */
-  capacity?: 'guardian';
+  capacity?: 'guardian' | 'student';
 };
 
 export const schoolNav: NavItem[] = [
@@ -84,6 +84,17 @@ export const schoolNav: NavItem[] = [
     icon: GraduationCapIcon,
     capability: ['marks.enter', 'marks.view_all', 'result.approve'],
   },
+  // Phase 4 slice 32: corrections of marks on published results (contracts/slice-32.md §8).
+  {
+    href: '/results/corrections',
+    label: 'Mark corrections',
+    icon: ClipboardPenLineIcon,
+    capability: ['result.approve', 'marks.view_all'],
+  },
+  // Phase 4 slice 33: the result reports from the stored rows (contracts/slice-33.md §3).
+  { href: '/results/reports', label: 'Result reports', icon: ChartColumnIcon, capability: 'marks.view_all' },
+  // Phase 4 slice 35: the year-end promotion sheets (contracts/slice-35.md).
+  { href: '/promotion', label: 'Promotion', icon: GraduationCapIcon, capability: 'assessment.define' },
   // Senders read their own announcements, or every one with .school (contracts/slice-14.md §1.1).
   {
     href: '/announcements',
@@ -123,6 +134,9 @@ export const schoolNav: NavItem[] = [
   },
   // Phase 3 slice 21: a guardian's children's fees, receipts and deposit slips (/me/*).
   { href: '/my-children', label: "Children's fees", icon: WalletCardsIcon, capability: null, capacity: 'guardian' },
+  // Phase 4 slice 33: a guardian's children's results and the student's own (/me/*).
+  { href: '/my-children/results', label: "Children's results", icon: GraduationCapIcon, capability: null, capacity: 'guardian' },
+  { href: '/my-results', label: 'My results', icon: GraduationCapIcon, capability: null, capacity: 'student' },
   // Recorders, approvers and report readers (phase-3-financial.md slice 23).
   {
     href: '/expenses',

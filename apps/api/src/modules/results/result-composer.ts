@@ -148,9 +148,13 @@ export class ResultComposer {
     term: Pick<AcademicTermRecord, 'id' | 'startsOn' | 'endsOn'>,
     settings: CompositionSettings,
     contributors: Contributors,
-    options: { attendance: boolean } = { attendance: true },
+    options: { attendance: boolean; subjects?: readonly SubjectHeader[] } = { attendance: true },
   ): Promise<Composition> {
-    const listed = await this.classSubjects.liveForClass(schoolId, sheet.classId);
+    // A correction re-composes over the subjects its version was approved with (slice 32 fix
+    // round), whatever today's list holds; otherwise the class's live list.
+    const listed = options.subjects
+      ? await this.storedSubjects(schoolId, sheet.classId, options.subjects)
+      : await this.classSubjects.liveForClass(schoolId, sheet.classId);
     const subjects = [...listed].sort(
       (a, b) => a.sortOrder - b.sortOrder || (a.id < b.id ? -1 : 1),
     );
@@ -305,6 +309,22 @@ export class ResultComposer {
         )
         .map((cs) => cs.id),
     };
+  }
+
+  /** The class-subjects named, archived or not, with the stored names and print order. */
+  private async storedSubjects(
+    schoolId: SchoolId,
+    classId: bigint,
+    headers: readonly SubjectHeader[],
+  ): Promise<ClassSubjectRecord[]> {
+    const ids = headers.map((h) => h.classSubjectId);
+    const records = new Map(
+      (await this.classSubjects.forClassByIds(schoolId, classId, ids)).map((r) => [r.id, r]),
+    );
+    return headers.flatMap((h) => {
+      const record = records.get(h.classSubjectId);
+      return record ? [{ ...record, subjectName: h.subjectName, sortOrder: h.sortOrder }] : [];
+    });
   }
 
   /**

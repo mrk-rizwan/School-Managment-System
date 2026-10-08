@@ -247,6 +247,68 @@ export class EnrolmentRepository {
     return count;
   }
 
+  /** Several enrolments by id, scoped through the student (out of scope reads as absent). */
+  findManyByIds(schoolId: SchoolId, scope: Scope, ids: readonly bigint[]): Promise<EnrolmentRecord[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.txHost.tx.enrolment.findMany({
+      where: { schoolId, id: { in: [...ids] }, student: { is: studentInScope(scope) } },
+      select: SELECT,
+    });
+  }
+
+  /**
+   * Ends active enrolments as `completed` at year end (promotion apply, phase-4-academic.md
+   * slice 35), in one statement. Returns rows changed (fewer when one was no longer active).
+   */
+  async completeMany(schoolId: SchoolId, ids: readonly bigint[], endedOn: Date): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { count } = await this.txHost.tx.enrolment.updateMany({
+      where: { schoolId, id: { in: [...ids] }, status: 'active' },
+      data: { status: 'completed', endedOn },
+    });
+    return count;
+  }
+
+  /** New `active` enrolments in one statement; their ids by student. */
+  async createMany(schoolId: SchoolId, rows: readonly EnrolmentCreate[]): Promise<Map<bigint, bigint>> {
+    if (rows.length === 0) return new Map();
+    const created = await this.txHost.tx.enrolment.createManyAndReturn({
+      data: rows.map((row) => ({ schoolId, ...row, status: 'active' as const })),
+      select: { id: true, studentId: true },
+    });
+    return new Map(created.map((row) => [row.studentId, row.id]));
+  }
+
+  /**
+   * R299: the year's sections that had an enrolment in force on `lastDay` and no applied promotion
+   * sheet, by class then section name. The year-close guard reads it before R44.
+   */
+  async sectionsAwaitingPromotion(
+    schoolId: SchoolId,
+    academicYearId: bigint,
+    lastDay: Date,
+  ): Promise<{ sectionId: bigint; sectionName: string; className: string }[]> {
+    const rows = await this.txHost.tx.section.findMany({
+      where: {
+        schoolId,
+        class: { is: { schoolId, academicYearId } },
+        enrolments: {
+          some: {
+            schoolId,
+            academicYearId,
+            startedOn: { lte: lastDay },
+            OR: [{ endedOn: null }, { endedOn: { gte: lastDay } }],
+          },
+        },
+        promotionSheets: { none: { schoolId, academicYearId, status: 'applied' } },
+      },
+      select: { id: true, name: true, class: { select: { name: true, sortOrder: true } } },
+    });
+    return rows
+      .sort((a, b) => a.class.sortOrder - b.class.sortOrder || a.class.name.localeCompare(b.class.name) || a.name.localeCompare(b.name))
+      .map((r) => ({ sectionId: r.id, sectionName: r.name, className: r.class.name }));
+  }
+
   // ------------------------------------------------- academic-structure seams (slice 3, R44)
 
   async hasActiveInYear(schoolId: SchoolId, academicYearId: bigint): Promise<boolean> {

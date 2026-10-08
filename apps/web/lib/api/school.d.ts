@@ -1908,6 +1908,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mark-corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MarkCorrectionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mark-corrections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MarkCorrectionsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mark-corrections/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MarkCorrectionsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mark-corrections/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MarkCorrectionsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mark-corrections/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MarkCorrectionsController_withdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marks/{id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MarkCorrectionsController_correct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/marks/{id}/excuse": {
         parameters: {
             query?: never;
@@ -1998,6 +2094,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["MeController_changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildResultsController_assessments"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2172,6 +2284,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyChildDiaryController_remarksOf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildResultsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/results/{resultId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyChildResultsController_card"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2500,6 +2644,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/student/assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStudentResultsController_assessments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/student/attendance": {
         parameters: {
             query?: never;
@@ -2572,6 +2732,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyStudentDiaryController_remarksOf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStudentResultsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/results/{resultId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStudentResultsController_card"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3108,6 +3300,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/promotion-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PromotionController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/promotion-sheets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PromotionController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PromotionController_decide"];
+        trace?: never;
+    };
+    "/api/v1/promotion-sheets/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PromotionController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/promotion-sheets/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PromotionController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/receipts/{id}": {
         parameters: {
             query?: never;
@@ -3150,6 +3406,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["RemarksController_correct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-reports/section-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultReportsController_sectionSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/result-reports/subject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultReportsController_subject"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3204,6 +3492,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/result-sheets/{id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsController_printSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/result-sheets/{id}/publish": {
         parameters: {
             query?: never;
@@ -3246,6 +3550,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ResultsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/results/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsController_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/results/{id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultsController_printCard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3374,6 +3710,22 @@ export interface paths {
         get: operations["DiaryController_list"];
         put?: never;
         post: operations["DiaryController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sections/{id}/promotion-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PromotionController_open"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3870,6 +4222,22 @@ export interface paths {
         get: operations["RemarksController_list"];
         put?: never;
         post: operations["RemarksController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StudentResultsController_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4550,6 +4918,10 @@ export interface components {
             obtained: number | null;
             /** @description The caller's user id when the caller is a guardian of this student (rule 27), else null */
             ownChildOf: string | null;
+            /** @description A correction of this mark waiting for a decision (slice 32) */
+            pendingCorrectionId: string | null;
+            /** @description The caller asked for that correction (and so may withdraw it) */
+            pendingCorrectionMine: boolean;
             /** @description live, or null when no mark is entered */
             status: components["schemas"]["AssessmentMarkStatus"] | null;
             student: components["schemas"]["AssessmentStudentDto"];
@@ -4789,6 +5161,7 @@ export interface components {
             fatherName: string | null;
             gender: components["schemas"]["Gender"];
             remarks: string | null;
+            result: components["schemas"]["CertificateResultDto"] | null;
             schoolName: string;
             sectionName: string | null;
             signatoryName: string;
@@ -4841,6 +5214,28 @@ export interface components {
              * @example 2026-10-07
              */
             to: string | null;
+        };
+        CertificateResultDto: {
+            className: string;
+            grade: string | null;
+            isFinal: boolean;
+            passed: boolean | null;
+            percentBp: number | null;
+            sectionName: string;
+            subjects: components["schemas"]["CertificateResultSubjectDto"][];
+            /** @description The term's name, or Final */
+            termName: string;
+            totalMax: number;
+            totalObtained: number;
+        };
+        CertificateResultSubjectDto: {
+            grade: string | null;
+            max: number;
+            /** @description Printed obtained; null when not assessed */
+            obtained: number | null;
+            /** @description 7850 = 78.50 % */
+            percentBp: number | null;
+            subjectName: string;
         };
         /** @enum {string} */
         CertificateSort: "-issuedOn" | "issuedOn";
@@ -5205,6 +5600,16 @@ export interface components {
         CopySectionsResultDto: {
             created: components["schemas"]["SectionDto"][];
             skippedNames: string[];
+        };
+        CorrectMarkDto: {
+            /**
+             * @description True: the student was absent (no mark)
+             * @default false
+             */
+            absent?: boolean;
+            /** @description The corrected mark; omit (or null) with absent: true */
+            obtained?: number | null;
+            reason: string;
         };
         CorrectRemarkDto: {
             reason: string;
@@ -5832,7 +6237,7 @@ export interface components {
         /** @enum {string} */
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
-        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "UNEXPECTED_RESPONSE";
+        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "PROMOTION_ENROLMENT_AFTER_YEAR" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "UNEXPECTED_RESPONSE";
         ExamSetUpResultDto: {
             /** @description Exams created by this request */
             created: number;
@@ -5983,6 +6388,10 @@ export interface components {
             grade: string;
             /** @description A percentage at or above it earns the grade */
             minPercent: number;
+        };
+        GradeCountDto: {
+            count: number;
+            grade: string;
         };
         GrantDto: {
             capability: components["schemas"]["Capability"];
@@ -6411,6 +6820,58 @@ export interface components {
         };
         /** @enum {string} */
         MarkChangeSort: "-changedAt" | "changedAt";
+        MarkCorrectionDecisionDto: {
+            mark: components["schemas"]["MarkCorrectionDto"];
+            /** @description The corrected student's new term result (version n+1) */
+            revisedResult: components["schemas"]["ResultDto"];
+        };
+        MarkCorrectionDto: {
+            admissionNo: string;
+            assessmentId: string;
+            assessmentName: string;
+            classId: string;
+            className: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            enrolmentId: string;
+            /** @description The mark it corrects */
+            from: components["schemas"]["MarkCorrectionValueDto"] | null;
+            /**
+             * Format: date
+             * @example 2026-05-10
+             */
+            heldOn: string;
+            /** @description The correction row (a mark born pending) */
+            id: string;
+            kind: components["schemas"]["AssessmentKind"];
+            maxMarks: number;
+            reason: string;
+            /** Format: date-time */
+            requestedAt: string;
+            /** @description The caller asked for it (and so cannot approve it, R281) */
+            requestedByMe: boolean;
+            requestedByName: string;
+            sectionId: string;
+            sectionName: string;
+            status: components["schemas"]["MarkCorrectionState"];
+            studentId: string;
+            studentName: string;
+            subjectName: string;
+            termId: string;
+            termName: string;
+            /** @description The corrected value */
+            to: components["schemas"]["MarkCorrectionValueDto"];
+            /** @description Rejected by its own requester (POST /mark-corrections/:id/withdraw) */
+            withdrawn: boolean;
+        };
+        /** @enum {string} */
+        MarkCorrectionState: "pending" | "approved" | "rejected";
+        MarkCorrectionValueDto: {
+            absent: boolean;
+            excused: boolean;
+            obtained: number | null;
+        };
         MarkEntryDto: {
             /**
              * @description True for an absence (no mark)
@@ -6525,6 +6986,26 @@ export interface components {
             id: string;
             outcome: components["schemas"]["MarkOutcome"];
         };
+        MyAssessmentMarkDto: {
+            absent: boolean;
+            assessmentId: string;
+            /** @description An absence the principal excused: it does not count */
+            excused: boolean;
+            /**
+             * Format: date
+             * @example 2026-05-10
+             */
+            heldOn: string;
+            markId: string;
+            maxMarks: number;
+            name: string;
+            /** @description Null when absent */
+            obtained: number | null;
+            subjectName: string;
+            termId: string;
+            termName: string;
+            testType: components["schemas"]["TestType"] | null;
+        };
         MyCalendarDto: {
             /** Format: date */
             dateFrom: string;
@@ -6574,6 +7055,21 @@ export interface components {
             relationship: components["schemas"]["Relationship"];
             status: components["schemas"]["StudentStatus"];
             studentId: string;
+        };
+        MyChildResultsDto: {
+            /** @description The year shown; null when there is no published result */
+            academicYearId: string | null;
+            /** @description The year's published final result */
+            final: components["schemas"]["MyResultSummaryDto"] | null;
+            /** @description The amount owed in whole rupees when withheld; null otherwise, and always null on a student login (the student sees no figure) */
+            outstanding: number | null;
+            studentId: string;
+            /** @description The year's published term results, in term order */
+            terms: components["schemas"]["MyResultSummaryDto"][];
+            /** @description The school withholds report cards while dues are owed (withhold_card_for_dues) and this child owes: the per-subject card is not served until the dues are cleared or the principal overrides (R282). A later payment unlocks it with no write */
+            withheld: boolean;
+            /** @description The years with a published result, newest first */
+            years: components["schemas"]["MyResultYearDto"][];
         };
         MyClaimDto: {
             /** @description Whole rupees */
@@ -6694,6 +7190,38 @@ export interface components {
             supersedesId: string | null;
             text: string;
         };
+        MyResultDto: {
+            /** @description The amount owed in whole rupees when withheld; null otherwise, and always null on a student login (the student sees no figure) */
+            outstanding: number | null;
+            /** @description The report card; null while withheld */
+            result: components["schemas"]["ResultDto"] | null;
+            /** @description The school withholds report cards while dues are owed (withhold_card_for_dues) and this child owes: the per-subject card is not served until the dues are cleared or the principal overrides (R282). A later payment unlocks it with no write */
+            withheld: boolean;
+        };
+        MyResultSummaryDto: {
+            academicYearId: string;
+            academicYearName: string;
+            className: string;
+            /** @description Null as percentBp */
+            grade: string | null;
+            id: string;
+            isFinal: boolean;
+            /** @description Null when nothing was assessed, and on a student login while the card is withheld */
+            percentBp: number | null;
+            /** Format: date-time */
+            publishedAt: string;
+            /** @description A correction revised it after publication */
+            revised: boolean;
+            sectionName: string;
+            /** @description Null for the final result of the year */
+            termId: string | null;
+            /** @description The term's name; null for the final result */
+            termName: string | null;
+        };
+        MyResultYearDto: {
+            id: string;
+            name: string;
+        };
         MySalaryStructureDto: {
             current: components["schemas"]["SalaryStructureDto"] | null;
             upcoming: components["schemas"]["SalaryStructureDto"] | null;
@@ -6736,6 +7264,9 @@ export interface components {
         OpenHandoverOnBehalfDto: {
             collectorUserId: string;
             note?: string;
+        };
+        OpenPromotionSheetDto: {
+            targetYearId: string;
         };
         /** @enum {string} */
         OutstandingGroup: "class" | "feeHead" | "period";
@@ -6995,6 +7526,105 @@ export interface components {
             audiences: components["schemas"]["CampaignAudienceDto"][];
             feeHeadId: string;
         };
+        PromotionDecisionDto: {
+            admissionNo: string;
+            /** Format: date-time */
+            appliedAt: string | null;
+            arrearsFlag: boolean;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            decision: components["schemas"]["PromotionOutcome"] | null;
+            enrolmentId: string;
+            enrolmentStatus: components["schemas"]["EnrolmentStatus"];
+            grade: string | null;
+            id: string;
+            newEnrolmentId: string | null;
+            passed: boolean | null;
+            percentBp: number | null;
+            proposed: components["schemas"]["PromotionOutcome"] | null;
+            reason: string | null;
+            resultId: string | null;
+            resultSuperseded: boolean;
+            revisedAfterApply: boolean;
+            rollNo: number | null;
+            skipped: boolean;
+            studentId: string;
+            studentName: string;
+            studentStatus: components["schemas"]["StudentStatus"];
+            targetClassId: string | null;
+            targetClassName: string | null;
+            targetSectionId: string | null;
+            targetSectionName: string | null;
+        };
+        PromotionDecisionInputDto: {
+            decision: components["schemas"]["PromotionOutcome"];
+            enrolmentId: string;
+            reason?: string;
+            targetClassId?: string;
+            targetSectionId?: string;
+        };
+        /** @enum {string} */
+        PromotionOutcome: "promote" | "detain" | "complete" | "not_continuing";
+        PromotionSheetDetailDto: {
+            academicYearId: string;
+            academicYearName: string;
+            /** Format: date-time */
+            appliedAt: string | null;
+            appliedByName: string | null;
+            classId: string;
+            /** @description The class is the final class: only its rows may complete (R295) */
+            classIsFinal: boolean;
+            className: string;
+            /** @description By roll number, then name */
+            decisions: components["schemas"]["PromotionDecisionDto"][];
+            id: string;
+            /** Format: date-time */
+            openedAt: string;
+            openedByName: string;
+            /** @description Students on the sheet */
+            rows: number;
+            sectionId: string;
+            sectionName: string;
+            status: components["schemas"]["PromotionSheetStatus"];
+            targetYearHasClasses: boolean;
+            targetYearId: string;
+            targetYearName: string;
+            /** @description Rows still without a decision */
+            undecided: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PromotionSheetDto: {
+            academicYearId: string;
+            academicYearName: string;
+            /** Format: date-time */
+            appliedAt: string | null;
+            appliedByName: string | null;
+            classId: string;
+            /** @description The class is the final class: only its rows may complete (R295) */
+            classIsFinal: boolean;
+            className: string;
+            id: string;
+            /** Format: date-time */
+            openedAt: string;
+            openedByName: string;
+            /** @description Students on the sheet */
+            rows: number;
+            sectionId: string;
+            sectionName: string;
+            status: components["schemas"]["PromotionSheetStatus"];
+            targetYearId: string;
+            targetYearName: string;
+            /** @description Rows still without a decision */
+            undecided: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        PromotionSheetSort: "-openedAt" | "openedAt";
+        /** @enum {string} */
+        PromotionSheetStatus: "open" | "applied" | "cancelled";
         ReadmissionResultDto: {
             /** @description Digits */
             admissionNo: string;
@@ -7252,6 +7882,74 @@ export interface components {
             /** @description explained_by_void only: the void of a payment in this handover */
             reversalId?: string;
         };
+        ResultCardSubjectDto: {
+            classSubjectId: string;
+            examAbsent: boolean;
+            examBp: number | null;
+            examExcused: boolean;
+            examMax: number | null;
+            examObtained: number | null;
+            grade: string | null;
+            max: number;
+            /** @description Printed obtained; null when not assessed */
+            obtained: number | null;
+            percentBp: number | null;
+            sortOrder: number;
+            status: components["schemas"]["ResultSubjectStatus"];
+            /** @description Snapshotted at approval */
+            subjectName: string;
+            testBp: number | null;
+        };
+        ResultDto: {
+            academicYearId: string;
+            academicYearName: string;
+            admissionNo: string;
+            /** @description 92.3 % = 9230; null when showAttendance is off */
+            attendanceBp: number | null;
+            classId: string;
+            className: string;
+            enrolmentId: string;
+            failedSubjects: number;
+            grade: string | null;
+            id: string;
+            isFinal: boolean;
+            /** @description Null when nothing is assessed */
+            passed: boolean | null;
+            percentBp: number | null;
+            /** @description Null when not positioned or showPosition is off */
+            position: number | null;
+            positionOf: number | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** @description Null when showRemark is off */
+            remark: string | null;
+            /** @description A corrected result whose figures changed (prints "Revised" with publishedAt) */
+            revised: boolean;
+            rollNo: number | null;
+            schoolName: string;
+            sectionId: string;
+            sectionName: string;
+            sheetId: string;
+            /** @description The sheet version (a correction's is 2 or more) */
+            sheetVersion: number;
+            showAttendance: boolean;
+            showPosition: boolean;
+            showRemark: boolean;
+            studentId: string;
+            studentName: string;
+            subjects: components["schemas"]["ResultCardSubjectDto"][];
+            /**
+             * Format: date-time
+             * @description Set on a row a later version replaced (prints "Superseded")
+             */
+            supersededAt: string | null;
+            /** @description Null on the final result of the year */
+            termId: string | null;
+            /** @description The term's name; null on the final result */
+            termName: string | null;
+            totalMax: number;
+            totalObtained: number;
+        };
         ResultPreviewRowDto: {
             admissionNo: string;
             /** @description 92.3 % = 9230 */
@@ -7269,6 +7967,8 @@ export interface components {
             position: number | null;
             positionOf: number | null;
             remark: string | null;
+            /** @description The stored result (its report card) once approved; null in a preview (slice 32) */
+            resultId: string | null;
             rollNo: number | null;
             studentId: string;
             subjects: components["schemas"]["ResultPreviewSubjectDto"][];
@@ -7619,6 +8319,45 @@ export interface components {
         };
         /** @enum {string} */
         SectionSort: "name" | "-name";
+        SectionSubjectSummaryDto: {
+            /** @description Students assessed in the subject */
+            assessed: number;
+            /** @description Null when nobody was assessed */
+            averageBp: number | null;
+            classSubjectId: string;
+            failed: number;
+            grades: components["schemas"]["GradeCountDto"][];
+            /** @description Printed obtained ÷ max at or above the sheet's pass mark */
+            passed: number;
+            subjectName: string;
+        };
+        SectionSummaryReportDto: {
+            academicYearId: string;
+            /** @description Results with something assessed */
+            assessed: number;
+            averageBp: number | null;
+            classId: string;
+            className: string;
+            /** @description Stored passed = false */
+            failed: number;
+            /** @description Overall grades, most frequent first */
+            grades: components["schemas"]["GradeCountDto"][];
+            passPercent: number | null;
+            /** @description Stored passed = true */
+            passed: number;
+            sectionId: string;
+            sectionName: string;
+            sheetId: string;
+            status: components["schemas"]["ResultSheetStatus"];
+            /** @description Results on the sheet version */
+            students: number;
+            /** @description In the card order */
+            subjects: components["schemas"]["SectionSubjectSummaryDto"][];
+            /** @description Null for the final sheet */
+            termId: string | null;
+            termName: string | null;
+            version: number;
+        };
         SendRemindersDto: {
             /** @description At most one of classId, sectionId and studentIds; none = every family */
             classId?: string;
@@ -8060,6 +8799,38 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        SubjectReportDto: {
+            assessed: number;
+            /** @description Across every section */
+            averageBp: number | null;
+            classId: string;
+            className: string;
+            classSubjectId: string;
+            /** @description Sections with an approved or published sheet, by name */
+            sections: components["schemas"]["SubjectReportSectionDto"][];
+            subjectName: string;
+            termId: string;
+            termName: string;
+        };
+        SubjectReportSectionDto: {
+            assessed: number;
+            averageBp: number | null;
+            /** @description The lowest three, lowest first */
+            bottom: components["schemas"]["SubjectReportStudentDto"][];
+            /** @description Every live row of the section is published */
+            published: boolean;
+            sectionId: string;
+            sectionName: string;
+            students: number;
+            /** @description The highest three, best first */
+            top: components["schemas"]["SubjectReportStudentDto"][];
+        };
+        SubjectReportStudentDto: {
+            fullName: string;
+            percentBp: number;
+            resultId: string;
+            studentId: string;
+        };
         /** @enum {string} */
         SubjectSort: "name" | "-name" | "code" | "-code";
         SubmitAlertsDto: {
@@ -8190,10 +8961,7 @@ export interface components {
         };
         /** @enum {string} */
         TermSort: "sortOrder" | "-sortOrder";
-        /**
-         * @description A test only; null on an exam
-         * @enum {string}
-         */
+        /** @enum {string} */
         TestType: "daily" | "weekly" | "monthly" | "other";
         UndoCarryForwardDto: {
             reason: string;
@@ -8326,6 +9094,9 @@ export interface components {
             name?: string;
             /** Format: date */
             startsOn?: string;
+        };
+        UpdatePromotionSheetDto: {
+            decisions: components["schemas"]["PromotionDecisionInputDto"][];
         };
         UpdateResultSettingsDto: {
             /** @description The whole table: descending minimums, unique grades, the last at 0 */
@@ -19775,6 +20546,461 @@ export interface operations {
             };
         };
     };
+    MarkCorrectionsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["MarkCorrectionState"];
+                sectionId?: string;
+                termId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MarkCorrectionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MarkCorrectionsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MarkCorrectionsController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDecisionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MarkCorrectionsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MarkCorrectionsController_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MarkCorrectionsController_correct: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectMarkDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkCorrectionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     AssessmentsController_excuse: {
         parameters: {
             query?: never;
@@ -20178,6 +21404,84 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildResultsController_assessments: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                termId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyAssessmentMarkDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21149,6 +22453,140 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildResultsController_list: {
+        parameters: {
+            query?: {
+                /** @description Default: the latest year in which the child has a published result */
+                academicYearId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyChildResultsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyChildResultsController_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                resultId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22680,6 +24118,74 @@ export interface operations {
             };
         };
     };
+    MyStudentResultsController_assessments: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                termId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyAssessmentMarkDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyAttendanceController_own: {
         parameters: {
             query: {
@@ -22993,6 +24499,129 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyStudentResultsController_list: {
+        parameters: {
+            query?: {
+                /** @description Default: the latest year in which the child has a published result */
+                academicYearId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyChildResultsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyStudentResultsController_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resultId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25763,6 +27392,380 @@ export interface operations {
             };
         };
     };
+    PromotionController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                academicYearId?: string;
+                sectionId?: string;
+                status?: components["schemas"]["PromotionSheetStatus"];
+                sort?: components["schemas"]["PromotionSheetSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PromotionSheetDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PromotionController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PromotionController_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePromotionSheetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PromotionController_apply: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PromotionController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     ReceiptsController_get: {
         parameters: {
             query?: never;
@@ -25950,6 +27953,154 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultReportsController_sectionSummary: {
+        parameters: {
+            query: {
+                /** @description An approved or published sheet (any version) */
+                sheetId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionSummaryReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultReportsController_subject: {
+        parameters: {
+            query: {
+                termId: string;
+                classSubjectId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26276,6 +28427,68 @@ export interface operations {
             };
         };
     };
+    ResultsController_printSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sheet's report cards, one per page (R283) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     ResultsController_publish: {
         parameters: {
             query?: never;
@@ -26470,6 +28683,129 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ResultsController_printCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The printable report card (R283) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27284,6 +29620,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryEntryDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    PromotionController_open: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenPromotionSheetDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed open */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromotionSheetDetailDto"];
                 };
             };
             401: {
@@ -30472,6 +32901,83 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StudentResultsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ResultDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

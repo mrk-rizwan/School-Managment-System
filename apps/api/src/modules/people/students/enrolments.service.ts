@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ErrorCode } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../../common/auth/school-session';
-import { ApiException, fieldRefused, notFound } from '../../../common/errors/api-exception';
+import { ApiException, concurrentUpdate, fieldRefused, notFound } from '../../../common/errors/api-exception';
 import { recoverConstraint } from '../../../common/errors/prisma-errors';
 import { readLocked } from '../../../common/locking';
 import { toPage, type Page, type PageQueryDto } from '../../../common/pagination';
@@ -261,6 +261,58 @@ export class EnrolmentsService {
       throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
     }
     return { closed: toEnrolmentDto(closedView), opened: toEnrolmentDto(openedView) };
+  }
+
+  /**
+   * Promotion apply (phase-4-academic.md slice 35, R297), batched for §7.2 (contracts/slice-35.md
+   * §7): under the students' locks, closes the still-active enrolments among `items` as
+   * `completed` on `endedOn` (the year's end) in one statement and, for promote and detain, opens
+   * the next ones in their targets (locked by the caller with lockTarget) on `startedOn` with no
+   * roll number (rule 30), in a second. Returns, per enrolment completed, the one it opened; an
+   * enrolment no longer active (or outside the scope) is left out and the caller skips its row.
+   */
+  async completeYearMany(
+    schoolId: SchoolId,
+    scope: Scope,
+    items: readonly { enrolmentId: bigint; next: { target: EnrolmentTarget; startedOn: Date } | null }[],
+    endedOn: Date,
+  ): Promise<Map<bigint, { opened: bigint | null }>> {
+    if (items.length === 0) return new Map();
+    const ids = items.map((i) => i.enrolmentId);
+    const before = await this.enrolments.findManyByIds(schoolId, scope, ids);
+    await this.students.lockMany(schoolId, before.map((e) => e.studentId));
+    // Re-read under the locks: a change of class or an exit may have closed one meanwhile.
+    const active = (await this.enrolments.findManyByIds(schoolId, scope, ids)).filter((e) => e.status === 'active');
+    if ((await this.enrolments.completeMany(schoolId, active.map((e) => e.id), endedOn)) !== active.length) {
+      throw concurrentUpdate();
+    }
+    const byId = new Map(items.map((i) => [i.enrolmentId, i.next]));
+    const opening = active.flatMap((e) => {
+      const next = byId.get(e.id);
+      return next
+        ? [
+            {
+              enrolmentId: e.id,
+              row: {
+                studentId: e.studentId,
+                academicYearId: next.target.klass.academicYearId,
+                classId: next.target.klass.id,
+                sectionId: next.target.section.id,
+                rollNo: null,
+                startedOn: next.startedOn,
+              },
+            },
+          ]
+        : [];
+    });
+    const opened = await this.enrolments.createMany(schoolId, opening.map((o) => o.row));
+    const studentOf = new Map(opening.map((o) => [o.enrolmentId, o.row.studentId]));
+    return new Map(
+      active.map((e) => {
+        const studentId = studentOf.get(e.id);
+        return [e.id, { opened: studentId === undefined ? null : (opened.get(studentId) ?? null) }];
+      }),
+    );
   }
 
   /**

@@ -30,6 +30,8 @@ const EXEMPT = new Set([
   join(apiRoot, 'test', 'academics', 'certificate-guards.e2e-spec.ts'),
   // Phase 4 wave O: the guards of the result sheet, remark, result and result-subject tables.
   join(apiRoot, 'test', 'results', 'sheet-guards.e2e-spec.ts'),
+  // Phase 4 wave P: the guards of the promotion sheet and decision tables.
+  join(apiRoot, 'test', 'promotion', 'promotion-guards.e2e-spec.ts'),
 ]);
 
 function testFiles(dir: string): string[] {

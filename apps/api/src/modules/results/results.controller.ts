@@ -20,12 +20,16 @@ import { ApiPaginated, type Page } from '../../common/pagination';
 import { perUserThrottle } from '../../common/rate-limit';
 import { ReasonDto } from '../../common/reason.dto';
 import { NoQueryDto } from '../../common/validation';
+import { SameSitePrintGuard, sendPrintView } from '../../common/print-view';
+import { PrintThrottleGuard } from '../certificates/certificates.controller';
 import { ResultApprovalService } from './result-approval.service';
+import { ResultCardsService } from './result-cards.service';
 import { ResultSheetsService } from './result-sheets.service';
 import {
   CreateResultSheetDto,
   ListResultSheetsQueryDto,
   ResultSheetDetailDto,
+  ResultDto,
   ResultSheetDto,
   UpdateResultSheetDto,
 } from './results.dto';
@@ -53,7 +57,57 @@ export class ResultsController {
   constructor(
     private readonly sheets: ResultSheetsService,
     private readonly approval: ResultApprovalService,
+    private readonly cards: ResultCardsService,
   ) {}
+
+  // ------------------------------------------------------------------ report cards (slice 32)
+
+  /** R279: the stored row is the card; published or superseded; a staff read is never withheld. */
+  @Get('results/:id')
+  @RequireCapability(Capability.MARKS_VIEW_ALL)
+  @UseGuards(ResultSheetReadsThrottleGuard)
+  @ApiIdParam()
+  @ApiOkResponse({ type: ResultDto })
+  @ApiErrors(...COMMON, 404)
+  card(
+    @IdParam() id: bigint,
+    @Query() _query: NoQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
+  ): Promise<ResultDto> {
+    return this.cards.staffCard(session, id);
+  }
+
+  /** R283, R284: the card's print view, audited `result.printed`. */
+  @Get('results/:id/print')
+  @RequireCapability(Capability.MARKS_VIEW_ALL)
+  @UseGuards(SameSitePrintGuard, PrintThrottleGuard)
+  @ApiIdParam()
+  @ApiOkResponse({ description: 'The printable report card (R283)', content: { 'text/html': { schema: { type: 'string' } } } })
+  @ApiErrors(...COMMON, 404)
+  async printCard(
+    @IdParam() id: bigint,
+    @Query() _query: NoQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    sendPrintView(res, await this.cards.printCard(session, id));
+  }
+
+  /** R283: every live card of the sheet, one per page, audited `result_sheet.printed`. */
+  @Get('result-sheets/:id/print')
+  @RequireCapability(Capability.MARKS_VIEW_ALL)
+  @UseGuards(SameSitePrintGuard, PrintThrottleGuard)
+  @ApiIdParam()
+  @ApiOkResponse({ description: "The sheet's report cards, one per page (R283)", content: { 'text/html': { schema: { type: 'string' } } } })
+  @ApiErrors(...COMMON, 404)
+  async printSheet(
+    @IdParam() id: bigint,
+    @Query() _query: NoQueryDto,
+    @CurrentSchoolSession() session: SchoolSessionContext,
+    @Res() res: Response,
+  ): Promise<void> {
+    sendPrintView(res, await this.cards.printSheet(session, id));
+  }
 
   /** R267: 201 for a new sheet; 200 with the open version on a repeat. */
   @Post('sections/:id/result-sheets')

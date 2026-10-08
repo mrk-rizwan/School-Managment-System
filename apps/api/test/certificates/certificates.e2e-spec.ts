@@ -114,9 +114,10 @@ describe('slice 34: certificates (e2e)', () => {
     expect([one?.status, two?.status]).toEqual([201, 201]);
     expect([cert(one).number, cert(two).number].sort()).toEqual([1, 2]);
     expect([cert(one).label, cert(two).label].sort()).toEqual(['CC-0001', 'CC-0002']);
-    // Another type has its own sequence.
-    const academic = cert((await issue(w.a.studentId, { type: 'academic' }, w.office).expect(201)));
-    expect([academic.label, academic.issueNo, academic.duesStatus]).toEqual(['AC-0001', 1, 'not_required']);
+    // Another type has its own sequence (an academic certificate needs a published result since
+    // wave P, test/results/report-cards.e2e-spec.ts; `other` stands in here).
+    const sports = cert((await issue(w.a.studentId, { type: 'other', title: 'Sports Certificate' }, w.office).expect(201)));
+    expect([sports.label, sports.issueNo, sports.duesStatus]).toEqual(['OC-0001', 1, 'not_required']);
 
     // A void keeps the number: the next character certificate is 3.
     await post(`/certificates/${cert(two).id}/void`, { reason: 'Issued in error' }, w.principal).expect(200);
@@ -341,7 +342,7 @@ describe('slice 34: certificates (e2e)', () => {
       await post(`/certificates/${id}/void`, { reason: 'Again' }, w.principal).expect(409);
     }
     // A void through the duplicate stamps the original too.
-    const second = cert((await issue(w.c.studentId, { type: 'academic' }, w.office).expect(201)));
+    const second = cert((await issue(w.c.studentId, { type: 'other', title: 'Debate Certificate' }, w.office).expect(201)));
     const secondDup = cert((await post(`/certificates/${second.id}/reissue`, { reason: 'Damaged' }, w.office, newIdempotencyKey()).expect(201)));
     await post(`/certificates/${secondDup.id}/void`, { reason: 'Wrong year' }, w.principal).expect(200);
     expect(cert(await get(`/certificates/${second.id}`, w.office).expect(200)).voidedAt).not.toBeNull();

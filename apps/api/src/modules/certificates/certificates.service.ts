@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { certificateLabel, ErrorCode, type DuesStatus, type StudentStatus } from '@asms/shared';
+import { certificateLabel, ErrorCode, type CertificateType, type DuesStatus, type StudentStatus } from '@asms/shared';
 import { scopeOf, type SchoolSessionContext } from '../../common/auth/school-session';
 import { FieldEncryption } from '../../common/crypto/field-encryption';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
@@ -13,7 +13,11 @@ import type { ReasonDto } from '../../common/reason.dto';
 import { SchoolClock } from '../../common/school-clock';
 import { SchoolContext, type Actor } from '../../common/school-context';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
-import { CertificateRepository, type CertificateRecord } from '../../repositories/certificate.repository';
+import {
+  CertificateRepository,
+  type CertificateBodyResult,
+  type CertificateRecord,
+} from '../../repositories/certificate.repository';
 import { EnrolmentRepository } from '../../repositories/enrolment.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { UserRoleRepository } from '../../repositories/user-role.repository';
@@ -21,6 +25,8 @@ import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import { requirePrincipal } from '../access/money-gates';
 import { FinanceReportsService } from '../finance-reports/finance-reports.service';
+import { ResultCardsService } from '../results/result-cards.service';
+import type { ResultDto } from '../results/results.dto';
 import { buildCertificateBody, CERTIFICATE_TITLES } from './certificate-body';
 import { certificatePage } from './certificate-print';
 import type {
@@ -77,6 +83,39 @@ const duesBlock = (outstanding: number): ApiException =>
     { outstanding },
   );
 
+/** A11: academic and completion certificates print the published result of the named year. */
+const NEEDS_RESULT: readonly CertificateType[] = ['academic', 'completion'];
+
+const noResult = (): ApiException =>
+  new ApiException(
+    409,
+    ErrorCode.CERTIFICATE_NO_RESULT,
+    'No result of that academic year is published for the student yet.',
+    { certificateId: null },
+  );
+
+/** The card as the body's marks table (a snapshot: a later correction changes nothing issued). */
+function bodyResultOf(card: ResultDto): CertificateBodyResult {
+  return {
+    termName: card.termName ?? 'Final',
+    isFinal: card.isFinal,
+    className: card.className,
+    sectionName: card.sectionName,
+    subjects: card.subjects.map((s) => ({
+      subjectName: s.subjectName,
+      obtained: s.status === 'assessed' ? s.obtained : null,
+      max: s.max,
+      percentBp: s.percentBp,
+      grade: s.grade,
+    })),
+    totalObtained: card.totalObtained,
+    totalMax: card.totalMax,
+    percentBp: card.percentBp,
+    grade: card.grade,
+    passed: card.passed,
+  };
+}
+
 @Injectable()
 export class CertificatesService {
   constructor(
@@ -90,6 +129,7 @@ export class CertificatesService {
     private readonly idempotency: IdempotentRequests,
     private readonly encryption: FieldEncryption,
     private readonly clock: SchoolClock,
+    private readonly resultCards: ResultCardsService,
   ) {}
 
   // ---------------------------------------------------------------------------------- reads
@@ -216,6 +256,17 @@ export class CertificatesService {
       }
     }
 
+    // A11 (wave P): the marks table — the named year's published final, else its last published term.
+    let result: CertificateBodyResult | null = null;
+    if (NEEDS_RESULT.includes(dto.type)) {
+      const card =
+        academicYearId === null
+          ? null
+          : await this.resultCards.certificateResultFor(schoolId, studentId, academicYearId);
+      if (!card) throw noResult();
+      result = bodyResultOf(card);
+    }
+
     const { signatoryName, defaulted } = await this.signatory(schoolId, userId);
     const body = buildCertificateBody({
       schoolName: session.school.name,
@@ -226,6 +277,7 @@ export class CertificatesService {
       conduct: dto.conduct ?? null,
       remarks: dto.remarks ?? null,
       signatoryName,
+      result,
     });
     // The counter last, just before the insert (R289: gapless in commit order).
     const number = await this.certificates.nextNumber(schoolId, dto.type);

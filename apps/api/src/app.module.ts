@@ -30,6 +30,7 @@ import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
 import { ResultsModule } from './modules/results/results.module';
+import { PromotionModule } from './modules/promotion/promotion.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -84,6 +85,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     // Phase 4 slice 34 (phase-4-academic.md §2).
     CertificatesModule,
     ResultsModule,
+    PromotionModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

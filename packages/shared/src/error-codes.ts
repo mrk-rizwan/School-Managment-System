@@ -214,7 +214,8 @@ export const ErrorCode = {
   PROMOTION_SHEET_NOT_OPEN: 'PROMOTION_SHEET_NOT_OPEN', // 409, details.sheetId
   PROMOTION_INCOMPLETE: 'PROMOTION_INCOMPLETE', // 409, details.enrolmentIds | details.sections
   PROMOTION_RESULT_SUPERSEDED: 'PROMOTION_RESULT_SUPERSEDED', // 409, details.enrolmentIds
-  PROMOTION_TARGET_INVALID: 'PROMOTION_TARGET_INVALID', // 409, details.reason: other_year | archived | no_target
+  PROMOTION_TARGET_INVALID: 'PROMOTION_TARGET_INVALID', // 409, details.reason: other_year | archived | no_target | not_final
+  PROMOTION_ENROLMENT_AFTER_YEAR: 'PROMOTION_ENROLMENT_AFTER_YEAR', // 409, details.enrolmentIds
   // Rule 24 (R225): role.manage and user.account.manage are inert on a default password. 403.
   DEFAULT_PASSWORD_BLOCKS_ACTION: 'DEFAULT_PASSWORD_BLOCKS_ACTION',
   // Client-side only: the web app's label for a failed response whose body was not the error

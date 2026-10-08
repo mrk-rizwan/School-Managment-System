@@ -278,3 +278,9 @@ if [ "$submitted" != "submitted" ]; then echo "the 5 A sheet is '$submitted', wa
 flow principal-approve-result principal-approve-result.yaml "${ids[@]}" -e SHEET_ID="$SHEET_ID"
 sheet_status="$(get "$principal_token" "/result-sheets/$SHEET_ID" | json 'b.status')"
 if [ "$sheet_status" != "published" ]; then echo "the sheet is '$sheet_status', wanted published"; exit 1; fi
+
+# --- Phase 4 slice 33: the parent opens the child's report card --------------------------------
+# The published 5 A result of the guardian's child, read as the guardian would (R274).
+RESULT_ID="$(get "$guardian_token" "/me/children/$STUDENT_ID/results" | json "(b.terms.find(t=>t.termId==='$TERM_ID')||{}).id")"
+if [ -z "$RESULT_ID" ] || [ "$RESULT_ID" = "undefined" ]; then echo "the guardian sees no published result"; exit 1; fi
+flow parent-report-card parent-report-card.yaml "${ids[@]}" -e RESULT_ID="$RESULT_ID"

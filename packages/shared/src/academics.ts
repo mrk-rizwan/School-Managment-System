@@ -51,7 +51,7 @@ export type DuesStatus = (typeof DUES_STATUSES)[number];
 export const PROMOTION_OUTCOMES = ['promote', 'detain', 'complete', 'not_continuing'] as const;
 export type PromotionOutcome = (typeof PROMOTION_OUTCOMES)[number];
 
-export const PROMOTION_SHEET_STATUSES = ['open', 'applied'] as const;
+export const PROMOTION_SHEET_STATUSES = ['open', 'applied', 'cancelled'] as const;
 export type PromotionSheetStatus = (typeof PROMOTION_SHEET_STATUSES)[number];
 
 // ------------------------------------------------------------------------------ certificates

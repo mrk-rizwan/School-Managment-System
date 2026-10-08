@@ -59,6 +59,7 @@ import { DocumentsTab } from './documents-tab';
 import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
 import { RemarksTab } from './remarks-tab';
+import { ResultsPanel } from './results-panel';
 import { FeeStatementTab } from '../../fees/_lib/fee-statement';
 import { NotesField } from '../_lib/notes-field';
 
@@ -68,6 +69,7 @@ type Tab =
   | 'enrolments'
   | 'attendance'
   | 'remarks'
+  | 'results'
   | 'documents'
   | 'fees'
   | 'certificates'
@@ -101,6 +103,8 @@ export function StudentDetail({ id }: { id: string }) {
             // Both read with student.view, which this page already needs (slice-11 §10.4, slice-13 §5.1).
             { value: 'attendance', label: 'Attendance' },
             { value: 'remarks', label: 'Remarks' },
+            // Phase 4 slice 33: published report cards, read with student.view (R288).
+            { value: 'results', label: 'Results' },
             ...(can(Capability.DOCUMENT_VIEW) ? [{ value: 'documents' as const, label: 'Documents' }] : []),
             // The fee statement (phase-3-financial.md slice 19, R205); teachers see no money (R234).
             ...(can(Capability.FEE_STATEMENT_VIEW) ? [{ value: 'fees' as const, label: 'Fees' }] : []),
@@ -159,6 +163,7 @@ export function StudentDetail({ id }: { id: string }) {
                 {tab === 'enrolments' && <EnrolmentsTab student={data} />}
                 {tab === 'attendance' && <StudentAttendanceTab student={data} />}
                 {tab === 'remarks' && <RemarksTab student={data} />}
+                {tab === 'results' && <ResultsPanel studentId={data.id} />}
                 {tab === 'documents' && <DocumentsTab student={data} />}
                 {tab === 'fees' && (
                   <div className="grid gap-6">

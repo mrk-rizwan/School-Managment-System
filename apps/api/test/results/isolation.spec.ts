@@ -3,7 +3,7 @@
 // reaches the section, so only the tenant key keeps the rows apart).
 import { createMarksFixture, type MarksFixture } from '../academics/assessment-fixture';
 import { expectIsolated, sectionsMarksScope } from '../support/isolation';
-import { closeTestDb, createTwoSchools } from '../support/schools';
+import { closeTestDb, createTwoSchools, testDb } from '../support/schools';
 import { createResult, createSheet, moveSheet } from './fixture';
 import { resultRepositories } from './support';
 
@@ -123,6 +123,10 @@ describe('result sheets tenant isolation', () => {
         write: (schoolId) => repos.results.supersedeSheetRows(schoolId, sheet.id, new Date()),
         snapshot: (row) => (row as { supersededAt: Date | null } | null)?.supersededAt ?? null,
       });
+      // The excusal's approved-unpublished probe (slice 32 fix round) reads only its own school.
+      const ofStudent = { studentId: f.studentId, classId: f.classId, termId: f.midTermId };
+      expect(await repos.results.liveUnpublishedOf(schools.a.id, ofStudent)).toEqual({ sheetId: sheet.id });
+      expect(await repos.results.liveUnpublishedOf(schools.b.id, ofStudent)).toBeNull();
     } finally {
       await repos.close();
     }
@@ -145,6 +149,53 @@ describe('result sheets tenant isolation', () => {
         read: async (schoolId, id) => (await subjects(schoolId)).find((s) => s.id === id) ?? null,
         list: subjects,
       });
+    } finally {
+      await repos.close();
+    }
+  });
+
+  it('results: the slice-32 reads (cards, staff card, sheet print, the correction and certificate reads)', async () => {
+    const schools = await createTwoSchools();
+    const f = await createMarksFixture(schools.a);
+    const scope = scopeOf(f);
+    const sheet = await createSheet(f);
+    await moveSheet(f, sheet.id, 'published');
+    const repos = await resultRepositories();
+    // One published row (results_live_key), probed by each read.
+    let made: bigint | null = null;
+    const once = async (): Promise<bigint> => {
+      if (made !== null) return made;
+      const { id } = await createResult(f, sheet.id);
+      await testDb().result.updateMany({ where: { schoolId: f.school.id, id }, data: { publishedAt: new Date() } });
+      made = id;
+      return id;
+    };
+    const ofStudent = { studentId: f.studentId, classId: f.classId, termId: f.midTermId };
+    try {
+      await expectIsolated(schools, {
+        create: once,
+        read: async (schoolId, id) => (await repos.results.cards(schoolId, [id]))[0] ?? null,
+      });
+      await expectIsolated(schools, {
+        create: once,
+        read: async (schoolId, id) => ((await repos.results.staffVisible(schoolId, scope, id)) ? id : null),
+      });
+      await expectIsolated(schools, {
+        create: once,
+        read: async (schoolId, id) => ((await repos.results.sheetCardIds(schoolId, scope, sheet.id)).includes(id) ? id : null),
+      });
+      await expectIsolated(schools, {
+        create: once,
+        read: async (schoolId, id) => ((await repos.results.livePublishedOf(schoolId, ofStudent))?.id === id ? id : null),
+      });
+      await expectIsolated(schools, {
+        create: once,
+        read: async (schoolId, id) =>
+          (await repos.results.certificateResultOf(schoolId, f.studentId, f.yearId)) === id ? id : null,
+      });
+      const row = await repos.sheets.find(schools.a.id, scope, sheet.id);
+      if (!row) throw new Error('the sheet');
+      expect(await repos.sheets.bumpPublished(schools.b.id, scope, row, new Date())).toBe(0);
     } finally {
       await repos.close();
     }

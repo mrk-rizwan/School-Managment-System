@@ -9,6 +9,7 @@ import { IdempotencyKeyRepository } from '../../repositories/idempotency-key.rep
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { UserRoleRepository } from '../../repositories/user-role.repository';
 import { FinanceReportsModule } from '../finance-reports/finance-reports.module';
+import { ResultsModule } from '../results/results.module';
 import { CertificatesController, PrintThrottleGuard, StudentCertificatesController } from './certificates.controller';
 import { CertificatesService } from './certificates.service';
 
@@ -18,7 +19,8 @@ import { CertificatesService } from './certificates.service';
  * lends FieldEncryption for the leaving certificate's B-Form, decrypted in the print path only.
  */
 @Module({
-  imports: [FinanceReportsModule, CryptoModule],
+  // ResultsModule (wave P): the marks table of an academic or completion certificate (A11).
+  imports: [FinanceReportsModule, CryptoModule, ResultsModule],
   controllers: [CertificatesController, StudentCertificatesController],
   providers: [
     SchoolContext,

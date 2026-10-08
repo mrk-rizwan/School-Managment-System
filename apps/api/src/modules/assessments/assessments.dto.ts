@@ -211,6 +211,10 @@ export class AssessmentMarkRowDto {
       "The caller's user id when the caller is a guardian of this student (rule 27), else null",
   })
   ownChildOf: string | null;
+  @ApiProperty({ ...ID, nullable: true, description: 'A correction of this mark waiting for a decision (slice 32)' })
+  pendingCorrectionId: string | null;
+  @ApiProperty({ description: 'The caller asked for that correction (and so may withdraw it)' })
+  pendingCorrectionMine: boolean;
 }
 
 export class AssessmentMarksDto {

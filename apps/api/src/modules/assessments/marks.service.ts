@@ -20,6 +20,7 @@ import type { MarksScope } from '../../tenancy/scope';
 import { yearClosed } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
 import { ownChildCheck } from '../fees/fee-gates';
+import { ResultRevisionService } from '../results/result-revision.service';
 import type {
   AssessmentMarkDto,
   AssessmentMarksDto,
@@ -71,6 +72,7 @@ export class MarksService {
     private readonly notifications: NotificationService,
     private readonly audit: AuditLogRepository,
     private readonly views: AssessmentsService,
+    private readonly revision: ResultRevisionService,
   ) {}
 
   // ------------------------------------------------------------------------------------ grid
@@ -88,6 +90,9 @@ export class MarksService {
     const roster = await this.marks.roster(schoolId, scope, row);
     const live = new Map(
       (await this.marks.liveForAssessment(schoolId, scope, id)).map((m) => [m.enrolmentId, m]),
+    );
+    const pending = new Map(
+      (await this.marks.pendingForAssessment(schoolId, scope, id)).map((m) => [m.enrolmentId, m]),
     );
     const { guardianId, userId } = session.access;
     const ownChildren =
@@ -119,6 +124,8 @@ export class MarksService {
           status: mark?.status ?? null,
           enteredAt: mark?.enteredAt ?? null,
           ownChildOf: ownChildren.has(r.studentId) ? userId.toString() : null,
+          pendingCorrectionId: pending.get(r.enrolmentId)?.id.toString() ?? null,
+          pendingCorrectionMine: pending.get(r.enrolmentId)?.enteredBy === userId,
         };
       }),
     };
@@ -337,6 +344,9 @@ export class MarksService {
     if (!year) throw notFound();
     if (year.status === 'closed') throw yearClosed();
     const selfApproved = await ownChildCheck(this.permissions, session, schoolId, mark.studentId);
+    const target = { studentId: mark.studentId, classId: row.classId, termId: row.termId };
+    const published = await this.revision.publishedTermResultOf(schoolId, target);
+    if (!published) await this.revision.refuseIfApprovedUnpublished(schoolId, target);
 
     if (!(await this.marks.supersede(schoolId, scope, row, mark.id))) throw notAnAbsence(mark.id);
     const excused = await this.marks.insertLive(schoolId, scope, row, {
@@ -350,6 +360,9 @@ export class MarksService {
       enteredBy: userId,
       clientEntryKey: null,
     });
+    // contracts/slice-32.md §4: after publication an excusal is a correction — the approver's own
+    // decision, so it revises the results at once (no second person: excusing is result.approve's).
+    const revision = published ? await this.revision.revise(session, target, userId) : null;
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'mark.excused',
@@ -360,7 +373,10 @@ export class MarksService {
         markId: excused.id.toString(),
         supersedesId: mark.id.toString(),
         enrolmentId: mark.enrolmentId.toString(),
-        selfApproved,
+        ownChild: selfApproved,
+        selfSubmitter: revision?.selfApproved ?? false,
+        selfApproved: selfApproved || (revision?.selfApproved ?? false),
+        revisedResultId: revision?.resultId.toString() ?? null,
       },
     });
     return toAssessmentMarkDto(excused);

@@ -98,3 +98,12 @@ export type MarkEntryDto = Schemas['MarkEntryDto'];
 export type MarkEntryResultDto = Schemas['MarkEntryResultDto'];
 export type ClassSubjectDto = Schemas['ClassSubjectDto'];
 export type TestType = Schemas['TestType'];
+
+// Phase 4 slice 33: a guardian's child's and the student's own results and class tests (online
+// only, never cached on the phone). The card itself is MyResultDto['result'] (slice 32's ResultDto).
+export type MyChildResultsDto = Schemas['MyChildResultsDto'];
+export type MyResultSummaryDto = Schemas['MyResultSummaryDto'];
+export type MyResultDto = Schemas['MyResultDto'];
+export type MyAssessmentMarkDto = Schemas['MyAssessmentMarkDto'];
+// Phase 4 slice 32: the report card, the stored result row (ReportCardView renders it).
+export type ResultDto = Schemas['ResultDto'];

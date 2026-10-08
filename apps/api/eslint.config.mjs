@@ -134,8 +134,14 @@ const IMPORTS = {
   // Phase 4 slice 31 (§5.1): the result-sheet, result and read-only mark-reads repositories are
   // the results module's (it reads marks only through MarkReadsRepository).
   resultRepositories: {
-    regex: `(^|/)repositories/(result-sheet|result|mark-reads)\.repository${EXT}$`,
-    message: 'The result-sheet, result and mark-reads repositories are imported only from src/modules/results/**.',
+    // Slice 33 adds result-reads (the family, student-page and report reads, read-only).
+    regex: `(^|/)repositories/(result-sheet|result|mark-reads|result-reads)\.repository${EXT}$`,
+    message: 'The result-sheet, result, mark-reads and result-reads repositories are imported only from src/modules/results/**.',
+  },
+  // Phase 4 slice 35 (§5.1): the promotion repository is the promotion module's.
+  promotionRepository: {
+    regex: `(^|/)repositories/promotion\\.repository${EXT}$`,
+    message: 'PromotionRepository is imported only from src/modules/promotion/**.',
   },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
@@ -214,6 +220,13 @@ const TENANT_REPOSITORY_IMPORT = {
 const MONEY_REPOSITORY_IMPORT = {
   regex: `(^|/)repositories/(finance-report|charge|charge-[a-z-]+|payment|payment-[a-z-]+|receipt|concession)\\.repository${EXT}$`,
   message: 'src/modules/certificates/** reads dues only through FinanceReportsService.clearance (§5.1).',
+};
+
+// Phase 4 (§5.1): the promotion module writes enrolments only through EnrolmentsService and
+// statuses only through StudentsService, never their repositories.
+const PROMOTION_STUDENT_REPOSITORY_IMPORT = {
+  regex: `(^|/)repositories/(enrolment|student|student-status-change)\\.repository${EXT}$`,
+  message: 'src/modules/promotion/** writes enrolments and statuses only through EnrolmentsService and StudentsService (§5.1).',
 };
 
 /** The platform-repositories pattern with several repository files let through. */
@@ -339,6 +352,14 @@ const RAW_SQL_FILES = [
   // a return locks or unlocks taken FOR UPDATE in id order (contracts/slice-31.md §2.4), filtered
   // on school_id (test/results/isolation.spec.ts, test/results/result-sheets.e2e-spec.ts).
   'src/repositories/result-sheet.repository.ts',
+  // Phase 4 wave P review fixes (contracts/slice-35.md §7): StudentRepository.lockMany, the
+  // students of a promotion apply taken FOR UPDATE in id order, filtered on school_id
+  // (test/students/isolation.spec.ts).
+  'src/repositories/student.repository.ts',
+  // PromotionRepository.markDecisionsApplied (one UPDATE … FROM VALUES for apply's rows) and
+  // lockResults (the rows' results FOR SHARE), each filtering school_id on every table it reads
+  // (test/promotion/isolation.spec.ts).
+  'src/repositories/promotion.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -740,6 +761,21 @@ export default tseslint.config(
       exempt: ['academicSetupRepositories', 'resultRepositories', 'assessmentRepositories'],
       extra: [{ ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/results/** reads dues only through FinanceReportsService.clearance (§5.1).' }],
     }),
+  },
+  {
+    // Slice 35 (§5.1): the promotion module owns its repository, writes enrolments only through
+    // EnrolmentsService and statuses only through StudentsService (withdrawForPromotion,
+    // promote), so it imports no enrolment or student repository, and reads dues only through
+    // FinanceReportsService.clearance. Its suites probe the repository.
+    files: ['src/modules/promotion/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['promotionRepository'],
+      extra: [PROMOTION_STUDENT_REPOSITORY_IMPORT, { ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/promotion/** reads dues only through FinanceReportsService.clearance (§5.1).' }],
+    }),
+  },
+  {
+    files: ['test/promotion/**/*.ts'],
+    rules: restrictImports({ exempt: ['promotionRepository'] }),
   },
   {
     // Slice 34 (§5.1): the certificates module owns its repository and reads dues only through

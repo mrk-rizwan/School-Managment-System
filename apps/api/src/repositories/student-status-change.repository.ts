@@ -73,6 +73,27 @@ export class StudentStatusChangeRepository {
     });
   }
 
+  /** The most recent change of each student (as latestForStudent), by student. */
+  async latestForStudents(schoolId: SchoolId, studentIds: readonly bigint[]): Promise<Map<bigint, StatusChangeRecord>> {
+    if (studentIds.length === 0) return new Map();
+    const rows = await this.txHost.tx.studentStatusChange.findMany({
+      where: { schoolId, studentId: { in: [...studentIds] } },
+      select: SELECT,
+      distinct: ['studentId'],
+      orderBy: [{ studentId: 'asc' }, { effectiveOn: 'desc' }, { id: 'desc' }],
+    });
+    return new Map(rows.map((row) => [row.studentId, row]));
+  }
+
+  /** Several rows in one statement (promotion apply's batch). */
+  async recordMany(schoolId: SchoolId, rows: readonly StatusChangeCreate[]): Promise<number> {
+    if (rows.length === 0) return 0;
+    const { count } = await this.txHost.tx.studentStatusChange.createMany({
+      data: rows.map((row) => ({ schoolId, ...row })),
+    });
+    return count;
+  }
+
   /** Newest first; none when the student is out of scope. */
   async listForStudent(
     schoolId: SchoolId,

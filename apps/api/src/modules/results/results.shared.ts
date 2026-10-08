@@ -164,8 +164,10 @@ export function toPreviewRow(
   row: ComposedRow,
   missing: number,
   names: ReadonlyMap<bigint, string>,
+  resultId: bigint | null = null,
 ): ResultPreviewRowDto {
   return {
+    resultId: resultId?.toString() ?? null,
     enrolmentId: row.enrolmentId.toString(),
     studentId: row.studentId.toString(),
     fullName: row.fullName,

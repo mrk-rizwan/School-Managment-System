@@ -45,7 +45,8 @@ No user id, no identity number, no dues figure appears in either DTO.
 `CertificateBodyDto { schoolName, studentName, fatherName, admissionNo, gender, dateOfBirth,
 admittedOn, studentStatus, academicYearName, className, sectionName, attendedFrom, attendedTo,
 enrolments: [{ academicYearName, className, sectionName, from, to }], conduct, remarks,
-signatoryName }` (dates `YYYY-MM-DD`).
+signatoryName, result }` (dates `YYYY-MM-DD`). `result` (wave P) is the marks table of an academic
+or completion certificate, `CertificateResultDto` (contracts/slice-32.md §6), else null.
 
 ## 3. Behaviour
 
@@ -84,13 +85,14 @@ the inputs were validated where they were stored), and the database CHECK
 `certificates_body_no_id_check` is the line behind it. The repository reads a body back field by
 field and refuses (500) any other shape.
 
-**TODO (wave O):** `academic` and `completion` certificates are to print the marks table of the
-published result (A11: the named year's published final result, else the last published term),
-and refuse with `409 CERTIFICATE_NO_RESULT { certificateId: null }` when the type needs a result
-and none is published. Results do not exist until wave O, so this slice issues them with the
-enrolment history only; wave O adds a `result` member to the body (snapshotted at issue like the
-rest) and the check, and the print view's `history()` gains the table (a `TODO(wave O)` marks the
-spot).
+**Done in wave P (slice 32's agent):** `academic` and `completion` certificates carry the marks
+table of the published result (A11: the named year's published, live final result, else its last
+published term by `sort_order`, read through `ResultCardsService.certificateResultFor`) in
+`body.result`, snapshotted at issue like the rest (a later correction changes nothing issued; a
+reissue copies it); with none published the issue is refused `409 CERTIFICATE_NO_RESULT
+{ certificateId: null }` before the signatory default or the counter. The repository parser reads a
+missing `result` (bodies issued before) as null. The print view prints the table above the record
+of attendance.
 
 ### 3.3 Reissue (R289)
 
@@ -138,8 +140,7 @@ tab (`window.open`, `noopener`) and never holds the HTML.
 | `CONCURRENT_UPDATE` | 409 | — | `certificates_school_id_type_number_issue_no_key` (mapped in `constraints-academics.ts`) |
 | `REFERENCE_NOT_FOUND` | 422 | field `academicYearId` | a year the student was never enrolled in, or no enrolment |
 | `INVALID_VALUE` | 422 | field `title` | `other` without a title; a title on another type; an `other` title containing "leav" |
-
-`CERTIFICATE_NO_RESULT` is not raised yet (§3.2).
+| `CERTIFICATE_NO_RESULT` | 409 | `certificateId: null` | academic or completion, no published result of the year (§3.2) |
 
 ## 6. Settings
 
@@ -194,7 +195,8 @@ whole `certificates.body` column and every `certificate.*` audit row). Control 4
 
 - `CERTIFICATE_STUDENT_NOT_LEFT` carries `details.studentId`, not `certificateId` (no certificate
   exists when it is raised); the comment in `packages/shared/src/error-codes.ts` says so.
-- `CERTIFICATE_NO_RESULT` and the marks table wait for wave O (§3.2).
+- `CERTIFICATE_NO_RESULT` and the marks table arrived in wave P (§3.2; tests in
+  `test/results/report-cards.e2e-spec.ts`).
 - A void voids the certificate number, not one row: every live issue of `(type, number)` is
   stamped in one statement, and a reissue is refused when any issue of the number is voided
   (wave N review; replaces the build's per-row void).

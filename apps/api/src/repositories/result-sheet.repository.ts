@@ -318,6 +318,78 @@ export class ResultSheetRepository {
     return toRecord(row);
   }
 
+  /**
+   * A correction's lock on a published version (contracts/slice-32.md §4): a compare-and-set that
+   * moves updated_at, so a second correction that read the same version fails its own and
+   * re-reads (CONCURRENT_UPDATE when the version has meanwhile been replaced). 1 when held.
+   */
+  async bumpPublished(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    row: Pick<ResultSheetRecord, 'id' | 'updatedAt'>,
+    at: Date,
+  ): Promise<number> {
+    const scoped = sheetScopeWhere(scope);
+    if (scoped === null) return 0;
+    const { count } = await this.txHost.tx.resultSheet.updateMany({
+      where: { schoolId, id: row.id, updatedAt: row.updatedAt, status: 'published', ...scoped },
+      data: { updatedAt: at },
+    });
+    return count;
+  }
+
+  /**
+   * A correction's version n+1 (§3.2, R280): born `published` (trigger result_sheets_insert_guard),
+   * naming the version it supersedes, with that version's submission record and settings snapshot;
+   * decided and published by the correction's approver.
+   */
+  async insertCorrectedVersion(
+    schoolId: SchoolId,
+    from: ResultSheetRecord,
+    data: { by: bigint; at: Date; selfApproved: boolean },
+  ): Promise<ResultSheetRecord> {
+    const s = from.snapshot;
+    const row = await this.txHost.tx.resultSheet.create({
+      data: {
+        schoolId,
+        academicYearId: from.academicYearId,
+        termId: from.termId,
+        classId: from.classId,
+        sectionId: from.sectionId,
+        version: from.version + 1,
+        status: 'published',
+        createdBy: data.by,
+        submittedBy: from.submittedBy,
+        submittedAt: from.submittedAt,
+        submittedUnderAssignmentId: from.submittedUnderAssignmentId,
+        decidedBy: data.by,
+        decidedAt: data.at,
+        selfApproved: data.selfApproved,
+        publishedBy: data.by,
+        publishedAt: data.at,
+        supersedesId: from.id,
+        testWeight: s.testWeight,
+        examWeight: s.examWeight,
+        passPercent: s.passPercent,
+        passRule: s.passRule,
+        ...(s.bands === null
+          ? {}
+          : { bands: s.bands.map((b) => ({ grade: b.grade, minPercent: b.minPercent })) }),
+        ...(s.termWeights === null
+          ? {}
+          : {
+              termWeights: s.termWeights.map((t) => ({
+                termId: t.termId.toString(),
+                weight: t.weight,
+                held: t.held,
+              })),
+            }),
+      },
+      select: SELECT,
+    });
+    return toRecord(row);
+  }
+
   /** draft | returned → submitted, under the caller's row lock. */
   async submit(
     schoolId: SchoolId,

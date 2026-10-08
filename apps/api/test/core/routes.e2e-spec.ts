@@ -214,6 +214,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/calendar', 'authenticated-only'],
   ['POST', '/api/v1/me/change-email', 'authenticated-only'],
   ['POST', '/api/v1/me/change-password', 'authenticated-only'],
+  // Phase 4 slice 33 (R286): class-test marks as entered, capacity scope.
+  ['GET', '/api/v1/me/children/:id/assessments', 'capacity'],
   // contracts/slice-11.md §1.1, §1.4 (R130): a guardian's child's attendance, capacity scope.
   ['GET', '/api/v1/me/children/:id/attendance', 'capacity'],
   // contracts/slice-13.md §1.1, §1.2 (R163): a guardian's child, by the capacity scope.
@@ -230,6 +232,9 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/children/:id/payment-claims/:claimId/thumbnail', 'capacity'],
   ['POST', '/api/v1/me/children/:id/payment-claims/:claimId/withdraw', 'capacity'],
   ['GET', '/api/v1/me/children/:id/remarks', 'capacity'],
+  // Phase 4 slice 33 (R274, R285, R286): a child's published results and class tests, capacity scope.
+  ['GET', '/api/v1/me/children/:id/results', 'capacity'],
+  ['GET', '/api/v1/me/children/:id/results/:resultId', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
   // contracts/slice-14.md §7 (R166): any live session's own inbox, by person at read time.
   ['GET', '/api/v1/me/inbox', 'authenticated-only'],
@@ -259,6 +264,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/staff/payslips/:id', 'staff'],
   ['GET', '/api/v1/me/staff/payslips/:id/print', 'staff'],
   ['GET', '/api/v1/me/staff/salary-structure', 'staff'],
+  // Phase 4 slice 33 (R286): class-test marks as entered, capacity scope.
+  ['GET', '/api/v1/me/student/assessments', 'capacity'],
   // contracts/slice-11.md §1.1: the student's own attendance.
   ['GET', '/api/v1/me/student/attendance', 'capacity'],
   // contracts/slice-13.md §1.1, §1.2: the student's own diary and remarks.
@@ -266,6 +273,9 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/student/diary-entries/:entryId/attachment', 'capacity'],
   ['GET', '/api/v1/me/student/diary-entries/:entryId/thumbnail', 'capacity'],
   ['GET', '/api/v1/me/student/remarks', 'capacity'],
+  // Phase 4 slice 33: the student's own results and class tests (the student from the session).
+  ['GET', '/api/v1/me/student/results', 'capacity'],
+  ['GET', '/api/v1/me/student/results/:resultId', 'capacity'],
   // Phase 3 slice 21 (R199): a guardian's deposit slip, under /me (R78) with a daily cap.
   ['POST', '/api/v1/me/uploads', 'capacity'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
@@ -317,6 +327,12 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/assessments/:id/void': ['assessment.voided'],
   'POST /api/v1/marks/:id/excuse': ['mark.excused'],
   'POST /api/v1/terms/:id/set-up-exams': ['exams.set_up'],
+  // Phase 4 slice 35 (contracts/slice-35.md §5). A replayed open or apply writes no row; apply's
+  // withdrawals and completions write the student's status change through StudentsService.
+  'POST /api/v1/sections/:id/promotion-sheets': ['promotion_sheet.opened'],
+  'PATCH /api/v1/promotion-sheets/:id': ['promotion_sheet.decided'],
+  'POST /api/v1/promotion-sheets/:id/apply': ['promotion_sheet.applied', 'student.status_changed'],
+  'POST /api/v1/promotion-sheets/:id/cancel': ['promotion_sheet.cancelled'],
   // Phase 4 slice 31 (contracts/slice-31.md §7). A repeated create answers the open version and
   // writes no row; remarks are a draft's text, recorded by their row (written_by).
   'POST /api/v1/sections/:id/result-sheets': ['result_sheet.created'],
@@ -325,6 +341,12 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/result-sheets/:id/return': ['result_sheet.returned'],
   'POST /api/v1/result-sheets/:id/approve': ['result_sheet.approved', 'result_sheet.published'],
   'POST /api/v1/result-sheets/:id/publish': ['result_sheet.published'],
+  // Phase 4 slice 32 (contracts/slice-32.md §6). A replayed request writes no row; the prints (GETs)
+  // write result.printed and result_sheet.printed, read back in test/results/report-cards.
+  'POST /api/v1/marks/:id/correct': ['mark_correction.requested'],
+  'POST /api/v1/mark-corrections/:id/approve': ['mark_correction.approved'],
+  'POST /api/v1/mark-corrections/:id/reject': ['mark_correction.rejected'],
+  'POST /api/v1/mark-corrections/:id/withdraw': ['mark_correction.withdrawn'],
   'POST /api/v1/admissions': ['guardian.created', 'student.admitted', 'charge.admission_fee', 'concession.created'],
   'POST /api/v1/auth/forgot-password': 'none: issues a reset token only; the account is unchanged until it is used',
   'POST /api/v1/auth/login': ['user.login_on_default_password', 'login_failure_spike'],

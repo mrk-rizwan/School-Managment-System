@@ -30,6 +30,7 @@ const BODY: CertificateDto['body'] = {
   conduct: 'Good',
   remarks: null,
   signatoryName: 'Amina Principal',
+  result: null,
 };
 
 const certificate = (id: string, extra: Partial<CertificateDto> = {}): CertificateDto => ({

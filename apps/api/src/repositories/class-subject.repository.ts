@@ -74,6 +74,20 @@ export class ClassSubjectRepository {
     return rows.map(toRecord);
   }
 
+  /** The class's class-subjects by id, archived or not (a correction's stored subject list, slice 32). */
+  async forClassByIds(
+    schoolId: SchoolId,
+    classId: bigint,
+    ids: readonly bigint[],
+  ): Promise<ClassSubjectRecord[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.txHost.tx.classSubject.findMany({
+      where: { schoolId, classId, id: { in: [...ids] } },
+      select: SELECT,
+    });
+    return rows.map(toRecord);
+  }
+
   /** A live (not archived) class-subject by id: a test or an exam is set only on one (slice 30). */
   async findLive(schoolId: SchoolId, id: bigint): Promise<ClassSubjectRecord | null> {
     const row = await this.txHost.tx.classSubject.findFirst({

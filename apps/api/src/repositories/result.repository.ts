@@ -62,18 +62,39 @@ export interface ResultRecord {
   revised: boolean;
   publishedAt: Date | null;
   supersededAt: Date | null;
+  notifiedAt: Date | null;
+  supersedesId: bigint | null;
   createdAt: Date;
   subjects: ResultSubjectRecord[];
 }
 
 export type NewResult = Omit<
   ResultRecord,
-  'id' | 'publishedAt' | 'supersededAt' | 'createdAt' | 'subjects'
+  'id' | 'publishedAt' | 'supersededAt' | 'notifiedAt' | 'supersedesId' | 'createdAt' | 'subjects'
 > & {
   classId: bigint;
   publishedAt: Date | null;
+  /** A correction's version (slice 32): the row it replaces, and whether it is already told. */
+  supersedesId?: bigint | null;
+  notifiedAt?: Date | null;
   subjects: ResultSubjectRecord[];
 };
+
+/** A stored result with what its report card prints around the figures (§3.4). */
+export interface ResultCardRecord extends ResultRecord {
+  sheetVersion: number;
+  classId: bigint;
+  className: string;
+  sectionId: bigint;
+  sectionName: string;
+  academicYearName: string;
+  termName: string | null;
+  studentName: string;
+  admissionNo: string;
+  rollNo: number | null;
+  /** The year's display toggles (§3.7); all on when the settings row is missing. */
+  show: { position: boolean; attendance: boolean; remark: boolean };
+}
 
 /** What the result-notify job sends for one claimed row (§3.5). */
 export interface ClaimedResult {
@@ -83,6 +104,8 @@ export interface ClaimedResult {
   percentBp: number | null;
   grade: string | null;
   revised: boolean;
+  /** The row it replaces (a correction's version), whose chain decides result_revised vs result_published. */
+  supersedesId: bigint | null;
 }
 
 const SUBJECT_SELECT = {
@@ -124,6 +147,8 @@ const SELECT = {
   revised: true,
   publishedAt: true,
   supersededAt: true,
+  notifiedAt: true,
+  supersedesId: true,
   createdAt: true,
   subjects: { select: SUBJECT_SELECT, orderBy: [{ sortOrder: 'asc' }, { classSubjectId: 'asc' }] },
 } satisfies Prisma.ResultSelect;
@@ -147,6 +172,52 @@ const toRecord = ({ ownChildFlags, ...row }: Row): ResultRecord => ({
   ...row,
   ownChildFlags: toFlags(ownChildFlags),
 });
+
+const CARD_SELECT = {
+  ...SELECT,
+  // Same school by the composite foreign keys (school_id, sheet_id), (school_id, enrolment_id, …).
+  sheet: {
+    select: {
+      version: true,
+      classId: true,
+      sectionId: true,
+      class: { select: { name: true } },
+      section: { select: { name: true } },
+      term: { select: { name: true } },
+      academicYear: {
+        select: {
+          name: true,
+          resultSettings: { select: { showPosition: true, showAttendance: true, showRemark: true } },
+        },
+      },
+    },
+  },
+  enrolment: { select: { rollNo: true, student: { select: { fullName: true, admissionNo: true } } } },
+} satisfies Prisma.ResultSelect;
+
+type CardRow = Prisma.ResultGetPayload<{ select: typeof CARD_SELECT }>;
+
+const toCard = ({ sheet, enrolment, ...row }: CardRow): ResultCardRecord => {
+  const show = sheet.academicYear.resultSettings;
+  return {
+    ...toRecord(row),
+    sheetVersion: sheet.version,
+    classId: sheet.classId,
+    className: sheet.class.name,
+    sectionId: sheet.sectionId,
+    sectionName: sheet.section.name,
+    academicYearName: sheet.academicYear.name,
+    termName: sheet.term?.name ?? null,
+    studentName: enrolment.student.fullName,
+    admissionNo: enrolment.student.admissionNo,
+    rollNo: enrolment.rollNo,
+    show: {
+      position: show?.showPosition ?? true,
+      attendance: show?.showAttendance ?? true,
+      remark: show?.showRemark ?? true,
+    },
+  };
+};
 
 @Injectable()
 export class ResultRepository {
@@ -207,6 +278,135 @@ export class ResultRepository {
       orderBy: { id: 'asc' },
     });
     return rows.map(toRecord);
+  }
+
+  /**
+   * Report cards by id (§3.4), in the order given, missing ids omitted. Tenant-scoped only: the
+   * caller has already resolved the ids inside its own scope (a staff key, a guardian's child, the
+   * session's student).
+   */
+  async cards(schoolId: SchoolId, ids: readonly bigint[]): Promise<ResultCardRecord[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.txHost.tx.result.findMany({
+      where: { schoolId, id: { in: [...new Set(ids)] } },
+      select: CARD_SELECT,
+    });
+    const byId = new Map(rows.map((row) => [row.id, toCard(row)]));
+    return ids.flatMap((id) => {
+      const card = byId.get(id);
+      return card ? [card] : [];
+    });
+  }
+
+  /**
+   * Whether a staff reader's sheet scope reaches the result and it is a card (published, or
+   * superseded after being stored): GET /results/:id and its print (§3.4). An approved, not yet
+   * published row is read through its sheet's detail instead.
+   */
+  async staffVisible(schoolId: SchoolId, scope: MarksScope, id: bigint): Promise<boolean> {
+    const scoped = sheetScopeWhere(scope);
+    if (scoped === null) return false;
+    const row = await this.txHost.tx.result.findFirst({
+      where: {
+        schoolId,
+        id,
+        OR: [{ publishedAt: { not: null } }, { supersededAt: { not: null } }],
+        sheet: { is: scoped },
+      },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  /**
+   * The student's published, live result of a class's term (or, `termId` null, its final) — the
+   * row a correction revises (contracts/slice-32.md §4). The class, not the section: a student who
+   * changed section mid-term holds it on the new section's sheet (§0.25).
+   */
+  async livePublishedOf(
+    schoolId: SchoolId,
+    query: { studentId: bigint; classId: bigint; termId: bigint | null },
+  ): Promise<{ id: bigint; sheetId: bigint } | null> {
+    return this.txHost.tx.result.findFirst({
+      where: {
+        schoolId,
+        studentId: query.studentId,
+        termId: query.termId,
+        publishedAt: { not: null },
+        supersededAt: null,
+        sheet: { is: { classId: query.classId } },
+      },
+      select: { id: true, sheetId: true },
+    });
+  }
+
+  /**
+   * The student's stored, live but unpublished result of a class's term (an approved version
+   * waiting for publication): an excusal then would leave its rows stale, so it is refused
+   * (contracts/slice-32.md §4). Returns the version holding it.
+   */
+  async liveUnpublishedOf(
+    schoolId: SchoolId,
+    query: { studentId: bigint; classId: bigint; termId: bigint | null },
+  ): Promise<{ sheetId: bigint } | null> {
+    return this.txHost.tx.result.findFirst({
+      where: {
+        schoolId,
+        studentId: query.studentId,
+        termId: query.termId,
+        publishedAt: null,
+        supersededAt: null,
+        sheet: { is: { classId: query.classId } },
+      },
+      select: { sheetId: true },
+    });
+  }
+
+  /**
+   * A11 (certificates): the student's published, live result of a year to print — the final
+   * result, else the last term's (by the term's rank in the year). Null when none is published.
+   */
+  async certificateResultOf(
+    schoolId: SchoolId,
+    studentId: bigint,
+    academicYearId: bigint,
+  ): Promise<bigint | null> {
+    const rows = await this.txHost.tx.result.findMany({
+      where: { schoolId, studentId, academicYearId, publishedAt: { not: null }, supersededAt: null },
+      select: { id: true, termId: true, term: { select: { sortOrder: true } } },
+    });
+    const final = rows.find((r) => r.termId === null);
+    if (final) return final.id;
+    const last = [...rows].sort((a, b) => (b.term?.sortOrder ?? 0) - (a.term?.sortOrder ?? 0))[0];
+    return last?.id ?? null;
+  }
+
+  /** The academic year of the student's newest enrolment (the withholding rule's default year). */
+  async newestEnrolmentYear(schoolId: SchoolId, studentId: bigint): Promise<bigint | null> {
+    const row = await this.txHost.tx.enrolment.findFirst({
+      where: { schoolId, studentId },
+      select: { academicYearId: true },
+      orderBy: [{ startedOn: 'desc' }, { id: 'desc' }],
+    });
+    return row?.academicYearId ?? null;
+  }
+
+  /** The live cards of a sheet (every version's rows of that sheet row), print order by roll then name. */
+  async sheetCardIds(schoolId: SchoolId, scope: MarksScope, sheetId: bigint): Promise<bigint[]> {
+    const scoped = sheetScopeWhere(scope);
+    if (scoped === null) return [];
+    const rows = await this.txHost.tx.result.findMany({
+      where: { schoolId, sheetId, supersededAt: null, sheet: { is: scoped } },
+      select: { id: true, enrolment: { select: { rollNo: true, student: { select: { fullName: true } } } } },
+    });
+    return rows
+      .sort(
+        (a, b) =>
+          (a.enrolment.rollNo ?? Number.MAX_SAFE_INTEGER) - (b.enrolment.rollNo ?? Number.MAX_SAFE_INTEGER) ||
+          a.enrolment.student.fullName.localeCompare(b.enrolment.student.fullName) ||
+          (a.id < b.id ? -1 : 1),
+      )
+      .map((row) => row.id);
   }
 
   /** A return from approved supersedes that version's stored rows (R269). */
@@ -278,8 +478,29 @@ export class ResultRepository {
         percentBp: true,
         grade: true,
         revised: true,
+        supersedesId: true,
       },
     });
+  }
+
+  /**
+   * Whether the family was ever told a row of this chain (the row or one it supersedes, slice 32
+   * fix round): a revised row is `result_revised` only then, else it is their first
+   * `result_published`. Chains are a few corrections long.
+   */
+  async chainTold(schoolId: SchoolId, resultId: bigint): Promise<boolean> {
+    let id: bigint | null = resultId;
+    while (id !== null) {
+      const row: { notifiedAt: Date | null; supersedesId: bigint | null } | null =
+        await this.txHost.tx.result.findFirst({
+          where: { schoolId, id },
+          select: { notifiedAt: true, supersedesId: true },
+        });
+      if (!row) return false;
+      if (row.notifiedAt !== null) return true;
+      id = row.supersedesId;
+    }
+    return false;
   }
 
   /**

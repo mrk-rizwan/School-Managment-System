@@ -33,6 +33,35 @@ export interface CertificateBodyEnrolment {
   to: string | null;
 }
 
+/** One subject of the marks table (slice 34 + wave P): the published result's printed figures. */
+export interface CertificateBodySubject {
+  subjectName: string;
+  /** Printed obtained; null when the subject was not assessed. */
+  obtained: number | null;
+  max: number;
+  /** Basis points (7850 = 78.50 %); null when not assessed. */
+  percentBp: number | null;
+  grade: string | null;
+}
+
+/**
+ * The marks table of an academic or completion certificate (A11): the named year's published
+ * final result, else its last published term, snapshotted at issue.
+ */
+export interface CertificateBodyResult {
+  /** The term's name, or `Final` for the final result. */
+  termName: string;
+  isFinal: boolean;
+  className: string;
+  sectionName: string;
+  subjects: CertificateBodySubject[];
+  totalObtained: number;
+  totalMax: number;
+  percentBp: number | null;
+  grade: string | null;
+  passed: boolean | null;
+}
+
 /**
  * The stored body (certificates.body, a JSON object): written only by the certificates module's
  * body builder, read back field by field. Dates are YYYY-MM-DD.
@@ -55,6 +84,8 @@ export interface CertificateBody {
   conduct: string | null;
   remarks: string | null;
   signatoryName: string;
+  /** Academic and completion certificates (wave P); null on the other types and on bodies issued before. */
+  result: CertificateBodyResult | null;
 }
 
 export interface CertificateRecord {
@@ -163,6 +194,49 @@ const textOrNull = (value: Json | undefined): string | null => {
   if (value === null || value === undefined) return null;
   return text(value);
 };
+const intOrNull = (value: Json | undefined): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value)) throw badBody();
+  return value;
+};
+const int = (value: Json | undefined): number => {
+  const found = intOrNull(value);
+  if (found === null) throw badBody();
+  return found;
+};
+const boolOrNull = (value: Json | undefined): boolean | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'boolean') throw badBody();
+  return value;
+};
+
+/** The marks table, field by field; absent (a body issued before wave P) is null. */
+function toResult(value: Json | undefined): CertificateBodyResult | null {
+  if (value === null || value === undefined) return null;
+  if (!isObject(value) || !Array.isArray(value.subjects) || typeof value.isFinal !== 'boolean') throw badBody();
+  return {
+    termName: text(value.termName),
+    isFinal: value.isFinal,
+    className: text(value.className),
+    sectionName: text(value.sectionName),
+    subjects: value.subjects.map((s) => {
+      if (!isObject(s)) throw badBody();
+      return {
+        subjectName: text(s.subjectName),
+        obtained: intOrNull(s.obtained),
+        max: int(s.max),
+        percentBp: intOrNull(s.percentBp),
+        grade: textOrNull(s.grade),
+      };
+    }),
+    totalObtained: int(value.totalObtained),
+    totalMax: int(value.totalMax),
+    percentBp: intOrNull(value.percentBp),
+    grade: textOrNull(value.grade),
+    passed: boolOrNull(value.passed),
+  };
+}
+
 const oneOf = <T extends string>(value: Json | undefined, values: readonly T[]): T => {
   const found = values.find((v) => v === value);
   if (found === undefined) throw badBody();
@@ -201,6 +275,7 @@ function toBody(value: Json): CertificateBody {
     conduct: textOrNull(value.conduct),
     remarks: textOrNull(value.remarks),
     signatoryName: text(value.signatoryName),
+    result: toResult(value.result),
   };
 }
 
@@ -349,7 +424,18 @@ export class CertificateRepository {
   async create(schoolId: SchoolId, data: NewCertificate): Promise<CertificateRecord> {
     const { body, ...rest } = data;
     const row = await this.txHost.tx.certificate.create({
-      data: { schoolId, ...rest, body: { ...body, enrolments: body.enrolments.map((e) => ({ ...e })) } },
+      data: {
+        schoolId,
+        ...rest,
+        body: {
+          ...body,
+          enrolments: body.enrolments.map((e) => ({ ...e })),
+          result:
+            body.result === null
+              ? null
+              : { ...body.result, subjects: body.result.subjects.map((s) => ({ ...s })) },
+        },
+      },
       select: SELECT,
     });
     return toRecord(row);

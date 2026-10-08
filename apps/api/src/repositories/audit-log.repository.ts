@@ -72,6 +72,22 @@ export class AuditLogRepository {
     return row !== null;
   }
 
+  /** Several school-user rows in one statement (a batch that records one row per subject). */
+  async recordMany(schoolId: SchoolId, entries: readonly AuditEntry[]): Promise<void> {
+    if (entries.length === 0) return;
+    await this.txHost.tx.auditLog.createMany({
+      data: entries.map((entry) => ({
+        schoolId,
+        actorUserId: entry.actorUserId,
+        action: entry.action,
+        subjectType: entry.subjectType,
+        subjectId: entry.subjectId,
+        ...(entry.reason === undefined ? {} : { reason: entry.reason }),
+        metadata: entry.metadata ?? {},
+      })),
+    });
+  }
+
   /** As record, returning the new row's id (a messaging test's subject id, slice-9 §5.1). */
   async recordReturningId(schoolId: SchoolId, entry: AuditEntry): Promise<bigint> {
     const { id } = await this.txHost.tx.auditLog.create({

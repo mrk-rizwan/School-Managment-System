@@ -64,6 +64,12 @@ export const queryKeys = {
   /** Phase 4 slice 31: a result sheet (online only, never cached on the phone). */
   resultSheet: (id: string) => ['result-sheets', id] as const,
   yearTerms: (yearId: string) => ['academic-years', yearId, 'terms'] as const,
+  /**
+   * Phase 4 slice 33: a child's (`studentId`) or the student's own (null) results, a card and the
+   * class tests (online only, never cached on the phone: withholding is decided at read time).
+   */
+  familyResults: (studentId: string | null, ...parts: (string | number)[]) =>
+    [...(studentId === null ? ['me', 'student'] : ['me', 'children', studentId]), 'results', ...parts] as const,
 
   // Everyone (16b): the inbox
   inbox: (category: string, page: number) => ['me', 'inbox', category, page] as const,

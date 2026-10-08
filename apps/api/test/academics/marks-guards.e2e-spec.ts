@@ -378,6 +378,34 @@ describe('wave N assessment and mark guards (raw SQL)', () => {
     ).toBe('marks_status_transition');
   });
 
+  it('R281 (wave P review fixes): a correction made live is never decided by its author unless the sole principal; the author may withdraw it', async () => {
+    const teacher = (await createSchoolUser(db, f.school, { systemRole: 'teacher' })).userId;
+    const correction = insertMark(test, {
+      status: 'pending',
+      supersedes_id: liveMark,
+      correction_reason: 'Totalled wrongly',
+      entered_by: teacher,
+      client_entry_key: 'correction-key-00002',
+    });
+    const byKey = `school_id = $1 AND client_entry_key = 'correction-key-00002'`;
+    const decide = (status: 'live' | 'rejected', by: bigint): [string, unknown[]] => [
+      `UPDATE marks SET status = '${status}', decided_by = $2, decided_at = now() WHERE ${byKey}`,
+      [f.school.id, by],
+    ];
+    expect(await refusedByAll([correction, supersede(liveMark), decide('live', teacher)])).toBe('marks_not_self');
+    // Withdrawn by its author (a rejection), or approved by someone else: allowed.
+    expect(await refusedByAll([correction, decide('rejected', teacher)])).toBeNull();
+    expect(await refusedByAll([correction, supersede(liveMark), decide('live', f.userId)])).toBeNull();
+    // The sole principal's own correction (f.userId is the school's only principal): allowed.
+    const own = insertMark(test, {
+      status: 'pending',
+      supersedes_id: liveMark,
+      correction_reason: 'Totalled wrongly',
+      client_entry_key: 'correction-key-00002',
+    });
+    expect(await refusedByAll([own, supersede(liveMark), decide('live', f.userId)])).toBeNull();
+  });
+
   it('R265: a voided assessment takes no mark; a locked test takes no live mark, only a pending correction or an excusal', async () => {
     expect(await refusedBy(...insertMark(voided))).toBe('marks_assessment_voided');
     expect(await refusedByAll([supersede(absence), insertMark(locked, { obtained: 12, supersedes_id: absence })])).toBe('marks_assessment_locked');

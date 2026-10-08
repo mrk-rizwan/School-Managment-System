@@ -1312,6 +1312,16 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
           },
+          "pendingCorrectionId": {
+            "description": "A correction of this mark waiting for a decision (slice 32)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "pendingCorrectionMine": {
+            "description": "The caller asked for that correction (and so may withdraw it)",
+            "type": "boolean"
+          },
           "status": {
             "allOf": [
               {
@@ -1334,7 +1344,9 @@
           "excused",
           "status",
           "enteredAt",
-          "ownChildOf"
+          "ownChildOf",
+          "pendingCorrectionId",
+          "pendingCorrectionMine"
         ],
         "type": "object"
       },
@@ -2303,6 +2315,15 @@
             "nullable": true,
             "type": "string"
           },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CertificateResultDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
           "schoolName": {
             "type": "string"
           },
@@ -2341,7 +2362,8 @@
           "enrolments",
           "conduct",
           "remarks",
-          "signatoryName"
+          "signatoryName",
+          "result"
         ],
         "type": "object"
       },
@@ -2497,6 +2519,97 @@
           "sectionName",
           "from",
           "to"
+        ],
+        "type": "object"
+      },
+      "CertificateResultDto": {
+        "properties": {
+          "className": {
+            "type": "string"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFinal": {
+            "type": "boolean"
+          },
+          "passed": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/CertificateResultSubjectDto"
+            },
+            "type": "array"
+          },
+          "termName": {
+            "description": "The term's name, or Final",
+            "type": "string"
+          },
+          "totalMax": {
+            "type": "integer"
+          },
+          "totalObtained": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "termName",
+          "isFinal",
+          "className",
+          "sectionName",
+          "subjects",
+          "totalObtained",
+          "totalMax",
+          "percentBp",
+          "grade",
+          "passed"
+        ],
+        "type": "object"
+      },
+      "CertificateResultSubjectDto": {
+        "properties": {
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "max": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "obtained": {
+            "description": "Printed obtained; null when not assessed",
+            "nullable": true,
+            "type": "integer"
+          },
+          "percentBp": {
+            "description": "7850 = 78.50 %",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "subjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectName",
+          "obtained",
+          "max",
+          "percentBp",
+          "grade"
         ],
         "type": "object"
       },
@@ -3948,6 +4061,31 @@
         "required": [
           "created",
           "skippedNames"
+        ],
+        "type": "object"
+      },
+      "CorrectMarkDto": {
+        "properties": {
+          "absent": {
+            "default": false,
+            "description": "True: the student was absent (no mark)",
+            "type": "boolean"
+          },
+          "obtained": {
+            "description": "The corrected mark; omit (or null) with absent: true",
+            "maximum": 1000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -6301,6 +6439,7 @@
           "PROMOTION_INCOMPLETE",
           "PROMOTION_RESULT_SUPERSEDED",
           "PROMOTION_TARGET_INVALID",
+          "PROMOTION_ENROLMENT_AFTER_YEAR",
           "DEFAULT_PASSWORD_BLOCKS_ACTION",
           "UNEXPECTED_RESPONSE"
         ],
@@ -6905,6 +7044,22 @@
         "required": [
           "grade",
           "minPercent"
+        ],
+        "type": "object"
+      },
+      "GradeCountDto": {
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grade": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "grade",
+          "count"
         ],
         "type": "object"
       },
@@ -8613,6 +8768,205 @@
         ],
         "type": "string"
       },
+      "MarkCorrectionDecisionDto": {
+        "properties": {
+          "mark": {
+            "$ref": "#/components/schemas/MarkCorrectionDto"
+          },
+          "revisedResult": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultDto"
+              }
+            ],
+            "description": "The corrected student's new term result (version n+1)"
+          }
+        },
+        "required": [
+          "mark",
+          "revisedResult"
+        ],
+        "type": "object"
+      },
+      "MarkCorrectionDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "assessmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "assessmentName": {
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "decidedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "from": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkCorrectionValueDto"
+              }
+            ],
+            "description": "The mark it corrects",
+            "nullable": true,
+            "type": "object"
+          },
+          "heldOn": {
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "description": "The correction row (a mark born pending)",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentKind"
+              }
+            ]
+          },
+          "maxMarks": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "requestedByMe": {
+            "description": "The caller asked for it (and so cannot approve it, R281)",
+            "type": "boolean"
+          },
+          "requestedByName": {
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkCorrectionState"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "type": "string"
+          },
+          "to": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MarkCorrectionValueDto"
+              }
+            ],
+            "description": "The corrected value"
+          },
+          "withdrawn": {
+            "description": "Rejected by its own requester (POST /mark-corrections/:id/withdraw)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "assessmentId",
+          "assessmentName",
+          "kind",
+          "subjectName",
+          "heldOn",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "termId",
+          "termName",
+          "enrolmentId",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "maxMarks",
+          "from",
+          "to",
+          "reason",
+          "requestedByName",
+          "requestedByMe",
+          "requestedAt",
+          "decidedByName",
+          "decidedAt",
+          "withdrawn"
+        ],
+        "type": "object"
+      },
+      "MarkCorrectionState": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        "type": "string"
+      },
+      "MarkCorrectionValueDto": {
+        "properties": {
+          "absent": {
+            "type": "boolean"
+          },
+          "excused": {
+            "type": "boolean"
+          },
+          "obtained": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "obtained",
+          "absent",
+          "excused"
+        ],
+        "type": "object"
+      },
       "MarkEntryDto": {
         "properties": {
           "absent": {
@@ -9136,6 +9490,75 @@
         ],
         "type": "object"
       },
+      "MyAssessmentMarkDto": {
+        "properties": {
+          "absent": {
+            "type": "boolean"
+          },
+          "assessmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "excused": {
+            "description": "An absence the principal excused: it does not count",
+            "type": "boolean"
+          },
+          "heldOn": {
+            "example": "2026-05-10",
+            "format": "date",
+            "type": "string"
+          },
+          "markId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "maxMarks": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "obtained": {
+            "description": "Null when absent",
+            "nullable": true,
+            "type": "integer"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "type": "string"
+          },
+          "testType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TestType"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "markId",
+          "assessmentId",
+          "name",
+          "testType",
+          "heldOn",
+          "termId",
+          "termName",
+          "subjectName",
+          "maxMarks",
+          "obtained",
+          "absent",
+          "excused"
+        ],
+        "type": "object"
+      },
       "MyCalendarDto": {
         "properties": {
           "dateFrom": {
@@ -9335,6 +9758,63 @@
           "status",
           "relationship",
           "current"
+        ],
+        "type": "object"
+      },
+      "MyChildResultsDto": {
+        "properties": {
+          "academicYearId": {
+            "description": "The year shown; null when there is no published result",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "final": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyResultSummaryDto"
+              }
+            ],
+            "description": "The year's published final result",
+            "nullable": true,
+            "type": "object"
+          },
+          "outstanding": {
+            "description": "The amount owed in whole rupees when withheld; null otherwise, and always null on a student login (the student sees no figure)",
+            "nullable": true,
+            "type": "integer"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "terms": {
+            "description": "The year's published term results, in term order",
+            "items": {
+              "$ref": "#/components/schemas/MyResultSummaryDto"
+            },
+            "type": "array"
+          },
+          "withheld": {
+            "description": "The school withholds report cards while dues are owed (withhold_card_for_dues) and this child owes: the per-subject card is not served until the dues are cleared or the principal overrides (R282). A later payment unlocks it with no write",
+            "type": "boolean"
+          },
+          "years": {
+            "description": "The years with a published result, newest first",
+            "items": {
+              "$ref": "#/components/schemas/MyResultYearDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "studentId",
+          "academicYearId",
+          "years",
+          "terms",
+          "final",
+          "withheld",
+          "outstanding"
         ],
         "type": "object"
       },
@@ -9796,6 +10276,121 @@
         ],
         "type": "object"
       },
+      "MyResultDto": {
+        "properties": {
+          "outstanding": {
+            "description": "The amount owed in whole rupees when withheld; null otherwise, and always null on a student login (the student sees no figure)",
+            "nullable": true,
+            "type": "integer"
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultDto"
+              }
+            ],
+            "description": "The report card; null while withheld",
+            "nullable": true,
+            "type": "object"
+          },
+          "withheld": {
+            "description": "The school withholds report cards while dues are owed (withhold_card_for_dues) and this child owes: the per-subject card is not served until the dues are cleared or the principal overrides (R282). A later payment unlocks it with no write",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "withheld",
+          "outstanding",
+          "result"
+        ],
+        "type": "object"
+      },
+      "MyResultSummaryDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "grade": {
+            "description": "Null as percentBp",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "isFinal": {
+            "type": "boolean"
+          },
+          "percentBp": {
+            "description": "Null when nothing was assessed, and on a student login while the card is withheld",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "revised": {
+            "description": "A correction revised it after publication",
+            "type": "boolean"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "termId": {
+            "description": "Null for the final result of the year",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "description": "The term's name; null for the final result",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "academicYearName",
+          "termId",
+          "termName",
+          "isFinal",
+          "className",
+          "sectionName",
+          "percentBp",
+          "grade",
+          "revised",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
+      "MyResultYearDto": {
+        "properties": {
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
       "MySalaryStructureDto": {
         "properties": {
           "current": {
@@ -9956,6 +10551,18 @@
         },
         "required": [
           "collectorUserId"
+        ],
+        "type": "object"
+      },
+      "OpenPromotionSheetDto": {
+        "properties": {
+          "targetYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetYearId"
         ],
         "type": "object"
       },
@@ -11044,6 +11651,429 @@
         ],
         "type": "object"
       },
+      "PromotionDecisionDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "appliedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "arrearsFlag": {
+            "type": "boolean"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "decidedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PromotionOutcome"
+              }
+            ],
+            "nullable": true
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "enrolmentStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EnrolmentStatus"
+              }
+            ]
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "newEnrolmentId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "passed": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "proposed": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PromotionOutcome"
+              }
+            ],
+            "nullable": true
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "resultId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "resultSuperseded": {
+            "type": "boolean"
+          },
+          "revisedAfterApply": {
+            "type": "boolean"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "studentStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentStatus"
+              }
+            ]
+          },
+          "targetClassId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetClassName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetSectionId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetSectionName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "enrolmentId",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "studentStatus",
+          "rollNo",
+          "enrolmentStatus",
+          "resultId",
+          "resultSuperseded",
+          "percentBp",
+          "grade",
+          "passed",
+          "proposed",
+          "decision",
+          "reason",
+          "targetClassId",
+          "targetClassName",
+          "targetSectionId",
+          "targetSectionName",
+          "arrearsFlag",
+          "decidedByName",
+          "decidedAt",
+          "appliedAt",
+          "skipped",
+          "newEnrolmentId",
+          "revisedAfterApply"
+        ],
+        "type": "object"
+      },
+      "PromotionDecisionInputDto": {
+        "properties": {
+          "decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PromotionOutcome"
+              }
+            ]
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "targetClassId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetSectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enrolmentId",
+          "decision"
+        ],
+        "type": "object"
+      },
+      "PromotionOutcome": {
+        "enum": [
+          "promote",
+          "detain",
+          "complete",
+          "not_continuing"
+        ],
+        "type": "string"
+      },
+      "PromotionSheetDetailDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "appliedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "appliedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classIsFinal": {
+            "description": "The class is the final class: only its rows may complete (R295)",
+            "type": "boolean"
+          },
+          "className": {
+            "type": "string"
+          },
+          "decisions": {
+            "description": "By roll number, then name",
+            "items": {
+              "$ref": "#/components/schemas/PromotionDecisionDto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedByName": {
+            "type": "string"
+          },
+          "rows": {
+            "description": "Students on the sheet",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PromotionSheetStatus"
+              }
+            ]
+          },
+          "targetYearHasClasses": {
+            "type": "boolean"
+          },
+          "targetYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetYearName": {
+            "type": "string"
+          },
+          "undecided": {
+            "description": "Rows still without a decision",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "academicYearName",
+          "classId",
+          "className",
+          "classIsFinal",
+          "sectionId",
+          "sectionName",
+          "targetYearId",
+          "targetYearName",
+          "status",
+          "rows",
+          "undecided",
+          "openedByName",
+          "openedAt",
+          "appliedByName",
+          "appliedAt",
+          "updatedAt",
+          "decisions",
+          "targetYearHasClasses"
+        ],
+        "type": "object"
+      },
+      "PromotionSheetDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "appliedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "appliedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classIsFinal": {
+            "description": "The class is the final class: only its rows may complete (R295)",
+            "type": "boolean"
+          },
+          "className": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "openedByName": {
+            "type": "string"
+          },
+          "rows": {
+            "description": "Students on the sheet",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PromotionSheetStatus"
+              }
+            ]
+          },
+          "targetYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "targetYearName": {
+            "type": "string"
+          },
+          "undecided": {
+            "description": "Rows still without a decision",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "academicYearName",
+          "classId",
+          "className",
+          "classIsFinal",
+          "sectionId",
+          "sectionName",
+          "targetYearId",
+          "targetYearName",
+          "status",
+          "rows",
+          "undecided",
+          "openedByName",
+          "openedAt",
+          "appliedByName",
+          "appliedAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PromotionSheetSort": {
+        "enum": [
+          "-openedAt",
+          "openedAt"
+        ],
+        "type": "string"
+      },
+      "PromotionSheetStatus": {
+        "enum": [
+          "open",
+          "applied",
+          "cancelled"
+        ],
+        "type": "string"
+      },
       "ReadmissionResultDto": {
         "properties": {
           "admissionNo": {
@@ -12059,6 +13089,277 @@
         ],
         "type": "object"
       },
+      "ResultCardSubjectDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "examAbsent": {
+            "type": "boolean"
+          },
+          "examBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "examExcused": {
+            "type": "boolean"
+          },
+          "examMax": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "examObtained": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "max": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "obtained": {
+            "description": "Printed obtained; null when not assessed",
+            "nullable": true,
+            "type": "integer"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSubjectStatus"
+              }
+            ]
+          },
+          "subjectName": {
+            "description": "Snapshotted at approval",
+            "type": "string"
+          },
+          "testBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "subjectName",
+          "sortOrder",
+          "testBp",
+          "examBp",
+          "examObtained",
+          "examMax",
+          "examAbsent",
+          "examExcused",
+          "percentBp",
+          "obtained",
+          "max",
+          "grade",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ResultDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "attendanceBp": {
+            "description": "92.3 % = 9230; null when showAttendance is off",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "enrolmentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "failedSubjects": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "isFinal": {
+            "type": "boolean"
+          },
+          "passed": {
+            "description": "Null when nothing is assessed",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "position": {
+            "description": "Null when not positioned or showPosition is off",
+            "nullable": true,
+            "type": "integer"
+          },
+          "positionOf": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "remark": {
+            "description": "Null when showRemark is off",
+            "nullable": true,
+            "type": "string"
+          },
+          "revised": {
+            "description": "A corrected result whose figures changed (prints \"Revised\" with publishedAt)",
+            "type": "boolean"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "sheetId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sheetVersion": {
+            "description": "The sheet version (a correction's is 2 or more)",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "showAttendance": {
+            "type": "boolean"
+          },
+          "showPosition": {
+            "type": "boolean"
+          },
+          "showRemark": {
+            "type": "boolean"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/ResultCardSubjectDto"
+            },
+            "type": "array"
+          },
+          "supersededAt": {
+            "description": "Set on a row a later version replaced (prints \"Superseded\")",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "termId": {
+            "description": "Null on the final result of the year",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "description": "The term's name; null on the final result",
+            "nullable": true,
+            "type": "string"
+          },
+          "totalMax": {
+            "type": "integer"
+          },
+          "totalObtained": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sheetId",
+          "sheetVersion",
+          "schoolName",
+          "academicYearId",
+          "academicYearName",
+          "termId",
+          "termName",
+          "isFinal",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "enrolmentId",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "rollNo",
+          "totalObtained",
+          "totalMax",
+          "percentBp",
+          "grade",
+          "passed",
+          "failedSubjects",
+          "position",
+          "positionOf",
+          "attendanceBp",
+          "remark",
+          "showPosition",
+          "showAttendance",
+          "showRemark",
+          "revised",
+          "publishedAt",
+          "supersededAt",
+          "subjects"
+        ],
+        "type": "object"
+      },
       "ResultPreviewRowDto": {
         "properties": {
           "admissionNo": {
@@ -12120,6 +13421,12 @@
             "nullable": true,
             "type": "string"
           },
+          "resultId": {
+            "description": "The stored result (its report card) once approved; null in a preview (slice 32)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
           "rollNo": {
             "nullable": true,
             "type": "integer"
@@ -12142,6 +13449,7 @@
           }
         },
         "required": [
+          "resultId",
           "enrolmentId",
           "studentId",
           "fullName",
@@ -13522,6 +14830,168 @@
           "-name"
         ],
         "type": "string"
+      },
+      "SectionSubjectSummaryDto": {
+        "properties": {
+          "assessed": {
+            "description": "Students assessed in the subject",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "averageBp": {
+            "description": "Null when nobody was assessed",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "failed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grades": {
+            "items": {
+              "$ref": "#/components/schemas/GradeCountDto"
+            },
+            "type": "array"
+          },
+          "passed": {
+            "description": "Printed obtained ÷ max at or above the sheet's pass mark",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "subjectName",
+          "assessed",
+          "passed",
+          "failed",
+          "averageBp",
+          "grades"
+        ],
+        "type": "object"
+      },
+      "SectionSummaryReportDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "assessed": {
+            "description": "Results with something assessed",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "averageBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "failed": {
+            "description": "Stored passed = false",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grades": {
+            "description": "Overall grades, most frequent first",
+            "items": {
+              "$ref": "#/components/schemas/GradeCountDto"
+            },
+            "type": "array"
+          },
+          "passPercent": {
+            "maximum": 100,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "passed": {
+            "description": "Stored passed = true",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "sheetId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResultSheetStatus"
+              }
+            ]
+          },
+          "students": {
+            "description": "Results on the sheet version",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subjects": {
+            "description": "In the card order",
+            "items": {
+              "$ref": "#/components/schemas/SectionSubjectSummaryDto"
+            },
+            "type": "array"
+          },
+          "termId": {
+            "description": "Null for the final sheet",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sheetId",
+          "status",
+          "version",
+          "academicYearId",
+          "termId",
+          "termName",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "passPercent",
+          "students",
+          "assessed",
+          "passed",
+          "failed",
+          "averageBp",
+          "grades",
+          "subjects"
+        ],
+        "type": "object"
       },
       "SendRemindersDto": {
         "properties": {
@@ -15203,6 +16673,142 @@
         ],
         "type": "object"
       },
+      "SubjectReportDto": {
+        "properties": {
+          "assessed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "averageBp": {
+            "description": "Across every section",
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Sections with an approved or published sheet, by name",
+            "items": {
+              "$ref": "#/components/schemas/SubjectReportSectionDto"
+            },
+            "type": "array"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "termId",
+          "termName",
+          "classId",
+          "className",
+          "classSubjectId",
+          "subjectName",
+          "assessed",
+          "averageBp",
+          "sections"
+        ],
+        "type": "object"
+      },
+      "SubjectReportSectionDto": {
+        "properties": {
+          "assessed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "averageBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "bottom": {
+            "description": "The lowest three, lowest first",
+            "items": {
+              "$ref": "#/components/schemas/SubjectReportStudentDto"
+            },
+            "type": "array"
+          },
+          "published": {
+            "description": "Every live row of the section is published",
+            "type": "boolean"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "students": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "top": {
+            "description": "The highest three, best first",
+            "items": {
+              "$ref": "#/components/schemas/SubjectReportStudentDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName",
+          "published",
+          "students",
+          "assessed",
+          "averageBp",
+          "top",
+          "bottom"
+        ],
+        "type": "object"
+      },
+      "SubjectReportStudentDto": {
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "resultId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resultId",
+          "studentId",
+          "fullName",
+          "percentBp"
+        ],
+        "type": "object"
+      },
       "SubjectSort": {
         "enum": [
           "name",
@@ -15680,7 +17286,6 @@
         "type": "string"
       },
       "TestType": {
-        "description": "A test only; null on an exam",
         "enum": [
           "daily",
           "weekly",
@@ -16123,6 +17728,22 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "UpdatePromotionSheetDto": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/PromotionDecisionInputDto"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "decisions"
+        ],
         "type": "object"
       },
       "UpdateResultSettingsDto": {
@@ -33956,6 +35577,677 @@
         ]
       }
     },
+    "/api/v1/mark-corrections": {
+      "get": {
+        "operationId": "MarkCorrectionsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MarkCorrectionState"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MarkCorrectionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/mark-corrections/{id}": {
+      "get": {
+        "operationId": "MarkCorrectionsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/mark-corrections/{id}/approve": {
+      "post": {
+        "operationId": "MarkCorrectionsController_approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDecisionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/mark-corrections/{id}/reject": {
+      "post": {
+        "operationId": "MarkCorrectionsController_reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/mark-corrections/{id}/withdraw": {
+      "post": {
+        "operationId": "MarkCorrectionsController_withdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
+    "/api/v1/marks/{id}/correct": {
+      "post": {
+        "operationId": "MarkCorrectionsController_correct",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectMarkDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDto"
+                }
+              }
+            },
+            "description": "Replay of a committed request"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkCorrectionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "assessments"
+        ]
+      }
+    },
     "/api/v1/marks/{id}/excuse": {
       "post": {
         "operationId": "AssessmentsController_excuse",
@@ -34477,6 +36769,155 @@
             "description": ""
           },
           "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/assessments": {
+      "get": {
+        "operationId": "MyChildResultsController_assessments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyAssessmentMarkDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
             "content": {
               "application/json": {
                 "schema": {
@@ -36033,6 +38474,197 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/results": {
+      "get": {
+        "operationId": "MyChildResultsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: the latest year in which the child has a published result",
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyChildResultsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/children/{id}/results/{resultId}": {
+      "get": {
+        "operationId": "MyChildResultsController_card",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "resultId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
@@ -38291,6 +40923,136 @@
         ]
       }
     },
+    "/api/v1/me/student/assessments": {
+      "get": {
+        "operationId": "MyStudentResultsController_assessments",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/MyAssessmentMarkDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/student/attendance": {
       "get": {
         "operationId": "MyAttendanceController_own",
@@ -38837,6 +41599,169 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/results": {
+      "get": {
+        "operationId": "MyStudentResultsController_list",
+        "parameters": [
+          {
+            "description": "Default: the latest year in which the child has a published result",
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyChildResultsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/results/{resultId}": {
+      "get": {
+        "operationId": "MyStudentResultsController_card",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resultId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
@@ -42818,6 +45743,572 @@
         ]
       }
     },
+    "/api/v1/promotion-sheets": {
+      "get": {
+        "operationId": "PromotionController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PromotionSheetStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PromotionSheetSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/PromotionSheetDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
+        ]
+      }
+    },
+    "/api/v1/promotion-sheets/{id}": {
+      "get": {
+        "operationId": "PromotionController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
+        ]
+      },
+      "patch": {
+        "operationId": "PromotionController_decide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromotionSheetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
+        ]
+      }
+    },
+    "/api/v1/promotion-sheets/{id}/apply": {
+      "post": {
+        "operationId": "PromotionController_apply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
+        ]
+      }
+    },
+    "/api/v1/promotion-sheets/{id}/cancel": {
+      "post": {
+        "operationId": "PromotionController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
+        ]
+      }
+    },
     "/api/v1/receipts/{id}": {
       "get": {
         "operationId": "ReceiptsController_get",
@@ -43108,6 +46599,208 @@
         },
         "tags": [
           "remarks"
+        ]
+      }
+    },
+    "/api/v1/result-reports/section-summary": {
+      "get": {
+        "operationId": "ResultReportsController_sectionSummary",
+        "parameters": [
+          {
+            "description": "An approved or published sheet (any version)",
+            "in": "query",
+            "name": "sheetId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionSummaryReportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-reports/subject": {
+      "get": {
+        "operationId": "ResultReportsController_subject",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "termId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classSubjectId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectReportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
         ]
       }
     },
@@ -43579,6 +47272,87 @@
         ]
       }
     },
+    "/api/v1/result-sheets/{id}/print": {
+      "get": {
+        "operationId": "ResultsController_printSheet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The sheet's report cards, one per page (R283)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
     "/api/v1/result-sheets/{id}/publish": {
       "post": {
         "operationId": "ResultsController_publish",
@@ -43837,6 +47611,168 @@
             "description": ""
           },
           "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/results/{id}": {
+      "get": {
+        "operationId": "ResultsController_card",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/results/{id}/print": {
+      "get": {
+        "operationId": "ResultsController_printCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The printable report card (R283)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
@@ -45104,6 +49040,136 @@
         },
         "tags": [
           "diary"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/promotion-sheets": {
+      "post": {
+        "operationId": "PromotionController_open",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenPromotionSheetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": "Replay of a committed open"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionSheetDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "promotion"
         ]
       }
     },
@@ -50064,6 +54130,146 @@
         },
         "tags": [
           "remarks"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/results": {
+      "get": {
+        "operationId": "StudentResultsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ResultDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
         ]
       }
     },

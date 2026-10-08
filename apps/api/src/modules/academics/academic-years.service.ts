@@ -185,6 +185,29 @@ export class AcademicYearsService {
     }
   }
 
+  /**
+   * R299 (phase-4-academic.md slice 35): 409 PROMOTION_INCOMPLETE { sections } while a section of
+   * the year had an enrolment in force on the year's last day and has no applied promotion sheet.
+   * Checked before R44; a section with nobody in force on that day needs no sheet.
+   */
+  async assertPromotionsApplied(schoolId: SchoolId, year: AcademicYearRecord): Promise<void> {
+    const sections = await this.enrolments.sectionsAwaitingPromotion(schoolId, year.id, year.endsOn);
+    if (sections.length > 0) {
+      throw new ApiException(
+        409,
+        ErrorCode.PROMOTION_INCOMPLETE,
+        'Apply the promotion sheet of every section before closing the year.',
+        {
+          sections: sections.map((s) => ({
+            sectionId: s.sectionId.toString(),
+            sectionName: s.sectionName,
+            className: s.className,
+          })),
+        },
+      );
+    }
+  }
+
   private async transition(
     id: bigint,
     action: 'activate' | 'close',
@@ -203,7 +226,10 @@ export class AcademicYearsService {
         { from, to },
       );
     }
-    if (to === 'closed') await this.assertNoActiveEnrolments(schoolId, id);
+    if (to === 'closed') {
+      await this.assertPromotionsApplied(schoolId, year);
+      await this.assertNoActiveEnrolments(schoolId, id);
+    }
     const updated = await this.years.update(schoolId, id, { status: to });
     await this.audit.record(schoolId, {
       actorUserId: userId,

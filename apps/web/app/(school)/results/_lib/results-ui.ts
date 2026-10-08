@@ -70,3 +70,35 @@ const RESULT_REFUSALS: RefusalMessages = {
 
 export const resultErrorMessage = (error: unknown): string =>
   refusalMessage(error, RESULT_REFUSALS);
+
+/**
+ * Opens a print view in a new tab (R283): the browser fetches it with the session cookie; the
+ * page never holds the HTML.
+ */
+export function openPrint(path: string): void {
+  window.open(path, '_blank', 'noopener,noreferrer');
+}
+
+export const correctionKeys = {
+  all: ['mark-corrections'] as const,
+  list: (query: object) => ['mark-corrections', 'list', query] as const,
+};
+
+const CORRECTION_REFUSALS: RefusalMessages = {
+  [ErrorCode.MARK_CORRECTION_SHEET_NOT_PUBLISHED]:
+    "The student's result is not published yet: ask for the sheet to be returned and enter the mark again.",
+  [ErrorCode.MARK_CORRECTION_NOT_PENDING]: 'This correction has already been decided.',
+  [ErrorCode.MARK_EXCEEDS_MAX]: (details) => `A mark cannot exceed ${String(details.max ?? 'the maximum')}.`,
+  [ErrorCode.ILLEGAL_STATUS_TRANSITION]: 'A correction of this mark is already waiting for a decision.',
+  [ErrorCode.SELF_ACTION_FORBIDDEN]: (details) =>
+    details.reason === 'own_child'
+      ? 'This is your own child: another principal decides it.'
+      : 'You asked for this correction: someone else decides it.',
+  [ErrorCode.RESULT_SHEET_VERSION_OPEN]:
+    "The section's final sheet is approved but not published: publish or return it first.",
+  [ErrorCode.CONCURRENT_UPDATE]: 'The marks changed meanwhile. Reload and try again.',
+  [ErrorCode.ACADEMIC_YEAR_CLOSED]: 'The academic year is closed.',
+};
+
+export const correctionErrorMessage = (error: unknown): string =>
+  refusalMessage(error, CORRECTION_REFUSALS);

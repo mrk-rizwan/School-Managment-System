@@ -113,6 +113,12 @@ export class ResultPreviewSubjectDto {
 }
 
 export class ResultPreviewRowDto {
+  @ApiProperty({
+    ...ID,
+    nullable: true,
+    description: 'The stored result (its report card) once approved; null in a preview (slice 32)',
+  })
+  resultId: string | null;
   @ApiProperty(ID) enrolmentId: string;
   @ApiProperty(ID) studentId: string;
   @ApiProperty() fullName: string;
@@ -282,4 +288,79 @@ export class UpdateResultSheetDto {
   @ValidateNested({ each: true })
   @Type(() => SheetRemarkDto)
   remarks: SheetRemarkDto[];
+}
+
+// ------------------------------------------------------------------------- the report card
+
+/** A subject on the card (contracts/slice-32.md §2): the stored row's figures, no user ids. */
+export class ResultCardSubjectDto {
+  @ApiProperty(ID) classSubjectId: string;
+  @ApiProperty({ description: 'Snapshotted at approval' }) subjectName: string;
+  @ApiProperty({ type: 'integer' }) sortOrder: number;
+  @ApiProperty({ ...BP, nullable: true }) testBp: number | null;
+  @ApiProperty({ ...BP, nullable: true }) examBp: number | null;
+  @ApiProperty({ type: 'integer', nullable: true }) examObtained: number | null;
+  @ApiProperty({ type: 'integer', nullable: true }) examMax: number | null;
+  @ApiProperty() examAbsent: boolean;
+  @ApiProperty() examExcused: boolean;
+  @ApiProperty({ ...BP, nullable: true }) percentBp: number | null;
+  @ApiProperty({ type: 'integer', nullable: true, description: 'Printed obtained; null when not assessed' })
+  obtained: number | null;
+  @ApiProperty({ type: 'integer', minimum: 1 }) max: number;
+  @ApiProperty({ type: String, nullable: true }) grade: string | null;
+  @ApiProperty({ enum: RESULT_SUBJECT_STATUSES, enumName: 'ResultSubjectStatus' })
+  status: ResultSubjectStatus;
+}
+
+/**
+ * The report card (phase-4-academic.md §3.4, R279): exactly the stored `results` row with its
+ * subjects. The display toggles of the year's result settings apply: with `showPosition`,
+ * `showAttendance` or `showRemark` off, that figure is null. Names of the student are as they
+ * are now; subject names as snapshotted at approval.
+ */
+export class ResultDto {
+  @ApiProperty(ID) id: string;
+  @ApiProperty(ID) sheetId: string;
+  @ApiProperty({ type: 'integer', minimum: 1, description: "The sheet version (a correction's is 2 or more)" })
+  sheetVersion: number;
+  @ApiProperty() schoolName: string;
+  @ApiProperty(ID) academicYearId: string;
+  @ApiProperty() academicYearName: string;
+  @ApiProperty({ ...ID, nullable: true, description: 'Null on the final result of the year' })
+  termId: string | null;
+  @ApiProperty({ type: String, nullable: true, description: "The term's name; null on the final result" })
+  termName: string | null;
+  @ApiProperty() isFinal: boolean;
+  @ApiProperty(ID) classId: string;
+  @ApiProperty() className: string;
+  @ApiProperty(ID) sectionId: string;
+  @ApiProperty() sectionName: string;
+  @ApiProperty(ID) enrolmentId: string;
+  @ApiProperty(ID) studentId: string;
+  @ApiProperty() studentName: string;
+  @ApiProperty() admissionNo: string;
+  @ApiProperty({ type: 'integer', nullable: true }) rollNo: number | null;
+  @ApiProperty({ type: 'integer' }) totalObtained: number;
+  @ApiProperty({ type: 'integer' }) totalMax: number;
+  @ApiProperty({ ...BP, nullable: true }) percentBp: number | null;
+  @ApiProperty({ type: String, nullable: true }) grade: string | null;
+  @ApiProperty({ type: Boolean, nullable: true, description: 'Null when nothing is assessed' })
+  passed: boolean | null;
+  @ApiProperty({ type: 'integer', minimum: 0 }) failedSubjects: number;
+  @ApiProperty({ type: 'integer', nullable: true, description: 'Null when not positioned or showPosition is off' })
+  position: number | null;
+  @ApiProperty({ type: 'integer', nullable: true }) positionOf: number | null;
+  @ApiProperty({ ...BP, nullable: true, description: '92.3 % = 9230; null when showAttendance is off' })
+  attendanceBp: number | null;
+  @ApiProperty({ type: String, nullable: true, description: 'Null when showRemark is off' })
+  remark: string | null;
+  @ApiProperty() showPosition: boolean;
+  @ApiProperty() showAttendance: boolean;
+  @ApiProperty() showRemark: boolean;
+  @ApiProperty({ description: 'A corrected result whose figures changed (prints "Revised" with publishedAt)' })
+  revised: boolean;
+  @ApiProperty(DATE_TIME) publishedAt: Date | null;
+  @ApiProperty({ ...DATE_TIME, description: 'Set on a row a later version replaced (prints "Superseded")' })
+  supersededAt: Date | null;
+  @ApiProperty({ type: () => ResultCardSubjectDto, isArray: true }) subjects: ResultCardSubjectDto[];
 }

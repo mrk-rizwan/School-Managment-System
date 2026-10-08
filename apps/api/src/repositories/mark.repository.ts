@@ -4,6 +4,7 @@ import type { SchoolId } from '../tenancy/school-id';
 import type { MarksScope } from '../tenancy/scope';
 import { assessmentScopeWhere, scopeReaches, type AssessmentRecord } from './assessment.repository';
 import type { AssessmentMarkStatus, Prisma } from './generated/prisma/client';
+import { userNames } from './name-reads';
 import type { PrismaTxAdapter } from './prisma';
 
 // contracts/slice-30.md §3 (phase-4-academic.md §0.25, §3.2, R261, R262). The tenant table marks:
@@ -76,6 +77,98 @@ export interface NewMark {
   enteredBy: bigint;
   clientEntryKey: string | null;
 }
+
+/** A correction's decision state (contracts/slice-32.md §2). */
+export type CorrectionState = 'pending' | 'approved' | 'rejected';
+
+/**
+ * A mark correction (slice 32): a `pending` row superseding the live mark on a published result,
+ * then `live` (approved; `superseded` later) or `rejected`, with its context for the screens.
+ */
+export interface CorrectionRecord extends MarkRecord {
+  state: CorrectionState;
+  decidedBy: bigint | null;
+  decidedAt: Date | null;
+  assessmentName: string;
+  kind: 'test' | 'exam';
+  classId: bigint;
+  className: string;
+  sectionId: bigint;
+  sectionName: string;
+  termId: bigint;
+  termName: string;
+  subjectName: string;
+  heldOn: Date;
+  studentName: string;
+  admissionNo: string;
+  /** The mark it corrects. */
+  from: { obtained: number | null; absent: boolean; excused: boolean } | null;
+}
+
+export interface CorrectionFilter {
+  state?: CorrectionState;
+  sectionId?: bigint;
+  termId?: bigint;
+}
+
+/** A correction is a row born `pending`: pending, rejected, or decided into live (then superseded). */
+const CORRECTION_WHERE: Prisma.MarkWhereInput = {
+  OR: [{ status: { in: ['pending', 'rejected'] } }, { decidedAt: { not: null } }],
+};
+
+function stateWhere(state: CorrectionState): Prisma.MarkWhereInput {
+  switch (state) {
+    case 'pending':
+      return { status: 'pending' };
+    case 'rejected':
+      return { status: 'rejected' };
+    case 'approved':
+      return { decidedAt: { not: null }, status: { in: ['live', 'superseded'] } };
+  }
+}
+
+const CORRECTION_SELECT = {
+  ...SELECT,
+  decidedBy: true,
+  decidedAt: true,
+  // Same school by the composite foreign keys.
+  assessment: {
+    select: {
+      name: true,
+      kind: true,
+      classId: true,
+      sectionId: true,
+      termId: true,
+      heldOn: true,
+      class: { select: { name: true } },
+      section: { select: { name: true } },
+      term: { select: { name: true } },
+      classSubject: { select: { subject: { select: { name: true } } } },
+    },
+  },
+  enrolment: { select: { student: { select: { fullName: true, admissionNo: true } } } },
+  supersedes: { select: { obtained: true, absent: true, excused: true } },
+} satisfies Prisma.MarkSelect;
+
+type CorrectionRow = Prisma.MarkGetPayload<{ select: typeof CORRECTION_SELECT }>;
+
+const toCorrection = ({ assessment: a, enrolment, supersedes, ...row }: CorrectionRow): CorrectionRecord => ({
+  ...row,
+  state: row.status === 'pending' ? 'pending' : row.status === 'rejected' ? 'rejected' : 'approved',
+  assessmentName: a.name,
+  kind: a.kind,
+  classId: a.classId,
+  className: a.class.name,
+  sectionId: a.sectionId,
+  sectionName: a.section.name,
+  termId: a.termId,
+  termName: a.term.name,
+  subjectName: a.classSubject.subject.name,
+  heldOn: a.heldOn,
+  studentName: enrolment.student.fullName,
+  admissionNo: enrolment.student.admissionNo,
+  from: supersedes,
+});
 
 /** Thrown when a write method is handed an assessment its scope does not reach: a service bug. */
 export class MarksScopeViolation extends Error {
@@ -317,6 +410,144 @@ export class MarkRepository {
       },
       select: SELECT,
     });
+  }
+
+  // ------------------------------------------------------------------- corrections (slice 32)
+
+  /** The pending correction of a student's mark on an assessment, if any (marks_pending_key). */
+  async pendingFor(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    assessmentId: bigint,
+    enrolmentId: bigint,
+  ): Promise<bigint | null> {
+    const scoped = assessmentScopeWhere(scope, 'read');
+    if (scoped === null) return null;
+    const row = await this.txHost.tx.mark.findFirst({
+      where: { schoolId, assessmentId, enrolmentId, status: 'pending', assessment: { is: scoped } },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
+  /** The assessment's pending corrections (the grid shows each, and its requester may withdraw it). */
+  async pendingForAssessment(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    assessmentId: bigint,
+  ): Promise<{ id: bigint; enrolmentId: bigint; enteredBy: bigint }[]> {
+    const scoped = assessmentScopeWhere(scope, 'read');
+    if (scoped === null) return [];
+    return this.txHost.tx.mark.findMany({
+      where: { schoolId, assessmentId, status: 'pending', assessment: { is: scoped } },
+      select: { id: true, enrolmentId: true, enteredBy: true },
+    });
+  }
+
+  /**
+   * A correction request (R280): a `pending` row superseding the live mark, with the reason, under
+   * the assessment's row lock (marks_pending_key: one per student and assessment).
+   */
+  async insertPending(
+    schoolId: SchoolId,
+    scope: MarksScope<'write'>,
+    target: Target,
+    mark: Omit<NewMark, 'excused' | 'clientEntryKey' | 'supersedesId' | 'correctionReason'> & {
+      supersedesId: bigint;
+      correctionReason: string;
+    },
+  ): Promise<MarkRecord> {
+    this.assertWrites(scope, target);
+    return this.txHost.tx.mark.create({
+      data: {
+        schoolId,
+        assessmentId: target.id,
+        academicYearId: target.academicYearId,
+        maxMarks: target.maxMarks,
+        status: 'pending',
+        excused: false,
+        clientEntryKey: null,
+        ...mark,
+      },
+      select: SELECT,
+    });
+  }
+
+  /**
+   * A decision on a pending correction: `live` (approve; call after the mark it supersedes is
+   * marked superseded) or `rejected`, with the decider. False when it was no longer pending.
+   */
+  async decide(
+    schoolId: SchoolId,
+    scope: MarksScope<'write'>,
+    target: Target,
+    markId: bigint,
+    decision: { status: 'live' | 'rejected'; by: bigint; at: Date },
+  ): Promise<boolean> {
+    this.assertWrites(scope, target);
+    const { count } = await this.txHost.tx.mark.updateMany({
+      where: { schoolId, id: markId, assessmentId: target.id, status: 'pending' },
+      data: { status: decision.status, decidedBy: decision.by, decidedAt: decision.at },
+    });
+    return count === 1;
+  }
+
+  /** A correction the scope reads, else null (a plain mark or excusal is not a correction). */
+  async findCorrection(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    id: bigint,
+  ): Promise<CorrectionRecord | null> {
+    const scoped = assessmentScopeWhere(scope, 'read');
+    if (scoped === null) return null;
+    const row = await this.txHost.tx.mark.findFirst({
+      where: { schoolId, id, AND: [CORRECTION_WHERE], assessment: { is: scoped } },
+      select: CORRECTION_SELECT,
+    });
+    return row && toCorrection(row);
+  }
+
+  /** A page of the corrections the scope reads, newest request first, and the total. */
+  async listCorrections(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    filter: CorrectionFilter,
+    page: { skip: number; take: number },
+  ): Promise<{ rows: CorrectionRecord[]; total: number }> {
+    const scoped = assessmentScopeWhere(scope, 'read');
+    if (scoped === null) return { rows: [], total: 0 };
+    const where: Prisma.MarkWhereInput = {
+      schoolId,
+      AND: [
+        CORRECTION_WHERE,
+        filter.state === undefined ? {} : stateWhere(filter.state),
+        {
+          assessment: {
+            is: {
+              AND: [
+                scoped,
+                filter.sectionId === undefined ? {} : { sectionId: filter.sectionId },
+                filter.termId === undefined ? {} : { termId: filter.termId },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    const rows = await this.txHost.tx.mark.findMany({
+      where,
+      select: CORRECTION_SELECT,
+      orderBy: [{ enteredAt: 'desc' }, { id: 'desc' }],
+      skip: page.skip,
+      take: page.take,
+    });
+    const total = await this.txHost.tx.mark.count({ where });
+    return { rows: rows.map(toCorrection), total };
+  }
+
+  /** Display names (the requester, the decider). */
+  names(schoolId: SchoolId, ids: readonly bigint[]): Promise<Map<bigint, string>> {
+    return userNames(this.txHost.tx, schoolId, ids);
   }
 
   private assertWrites(scope: MarksScope<'write'>, target: Target): void {

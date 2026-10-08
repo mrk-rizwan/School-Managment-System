@@ -5,7 +5,11 @@
 // user id, an object key or a Phase 2 remark. Every string is checked with containsIdentityNumber
 // before the row is written (the CHECK certificates_body_no_id_check is the database's line).
 import { containsIdentityNumber, type CertificateType } from '@asms/shared';
-import type { CertificateBody, CertificateStudent } from '../../repositories/certificate.repository';
+import type {
+  CertificateBody,
+  CertificateBodyResult,
+  CertificateStudent,
+} from '../../repositories/certificate.repository';
 import type { EnrolmentView } from '../../repositories/enrolment.repository';
 import { toDateString } from '../academics/academics.shared';
 
@@ -29,6 +33,8 @@ export interface CertificateBodyInput {
   conduct: string | null;
   remarks: string | null;
   signatoryName: string;
+  /** The marks table (academic, completion), already chosen by the service (A11). */
+  result: CertificateBodyResult | null;
 }
 
 /** Every string in a JSON value, at any depth. */
@@ -84,6 +90,7 @@ export function buildCertificateBody(input: CertificateBodyInput): CertificateBo
     conduct: input.conduct,
     remarks: input.remarks,
     signatoryName: input.signatoryName,
+    result: input.result,
   };
   assertNoIdentityNumber(body);
   return body;

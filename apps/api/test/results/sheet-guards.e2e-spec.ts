@@ -14,7 +14,7 @@ import {
   entryKey,
   type MarksFixture,
 } from '../academics/assessment-fixture';
-import { createResult, createSheet, moveSheet } from './fixture';
+import { BANDS, createResult, createSheet, moveSheet } from './fixture';
 
 const TABLES = ['result_sheets', 'result_sheet_remarks', 'results', 'result_subjects'];
 
@@ -26,6 +26,8 @@ describe('wave O result sheet guards (raw SQL)', () => {
   let pub: MarksFixture;
   let pubSheet: bigint;
   let pubResult: bigint;
+  /** The second principal who decided pub's sheet. */
+  let pubDecider: bigint;
   /** A submitted Mid-term sheet, an exam and a test of that section-term. */
   let sub: MarksFixture;
   let subSheet: bigint;
@@ -128,7 +130,7 @@ describe('wave O result sheet guards (raw SQL)', () => {
         writtenBy: pub.userId,
       },
     });
-    await moveSheet(pub, pubSheet, 'approved');
+    pubDecider = await moveSheet(pub, pubSheet, 'approved');
     pubResult = (await createResult(pub, pubSheet)).id;
     await db.resultSheet.updateMany({
       where: { schoolId: pub.school.id, id: pubSheet },
@@ -240,6 +242,34 @@ describe('wave O result sheet guards (raw SQL)', () => {
         `status = 'approved', decided_by = submitted_by, decided_at = now(), self_approved = true, test_weight = 20, exam_weight = 80, pass_percent = 40, pass_rule = 'all_subjects', bands = '[]'`,
       ),
     ).toBe('result_sheets_not_self');
+  });
+
+  it('R281 (wave P review fixes): the version of a correction is born decided by someone other than its submitter, unless the sole principal records self_approved', async () => {
+    const version = (cols: Record<string, unknown>) =>
+      sheetRow(pub, {
+        version: 2,
+        status: 'published',
+        supersedes_id: pubSheet,
+        submitted_by: pub.userId,
+        submitted_at: new Date(),
+        decided_at: new Date(),
+        published_by: pubDecider,
+        published_at: new Date(),
+        test_weight: 20,
+        exam_weight: 80,
+        pass_percent: 40,
+        pass_rule: 'all_subjects',
+        bands: JSON.stringify(BANDS),
+        ...cols,
+      });
+    // Two principals: the submitter may not decide the version, even claiming self_approved.
+    expect(await refusedBy(...version({ decided_by: pub.userId }))).toBe('result_sheets_not_self');
+    expect(await refusedBy(...version({ decided_by: pub.userId, self_approved: true }))).toBe('result_sheets_not_self');
+    // Another person decides it; self_approved is then unwarranted.
+    expect(await refusedBy(...version({ decided_by: pubDecider, self_approved: true }))).toBe(
+      'result_sheets_self_approved_unwarranted',
+    );
+    expect(await refusedBy(...version({ decided_by: pubDecider }))).toBeNull();
   });
 
   it('R256: the snapshot is whole once approved and frozen while approved or published; publication is frozen', async () => {

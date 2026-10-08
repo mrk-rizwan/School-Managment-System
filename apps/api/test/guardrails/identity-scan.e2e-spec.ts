@@ -768,3 +768,44 @@ describe('R16 (Phase 3): the money tables free text, whole tables', () => {
     expect(await leakingRows(pg, table, text)).toBe(0);
   });
 });
+
+// ------------------------------------------------------------------------------------------------
+// Phase 4 wave P review fixes (R16): the academic free text a person types — a mark correction's
+// reason, a sheet's return reason, term remarks, a promotion decision's reason — whole tables,
+// and the audit rows of mark corrections and promotion sheets (their reasons and metadata).
+
+const PHASE_4_FREE_TEXT: Record<string, string[]> = {
+  marks: ['correction_reason'],
+  result_sheets: ['return_reason'],
+  result_sheet_remarks: ['remark'],
+  results: ['remark'],
+  promotion_decisions: ['reason'],
+};
+
+describe('R16 (Phase 4): corrections, remarks and promotion reasons, whole tables', () => {
+  let pg: Client;
+
+  beforeAll(async () => {
+    pg = new Client({ connectionString: process.env.DATABASE_URL });
+    await pg.connect();
+  });
+
+  afterAll(async () => {
+    await pg.end();
+  });
+
+  it.each(Object.entries(PHASE_4_FREE_TEXT))('R16: no row of %s holds an identity number or phone in its free text', async (table, columns) => {
+    const text = `concat_ws(' ', ${columns.map((c) => `t.${c}`).join(', ')})`;
+    expect(await leakingRows(pg, table, text)).toBe(0);
+  });
+
+  it('R16: no mark_correction.* or promotion_sheet.* audit row holds one in its reason or metadata', async () => {
+    const res = await pg.query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM audit_log t
+        WHERE (t.action LIKE 'mark_correction.%' OR t.action LIKE 'promotion_sheet.%' OR t.action = 'mark.excused')
+          AND (concat_ws(' ', t.reason, t.metadata::text) ~ $1)`,
+      [ID_SQL],
+    );
+    expect(Number(res.rows[0]?.n)).toBe(0);
+  });
+});

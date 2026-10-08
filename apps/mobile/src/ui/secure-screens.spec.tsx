@@ -34,11 +34,17 @@ const SECURE: Record<string, boolean> = {
   // Phase 3 slice 21: a child's fees and the deposit-slip form (the child's name in the title)
   'children/[studentId]/fees.tsx': true,
   'children/[studentId]/deposit-slip.tsx': true,
+  // Phase 4 slice 33: a child's results and report card
+  'children/[studentId]/results/index.tsx': true,
+  'children/[studentId]/results/[resultId].tsx': true,
   // Student (§5.5)
   'student/index.tsx': true,
   'student/attendance.tsx': true,
   'student/diary.tsx': true,
   'student/remarks.tsx': true,
+  // Phase 4 slice 33: the student's own results and report card
+  'student/results/index.tsx': true,
+  'student/results/[resultId].tsx': true,
   // Everyone (§7.3): secure when the user is a guardian (set from capacities at render)
   'inbox/index.tsx': true,
   'inbox/[id].tsx': true,

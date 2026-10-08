@@ -112,6 +112,12 @@ describe('students tenant isolation', () => {
     const row = await students.findById(a.id, all, student.id);
     if (!row) throw new Error('missing');
     expect(await students.lockIfUnchanged(b.id, row)).toBe(false);
+    // The batch forms of promotion apply (wave P review fixes).
+    expect(await students.lockMany(b.id, [student.id])).toEqual([]);
+    expect(await students.lockMany(a.id, [student.id])).toEqual([student.id]);
+    expect(await students.findManyByIds(b.id, all, [student.id])).toEqual([]);
+    expect(await students.setStatusMany(b.id, [student.id], ['active'], 'suspended')).toBe(0);
+    expect((await students.findById(a.id, all, student.id))?.status).toBe('active');
   });
 
   it('student_guardians', async () => {
@@ -150,6 +156,9 @@ describe('students tenant isolation', () => {
     const student = await createStudent(db, schools.a);
     const enrolment = await enrol(db, schools.a, student, section);
     expect(await enrolments.close(schools.b.id, enrolment.id, day('2026-01-01'))).toBe(0);
+    expect(await enrolments.completeMany(schools.b.id, [enrolment.id], day('2026-01-01'))).toBe(0);
+    expect(await enrolments.findManyByIds(schools.b.id, all, [enrolment.id])).toEqual([]);
+    expect((await enrolments.findManyByIds(schools.a.id, all, [enrolment.id])).map((e) => e.status)).toEqual(['active']);
     expect(await enrolments.findActiveForStudent(schools.b.id, all, student.id)).toBeNull();
     expect((await enrolments.listForStudent(schools.b.id, all, student.id, page)).total).toBe(0);
     expect(await enrolments.hasActiveInSection(schools.b.id, section.id)).toBe(false);
@@ -173,6 +182,8 @@ describe('students tenant isolation', () => {
     ).toEqual([row.id]);
     expect((await statusChanges.listForStudent(b.id, all, student.id, page)).total).toBe(0);
     expect(await statusChanges.latestForStudent(b.id, student.id)).toBeNull();
+    expect((await statusChanges.latestForStudents(b.id, [student.id])).size).toBe(0);
+    expect((await statusChanges.latestForStudents(a.id, [student.id])).get(student.id)?.id).toBe(row.id);
     // A row naming another school's student or user is refused by the composite foreign keys.
     await expect(
       statusChanges.record(b.id, {

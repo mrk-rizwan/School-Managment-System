@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ACADEMIC_YEAR_STATUSES, Capability, ErrorCode } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -314,9 +315,14 @@ function CloseYearDialog({ year, onClose }: { year: AcademicYearDto | null; onCl
           <Alert variant="destructive">
             <AlertDescription>
               {close.error instanceof ApiError &&
-              close.error.code === ErrorCode.ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS
-                ? 'Students are still actively enrolled in this year. Promote, transfer or withdraw them before closing it.'
-                : describeApiError(close.error)}
+              close.error.code === ErrorCode.PROMOTION_INCOMPLETE ? (
+                <PromotionIncomplete details={close.error.details} />
+              ) : close.error instanceof ApiError &&
+                close.error.code === ErrorCode.ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS ? (
+                'Students are still actively enrolled in this year. Promote, transfer or withdraw them before closing it.'
+              ) : (
+                describeApiError(close.error)
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -334,5 +340,25 @@ function CloseYearDialog({ year, onClose }: { year: AcademicYearDto | null; onCl
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * contracts/slice-35.md §5 (R299): the sections whose promotion sheet is not applied yet, from the
+ * refusal's details, with the way to the promotion page.
+ */
+function PromotionIncomplete({ details }: { details: unknown }) {
+  const sections =
+    typeof details === 'object' && details !== null && 'sections' in details && Array.isArray(details.sections)
+      ? (details.sections as { sectionId: string; className: string; sectionName: string }[])
+      : [];
+  return (
+    <>
+      Apply the promotion sheet of every section before closing the year. Still open:{' '}
+      {sections.map((s) => `${s.className} ${s.sectionName}`).join(', ') || 'some sections'}.{' '}
+      <Link href="/promotion" className="font-medium underline">
+        Go to Promotion
+      </Link>
+    </>
   );
 }

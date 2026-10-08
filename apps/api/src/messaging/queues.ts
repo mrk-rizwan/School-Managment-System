@@ -120,11 +120,13 @@ export const chargeRunJobId = (runId: bigint): string => `charge-run-${runId}`;
 export const resultNotifyJobId = (sheetId: bigint, sweepMinute?: number): string =>
   `result-notify-${sheetId}${sweepMinute === undefined ? '' : `-s${sweepMinute}`}`;
 
-/** Ids only (R113): the sheet whose published rows are told. */
-export interface ResultNotifyPayload {
-  schoolId: string;
-  sheetId: string;
-}
+/** A corrected result's job (slice 32): one row, by id. */
+export const resultRevisedJobId = (resultId: bigint): string => `result-notify-r${resultId}`;
+
+/** Ids only (R113): the sheet whose published rows are told, or one corrected result (slice 32). */
+export type ResultNotifyPayload =
+  | { schoolId: string; sheetId: string }
+  | { schoolId: string; resultId: string };
 
 export interface ChargeRunPayload {
   schoolId: string;

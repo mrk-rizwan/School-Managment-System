@@ -338,8 +338,11 @@ export class ResultSheetsService {
     const stored = sheet.status === 'approved' || sheet.status === 'published';
     let composition: Composition;
     let settings: CompositionSettings | null;
+    // Slice 32: each stored row's id, so the screens open and print its card.
+    const resultIds = new Map<bigint, bigint>();
     if (stored) {
       const rows = await this.results.forSheet(schoolId, scope, sheet.id);
+      for (const r of rows) resultIds.set(r.enrolmentId, r.id);
       const names = await this.reads.enrolmentNames(
         schoolId,
         scope,
@@ -423,7 +426,12 @@ export class ResultSheetsService {
         sortOrder: s.sortOrder,
       })),
       preview: composition.rows.map((row) =>
-        toPreviewRow(row, missingByStudent.get(row.studentId) ?? 0, names),
+        toPreviewRow(
+          row,
+          missingByStudent.get(row.studentId) ?? 0,
+          names,
+          resultIds.get(row.enrolmentId) ?? null,
+        ),
       ),
       flags: {
         ownChild: flags.map((f) => ({

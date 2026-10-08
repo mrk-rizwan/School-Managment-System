@@ -200,16 +200,37 @@ describe('academic structure services', () => {
 
     it('R44: close is refused with 409 ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS while any enrolment in the year is active', async () => {
       const school = await actAsNewSchool(a);
-      const { yearId, enrolment } = await enrolled(school);
+      const { yearId, enrolment, section } = await enrolled(school);
       const id = BigInt(yearId);
       await a.years.activate(id);
+      // Slice 35 (R299): an enrolment in force on the year's last day first asks for the
+      // section's promotion sheet, before R44.
+      expect(await refusal(a.years.close(id))).toMatchObject({
+        status: 409,
+        code: ErrorCode.PROMOTION_INCOMPLETE,
+      });
+      await leave(school, enrolment.id);
+      // An active enrolment that starts after the year's last day needs no promotion sheet, but
+      // R44 still holds the year open.
+      const late = await createStudent(testDb(), school);
+      const after = addDays(new Date(`${(await a.years.get(id)).endsOn}T00:00:00.000Z`), 1).toISOString().slice(0, 10);
+      const lateEnrolment = await enrol(
+        testDb(),
+        school,
+        late,
+        { id: BigInt(section.id), classId: BigInt(section.classId), academicYearId: id },
+        { startedOn: after },
+      );
       expect(await refusal(a.years.close(id))).toMatchObject({
         status: 409,
         code: ErrorCode.ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS,
       });
       expect((await a.years.get(id)).status).toBe('active');
       // A left enrolment does not hold the year open.
-      await leave(school, enrolment.id);
+      await testDb().enrolment.update({
+        where: { schoolId_id: { schoolId: school.id, id: lateEnrolment.id } },
+        data: { status: 'left', endedOn: new Date(`${after}T00:00:00.000Z`) },
+      });
       await expect(a.years.close(id)).resolves.toMatchObject({ status: 'closed' });
     });
   });
