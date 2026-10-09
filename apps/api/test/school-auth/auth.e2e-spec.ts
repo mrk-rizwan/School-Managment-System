@@ -337,7 +337,9 @@ describe('school login, logout and /me', () => {
         passwordIsDefault: false,
         roles: ['office_staff'],
       });
-      expect(me.capabilities[0]).toBe('user.account.manage');
+      // Declaration order (packages/shared capabilities.ts): since Phase 5 office staff hold
+      // transport.manage, declared just before user.account.manage in the setup group.
+      expect(me.capabilities.slice(0, 2)).toEqual(['transport.manage', 'user.account.manage']);
       expect(me.capabilities).not.toContain('role.manage');
       expect(Object.keys(me).sort()).toEqual(
         ['assignments', 'blockedCapabilities', 'capabilities', 'capabilityScopes', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],

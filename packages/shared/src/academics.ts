@@ -62,6 +62,13 @@ export type PromotionOutcome = (typeof PROMOTION_OUTCOMES)[number];
 export const PROMOTION_SHEET_STATUSES = ['open', 'applied', 'cancelled'] as const;
 export type PromotionSheetStatus = (typeof PROMOTION_SHEET_STATUSES)[number];
 
+/**
+ * Phase 5 rule 39: `result_sheets.provenance`. An `imported` sheet is born `published` by a
+ * commencement import, with no submitter and no message (phase-5-extended.md §0.34).
+ */
+export const SHEET_PROVENANCES = ['manual', 'imported'] as const;
+export type SheetProvenance = (typeof SHEET_PROVENANCES)[number];
+
 // ------------------------------------------------------------------------------ certificates
 
 /** Printed prefixes (§1.1): `LC-0001`, at least four digits, one sequence per type, never reset. */

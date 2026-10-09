@@ -55,8 +55,12 @@ export class StaffMarkDto {
   @ApiProperty({ ...NULLABLE_STRING, maxLength: 200 })
   note: string | null;
 
-  @ApiProperty({ ...ID, description: 'The first writer (frozen)' })
-  markedBy: string;
+  @ApiProperty({
+    ...ID,
+    nullable: true,
+    description: 'The first writer (frozen); null for a mark a biometric device made (Phase 5 rule 40)',
+  })
+  markedBy: string | null;
 
   @ApiProperty({ ...NULLABLE_STRING, description: 'The first writer’s staff name' })
   markedByName: string | null;

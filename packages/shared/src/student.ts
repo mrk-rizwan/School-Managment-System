@@ -16,6 +16,16 @@ export type EnrolmentStatus = (typeof ENROLMENT_STATUSES)[number];
 export const DOCUMENT_TYPES = ['b_form', 'photo', 'previous_school_leaving', 'guardian_cnic', 'other'] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
+/**
+ * Phase 5 rule 36: `student_documents.status`. uploaded -> verified | rejected, both final; a
+ * re-upload is a new row. Rows that existed before Phase 5 start `uploaded` (A7).
+ */
+export const DOCUMENT_STATUSES = ['uploaded', 'verified', 'rejected'] as const;
+export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
+
+/** The *default* `school_settings.required_document_types` (phase-5-extended.md §1.1). */
+export const DEFAULT_REQUIRED_DOCUMENT_TYPES: readonly DocumentType[] = ['b_form', 'photo'];
+
 /** R26: a student in one of these is readmitted, never admitted again or reactivated. */
 export const READMISSIBLE_STATUSES: readonly StudentStatus[] = ['withdrawn', 'transferred', 'alumni'];
 

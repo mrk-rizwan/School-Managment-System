@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Capability, DEFAULT_PASSWORD_INERT_CAPABILITIES, type SystemRole } from '@asms/shared';
+import {
+  Capability,
+  DEFAULT_PASSWORD_INERT_CAPABILITIES,
+  type DefaultPasswordInertAction,
+  type SystemRole,
+} from '@asms/shared';
 import { CapabilityGrantRepository } from '../../repositories/capability-grant.repository';
 import {
   CustomRoleRepository,
@@ -34,7 +39,7 @@ import {
   type EffectiveLine,
   type GrantInput,
 } from './effective-permissions';
-import { defaultPasswordBlocks, notAssignedOnDate } from './access.errors';
+import { defaultPasswordActionBlocks, defaultPasswordBlocks, notAssignedOnDate } from './access.errors';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -184,25 +189,40 @@ export class PermissionsService {
   ): Promise<ApiException | null> {
     const blocked = required.filter((key) => access.blockedCapabilities.includes(key));
     if (blocked.length === 0) return null;
+    await this.auditDefaultPasswordRefusal(schoolId, access.userId, { capabilities: blocked.join(',') });
+    return defaultPasswordBlocks();
+  }
+
+  /**
+   * Rule 24's reach (Phase 5 R355): the refusal of a route marked @DefaultPasswordInert(action),
+   * for a caller still on the default password. Audited like the capability refusal, at most once
+   * per user per school day (the same action, `user.default_password_blocked`).
+   */
+  async defaultPasswordActionRefusal(
+    schoolId: SchoolId,
+    access: UserAccess,
+    action: DefaultPasswordInertAction,
+  ): Promise<ApiException> {
+    await this.auditDefaultPasswordRefusal(schoolId, access.userId, { action });
+    return defaultPasswordActionBlocks();
+  }
+
+  /** One `user.default_password_blocked` audit row per user per school day (R225). */
+  private async auditDefaultPasswordRefusal(
+    schoolId: SchoolId,
+    userId: bigint,
+    metadata: Record<string, string>,
+  ): Promise<void> {
     const today = await this.clock.today(schoolId);
     const since = dayStart(await this.clock.timezone(schoolId), today);
-    if (
-      !(await this.audit.existsForActorSince(
-        schoolId,
-        access.userId,
-        DEFAULT_PASSWORD_BLOCKED_ACTION,
-        since,
-      ))
-    ) {
-      await this.audit.record(schoolId, {
-        actorUserId: access.userId,
-        action: DEFAULT_PASSWORD_BLOCKED_ACTION,
-        subjectType: 'user',
-        subjectId: access.userId,
-        metadata: { capabilities: blocked.join(',') },
-      });
-    }
-    return defaultPasswordBlocks();
+    if (await this.audit.existsForActorSince(schoolId, userId, DEFAULT_PASSWORD_BLOCKED_ACTION, since)) return;
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: DEFAULT_PASSWORD_BLOCKED_ACTION,
+      subjectType: 'user',
+      subjectId: userId,
+      metadata,
+    });
   }
 
   /**

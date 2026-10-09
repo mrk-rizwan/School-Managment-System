@@ -19,6 +19,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { MeModule } from './modules/me/me.module';
 import { StaffAttendanceModule } from './modules/staff-attendance/staff-attendance.module';
+import { DEVICE_PUNCH_ACCESS_PROVIDERS } from './modules/staff-attendance/device-punch.service';
 import { DiaryModule } from './modules/diary/diary.module';
 import { FeesModule } from './modules/fees/fees.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -93,6 +94,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
     // Order matters: rate limiting runs before the access check.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: RouteAccessGuard },
+    // Phase 5 (named exception 4 widened): the guard resolves @DeviceToken() routes through the
+    // device-punch service, the only importer of DeviceTokenRepository.
+    ...DEVICE_PUNCH_ACCESS_PROVIDERS,
   ],
 })
 export class AppModule {}

@@ -94,6 +94,13 @@ model School {
   terminatedAt     DateTime?              @map("terminated_at") @db.Timestamptz(3)
   /// A manual cap patch sets it; while set the monthly billing run leaves sms_monthly_cap alone (A12).
   smsCapOverridden Boolean                @default(false) @map("sms_cap_overridden")
+  /// Phase 5 rule 40 (named exception 4 widened): sha-256 hex of the school's biometric device
+  /// token, shown once at rotation. Unique where set (partial index schools_device_token_hash_key);
+  /// CHECK schools_device_token_hash_check. Read only through DeviceTokenRepository; written through
+  /// OwnSchoolRepository. Never in a DTO.
+  deviceTokenHash      String?            @map("device_token_hash") @db.Char(64)
+  /// Set with every rotation (CHECK schools_device_token_rotated_check).
+  deviceTokenRotatedAt DateTime?          @map("device_token_rotated_at") @db.Timestamptz(3)
   createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -330,6 +337,16 @@ model SchoolSettings {
   // issue to the active principal's name); whether the leaving certificate prints the B-Form.
   certificateSignatoryName  String?          @map("certificate_signatory_name") @db.VarChar(100)
   certificateShowIdentityNo Boolean          @default(true) @map("certificate_show_identity_no")
+  // Phase 5 (phase-5-extended.md §3.6). CHECKs school_settings_*_check in migration SQL.
+  /// Rule 36: the document types every student should have (the checklist and the incomplete-
+  /// admissions report). No nulls, no repeats.
+  requiredDocumentTypes     StudentDocumentType[] @default([b_form, photo]) @map("required_document_types")
+  /// Rule 35: days before a contract's end the first warning goes out. 1-90.
+  contractWarningDays       Int              @default(30) @map("contract_warning_days") @db.SmallInt
+  /// Rule 40: a device punch after this school-local time marks late; null = never late.
+  staffLateAfter            DateTime?        @map("staff_late_after") @db.Time(0)
+  /// Rule 38: the financial statement's default basis.
+  financialStatementBasis   StatementBasis   @default(received) @map("financial_statement_basis")
   createdAt                 DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -646,6 +663,10 @@ model Staff {
   /// Last day of employment. Set only while status = left (CHECK staff_left_on_check), cleared on
   /// re-hire (R19); never before joined_on (CHECK staff_left_on_after_joined_check).
   leftOn      DateTime?   @map("left_on") @db.Date
+  /// Phase 5 rule 40: the person's user number on the school's biometric device; 1-40 printable
+  /// ASCII, never an identity number (CHECKs). Unique per school; a left member keeps it until
+  /// the office clears it to reuse it.
+  deviceUserId String?    @map("device_user_id") @db.VarChar(40)
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -664,6 +685,7 @@ model Staff {
   payslips               Payslip[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
+  @@unique([schoolId, deviceUserId], map: "staff_school_id_device_user_id_key")
   @@map("staff")
 }
 
@@ -783,6 +805,7 @@ model User {
   auditLogs                 AuditLog[]
   studentStatusChanges      StudentStatusChange[]
   studentDocuments          StudentDocument[]
+  studentDocumentsDecided   StudentDocument[]       @relation("StudentDocumentDecidedBy")
   stagedUploads             StagedUpload[]
   idempotencyKeys           IdempotencyKey[]
   teacherAssignmentsVoided  TeacherAssignment[]
@@ -999,6 +1022,12 @@ model AuditLog {
   @@unique([schoolId, id], map: "audit_log_school_id_id_key")
   @@index([schoolId, subjectType, subjectId, createdAt], map: "audit_log_school_id_subject_type_subject_id_created_at_idx")
   @@index([schoolId, actorUserId, createdAt], map: "audit_log_school_id_actor_user_id_created_at_idx")
+  // Phase 5 rule 40 (§3.2): the audit screen's filters (date range, a platform actor's support
+  // reads). The action-prefix index (school_id, action varchar_pattern_ops, created_at) is
+  // hand-written in migration SQL as a partial index: declared here, Prisma 7.10 reads the operator
+  // class back differently and drops and recreates it in every later migration.
+  @@index([schoolId, createdAt], map: "audit_log_school_id_created_at_idx")
+  @@index([schoolId, actorPlatformUserId, createdAt], map: "audit_log_school_id_actor_platform_user_id_created_at_idx")
   @@map("audit_log")
 }
 
@@ -1229,16 +1258,25 @@ model StudentDocument {
   mime       String              @db.VarChar(32)
   sizeBytes  Int                 @map("size_bytes")
   uploadedBy BigInt              @map("uploaded_by")
+  /// Phase 5 rule 36: uploaded -> verified | rejected (trigger), both final; decided_by never the
+  /// uploader (trigger student_documents_not_self). A re-upload is a new row.
+  status       DocumentStatus    @default(uploaded)
+  decidedBy    BigInt?           @map("decided_by")
+  decidedAt    DateTime?         @map("decided_at") @db.Timestamptz(3)
+  /// Required exactly when rejected; never an identity number (CHECKs). Never shown to a family.
+  rejectReason String?           @map("reject_reason") @db.VarChar(500)
   createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
 
   school         School  @relation(fields: [schoolId], references: [id], map: "student_documents_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   student        Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "student_documents_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   uploadedByUser User    @relation(fields: [schoolId, uploadedBy], references: [schoolId, id], map: "student_documents_uploaded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser  User?   @relation("StudentDocumentDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "student_documents_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([schoolId, id], map: "student_documents_school_id_id_key")
   @@unique([schoolId, objectKey], map: "student_documents_school_id_object_key_key")
   @@index([schoolId, studentId, type, createdAt], map: "student_documents_school_id_student_id_type_created_at_idx")
   @@index([schoolId, uploadedBy], map: "student_documents_school_id_uploaded_by_idx")
+  @@index([schoolId, decidedBy], map: "student_documents_school_id_decided_by_idx")
   @@map("student_documents")
 }
 
@@ -1437,6 +1475,13 @@ enum MessageType {
   result_published
   result_revised
   test_marked
+  // Phase 5 (phase-5-extended.md §3.4); added in their own migration
+  // (20261009120000_phase5_enums).
+  contract_expiring
+  support_session_opened
+  support_session_closed
+  attendance_disputed
+  attendance_dispute_decided
 
   @@map("message_type")
 }
@@ -1595,6 +1640,8 @@ model PlatformSettings {
   graceDays               Int              @default(15) @map("grace_days") @db.SmallInt
   /// Last platform invoice number issued, advanced by UPDATE ... RETURNING (gapless).
   invoiceCounter          Int              @default(0) @map("invoice_counter")
+  /// Phase 5 rule 40: a support session's length in hours. 1-24 (CHECK).
+  supportSessionHours     Int              @default(4) @map("support_session_hours") @db.SmallInt
   createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt               DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2237,17 +2284,23 @@ model StaffAttendance {
   staffId  BigInt                @map("staff_id")
   date     DateTime              @db.Date
   status   StaffAttendanceStatus
-  markedBy BigInt                @map("marked_by")
+  /// Phase 5 rule 40: null exactly for a device mark, which no user made (CHECK
+  /// staff_attendance_source_check).
+  markedBy BigInt?               @map("marked_by")
   markedAt DateTime              @default(now()) @map("marked_at") @db.Timestamptz(3)
   /// Never an identity number (CHECK staff_attendance_note_no_id_check).
   note     String?               @db.VarChar(200)
+  /// Phase 5 rule 40: device when a biometric punch made the mark. Frozen.
+  source   StaffAttendanceSource @default(manual)
 
   school       School                  @relation(fields: [schoolId], references: [id], map: "staff_attendance_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   staff        Staff                   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "staff_attendance_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  markedByUser User                    @relation(fields: [schoolId, markedBy], references: [schoolId, id], map: "staff_attendance_marked_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  markedByUser User?                   @relation(fields: [schoolId, markedBy], references: [schoolId, id], map: "staff_attendance_marked_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   changes      StaffAttendanceChange[]
 
   @@unique([schoolId, id], map: "staff_attendance_school_id_id_key")
+  // Phase 5: the target of a dispute's (school_id, attendance_id, staff_id) foreign key (slice 44).
+  @@unique([schoolId, id, staffId], map: "staff_attendance_school_id_id_staff_id_key")
   @@unique([schoolId, staffId, date], map: "staff_attendance_natural_key")
   @@index([schoolId, markedBy], map: "staff_attendance_school_id_marked_by_idx")
   @@map("staff_attendance")
@@ -2604,6 +2657,9 @@ enum FeeHeadCategory {
   exam
   fine
   other
+  // Phase 5 (20261009120000_phase5_enums): an event's campaign head; the route-charged head.
+  event
+  transport
 
   @@map("fee_head_category")
 }
@@ -4615,6 +4671,10 @@ model ResultSheet {
   bands                      Json?
   /// The final sheet's term weights: [{ termId, weight, held }].
   termWeights                Json?             @map("term_weights")
+  /// Phase 5 rule 39: imported for a sheet a commencement import made, born published with no
+  /// submitter (result_sheets_born_draft widened; CHECK result_sheets_imported_check). Frozen. The
+  /// import's id (import_id) arrives with the imports table (slice 43).
+  provenance                 SheetProvenance   @default(manual)
   createdAt                  DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -4932,4 +4992,123 @@ model PromotionDecision {
   @@index([schoolId, newEnrolmentId, studentId, targetYearId], map: "promotion_decisions_school_id_new_enrolment_id_idx")
   @@index([schoolId, decidedBy], map: "promotion_decisions_school_id_decided_by_idx")
   @@map("promotion_decisions")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5 groundwork (phase-5-extended.md §4, migration 20261009120100_phase5_groundwork): every
+// value set Phase 5 stores, created up front; the tables that use most of them arrive with their
+// slices (37-45). Each mirrors packages/shared (test/guardrails/shared-enums.e2e-spec.ts).
+// ---------------------------------------------------------------------------------------------
+
+enum EventType {
+  ptm
+  trip
+  sports_day
+  function
+  visit
+  meeting
+  other
+
+  @@map("event_type")
+}
+
+enum EventStatus {
+  draft
+  published
+  completed
+  cancelled
+
+  @@map("event_status")
+}
+
+enum DutyKind {
+  registration
+  supervision
+  collection
+  transport
+  other
+
+  @@map("duty_kind")
+}
+
+enum ParticipationStatus {
+  attended
+  absent
+  excused
+
+  @@map("participation_status")
+}
+
+enum ContractType {
+  permanent
+  fixed_term
+  probation
+
+  @@map("contract_type")
+}
+
+enum DocumentStatus {
+  uploaded
+  verified
+  rejected
+
+  @@map("document_status")
+}
+
+enum VehicleStatus {
+  active
+  retired
+
+  @@map("vehicle_status")
+}
+
+enum TransportRouteStatus {
+  active
+  archived
+
+  @@map("transport_route_status")
+}
+
+enum ImportKind {
+  past_results
+  opening_balances
+
+  @@map("import_kind")
+}
+
+enum ImportStatus {
+  previewed
+  committed
+  failed
+
+  @@map("import_status")
+}
+
+enum SheetProvenance {
+  manual
+  imported
+
+  @@map("sheet_provenance")
+}
+
+enum StaffAttendanceSource {
+  manual
+  device
+
+  @@map("staff_attendance_source")
+}
+
+enum DisputeStatus {
+  pending
+  approved
+  rejected
+
+  @@map("dispute_status")
+}
+
+enum StatementBasis {
+  received
+  verified
+
+  @@map("statement_basis")
 }

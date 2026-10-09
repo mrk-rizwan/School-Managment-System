@@ -28,7 +28,8 @@ export interface StaffMarkView {
   date: Date;
   status: StaffAttendanceStatus;
   note: string | null;
-  markedBy: bigint;
+  /** Null for a mark a biometric device made (Phase 5 rule 40, source `device`). */
+  markedBy: bigint | null;
   markedByName: string | null;
   markedAt: Date;
   /** The latest staff_attendance_changes row, if any. */
@@ -97,7 +98,7 @@ const toView = ({ markedByUser, changes, ...row }: MarkRow): StaffMarkView => {
   const last = changes[0];
   return {
     ...row,
-    markedByName: markedByUser.staff?.fullName ?? null,
+    markedByName: markedByUser?.staff?.fullName ?? null,
     lastAmendedAt: last?.changedAt ?? null,
     lastAmendedByName: last?.changedByUser.staff?.fullName ?? null,
   };

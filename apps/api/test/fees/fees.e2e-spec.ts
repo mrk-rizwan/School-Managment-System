@@ -100,11 +100,15 @@ describe('slice 18: fee setup, payment accounts and settings (e2e)', () => {
 
       const list = await get('/fee-heads', principal).expect(200);
       const heads = (list.body as Page<FeeHead>).data;
+      // Phase 5 (migration 20261009120100_phase5_groundwork) seeds Transport, Event and Opening balance too.
       expect(heads.map((h) => [h.name, h.category, h.frequency, h.concessionEligible, h.refundable, h.seeded])).toEqual([
         ['Admission', 'admission', 'once', true, false, true],
         ['Annual charges', 'annual', 'yearly', true, true, true],
+        ['Event', 'event', 'ad_hoc', true, true, true],
         ['Exam', 'exam', 'per_term', true, true, true],
         ['Fine', 'fine', 'ad_hoc', false, true, true],
+        ['Opening balance', 'other', 'once', false, false, true],
+        ['Transport', 'transport', 'monthly', true, true, true],
         ['Tuition', 'tuition', 'monthly', true, true, true],
       ]);
 
@@ -127,7 +131,8 @@ describe('slice 18: fee setup, payment accounts and settings (e2e)', () => {
         db().feeHead.updateMany({ where: { schoolId: school.id, id: BigInt(fineHead.id) }, data: { concessionEligible: true } }),
       ).rejects.toThrow();
 
-      const created = await post('/fee-heads', { name: 'Transport', category: 'other', frequency: 'monthly' }, principal).expect(201);
+      // Not "Transport": since Phase 5 that name is a seeded head's.
+      const created = await post('/fee-heads', { name: 'School van', category: 'other', frequency: 'monthly' }, principal).expect(201);
       const transport = created.body as FeeHead;
       expect([transport.concessionEligible, transport.refundable, transport.seeded]).toEqual([true, true, false]);
       // Category and frequency are frozen: not in the PATCH body.
@@ -146,7 +151,7 @@ describe('slice 18: fee setup, payment accounts and settings (e2e)', () => {
 
       expect((await auditRows(school.id, 'fee_head.created')).length).toBe(2);
       expect((await auditRows(school.id, 'fee_head.updated')).map((r) => r.metadata)).toEqual([
-        { changes: { name: { from: 'Transport', to: 'Van' }, refundable: { from: true, to: false } } },
+        { changes: { name: { from: 'School van', to: 'Van' }, refundable: { from: true, to: false } } },
       ]);
       expect((await auditRows(school.id, 'fee_head.archived')).map((r) => [r.actorUserId, r.reason])).toEqual([
         [principal.user.userId, 'No more vans'],

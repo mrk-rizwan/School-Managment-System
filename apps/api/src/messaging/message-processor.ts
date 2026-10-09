@@ -67,9 +67,16 @@ const TITLE_ONLY_PUSH: ReadonlySet<MessageType> = new Set<MessageType>([
   'result_published',
   'result_revised',
   'test_marked',
+  // Phase 5 (phase-5-extended.md §3.4): a colleague's contract or attendance, or the platform's
+  // access to the school, is not for a lock screen.
+  'contract_expiring',
+  'support_session_opened',
+  'support_session_closed',
+  'attendance_disputed',
+  'attendance_dispute_decided',
 ]);
 
-/** The push body of a message: its title for a money or result type (R238, §3.5), else its body. */
+/** The push body of a message: its title for a money, result or Phase 5 staff type (R238, §3.5), else its body. */
 export const pushBodyOf = (type: MessageType, title: string, body: string): string => (TITLE_ONLY_PUSH.has(type) ? title : body);
 
 /** The person as the processor needs them at attempt time (the current phone, not a stored one). */

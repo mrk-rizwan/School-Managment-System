@@ -61,7 +61,9 @@ describe('slice 18 tenant isolation', () => {
     });
     // The seed writes only the school it names.
     await as(two.a.id, () => heads.seedForSchool(two.a.id));
-    expect(await db().feeHead.count({ where: { schoolId: two.a.id, createdBy: null } })).toBe(5);
+    // Seven, not the eight of SEEDED_FEE_HEADS: school A's own live head named "Transport" keeps the
+    // seeded Transport head out (Phase 5's per-name guard, migration 20261009120100_phase5_groundwork).
+    expect(await db().feeHead.count({ where: { schoolId: two.a.id, createdBy: null } })).toBe(7);
     expect(await db().feeHead.count({ where: { schoolId: two.b.id } })).toBe(0);
   });
 

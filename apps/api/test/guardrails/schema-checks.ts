@@ -71,6 +71,10 @@ export const SCHOOL_ID_IMMUTABLE_FUNCTION = 'asms_forbid_school_id_change';
  */
 export const NON_SCHOOL_LEADING_INDEXES = new Set([
   'sessions.token_hash',
+  // Phase 5 (phase-5-extended.md §3.2): resolving a device token establishes the tenant (named
+  // exception 4, widened). `schools` is non-tenant, so the check never reads this entry; it is
+  // listed so the exception is written down beside its sibling.
+  'schools.device_token_hash',
   'whatsapp_numbers.waha_session',
   'whatsapp_numbers.cloud_phone_number_id',
   'message_deliveries.channel',
@@ -86,6 +90,8 @@ export const NON_SCHOOL_LEADING_INDEXES = new Set([
  * - idempotency_keys.subject_id: polymorphic, names a row of the table in subject_type.
  * - messages.subject_id: polymorphic, names a row of the table in subject_type (plan §5).
  * - whatsapp_numbers.cloud_phone_number_id: Meta's identifier for the number, not a row id.
+ * - staff.device_user_id: the person's user number on the school's biometric device (Phase 5
+ *   rule 40), not a row id.
  *
  * holidays.announcement_id was listed until slice 14 added its foreign key
  * (contracts/slice-14.md §11 item 7).
@@ -96,6 +102,7 @@ export const NON_FK_ID_COLUMNS = new Set([
   'idempotency_keys.subject_id',
   'messages.subject_id',
   'whatsapp_numbers.cloud_phone_number_id',
+  'staff.device_user_id',
 ]);
 
 export type ExpectedObject =
@@ -820,20 +827,8 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
     definition:
       'AFTER INSERT OR UPDATE ON public.idempotency_keys DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION asms_require_idempotency_subject()',
   },
-  {
-    kind: 'trigger',
-    table: 'student_documents',
-    name: 'student_documents_append_only',
-    definition:
-      'BEFORE DELETE OR UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_forbid_append_only_change()',
-  },
-  {
-    kind: 'trigger',
-    table: 'student_documents',
-    name: 'student_documents_no_truncate',
-    definition:
-      'BEFORE TRUNCATE ON public.student_documents FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_append_only_change()',
-  },
+  // student_documents was append-only until Phase 5 rule 36 (migration
+  // 20261009120100_phase5_groundwork): its triggers are in WAVE_R_OBJECTS.
   {
     kind: 'trigger',
     table: 'student_guardians',
@@ -1053,6 +1048,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_N_OBJECTS(),
   ...WAVE_O_OBJECTS(),
   ...WAVE_P_OBJECTS(),
+  ...WAVE_R_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -1793,7 +1789,8 @@ function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       table: 'staff_attendance',
       name: 'staff_attendance_columns_immutable',
       definition:
-        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date', 'marked_by', 'marked_at')",
+        // Phase 5 (20261009120100_phase5_groundwork) added source.
+        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date', 'marked_by', 'marked_at', 'source')",
     },
     {
       kind: 'trigger',
@@ -3115,7 +3112,8 @@ function WAVE_O_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('sheet_id', 'enrolment_id', 'created_at')" },
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_open', definition: "BEFORE INSERT OR UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_remark_open()" },
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_school_id_immutable', definition: "BEFORE UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
-    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'version', 'supersedes_id', 'created_by', 'created_at')" },
+    // Phase 5 (20261009120100_phase5_groundwork) added provenance.
+    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'version', 'supersedes_id', 'created_by', 'created_at', 'provenance')" },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_insert_guard', definition: "BEFORE INSERT ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_insert_guard()" },
     // Since the wave P review fixes it covers INSERT too (a correction's version is born decided).
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_not_self', definition: "BEFORE INSERT OR UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_not_self()" },
@@ -3191,5 +3189,59 @@ function WAVE_P_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'marks', name: 'marks_not_self', definition: "BEFORE UPDATE OF decided_by ON public.marks FOR EACH ROW EXECUTE FUNCTION asms_mark_not_self()" },
     { kind: 'function', name: 'asms_mark_not_self', definition: "NEW.status = 'live' AND NEW.decided_by IS NOT NULL AND NEW.decided_by = NEW.entered_by" },
     { kind: 'function', name: 'asms_result_sheet_not_self', definition: "ELSIF TG_OP = 'INSERT' THEN" },
+  ];
+}
+
+/**
+ * Phase 5 wave R groundwork (migrations 20261009120000_phase5_enums,
+ * 20261009120100_phase5_groundwork and 20261009120200_audit_action_index_partial;
+ * phase-5-extended.md §3.2, §3.6, §4): the device token on schools, the settings, the
+ * student_documents decision (no longer append-only), the staff_attendance source, the imported
+ * result sheet, the three seeded heads and the fee_structures category trigger, the audit and
+ * payslip indexes. The slices' tables add their own groups.
+ */
+function WAVE_R_OBJECTS(): ExpectedObject[] {
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_array_is_distinct', definition: 'count(DISTINCT v) = count(*)' },
+    { kind: 'function', name: 'asms_student_document_decision_guard', definition: "v_refusal := 'student_documents_born_uploaded'" },
+    { kind: 'function', name: 'asms_student_document_decision_guard', definition: "v_refusal := 'student_documents_not_self'" },
+    { kind: 'function', name: 'asms_result_sheet_insert_guard', definition: "NOT (NEW.provenance = 'imported' AND NEW.status = 'published')" },
+    { kind: 'function', name: 'asms_fee_structure_head_category', definition: "DETAIL = 'constraint: fee_structures_head_category'" },
+    { kind: 'function', name: 'asms_fee_structure_head_category', definition: "h.category IN ('event', 'transport')" },
+    { kind: 'function', name: 'asms_seed_school_finance', definition: "(6, 'Transport', 'transport', 'monthly', true, true)" },
+    { kind: 'function', name: 'asms_seed_school_finance', definition: "(7, 'Event', 'event', 'ad_hoc', true, true)" },
+    { kind: 'function', name: 'asms_seed_school_finance', definition: "(8, 'Opening balance', 'other', 'once', false, false)" },
+    { kind: 'function', name: 'asms_seed_school_finance', definition: "AND NOT (v.category = 'transport' AND EXISTS (" },
+    // ---- schools (non-tenant)
+    { kind: 'constraint', table: 'schools', name: 'schools_device_token_hash_check', definition: "CHECK ((device_token_hash ~ '^[0-9a-f]{64}$'::text))" },
+    { kind: 'constraint', table: 'schools', name: 'schools_device_token_rotated_check', definition: 'CHECK (((device_token_hash IS NULL) OR (device_token_rotated_at IS NOT NULL)))' },
+    { kind: 'index', table: 'schools', name: 'schools_device_token_hash_key', definition: 'ON public.schools USING btree (device_token_hash) WHERE (device_token_hash IS NOT NULL)' },
+    // ---- settings
+    { kind: 'constraint', table: 'school_settings', name: 'school_settings_required_document_types_check', definition: 'CHECK (((required_document_types IS NOT NULL) AND (array_position(required_document_types, NULL::student_document_type) IS NULL) AND asms_array_is_distinct(required_document_types)))' },
+    { kind: 'constraint', table: 'school_settings', name: 'school_settings_contract_warning_days_check', definition: 'CHECK (((contract_warning_days >= 1) AND (contract_warning_days <= 90)))' },
+    { kind: 'constraint', table: 'platform_settings', name: 'platform_settings_support_session_hours_check', definition: 'CHECK (((support_session_hours >= 1) AND (support_session_hours <= 24)))' },
+    // ---- staff, staff_attendance
+    { kind: 'constraint', table: 'staff', name: 'staff_device_user_id_check', definition: "CHECK (((device_user_id)::text ~ '^[!-~]{1,40}$'::text))" },
+    { kind: 'constraint', table: 'staff', name: 'staff_device_user_id_no_id_check', definition: noIdCheck('device_user_id') },
+    { kind: 'constraint', table: 'staff_attendance', name: 'staff_attendance_source_check', definition: "CHECK (((source = 'device'::staff_attendance_source) = (marked_by IS NULL)))" },
+    // ---- student_documents
+    { kind: 'constraint', table: 'student_documents', name: 'student_documents_decided_check', definition: "CHECK ((((status = 'uploaded'::document_status) = (decided_at IS NULL)) AND ((decided_at IS NULL) = (decided_by IS NULL)) AND ((status = 'rejected'::document_status) = (reject_reason IS NOT NULL))))" },
+    { kind: 'constraint', table: 'student_documents', name: 'student_documents_reject_reason_check', definition: "CHECK (((reject_reason IS NULL) OR (((reject_reason)::text = btrim((reject_reason)::text)) AND ((reject_reason)::text <> ''::text))))" },
+    { kind: 'constraint', table: 'student_documents', name: 'student_documents_reject_reason_no_id_check', definition: noIdCheck('reject_reason') },
+    { kind: 'index', table: 'student_documents', name: 'student_documents_pending_idx', definition: "ON public.student_documents USING btree (school_id, created_at) WHERE (status = 'uploaded'::document_status)" },
+    { kind: 'trigger', table: 'student_documents', name: 'student_documents_status_transition', definition: "BEFORE UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_status_transition('uploaded:verified', 'uploaded:rejected')" },
+    { kind: 'trigger', table: 'student_documents', name: 'student_documents_columns_immutable', definition: "BEFORE UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'type', 'object_key', 'mime', 'size_bytes', 'uploaded_by', 'created_at')" },
+    { kind: 'trigger', table: 'student_documents', name: 'student_documents_decided_frozen', definition: "BEFORE UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('decided_at', 'decided_by', 'reject_reason', 'status')" },
+    { kind: 'trigger', table: 'student_documents', name: 'student_documents_decision_guard', definition: 'BEFORE INSERT OR UPDATE ON public.student_documents FOR EACH ROW EXECUTE FUNCTION asms_student_document_decision_guard()' },
+    ...noDeleteTriggers('student_documents'),
+    // ---- result_sheets
+    { kind: 'constraint', table: 'result_sheets', name: 'result_sheets_imported_check', definition: "CHECK (((provenance = 'manual'::sheet_provenance) OR ((version = 1) AND (term_id IS NOT NULL) AND (status = 'published'::result_sheet_status) AND (submitted_by IS NULL) AND (decided_by IS NOT NULL) AND (decided_by = published_by))))" },
+    // ---- fee heads and structures
+    { kind: 'index', table: 'fee_heads', name: 'fee_heads_one_transport_key', definition: "ON public.fee_heads USING btree (school_id) WHERE ((category = 'transport'::fee_head_category) AND (status <> 'archived'::fee_head_status))" },
+    { kind: 'trigger', table: 'fee_structures', name: 'fee_structures_head_category', definition: 'BEFORE INSERT OR UPDATE OF fee_head_id ON public.fee_structures FOR EACH ROW EXECUTE FUNCTION asms_fee_structure_head_category()' },
+    // ---- indexes for the reports
+    { kind: 'index', table: 'audit_log', name: 'audit_log_school_id_action_created_at_idx', definition: 'ON public.audit_log USING btree (school_id, action varchar_pattern_ops, created_at) WHERE (action IS NOT NULL)' },
+    { kind: 'index', table: 'payslips', name: 'payslips_school_id_paid_on_idx', definition: 'ON public.payslips USING btree (school_id, paid_on) WHERE (paid_on IS NOT NULL)' },
   ];
 }

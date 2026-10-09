@@ -23,3 +23,12 @@ export * from './finance';
 export * from './money';
 export * from './academics';
 export * from './results';
+// Phase 5 (phase-5-extended.md §3.3).
+export * from './events';
+export * from './transport';
+export * from './rule24';
+export * from './csv';
+export * from './timetable/clashes';
+export * from './reports/statement';
+export * from './imports';
+export * from './attendance/punches';

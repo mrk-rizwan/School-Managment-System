@@ -218,6 +218,34 @@ export interface TemplateVarsMap {
   };
   /** Slice 30, only with notify_class_tests on: in-app and a title-only push; never the mark. */
   test_marked: { readonly studentName: string; readonly testName: string };
+  // Phase 5 (phase-5-extended.md §3.4): staff only, push (title only) and email, never SMS. The
+  // senders are slices 39 (contracts), 44 (disputes) and 45 (support sessions).
+  /** Slice 39 (R319): to every principal, at 30 and again at 7 days before the contract ends. */
+  contract_expiring: {
+    readonly staffName: string;
+    /** The contract's last day (a `date` value). */
+    readonly endsOn: Date;
+    readonly daysLeft: number;
+  };
+  /**
+   * Slice 45 (R349): to every principal when a platform admin opens read-only support access.
+   * `reason` is the platform's stated reason (CHECKed free of identity numbers); never a ticket
+   * system's link.
+   */
+  support_session_opened: {
+    readonly supportName: string;
+    readonly reason: string;
+    readonly expiresAt: Date;
+  };
+  /** Slice 45: when the session ends, however it ends. */
+  support_session_closed: {
+    readonly supportName: string;
+    readonly how: 'expired' | 'closed' | 'revoked';
+  };
+  /** Slice 44 (R347): to the attendance.staff.manage holders other than the staff member. */
+  attendance_disputed: { readonly staffName: string; readonly date: Date };
+  /** Slice 44: to the staff member who raised it. */
+  attendance_dispute_decided: { readonly date: Date; readonly decision: 'approved' | 'rejected' };
 }
 
 export type TemplateVars<T extends MessageType> = TemplateVarsMap[T];

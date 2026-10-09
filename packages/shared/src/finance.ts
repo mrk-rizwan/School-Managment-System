@@ -7,8 +7,13 @@ import type { CertificateCounterName } from './academics';
 
 // ------------------------------------------------------------------------------- fee setup
 
-/** `fee_heads.category`. At most one live tuition and one live fine head per school. */
-export const FEE_HEAD_CATEGORIES = ['tuition', 'admission', 'annual', 'exam', 'fine', 'other'] as const;
+/**
+ * `fee_heads.category`. At most one live tuition, one live fine and one live transport head per
+ * school. Phase 5 appended `event` (an event's charge is a campaign under it, rule 34) and
+ * `transport` (charged from the student's route, rule 37); neither may carry a fee structure
+ * (trigger fee_structures_head_category).
+ */
+export const FEE_HEAD_CATEGORIES = ['tuition', 'admission', 'annual', 'exam', 'fine', 'other', 'event', 'transport'] as const;
 export type FeeHeadCategory = (typeof FEE_HEAD_CATEGORIES)[number];
 
 /**
@@ -27,10 +32,12 @@ export const FEE_STRUCTURE_STATUSES = ['active', 'superseded'] as const;
 export type FeeStructureStatus = (typeof FEE_STRUCTURE_STATUSES)[number];
 
 /**
- * The five heads every school starts with (rule 18, R176), inserted in the school-creation
- * transaction and backfilled; `created_by` is null on each. The school edits and archives them.
- * The database function asms_seed_school_finance holds the same rows (migration
- * 20261005182000_slice18_fee_setup); a test compares the two.
+ * The heads every school starts with (rule 18, R176), inserted in the school-creation transaction
+ * and backfilled; `created_by` is null on each. The school edits and archives them. Phase 5
+ * appended Transport (rule 37), Event (rule 34) and Opening balance (rule 39: commencement
+ * imports charge arrears under it, never a late fee). The database function
+ * asms_seed_school_finance holds the same rows (migrations 20261005182000_slice18_fee_setup and
+ * 20261009120100_phase5_groundwork); a test compares the two.
  */
 export const SEEDED_FEE_HEADS: readonly {
   readonly name: string;
@@ -44,7 +51,21 @@ export const SEEDED_FEE_HEADS: readonly {
   { name: 'Annual charges', category: 'annual', frequency: 'yearly', concessionEligible: true, refundable: true },
   { name: 'Exam', category: 'exam', frequency: 'per_term', concessionEligible: true, refundable: true },
   { name: 'Fine', category: 'fine', frequency: 'ad_hoc', concessionEligible: false, refundable: true },
+  { name: 'Transport', category: 'transport', frequency: 'monthly', concessionEligible: true, refundable: true },
+  { name: 'Event', category: 'event', frequency: 'ad_hoc', concessionEligible: true, refundable: true },
+  { name: 'Opening balance', category: 'other', frequency: 'once', concessionEligible: false, refundable: false },
 ];
+
+/** The fee-head categories a fee structure may not price: they are charged by their own module. */
+export const UNSTRUCTURED_FEE_HEAD_CATEGORIES: readonly FeeHeadCategory[] = ['event', 'transport'];
+
+/**
+ * Phase 5 rule 38: the basis of the financial statement (`school_settings.financial_statement_basis`,
+ * *default* `received`): money by the day it was received or paid, or by the day it was verified
+ * or decided (rule 25).
+ */
+export const STATEMENT_BASES = ['received', 'verified'] as const;
+export type StatementBasis = (typeof STATEMENT_BASES)[number];
 
 /** Where parents can pay besides the counter (rule 21). An active account turns claims on. */
 export const PAYMENT_ACCOUNT_KINDS = ['bank', 'jazzcash', 'easypaisa'] as const;
@@ -75,6 +96,8 @@ export const FEE_HEAD_CATEGORY_LABELS: Record<FeeHeadCategory, string> = {
   exam: 'Exam',
   fine: 'Fine',
   other: 'Other',
+  event: 'Event',
+  transport: 'Transport',
 };
 
 // --------------------------------------------------------------------- charges, concessions

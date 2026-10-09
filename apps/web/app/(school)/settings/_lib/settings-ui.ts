@@ -69,6 +69,12 @@ export const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   result_published: 'Published term results',
   result_revised: 'Revised term results',
   test_marked: 'Marked class tests',
+  // Phase 5 (staff notices; never SMS).
+  contract_expiring: 'Contracts ending',
+  support_session_opened: 'Support access opened',
+  support_session_closed: 'Support access ended',
+  attendance_disputed: 'Attendance disputes',
+  attendance_dispute_decided: 'Attendance dispute decisions',
 };
 
 /** `HH:MM`, 00:00–23:59 (the API's pattern). */

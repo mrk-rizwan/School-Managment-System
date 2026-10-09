@@ -32,6 +32,12 @@ const SANCTIONED = [
     file: /\/src\/common\/auth\/platform-session\.ts$/,
     checkBrand: false,
   },
+  // Phase 5: the school a biometric device's token resolved to (named exception 4, widened).
+  {
+    name: 'CurrentDevice',
+    file: /\/src\/common\/auth\/device-token\.ts$/,
+    checkBrand: false,
+  },
   // `@IdParam() id: bigint`: ParseIdPipe turns the path segment into a checked bigint.
   { name: 'IdParam', file: /\/src\/common\/ids\.ts$/, checkBrand: true },
   // The framework's request and response objects, not deserialised client input.

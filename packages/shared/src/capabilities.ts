@@ -1,11 +1,14 @@
 /**
- * The capability registry (phase-1-foundation.md §7): 51 keys, fixed for Phase 1. Later phases add
- * screens, not keys. Values are the dotted keys stored in custom_role_capabilities and
+ * The capability registry: 53 keys. Phase 1 fixed 51 (phase-1-foundation.md §7); Phase 5 added
+ * exactly two and closed the list (phase-5-extended.md §0.36): `audit.view` (rule 40, the audit
+ * screen; principal by default, grantable, refused on a default password) and `transport.manage`
+ * (rule 37's set-up; principal and office by default, plan §1.2 item 40). Events run under the
+ * calendar key `holiday.manage`. Values are the dotted keys stored in custom_role_capabilities and
  * user_capability_grants; a value never changes once shipped.
  */
 import { containsIdentityNumber } from './identity';
 export const Capability = {
-  // Setup (7)
+  // Setup (8)
   SCHOOL_SETTINGS_MANAGE: 'school.settings.manage',
   ACADEMIC_YEAR_MANAGE: 'academic_year.manage',
   CLASS_MANAGE: 'class.manage',
@@ -13,9 +16,13 @@ export const Capability = {
   SUBJECT_MANAGE: 'subject.manage',
   FEE_HEAD_MANAGE: 'fee_head.manage',
   HOLIDAY_MANAGE: 'holiday.manage',
-  // Access (2)
+  // Phase 5: vehicles, routes, stops, route amounts and assignments.
+  TRANSPORT_MANAGE: 'transport.manage',
+  // Access (3)
   USER_ACCOUNT_MANAGE: 'user.account.manage',
   ROLE_MANAGE: 'role.manage',
+  // Phase 5: the read-only audit-log screen.
+  AUDIT_VIEW: 'audit.view',
   // Students (5)
   STUDENT_VIEW: 'student.view',
   STUDENT_CREATE: 'student.create',
@@ -73,15 +80,6 @@ export type Capability = (typeof Capability)[keyof typeof Capability];
 
 const C = Capability;
 
-/**
- * Rule 24 (R225): inert while the holder still signs in with the default password, which
- * colleagues may know. Everything else works; changing the password restores them.
- */
-export const DEFAULT_PASSWORD_INERT_CAPABILITIES: readonly Capability[] = [
-  Capability.USER_ACCOUNT_MANAGE,
-  Capability.ROLE_MANAGE,
-];
-
 /** The groups of §7, in display order (the custom-role checklist and the permissions screen). */
 export const CAPABILITY_GROUPS = {
   setup: [
@@ -92,8 +90,9 @@ export const CAPABILITY_GROUPS = {
     C.SUBJECT_MANAGE,
     C.FEE_HEAD_MANAGE,
     C.HOLIDAY_MANAGE,
+    C.TRANSPORT_MANAGE,
   ],
-  access: [C.USER_ACCOUNT_MANAGE, C.ROLE_MANAGE],
+  access: [C.USER_ACCOUNT_MANAGE, C.ROLE_MANAGE, C.AUDIT_VIEW],
   students: [
     C.STUDENT_VIEW,
     C.STUDENT_CREATE,
@@ -150,7 +149,9 @@ export const SYSTEM_ROLES = ['principal', 'office_staff', 'teacher'] as const;
 export type SystemRole = (typeof SYSTEM_ROLES)[number];
 
 /**
- * Role defaults: the §7 table, plus attendance.student.mark for office staff (Phase 2 §1.2). Teacher defaults are scoped by the teacher's assignments
+ * Role defaults: the §7 table, plus attendance.student.mark for office staff (Phase 2 §1.2), and
+ * document.verify and transport.manage for office staff (Phase 5 rules 36, 37; §1.1). The
+ * principal holds every key, the two Phase 5 keys included. Teacher defaults are scoped by the teacher's assignments
  * active today (plan §3.4, R53, R54); that scope is computed by the permission service from
  * assignment data and is deliberately not encoded here. Principal and office-staff defaults are
  * school-wide.
@@ -168,6 +169,8 @@ export const SYSTEM_ROLE_DEFAULTS: Readonly<Record<SystemRole, readonly Capabili
     C.GUARDIAN_MANAGE,
     C.DOCUMENT_VIEW,
     C.DOCUMENT_UPLOAD,
+    // Phase 5 rule 36 (R325): the office verifies documents by default; never its own upload.
+    C.DOCUMENT_VERIFY,
     C.STAFF_VIEW,
     // Phase 2 §1.2 (owner, 2026-10-03): the office records a child's arrival at the gate. Held
     // through this role it has `all` scope; a principal may revoke it per clerk.
@@ -179,6 +182,8 @@ export const SYSTEM_ROLE_DEFAULTS: Readonly<Record<SystemRole, readonly Capabili
     C.FEE_STATEMENT_VIEW,
     C.EXPENSE_RECORD,
     C.ANNOUNCEMENT_SEND_SCOPE,
+    // Phase 5 rule 37 (§1.1): routes, stops and assignments are office work.
+    C.TRANSPORT_MANAGE,
   ],
   // Own classes only: scope comes from teacher_assignments, never from this list.
   teacher: [

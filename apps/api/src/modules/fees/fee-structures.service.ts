@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, UNSTRUCTURED_FEE_HEAD_CATEGORIES } from '@asms/shared';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
+import { headNotStructured } from '../../common/errors/constraints-phase5';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { readLocked } from '../../common/locking';
 import { toPage, type Page } from '../../common/pagination';
@@ -169,6 +170,9 @@ export class FeeStructuresService {
     // Every write for a head runs under the head's lock: the latest-month rule sees a stable set.
     const head = await this.lockHead(schoolId, BigInt(dto.feeHeadId));
     if (head.status === 'archived') throw feeHeadArchived(head.id);
+    // Phase 5 R329: a transport or event head is charged by its own module (trigger
+    // fee_structures_head_category is the database's line).
+    if (UNSTRUCTURED_FEE_HEAD_CATEGORIES.includes(head.category)) throw headNotStructured();
     // Slice 19: no structure write while the year's charges are being generated (§5.1).
     const busy = await this.runs.findInProgress(schoolId, year.id);
     if (busy) throw runInProgress(busy.id);
@@ -256,7 +260,11 @@ export class FeeStructuresService {
           continue;
         }
         const head = await this.lockHead(schoolId, row.feeHeadId);
-        if (head.status === 'archived' || (await this.structures.activeFor(schoolId, target, head.id)).length > 0) {
+        if (
+          head.status === 'archived' ||
+          UNSTRUCTURED_FEE_HEAD_CATEGORIES.includes(head.category) ||
+          (await this.structures.activeFor(schoolId, target, head.id)).length > 0
+        ) {
           skipped += 1;
           continue;
         }

@@ -1,4 +1,4 @@
-// The Phase 2, 3 and 4 value sets are declared twice: as Postgres enums (the migrations) and in
+// The Phase 2-5 value sets are declared twice: as Postgres enums (the migrations) and in
 // packages/shared (the API's DTOs and the clients). This reads the migrated catalog and fails on
 // any difference, so a value added on one side only cannot ship.
 import {
@@ -77,6 +77,21 @@ import {
   ASSESSMENT_MARK_STATUSES,
   CERTIFICATE_TYPES,
   DUES_STATUSES,
+  EVENT_TYPES,
+  EVENT_STATUSES,
+  DUTY_KINDS,
+  PARTICIPATION_STATUSES,
+  CONTRACT_TYPES,
+  DOCUMENT_STATUSES,
+  VEHICLE_STATUSES,
+  TRANSPORT_ROUTE_STATUSES,
+  IMPORT_KINDS,
+  IMPORT_STATUSES,
+  SHEET_PROVENANCES,
+  STAFF_ATTENDANCE_SOURCES,
+  DISPUTE_STATUSES,
+  STATEMENT_BASES,
+  DOCUMENT_TYPES,
 } from '@asms/shared';
 import { Client } from 'pg';
 
@@ -161,6 +176,23 @@ const PAIRS: [string, readonly string[]][] = [
   ['assessment_mark_status', ASSESSMENT_MARK_STATUSES],
   ['certificate_type', CERTIFICATE_TYPES],
   ['dues_status', DUES_STATUSES],
+  // Phase 5 groundwork (phase-5-extended.md §4): every Phase 5 value set, created up front.
+  ['event_type', EVENT_TYPES],
+  ['event_status', EVENT_STATUSES],
+  ['duty_kind', DUTY_KINDS],
+  ['participation_status', PARTICIPATION_STATUSES],
+  ['contract_type', CONTRACT_TYPES],
+  ['document_status', DOCUMENT_STATUSES],
+  ['vehicle_status', VEHICLE_STATUSES],
+  ['transport_route_status', TRANSPORT_ROUTE_STATUSES],
+  ['import_kind', IMPORT_KINDS],
+  ['import_status', IMPORT_STATUSES],
+  ['sheet_provenance', SHEET_PROVENANCES],
+  ['staff_attendance_source', STAFF_ATTENDANCE_SOURCES],
+  ['dispute_status', DISPUTE_STATUSES],
+  ['statement_basis', STATEMENT_BASES],
+  // The document types `school_settings.required_document_types` holds (slice 6's enum).
+  ['student_document_type', DOCUMENT_TYPES],
 ];
 
 /** The quoted `'value'::message_type` literals of a catalog expression, in order. */

@@ -530,6 +530,29 @@ describe('R16 (slice 17): every message template, rendered with realistic values
     test_marked: () => [
       renderMessage('test_marked', { studentName: 'Hira Tariq', testName: 'Unit 4 weekly test' }, ctx('assessment')),
     ],
+    // Phase 5 (phase-5-extended.md §3.4): staff names, dates and the platform's stated reason.
+    contract_expiring: () => [
+      renderMessage('contract_expiring', { staffName: 'Ayesha Siddiqa Rehman', endsOn: day('2026-11-08'), daysLeft: 30 }, ctx('staff_contract')),
+      renderMessage('contract_expiring', { staffName: 'Bilal Ahmed', endsOn: day('2026-10-16'), daysLeft: 1 }, ctx('staff_contract')),
+    ],
+    support_session_opened: () => [
+      renderMessage(
+        'support_session_opened',
+        { supportName: 'ASMS Support Desk', reason: 'Fee receipts print without the school name; checking the settings.', expiresAt: new Date('2026-10-09T13:30:00.000Z') },
+        ctx('support_session'),
+      ),
+    ],
+    support_session_closed: () =>
+      (['expired', 'closed', 'revoked'] as const).map((how) =>
+        renderMessage('support_session_closed', { supportName: 'ASMS Support Desk', how }, ctx('support_session')),
+      ),
+    attendance_disputed: () => [
+      renderMessage('attendance_disputed', { staffName: 'Ayesha Siddiqa Rehman', date: day('2026-10-08') }, ctx('attendance_dispute')),
+    ],
+    attendance_dispute_decided: () =>
+      (['approved', 'rejected'] as const).map((decision) =>
+        renderMessage('attendance_dispute_decided', { date: day('2026-10-08'), decision }, ctx('attendance_dispute')),
+      ),
   };
 
   it.each(MESSAGE_TYPES.filter((type) => !TEMPLATE_PENDING.has(type)).map((type) => [type]))('R16: %s holds no identity number or phone in its title or body', (type) => {
@@ -787,6 +810,31 @@ const PHASE_4_FREE_TEXT: Record<string, string[]> = {
   academic_terms: ['name'],
   term_skips: ['reason'],
 };
+
+// Phase 5 groundwork (phase-5-extended.md §3.2): the free text and device identities the wave R
+// columns hold. Each later Phase 5 slice adds its tables' text here.
+const PHASE_5_FREE_TEXT: Record<string, string[]> = {
+  student_documents: ['reject_reason'],
+  staff: ['device_user_id'],
+};
+
+describe('R16 (Phase 5): document rejections and device user ids, whole tables', () => {
+  let pg: Client;
+
+  beforeAll(async () => {
+    pg = new Client({ connectionString: process.env.DATABASE_URL });
+    await pg.connect();
+  });
+
+  afterAll(async () => {
+    await pg.end();
+  });
+
+  it.each(Object.entries(PHASE_5_FREE_TEXT))('R16: no row of %s holds an identity number or phone in its free text', async (table, columns) => {
+    const text = `concat_ws(' ', ${columns.map((c) => `t.${c}`).join(', ')})`;
+    expect(await leakingRows(pg, table, text)).toBe(0);
+  });
+});
 
 describe('R16 (Phase 4): corrections, remarks and promotion reasons, whole tables', () => {
   let pg: Client;

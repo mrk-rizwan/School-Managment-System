@@ -154,9 +154,9 @@ describe('§7.2: finance reports and reminders at 3,000 students (performance)',
     });
 
     const loadStarted = performance.now();
-    // Two more monthly heads beside tuition.
+    // Two more monthly heads beside tuition (not "Transport": since Phase 5 that is a seeded head).
     await db().feeHead.createMany({
-      data: ['Transport', 'Computer lab'].map((name) => ({
+      data: ['Hostel', 'Computer lab'].map((name) => ({
         schoolId,
         name,
         category: 'other',
@@ -167,10 +167,10 @@ describe('§7.2: finance reports and reminders at 3,000 students (performance)',
       })),
     });
     const extra = await db().feeHead.findMany({
-      where: { schoolId, name: { in: ['Transport', 'Computer lab'] } },
+      where: { schoolId, name: { in: ['Hostel', 'Computer lab'] } },
       select: { id: true, name: true },
     });
-    const transport = extra.find((x) => x.name === 'Transport')?.id;
+    const transport = extra.find((x) => x.name === 'Hostel')?.id;
     const lab = extra.find((x) => x.name === 'Computer lab')?.id;
     if (transport === undefined || lab === undefined) throw new Error('heads missing');
 

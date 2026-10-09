@@ -28,6 +28,17 @@ export type LeaveCountsAs = (typeof LEAVE_COUNTS_AS)[number];
 export const STAFF_ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'on_leave'] as const;
 export type StaffAttendanceStatus = (typeof STAFF_ATTENDANCE_STATUSES)[number];
 
+/**
+ * Phase 5 rule 40 (phase-5-extended.md §3.2): how a staff mark was made. A `device` mark has no
+ * marking user (`staff_attendance.marked_by` is null exactly then).
+ */
+export const STAFF_ATTENDANCE_SOURCES = ['manual', 'device'] as const;
+export type StaffAttendanceSource = (typeof STAFF_ATTENDANCE_SOURCES)[number];
+
+/** `staff_attendance_disputes.status`: pending -> approved | rejected, both final (rule 40). */
+export const DISPUTE_STATUSES = ['pending', 'approved', 'rejected'] as const;
+export type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
+
 /** `attendance_registers.source`, derived from the session channel: bearer = app, cookie = web. */
 export const REGISTER_SOURCES = ['app', 'web'] as const;
 export type RegisterSource = (typeof REGISTER_SOURCES)[number];

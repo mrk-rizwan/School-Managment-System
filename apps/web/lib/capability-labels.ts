@@ -1,6 +1,6 @@
 import { CAPABILITY_GROUPS, Capability, type CapabilityGroup } from '@asms/shared';
 
-// Plain-English names for the 51 capability keys (plan §7), for the custom-role checklist and the
+// Plain-English names for the 53 capability keys (Phase 1 plan §7; Phase 5 added two), for the custom-role checklist and the
 // permissions view. The dotted key is shown beside each label, so both read the same as the API.
 
 const C = Capability;
@@ -13,8 +13,10 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   [C.SUBJECT_MANAGE]: 'Manage subjects',
   [C.FEE_HEAD_MANAGE]: 'Manage fee heads',
   [C.HOLIDAY_MANAGE]: 'Manage holidays',
+  [C.TRANSPORT_MANAGE]: 'Manage transport',
   [C.USER_ACCOUNT_MANAGE]: 'Manage user accounts',
   [C.ROLE_MANAGE]: 'Manage roles and permissions',
+  [C.AUDIT_VIEW]: 'View the audit log',
   [C.STUDENT_VIEW]: 'View students',
   [C.STUDENT_CREATE]: 'Admit students',
   [C.STUDENT_UPDATE]: 'Edit student records',

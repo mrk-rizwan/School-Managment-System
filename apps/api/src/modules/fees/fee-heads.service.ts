@@ -18,8 +18,11 @@ import type { ReasonDto } from '../../common/reason.dto';
 
 const SUBJECT = 'fee_head';
 
-/** Categories with at most one live head (fee_heads_one_tuition_key, fee_heads_one_fine_key). */
-const ONE_PER_SCHOOL: readonly FeeHeadCategory[] = ['tuition', 'fine'];
+/**
+ * Categories with at most one live head (fee_heads_one_tuition_key, fee_heads_one_fine_key and,
+ * since Phase 5, fee_heads_one_transport_key: the transport charge names its head).
+ */
+const ONE_PER_SCHOOL: readonly FeeHeadCategory[] = ['tuition', 'fine', 'transport'];
 
 export function toFeeHeadDto(head: FeeHeadRecord): FeeHeadDto {
   return {

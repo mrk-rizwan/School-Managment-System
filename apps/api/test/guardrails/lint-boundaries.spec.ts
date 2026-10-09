@@ -270,6 +270,37 @@ describe('lint boundaries (R61)', () => {
     ]);
   });
 
+  // Phase 5 (phase-5-extended.md §3.1, §5.1; R348, R353): named exception 4 widened. The device
+  // token's repository and constructor are the device-punch service's alone (the service is
+  // slice 44's; the boundary matches the specifier, so it holds before the file grows), and that
+  // site reaches no tenant repository and no other platform repository or constructor.
+  const DEVICE_SITE = 'src/modules/staff-attendance/device-punch.service.ts';
+  it.each([
+    ['device-token-repository-import.ts', 'src/modules/staff-attendance/staff-attendance.service.ts'],
+    ['device-token-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['device-token-repository-import.ts', 'src/modules/school-settings/school-settings.service.ts'],
+    ['device-token-repository-import.ts', 'src/jobs/job-runner.ts'],
+    ['device-token-mint-import.ts', 'src/modules/staff-attendance/staff-attendance.service.ts'],
+    ['device-token-mint-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['device-token-mint-import.ts', 'src/repositories/platform/school.repository.ts'],
+    ['device-token-mint-import.ts', 'src/repositories/platform/device-token.repository.ts'],
+    ['tenant-repository-import.ts', DEVICE_SITE],
+    ['legitimate-repository.ts', DEVICE_SITE],
+    ['fan-out-import.ts', DEVICE_SITE],
+    ['platform-repository-import.ts', DEVICE_SITE],
+    ['school-id-mint-import.ts', DEVICE_SITE],
+    ['from-platform-school-import.ts', DEVICE_SITE],
+  ])('refuses %s at %s (Phase 5)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['device-token-repository-import.ts', DEVICE_SITE],
+    ['device-token-mint-import.ts', DEVICE_SITE],
+  ])('allows %s at %s (Phase 5)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

@@ -11,7 +11,7 @@ export function toStaffMarkDto(row: StaffMarkView): StaffMarkDto {
     date: toDateString(row.date),
     status: row.status,
     note: row.note,
-    markedBy: row.markedBy.toString(),
+    markedBy: row.markedBy?.toString() ?? null,
     markedByName: row.markedByName,
     markedAt: row.markedAt,
     amended: row.lastAmendedAt !== null,

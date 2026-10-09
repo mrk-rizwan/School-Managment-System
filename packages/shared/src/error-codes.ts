@@ -217,7 +217,47 @@ export const ErrorCode = {
   PROMOTION_TARGET_INVALID: 'PROMOTION_TARGET_INVALID', // 409, details.reason: other_year | archived | no_target | not_final
   PROMOTION_ENROLMENT_AFTER_YEAR: 'PROMOTION_ENROLMENT_AFTER_YEAR', // 409, details.enrolmentIds
   // Rule 24 (R225): role.manage and user.account.manage are inert on a default password. 403.
+  // Phase 5 (R355) also raises it on the routes marked @DefaultPasswordInert().
   DEFAULT_PASSWORD_BLOCKS_ACTION: 'DEFAULT_PASSWORD_BLOCKS_ACTION',
+  // Phase 5 (phase-5-extended.md §5.1). 409 unless stated.
+  TIMETABLE_SLOT_CLASH: 'TIMETABLE_SLOT_CLASH', // details { kind: teacher | room | section, weekday, period, conflictingSlotId }
+  TIMETABLE_TEACHER_NOT_ASSIGNED: 'TIMETABLE_TEACHER_NOT_ASSIGNED', // details { staffId, classSubjectId, sectionId }
+  TIMETABLE_OFF_DAY: 'TIMETABLE_OFF_DAY', // details { weekday }
+  TIMETABLE_VERSION_SUPERSEDED: 'TIMETABLE_VERSION_SUPERSEDED', // details.versionId
+  TIMETABLE_VERSION_NOT_FUTURE: 'TIMETABLE_VERSION_NOT_FUTURE', // details.versionId
+  TIMETABLE_SUBSTITUTION_EXISTS: 'TIMETABLE_SUBSTITUTION_EXISTS', // details { sectionId, date, period }
+  TIMETABLE_SUBSTITUTION_NOT_TIMETABLED: 'TIMETABLE_SUBSTITUTION_NOT_TIMETABLED', // details { sectionId, date, period }
+  TIMETABLE_SUBSTITUTION_SAME_TEACHER: 'TIMETABLE_SUBSTITUTION_SAME_TEACHER', // details { sectionId, date, period }
+  EVENT_NOT_DRAFT: 'EVENT_NOT_DRAFT', // details.eventId
+  EVENT_NOT_PUBLISHED: 'EVENT_NOT_PUBLISHED', // details.eventId
+  EVENT_NO_SECTIONS: 'EVENT_NO_SECTIONS', // details.eventId
+  EVENT_DUTY_EXISTS: 'EVENT_DUTY_EXISTS', // details { eventId, dutyId }
+  EVENT_PAYMENT_EXCEEDS_CHARGE: 'EVENT_PAYMENT_EXCEEDS_CHARGE', // details { eventId, outstanding }
+  EVENT_NO_CHARGE: 'EVENT_NO_CHARGE', // details.eventId
+  STAFF_CONTRACT_LIVE_EXISTS: 'STAFF_CONTRACT_LIVE_EXISTS', // details { staffId, contractId }
+  STAFF_CONTRACT_ENDED: 'STAFF_CONTRACT_ENDED', // details.staffId
+  STAFF_CONTRACT_END_REQUIRED: 'STAFF_CONTRACT_END_REQUIRED', // 422, details { staffId, field: endsOn }
+  DOCUMENT_ALREADY_DECIDED: 'DOCUMENT_ALREADY_DECIDED', // details { documentId, status }
+  VEHICLE_RETIRED: 'VEHICLE_RETIRED', // details.vehicleId
+  VEHICLE_IN_USE: 'VEHICLE_IN_USE', // details { vehicleId, routeId }
+  TRANSPORT_ROUTE_ARCHIVED: 'TRANSPORT_ROUTE_ARCHIVED', // details.routeId
+  TRANSPORT_ROUTE_HAS_ASSIGNMENTS: 'TRANSPORT_ROUTE_HAS_ASSIGNMENTS', // details.routeId
+  TRANSPORT_ASSIGNMENT_LIVE: 'TRANSPORT_ASSIGNMENT_LIVE', // details { studentId, assignmentId }
+  TRANSPORT_AMOUNT_PERIOD_PAST: 'TRANSPORT_AMOUNT_PERIOD_PAST', // details { routeId, effectivePeriod }
+  IMPORT_DUPLICATE_FILE: 'IMPORT_DUPLICATE_FILE', // details.importId (the committed one)
+  IMPORT_NOT_PREVIEWED: 'IMPORT_NOT_PREVIEWED', // details.importId
+  IMPORT_ROWS_INVALID: 'IMPORT_ROWS_INVALID', // 422, details { importId, rows: [{ row, field, code }] (<= 100), errorCount }
+  IMPORT_SHEET_EXISTS: 'IMPORT_SHEET_EXISTS', // details.importId
+  IMPORT_MARKS_EXIST: 'IMPORT_MARKS_EXIST', // details.importId
+  IMPORT_YEAR_CLOSED: 'IMPORT_YEAR_CLOSED', // details.importId
+  IMPORT_EXPIRED: 'IMPORT_EXPIRED', // details.importId
+  DEVICE_TOKEN_INVALID: 'DEVICE_TOKEN_INVALID', // 401
+  ATTENDANCE_DISPUTE_PENDING_EXISTS: 'ATTENDANCE_DISPUTE_PENDING_EXISTS', // details.disputeId
+  ATTENDANCE_DISPUTE_NOT_PENDING: 'ATTENDANCE_DISPUTE_NOT_PENDING', // details { disputeId, status }
+  SUPPORT_SESSION_OPEN: 'SUPPORT_SESSION_OPEN', // details.sessionId
+  SUPPORT_SESSION_ENDED: 'SUPPORT_SESSION_ENDED', // 403, details.reason: expired | revoked | closed
+  SUPPORT_WRITE_REFUSED: 'SUPPORT_WRITE_REFUSED', // 403
+  SUPPORT_SESSION_LIMIT: 'SUPPORT_SESSION_LIMIT', // 409, at most 3 open per platform user
   // Client-side only: the web app's label for a failed response whose body was not the error
   // envelope (a proxy page, say). The API never sends it.
   UNEXPECTED_RESPONSE: 'UNEXPECTED_RESPONSE',

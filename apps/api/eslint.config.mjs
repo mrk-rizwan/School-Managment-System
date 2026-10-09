@@ -87,6 +87,13 @@ const IMPORTS = {
     regex: `(^|/)queue\\.mint${EXT}$`,
     message: 'queue.mint is imported only by src/jobs/**: a job payload becomes a SchoolId nowhere else.',
   },
+  // Phase 5 (phase-5-extended.md §3.1, §5.1; R353): device-token resolution's one read of schools
+  // (named exception 4, widened). Refused everywhere, the platform module included, except the
+  // device-punch service.
+  deviceTokenRepository: {
+    regex: `(^|/)repositories/platform/device-token\\.repository${EXT}$`,
+    message: 'DeviceTokenRepository is imported only by src/modules/staff-attendance/device-punch.service.ts.',
+  },
   // Job-payload resolution's one read of schools (named exception 3, widened).
   schoolByIdRepository: {
     regex: `(^|/)repositories/platform/school-by-id\\.repository${EXT}$`,
@@ -159,6 +166,14 @@ const TENANT_REPOSITORY_IMPORTS = [
   'transactionHost',
   'transactionalAdapter',
 ];
+
+// Phase 5 (§5.1): the device-punch service, the widened exception 4's site, mints from a token
+// and reaches no tenant table itself (its punches go through services, slice 44).
+const DEVICE_PUNCH_SITE = 'src/modules/staff-attendance/device-punch.service.ts';
+const DEVICE_SITE_TENANT_REPOSITORY_IMPORT = {
+  regex: `(^|/)repositories/(?!platform/).+\\.repository${EXT}$`,
+  message: `${DEVICE_PUNCH_SITE} imports no tenant repository: it resolves the device token only (§5.1).`,
+};
 
 // Exempt in the platform repositories (src/repositories/platform/**, the named-exception block below).
 const REPOSITORY_IMPORTS = [
@@ -680,7 +695,8 @@ export default tseslint.config(
     ],
     rules: restrictImports({
       exempt: REPOSITORY_IMPORTS,
-      narrowed: [{ key: 'schoolIdMint', importNames: ['fromPlatformSchool'] }],
+      // Phase 5: schoolIdFromDeviceToken belongs to the device-punch service alone (R353).
+      narrowed: [{ key: 'schoolIdMint', importNames: ['fromPlatformSchool', 'schoolIdFromDeviceToken'] }],
     }),
   },
   {
@@ -902,6 +918,20 @@ export default tseslint.config(
       narrowed: [{ key: 'platformRepositories', ...platformRepositoriesExcept(repository) }],
     }),
   })),
+  {
+    // Phase 5 (§3.1, §5.1; R348, R353): named exception 4 widened. The device-punch service is the
+    // only importer of DeviceTokenRepository and of schoolIdFromDeviceToken, every other platform
+    // repository and constructor stays refused, and it imports no tenant repository.
+    files: [DEVICE_PUNCH_SITE],
+    rules: restrictImports({
+      exempt: ['deviceTokenRepository'],
+      narrowed: [
+        { key: 'platformRepositories', ...platformRepositoriesExcept('device-token.repository') },
+        { key: 'schoolIdMint', allowImportNames: ['schoolIdFromDeviceToken'] },
+      ],
+      extra: [DEVICE_SITE_TENANT_REPOSITORY_IMPORT],
+    }),
+  },
   ...(RAW_SQL_FILES.length > 0
     ? [{ files: RAW_SQL_FILES, rules: restrictSyntaxWith(REPOSITORY_LAYER, 'raw') }]
     : []),

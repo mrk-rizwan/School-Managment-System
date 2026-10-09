@@ -1,20 +1,23 @@
 import { CanActivate, ExecutionContext, Injectable, Logger, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ErrorCode, type Capability } from '@asms/shared';
+import { ErrorCode, type Capability, type DefaultPasswordInertAction } from '@asms/shared';
 import type { Request } from 'express';
 import { ApiException } from '../errors/api-exception';
-// The one import from src/common into a feature module: resolving a platform session needs the
-// platform repositories, which only src/modules/platform may use. PlatformAuthModule is global
-// and exports it, so the guard receives it by injection.
+// The imports from src/common into feature modules: resolving a platform session needs the
+// platform repositories, which only src/modules/platform may use (PlatformAuthModule is global and
+// exports it); resolving a device token needs DeviceTokenRepository, which only the device-punch
+// service may use (AppModule provides it). The guard receives both by injection.
 import { PlatformSessionAccess } from '../../modules/platform/auth/platform-session-access';
+import { DevicePunchService } from '../../modules/staff-attendance/device-punch.service';
 // School routes: session resolution lives in src/tenancy (named exception 4) and the
 // capability check in src/modules/access; both are global providers.
 import { PermissionsService } from '../../modules/access/permissions.service';
 import { SchoolSessionResolver } from '../../tenancy/school-session-resolver';
 import { bindRequestScope } from './school-session';
 
-// Every route declares who may call it. Exactly one of these seven, on the handler or its
-// controller (contracts/slice-2.md §1, contracts/slice-9.md §1.1, plan §4.3).
+// Every route declares who may call it. Exactly one of these eight, on the handler or its
+// controller (contracts/slice-2.md §1, contracts/slice-9.md §1.1, plan §4.3; Phase 5 §5.1 added
+// the device token).
 const PUBLIC = 'access:public';
 const AUTHENTICATED_ONLY = 'access:authenticated-only';
 const CAPABILITY = 'access:capability';
@@ -22,6 +25,10 @@ const PLATFORM_SESSION = 'access:platform-session';
 const STAFF = 'access:staff';
 const CAPACITY = 'access:capacity';
 const WEBHOOK = 'access:webhook';
+const DEVICE_TOKEN = 'access:device-token';
+
+// Not an access rule: an extra refusal on a school route (rule 24's reach, R355).
+const DEFAULT_PASSWORD_INERT = 'access:default-password-inert';
 
 export const ROUTE_ACCESS_KEYS = {
   PUBLIC,
@@ -31,6 +38,7 @@ export const ROUTE_ACCESS_KEYS = {
   STAFF,
   CAPACITY,
   WEBHOOK,
+  DEVICE_TOKEN,
 } as const;
 
 /** No session needed (health, login, password reset). Listed in the R68 route snapshot. */
@@ -74,6 +82,24 @@ export const Webhook = (provider: WebhookProvider): MethodDecorator & ClassDecor
   SetMetadata(WEBHOOK, provider);
 
 /**
+ * Biometric device routes (Phase 5 rule 40, R344, R348): no session; the request presents the
+ * school's device token as a bearer token, and DevicePunchService.authorise resolves its hash to
+ * the school (named exception 4, widened) before the handler runs, which reads it with
+ * @CurrentDevice(). A bad token is 401 DEVICE_TOKEN_INVALID.
+ */
+export const DeviceToken = (): MethodDecorator & ClassDecorator => SetMetadata(DEVICE_TOKEN, true);
+
+/**
+ * Rule 24's reach (Phase 5 R355): on a school route, after its access check, a caller still
+ * signing in with the default password is refused 403 DEFAULT_PASSWORD_BLOCKS_ACTION, audited once
+ * a day. `action` is the stable name from packages/shared DEFAULT_PASSWORD_INERT_ACTIONS. The
+ * capability stays held: only this verb is off. On a route that resolves no school session
+ * (public, platform, webhook, device) it is a programming error, refused 500.
+ */
+export const DefaultPasswordInert = (action: DefaultPasswordInertAction): MethodDecorator & ClassDecorator =>
+  SetMetadata(DEFAULT_PASSWORD_INERT, action);
+
+/**
  * Platform-admin routes (/api/v1/platform). The level says which platform sessions may call it
  * (contracts/slice-1.md): 'full' needs an enrolled authenticator and a changed password;
  * 'password-change' allows a full-stage session that must still change its password; 'any'
@@ -87,10 +113,10 @@ export const PlatformSession = (level: PlatformSessionLevel = 'full'): MethodDec
 const permissionDenied = () =>
   new ApiException(403, ErrorCode.PERMISSION_DENIED, 'You do not have permission to do this.');
 
-const ALL_KEYS = [PUBLIC, AUTHENTICATED_ONLY, CAPABILITY, PLATFORM_SESSION, STAFF, CAPACITY, WEBHOOK];
+const ALL_KEYS = [PUBLIC, AUTHENTICATED_ONLY, CAPABILITY, PLATFORM_SESSION, STAFF, CAPACITY, WEBHOOK, DEVICE_TOKEN];
 
 /**
- * Every route declares exactly one of the seven decorators; none, or more than one, fails closed
+ * Every route declares exactly one of the eight decorators; none, or more than one, fails closed
  * (500, logged) instead of shipping an open or ambiguous endpoint.
  *
  * Each declaration selects one resolver and only that one runs: @PlatformSession resolves the
@@ -115,6 +141,7 @@ export class RouteAccessGuard implements CanActivate {
     private readonly platformSessions: PlatformSessionAccess,
     private readonly schoolSessions: SchoolSessionResolver,
     private readonly permissions: PermissionsService,
+    private readonly devices: DevicePunchService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -128,6 +155,15 @@ export class RouteAccessGuard implements CanActivate {
       );
       throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
     }
+    const inert = read<DefaultPasswordInertAction>(DEFAULT_PASSWORD_INERT);
+    const schoolRoute = [AUTHENTICATED_ONLY, CAPABILITY, STAFF, CAPACITY].includes(declared[0] ?? '');
+    if (inert !== undefined && !schoolRoute) {
+      this.logger.error(
+        { controller: context.getClass().name, handler: context.getHandler().name, declared },
+        '@DefaultPasswordInert on a route without a school session',
+      );
+      throw new ApiException(500, ErrorCode.INTERNAL_ERROR, 'Something went wrong.');
+    }
     const level = read<PlatformSessionLevel>(PLATFORM_SESSION);
     if (level !== undefined) {
       await this.platformSessions.authorise(context.switchToHttp().getRequest<Request>(), level);
@@ -135,6 +171,10 @@ export class RouteAccessGuard implements CanActivate {
     if (read<unknown>(PUBLIC) !== undefined || level !== undefined) return true;
     // Verified by the webhook module's signature guard, which runs after this one.
     if (read<unknown>(WEBHOOK) !== undefined) return true;
+    if (read<unknown>(DEVICE_TOKEN) !== undefined) {
+      await this.devices.authorise(context.switchToHttp().getRequest<Request>());
+      return true;
+    }
 
     // School routes (contract slice-2 §1.1).
     const req = context.switchToHttp().getRequest<Request>();
@@ -166,6 +206,11 @@ export class RouteAccessGuard implements CanActivate {
       // The row scope travels with the session: services read it with scopeOf(session) and pass
       // it to the repository, so a teacher admitted with no sections reads no rows (R79).
       bindRequestScope(req, scope);
+    }
+    // Rule 24's reach (R355): after the access check, so a caller without the key is still 403
+    // PERMISSION_DENIED; read per request, so changing the password restores the verb at once.
+    if (inert !== undefined && session.access.passwordIsDefault) {
+      throw await this.permissions.defaultPasswordActionRefusal(session.schoolId, session.access, inert);
     }
     return true;
   }

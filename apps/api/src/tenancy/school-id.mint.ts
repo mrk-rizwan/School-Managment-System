@@ -1,12 +1,14 @@
-// The only constructors of SchoolId (plan §3.1; CLAUDE.md "The named exceptions"), six, one per
+// The only constructors of SchoolId (plan §3.1; CLAUDE.md "The named exceptions"), seven, one per
 // path: fromPlatformSchool (exception 1), schoolIdFromLookup (2), schoolIdsForFanOut and
-// schoolIdFromQueuePayload (3), schoolIdFromSession (4), schoolIdFromDeliveryReport (5).
+// schoolIdFromQueuePayload (3), schoolIdFromSession and, since Phase 5, schoolIdFromDeviceToken
+// (4, widened: a credential's hash establishes the tenant), schoolIdFromDeliveryReport (5).
 // Importing this file is restricted by lint (apps/api/eslint.config.mjs): the named-exception
 // repositories may use everything except fromPlatformSchool, src/tenancy calls the session and
 // queue-payload constructors, and src/modules/platform/** may use only fromPlatformSchool. Every
 // SchoolId therefore originates from a row the server itself read or wrote: a session, the pre-auth
-// school lookup, the scheduler fan-out, a queue job's school, a delivery report's matched row, or a
-// school the platform has just created or is issuing a principal login in.
+// school lookup, the scheduler fan-out, a queue job's school, a delivery report's matched row, a
+// biometric device's token, or a school the platform has just created or is issuing a principal
+// login in.
 import type { CreatedSchoolRow, SchoolId } from './school-id';
 
 // The single cast in the codebase. Lint bans `as SchoolId` everywhere except this file.
@@ -22,6 +24,17 @@ export interface ResolvedSessionRecord {
 /** Exception 4: session resolution. The session token is what establishes the tenant. */
 export function schoolIdFromSession(session: ResolvedSessionRecord): SchoolId {
   return brand(session.schoolId);
+}
+
+/**
+ * Exception 4 widened (phase-5-extended.md §3.1, R348): the school DeviceTokenRepository.findByTokenHash
+ * read for a biometric punch's token. A punch carries no session and no tenant; the token's hash,
+ * unique across schools, is what establishes it, as the session token does. Importable only from
+ * src/modules/staff-attendance/device-punch.service.ts (eslint.config.mjs), which refuses a
+ * terminated school first.
+ */
+export function schoolIdFromDeviceToken(school: { readonly id: bigint }): SchoolId {
+  return brand(school.id);
 }
 
 /** Exception 2: the row returned by SchoolLookupRepository.findByCode at login / forgot-password. */

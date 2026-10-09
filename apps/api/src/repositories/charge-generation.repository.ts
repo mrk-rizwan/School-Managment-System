@@ -238,6 +238,10 @@ export class ChargeGenerationRepository {
           FROM chosen c
           JOIN fee_heads h
             ON h.school_id = ${schoolId} AND h.status = 'active' AND h.frequency = ${freq}
+           -- Phase 5 (R329): a transport or event head never has a fee structure (trigger
+           -- fee_structures_head_category), so it could never be charged here; leaving it out of
+           -- the pairs spares the run a charges lookup per student. Slice 41 charges transport.
+           AND h.category NOT IN ('transport', 'event')
          WHERE c.class_id = ${g.classId}
       ), todo AS (
         SELECT p.* FROM pairs p

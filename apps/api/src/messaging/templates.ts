@@ -164,6 +164,15 @@ function dayWords(status: DayStatus, arrivedAt: string | null): string {
   }
 }
 
+/** An instant's calendar day in the school's time zone, as `Mon 6 Oct` (formatDay takes a date). */
+const formatDayInZone = (instant: Date, timezone: string): string => {
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(instant);
+  return formatDay(new Date(`${day}T00:00:00.000Z`));
+};
+
+/** A support reason on a principal's notice (platform_support_sessions.reason is at most 500). */
+const SUPPORT_REASON_MAX = 200;
+
 /** A term's name on a result message (terms are at most 40 characters). */
 const TERM_NAME_MAX = 40;
 /** A test's name on test_marked (assessments.name is at most 80). */
@@ -290,6 +299,19 @@ const RENDERERS: Renderers = {
   // Low priority, never SMS; never the mark itself.
   test_marked: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: ${cutWords(vars.studentName, STUDENT_NAME_MAX)}: ${cutWords(vars.testName, TEST_NAME_MAX)} marked. Open the app to see the mark.`,
+  // Phase 5 (phase-5-extended.md §3.4): internal (push and email), never SMS, so no segment limit;
+  // names are in the body, never the title (R111), and the push body is the title only
+  // (TITLE_ONLY_PUSH).
+  contract_expiring: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ${vars.staffName}'s contract ends on ${formatDay(vars.endsOn)} (${vars.daysLeft} ${vars.daysLeft === 1 ? 'day' : 'days'} left). Renew it or end employment in ASMS; nothing changes on its own.`,
+  support_session_opened: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ASMS support (${vars.supportName}) has read-only access to your school until ${formatTime(vars.expiresAt, ctx.timezone)} on ${formatDayInZone(vars.expiresAt, ctx.timezone)}. Reason: ${cutWords(vars.reason, SUPPORT_REASON_MAX)}. Every read is in the Audit screen; you may revoke the access there.`,
+  support_session_closed: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ASMS support access (${vars.supportName}) ${vars.how === 'expired' ? 'has expired' : vars.how === 'revoked' ? 'was revoked' : 'was closed'}. Every read it made is in the Audit screen.`,
+  attendance_disputed: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: ${vars.staffName} disputes their attendance mark for ${formatDay(vars.date)}. Open ASMS to decide.`,
+  attendance_dispute_decided: (vars, ctx) =>
+    `${schoolLabel(ctx.schoolName)}: Your attendance dispute for ${formatDay(vars.date)} was ${vars.decision}.`,
 
   messaging_test: (vars, ctx) =>
     `${schoolLabel(ctx.schoolName)}: test message from ASMS, sent by ${vars.senderName} at ${formatTime(vars.time, ctx.timezone)}. No action needed.`,
@@ -499,6 +521,16 @@ export function titleOf(type: MessageType, subjectType: string, schoolName: stri
       return 'Term result revised';
     case 'test_marked':
       return 'Test marked';
+    case 'contract_expiring':
+      return 'Contract ending';
+    case 'support_session_opened':
+      return 'Support access opened';
+    case 'support_session_closed':
+      return 'Support access ended';
+    case 'attendance_disputed':
+      return 'Attendance dispute';
+    case 'attendance_dispute_decided':
+      return 'Attendance dispute decided';
     default:
       return schoolLabel(schoolName);
   }

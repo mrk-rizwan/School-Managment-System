@@ -36,13 +36,16 @@ describe('§7.2: charge generation at 3,000 students (performance)', () => {
     const schoolId = school.id;
     const principal = await createSchoolUser(db(), school, { systemRole: 'principal' });
     const year = await session2026(school);
-    // Two more monthly heads beside tuition.
+    // Two more monthly heads beside tuition (not "Transport": since Phase 5 that is a seeded head,
+    // charged from routes, never by structure, R329).
     await db().feeHead.createMany({
-      data: ['Transport', 'Computer lab'].map((name) => ({
+      data: ['Hostel', 'Computer lab'].map((name) => ({
         schoolId, name, category: 'other', frequency: 'monthly', concessionEligible: true, refundable: true, createdBy: principal.userId,
       })),
     });
-    const monthly = (await db().feeHead.findMany({ where: { schoolId, frequency: 'monthly' }, select: { id: true } })).map((h) => h.id);
+    const monthly = (
+      await db().feeHead.findMany({ where: { schoolId, frequency: 'monthly', category: { not: 'transport' } }, select: { id: true } })
+    ).map((h) => h.id);
     expect(monthly.length).toBe(3);
 
     await db().class.createMany({

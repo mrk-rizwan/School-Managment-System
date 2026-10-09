@@ -71,6 +71,14 @@ export const notAuthor = (): ApiException =>
  * inertly while still signing in with the default password. 403, so the client offers the
  * password change rather than hiding the screen.
  */
+/** Rule 24's reach (Phase 5 R355): a money-out or other marked verb, refused on a default password. */
+export const defaultPasswordActionBlocks = (): ApiException =>
+  new ApiException(
+    403,
+    ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION,
+    'Change your password first. This action is off while you use the default password.',
+  );
+
 export const defaultPasswordBlocks = (): ApiException =>
   new ApiException(
     403,

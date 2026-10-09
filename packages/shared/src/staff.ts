@@ -9,3 +9,13 @@ export type StaffStatus = (typeof STAFF_STATUSES)[number];
  */
 export const TEACHER_ROLES = ['class_teacher', 'subject_teacher', 'cover'] as const;
 export type TeacherRole = (typeof TEACHER_ROLES)[number];
+
+/**
+ * Phase 5 rule 35 (phase-5-extended.md §1.1): `staff_contracts.type`. A permanent contract has no
+ * end date; the others must have one.
+ */
+export const CONTRACT_TYPES = ['permanent', 'fixed_term', 'probation'] as const;
+export type ContractType = (typeof CONTRACT_TYPES)[number];
+
+/** Rule 35's *default* warning lead (`school_settings.contract_warning_days`, 1-90). */
+export const DEFAULT_CONTRACT_WARNING_DAYS = 30;

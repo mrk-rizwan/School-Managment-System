@@ -2,7 +2,7 @@
  * Endpoints that take the slice-6 `Idempotency-Key` header: the lower-case route key stored in
  * `idempotency_keys.endpoint` (CHECK idempotency_keys_endpoint_check). Phase 2 adds diary
  * entries, remarks and announcements (phase-2-daily-operations.md §4.7, §6.1); Phase 3 its money
- * creates (phase-3-financial.md §5.1).
+ * creates (phase-3-financial.md §5.1); Phases 4 and 5 theirs (§5.1 of each plan).
  */
 export const IDEMPOTENT_ENDPOINTS = [
   'admissions',
@@ -26,6 +26,15 @@ export const IDEMPOTENT_ENDPOINTS = [
   'assessments',
   'certificates',
   'promotion_sheets',
+  // Phase 5 (phase-5-extended.md §5).
+  'timetable_versions',
+  'timetable_substitutions',
+  'events',
+  'event_payments',
+  'staff_contracts',
+  'transport_assignments',
+  'imports',
+  'attendance_disputes',
 ] as const;
 export type IdempotentEndpoint = (typeof IDEMPOTENT_ENDPOINTS)[number];
 

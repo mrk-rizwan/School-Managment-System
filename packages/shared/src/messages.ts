@@ -6,7 +6,7 @@
  * same name (migration 20261003183118_phase2_messaging).
  */
 
-/** Every kind of message the platform sends. Phases 3 and 4 added the fee and result types. */
+/** Every kind of message the platform sends. Phases 3-5 appended theirs. */
 export const MESSAGE_TYPES = [
   'absence_alert',
   'late_advice',
@@ -44,6 +44,12 @@ export const MESSAGE_TYPES = [
   'result_published',
   'result_revised',
   'test_marked',
+  // Phase 5 (phase-5-extended.md §3.4), appended in the order of the Postgres enum.
+  'contract_expiring',
+  'support_session_opened',
+  'support_session_closed',
+  'attendance_disputed',
+  'attendance_dispute_decided',
 ] as const;
 export type MessageType = (typeof MESSAGE_TYPES)[number];
 
@@ -152,6 +158,11 @@ export const MESSAGE_SUBJECT_TYPES = [
   // assessments.id).
   'result',
   'assessment',
+  // Phase 5 (§3.4): a contract nearing its end (id = staff_contracts.id); a support session (id =
+  // platform_support_sessions.id); a staff-attendance dispute (id = the dispute's id).
+  'staff_contract',
+  'support_session',
+  'attendance_dispute',
 ] as const;
 export type MessageSubjectType = (typeof MESSAGE_SUBJECT_TYPES)[number];
 
@@ -513,6 +524,57 @@ export const MESSAGE_TYPE_TABLE: Readonly<Record<MessageType, MessageTypeSpec>> 
     smsAllowedByDefault: false,
     subjectTypes: ['assessment'],
     templateKey: 'test_marked',
+  },
+  // ---- Phase 5 (phase-5-extended.md §3.4). Staff only: internal (push, else email), never SMS;
+  // the push body is the title only (TITLE_ONLY_PUSH). Templates in src/messaging/templates.ts.
+  // At 30 and again at 7 days before a contract ends, to every principal (R319).
+  contract_expiring: {
+    priority: 'internal',
+    audience: 'principals',
+    channels: ['push', 'email'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['staff_contract'],
+    templateKey: 'contract_expiring',
+  },
+  // Who, why, until when; to every principal on open and on close (R349). A school with no active
+  // principal gets the notice in the platform log only.
+  support_session_opened: {
+    priority: 'internal',
+    audience: 'principals',
+    channels: ['push', 'email'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['support_session'],
+    templateKey: 'support_session_opened',
+  },
+  support_session_closed: {
+    priority: 'internal',
+    audience: 'principals',
+    channels: ['push', 'email'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['support_session'],
+    templateKey: 'support_session_closed',
+  },
+  // To the attendance.staff.manage holders other than the staff member (R347).
+  attendance_disputed: {
+    priority: 'internal',
+    audience: 'capability_holders',
+    channels: ['push', 'email'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['attendance_dispute'],
+    templateKey: 'attendance_disputed',
+  },
+  attendance_dispute_decided: {
+    priority: 'internal',
+    audience: 'staff_member',
+    channels: ['push', 'email'],
+    smsEligible: false,
+    smsAllowedByDefault: false,
+    subjectTypes: ['attendance_dispute'],
+    templateKey: 'attendance_dispute_decided',
   },
 };
 
