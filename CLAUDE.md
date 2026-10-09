@@ -6,7 +6,7 @@ Multi-tenant school management platform sold to Pakistani schools on a monthly s
 
 **Current documents**
 - `docs/WORKLOG.md` — session handover log. Read first, update last.
-- `docs/plans/` — build plans per phase. Phases 1-4 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`, `phase-4-academic.md` — rules 26-31; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, Phase 4 closed 2026-10-08, see `docs/WORKLOG.md`); Phase 5 has no plan yet, and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
+- `docs/plans/` — build plans per phase. `phase-5-extended.md` is the current one (rules 32-40). Phases 1-4 are complete (`phase-1-foundation.md`, `phase-2-daily-operations.md`, `phase-3-financial.md`, `phase-4-academic.md` — rules 26-31; Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live, Phase 4 closed 2026-10-08, see `docs/WORKLOG.md`), and Phase 2 superseded its R37 and R80 (see rule 6 and register item 13). Each plan is self-contained; its binding contracts are in `docs/plans/contracts/`.
 - `docs/asms-system-architecture.html` — technical baseline. Modules, notification drivers, charge lifecycle. **Its stack and runtime sections are superseded by the 2026-10-02 stack change**; the module boundaries, charge lifecycle and notification design stand.
 - `docs/asms-system-design.html` — client-facing design.
 - `docs/asms-school-presentation.html` — client presentation deck. Its slide 24 is the client question list; several of its statements are proposals, labelled in the register below.
@@ -189,6 +189,64 @@ Phase 4 (previously open decisions 14, 15, 21 and client questions 4, 10, 11, 17
 31. **Scope held back from Phase 4:** the period timetable (which teacher, period and room; it
     tightens period attendance, not results), events and PTM, and the import of past results all
     go to Phase 5. Phase 4 adds only the list of subjects each class takes, per year.
+
+Confirmed by the product owner on 2026-10-09 ("go with default"), who accepted the main-thread
+recommendations for Phase 5, the last phase, and kept every Phase 4 default (position within the
+section; result messages to the fee-payer guardians first; a suspended pupil is reactivated before
+"not continuing"; the optional overall pass rule; no grace marks; the seeded bands; the B-Form on
+the leaving certificate; repeat-year fees follow the class; sole-principal self-approval). Values
+marked *default* are per-school settings; the rest are rules.
+
+32. **Phase 5 scope.** Everything stated to the client: the period timetable, events and PTM, staff
+    contracts, document verification, transport, advanced reporting, commencement imports,
+    biometric staff attendance, platform support access and the audit-log screen, plus rule 24's
+    reach (rule 40). **Deferred to after go-live** (not promised): guardian merge, the inbound
+    WhatsApp screenshot workflow, application intake, iOS.
+33. **Period timetable.** One timetable per section per academic year, effective from a date (a
+    change is a new version): weekday × period → class-subject, teacher (who must hold a live
+    assignment for that subject and section) and optional room. Clashes are refused: a teacher in
+    one place per period, a room booked once, periods within `periods_per_day`. In period mode a
+    subject teacher marks only their timetabled periods (the class teacher and a cover still any);
+    "unrecorded periods" lists timetabled periods with no register by day's end; a leave approval
+    lists the exact periods needing cover. A one-off substitution names a teacher for one date and
+    period. Views: the teacher's week, the section's timetable for families, the principal's grid.
+34. **Events and PTM.** An event is a row: type (PTM, trip, sports day, function, visit, meeting,
+    other), date, time, venue, participating sections, staff duties (registration, supervision,
+    collection, transport, other; each officer sees only their own), an optional charge raised as
+    a campaign under the `event` fee head category, participation recorded per student by the
+    assigned staff, expenses taggable to the event, and an event report on completion. The
+    invitation is an announcement the event generates. PTM has no per-parent slot booking.
+35. **Staff contracts.** A contract row (permanent, fixed-term, probation; start; end; optional
+    document) references the salary structure and never restates pay; renewal is a new row. A
+    daily job warns 30 days before expiry (inbox and email). **Expiry is a warning only** — no
+    automatic loss of access or payroll; the warning offers "end employment", the existing flow.
+36. **Document verification.** Statuses uploaded → verified | rejected (with a reason) by
+    `document.verify` holders; **office staff hold that key by default** from Phase 5. A
+    per-school checklist of required document types feeds the incomplete-admissions report.
+    **Not a gate:** admission proceeds; a missing or rejected document is a query on the student.
+37. **Transport.** Routes (name, vehicle, driver from staff, monthly amount), ordered stops with
+    pickup times, student assignment from a date, and a `transport` fee head whose monthly charge
+    is the student's route amount, generated by the charge job and concession-eligible. No GPS.
+38. **Reporting.** Added: a financial statement (income against expenditure per month, term or
+    year; *default* basis received), the merit list per class per term across sections (which
+    fills the class-wide position), a one-page student profile, a staff report, the event report,
+    incomplete admissions, the attendance discrepancy report; every report downloadable as CSV;
+    all web-only. **No consolidated view across a school group** — it would cross tenants (rule 1).
+39. **Commencement imports.** CSV importers run by the office with preview-then-commit, every row
+    validated and audited: past results (one file per section and term → a sheet born published
+    with provenance `imported`, no messages) and opening balances (one manual charge per student
+    under an "Opening balance" head). No OCR; photographed registers stay the provider's service.
+40. **Biometric staff attendance, support access, audit screen, rule 24.** Biometric: staff only,
+    device-agnostic — a per-school device token, a punch endpoint, a device-user-to-staff mapping,
+    punches written as `staff_attendance` with source `device`; a disputed mark goes through a
+    request another `attendance.staff.manage` holder approves. Support access: a platform admin
+    opens a time-boxed (*default* 4 h) read-only session on one school with a reason; the
+    principal is notified and may revoke; every read is audited in both logs; never a write (this
+    is the seventh named exception, recorded in the tenancy section when built). Audit screen: a
+    **52nd capability `audit.view`**, principal by default, grantable; read-only, filtered,
+    identity numbers never shown. Rule 24 (closes item 31): a default password also blocks
+    money-out verbs (payee and payment-account changes, refunds, payroll finalise), and the
+    in-service override checks effective holdings.
 
 ## How tenant isolation is implemented — the mechanism behind rule 2
 
@@ -505,6 +563,7 @@ Conventions decided 2026-10-02 with the product owner, binding on every phase:
 
 Closed 2026-10-05: 7, 8, 9, 10 → rules 18-19 · 11 → rule 20 · 12 (leave) → rule 22 · 13 (grace, retention) → rule 23 · 16 → rule 25 · 18 → rule 23 · 24 → rule 18 · 25 → rule 21 · 30 → rule 24.
 Closed 2026-10-07: 14 → rule 26 · 15 → rule 30 · 21 → rule 27.
+Closed 2026-10-09: 20 → rule 37 · 31 → rule 40 · the Phase 4 plan's items 32-36 confirmed as built.
 Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 · 3 multi-campus → rule 11 · 4 guardian contact capability → rule 17 · 5 per-school settings → rule 15 · 6 attendance granularity → rule 14 · 17 WhatsApp number → per school: the principal pairs the school's own number (owner, 2026-10-03) · 19 Urdu RTL → rule 16 · 27 student username → rule 12 · 28 password reset → rule 12 · 29 first-login change → rule 12.
 
 ### Blocks the schema freeze — feature is later, the shape is now
@@ -522,8 +581,8 @@ Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 ·
 |---|---|---|
 | ~~14~~ | **Closed 2026-10-07 → rule 26.** Weights and grade bands are per-year tables, as the condition required |
 | ~~15~~ | **Closed 2026-10-07 → rule 30** |
-| 20 | Transport module | Phase 5 |
-| 31 | **Rule 24's reach** (raised by the Phase 3 plan §1.2, 2026-10-06): should a user still on the default password also be blocked from money-out verbs (payee and payment-account changes, refunds, payroll finalise), and should a default-password principal lose the in-service override on staff status (today checked against nominal holdings)? | Either is a small change in the capability guard; no schema change |
+| ~~20~~ | **Closed 2026-10-09 → rule 37** |
+| ~~31~~ | **Closed 2026-10-09 → rule 40** (yes to both; built in Phase 5) |
 
 ### Assumed unless corrected
 
@@ -538,4 +597,4 @@ Closed earlier: 1 account model → rule 12 · 2 permission model → rule 13 ·
 
 ## Not yet specified — in the plan, but only as words
 
-These are agreed in principle and have no workflow, actor or acceptance criteria. Each needs specifying before the phase that delivers it: **staff contracts** (what expiry causes) · **events and PTM** (staff assignment, participation, reports; Phase 5 by rule 31) · **period timetable** (teacher, period, room; Phase 5 by rule 31 — certificates and the class-subject list are specified by rules 26-31) · **document verification** (is it a gate on admission, and who verifies) · **application intake** (a prospective parent has no account) · **guardian merge** (no verb yet; money paths already resolve `merged_into_id`; payer identity on past payments, the fee-payer flag and reminder dedupe are unspecified) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **authorised absence** (the denominator is assumed above) · **platform support access** (the audit mechanism behind the assumption above).
+Specified by rules 32-40 on 2026-10-09: staff contracts, events and PTM, the period timetable, document verification, platform support access, the audit-log screen; authorised absence is built (the `on_leave` mark, excused by default). **Deferred to after go-live, still unspecified:** **application intake** (a prospective parent has no account) · **guardian merge** (no verb yet; money paths already resolve `merged_into_id`; payer identity on past payments, the fee-payer flag and reminder dedupe are unspecified) · **inbound WhatsApp workflow** (matching a message to a guardian and an invoice) · **iOS**. Each needs specifying before it is built.

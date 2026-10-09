@@ -16,10 +16,12 @@ writes the production code.** Do not start application code in a planning sessio
   green on both jobs (all Maestro flows incl. teacher-marks-offline, principal-approve-result,
   parent-report-card), **`phase-gate` PASS** with two recorded limitations (below, "What Phase 5
   inherits"). Phase 3 closed 2026-10-07 with the real-driver proof deferred to go-live ("Left to
-  do" item 1). Project = 143.5 / 163.5 days = 88 %. **Next: Phase 5 (Extended) needs a plan**
-  (rule 31: the period timetable, events and PTM, past-results import; plus biometric attendance,
-  advanced reporting and transport, register item 20) — and the owner's answers to the Phase 4
-  defaults listed below.
+  do" item 1). **Phase 5 (Extended) is planned:** decisions taken 2026-10-09 ("go with default":
+  CLAUDE.md rules 32-40; register items 20 and 31 closed; the nine Phase 4 defaults kept); the plan
+  `docs/plans/phase-5-extended.md` (slices 37-47, R301-R357, 38 days) was reviewed by four agents
+  and rewritten once (entry below). Project = 143.5 / 181.5 days = 79 % (the table's Phase 5
+  estimate rose from 20 to 38). **Next: the owner approves the estimate and §1.2; then wave R
+  (groundwork + slice 37, the timetable) with Opus.**
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -60,16 +62,18 @@ them when each phase is planned, and say so in the report.
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
 | 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised twice, approved 2026-10-06) | 38.5 |
 | 4 Academic | slices 29-36 (plan `phase-4-academic.md`, reviewed and approved 2026-10-07) | 33 |
-| 5 Extended | biometric, advanced reporting, transport | 20 |
-| **Total** | | **163.5** |
+| 5 Extended | slices 37-47 (plan `phase-5-extended.md`, reviewed 2026-10-09; was a 20-day guess) | 38 |
+| **Total** | | **181.5** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
 7 = 4 · 8 = 1.5. A slice counts as done only after its phase gate passes and it is committed; a
-slice in progress counts half. **Project % = days done ÷ 163.5** (Phase 4 planned at 33 on 2026-10-07; Phase 3's 110.5 done days = 68 %). Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
+slice in progress counts half. **Project % = days done ÷ 181.5** (Phase 5 planned at 38 on 2026-10-09; Phase 4 at 33 on 2026-10-07; Phase 3's 110.5 done days = 68 %). Phase 2 slice sizes: 9 = 9 · 10 = 2.5 ·
 11 = 7 · 12 = 2 · 13 = 4 · 14 = 5 · 15 = 5 · 16 = 6 · 17 = 1.5. Phase 3 slice sizes (plan §5):
 18 = 2.5 · 19 = 7 · 20 = 6 · 21 = 4 · 22 = 3 · 23 = 2 · 24 = 2.5 · 25 = 4.5 · 26 = 3 · 27 = 2 ·
 28 = 1.5 (the plan's total is 38.5). Phase 4 slice sizes (plan §5): 29 = 3 · 30 = 6 · 31 = 6.5 · 32 = 4 ·
-33 = 3 · 34 = 4 · 35 = 5 · 36 = 1.5. Planning and reviews done before slice 0 are not counted.
+33 = 3 · 34 = 4 · 35 = 5 · 36 = 1.5. Phase 5 slice sizes (plan §5): 37 = 6 · 38 = 5.5 · 39 = 2.5 ·
+40 = 2 · 41 = 4.5 · 42 = 5 · 43 = 3.5 · 44 = 2.5 · 45 = 3 · 46 = 2 · 47 = 1.5. Planning and reviews
+done before slice 0 are not counted.
 
 ## Left to do (ordered)
 
@@ -128,6 +132,42 @@ slice in progress counts half. **Project % = days done ÷ 163.5** (Phase 4 plann
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-09 — Phase 5 planned: decisions, plan, four reviews, one rewrite (Fable 5.1)
+
+**Decisions.** A research sweep of the built system (Phase 5 hooks: `ClassSubject`,
+`periods_per_day`, the register natural key, R120/R129, `sectionsNeedingCover`, `ChargeCampaign`,
+`FeeHeadCategory`, `ChargeKind`, `Staff`, `StaffAttendance`, `StudentDocument`, `audit_log`, the
+51 keys) produced 18 questions with recommendations; the owner answered "go with default", which
+also kept the nine Phase 4 defaults. Recorded as CLAUDE.md rules 32-40; register items 20 and 31
+closed; the "Not yet specified" list reduced to the four deferred items (guardian merge, inbound
+WhatsApp, application intake, iOS).
+
+**Plan.** `docs/plans/phase-5-extended.md`: slices 37-47, waves R-V, rules R301-R357, **38 days**
+(the 20 in the progress table was a Phase 1-era guess for three items). Reviewed in parallel by
+`business-rules`, `data-architect`, `security-reviewer` (FAIL as drafted, PASS with four High
+items reshaped) and `api-designer`; every finding folded into one rewrite. The reshapes worth
+knowing: support access is a **closed set of read views** in one platform repository under a
+`READ ONLY` transaction, not a mirror of the school's routes (a mirror needed a fabricated
+principal session, and some school GETs write); event collection is **`POST /events/:id/payments`**
+settling only the event's charge, not a scoped `payment.record` key (which opens fourteen finance
+routes); the class-wide position is a **`class_rankings` table**, because `results` rows are
+frozen and a correction in one section re-ranks the others; transport assignments are keyed by
+**student and year**, because an enrolment-keyed assignment stops charging after a section
+change; the device token lives on **`schools`** with its own constructor (exception 4 widened —
+two new constructors in Phase 5, not one); rule 24's reach is a **route-level marker**, not key
+inertness (which would stop a clerk recording cash); timetable versions are **date ranges with
+exclusion constraints**, because a partial unique cannot hold a future-dated version. Five
+things the migrations would have refused as drafted were caught: `staff_attendance` has no
+`source` column and `marked_by` is NOT NULL; `student_documents` is append-only; enum values
+cannot be used in the migration that adds them; an imported sheet born `published` trips
+`result_sheets_born_draft`; a future timetable version violates the one-live partial unique.
+
+**Open to the owner (plan §1.2):** 37 event-duty collection by a teacher (built as the scoped
+route; "office only" drops it) · 40 `transport.manage` as a 53rd key (rule 40 counted 52) · 41
+support reads of message delivery (not built; R114 stands) · 39 the device vendor agent is not
+ours · 38 school-group reports not built. **Next:** the owner approves the estimate; wave R
+(groundwork + slice 37) starts with Opus.
 
 ## What Phase 5 inherits from Phase 4 (written at the Phase 4 close, 2026-10-08)
 
