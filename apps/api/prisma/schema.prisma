@@ -197,6 +197,11 @@ model School {
   timetableVersions             TimetableVersion[]             @ignore
   timetableSlots                TimetableSlot[]                @ignore
   timetableSubstitutions        TimetableSubstitution[]        @ignore
+  events                        Event[]                        @ignore
+  eventSections                 EventSection[]                 @ignore
+  eventDuties                   EventDuty[]                    @ignore
+  eventParticipation            EventParticipation[]           @ignore
+  staffContracts                StaffContract[]                @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -432,6 +437,7 @@ model AcademicYear {
   resultSheets    ResultSheet[]
   promotionSheets PromotionSheet[] @relation("PromotionSheetYear")
   promotionsInto  PromotionSheet[] @relation("PromotionSheetTargetYear")
+  events          Event[]
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -480,6 +486,7 @@ model Class {
   announcementAudiences   AnnouncementAudience[]
   feeStructures           FeeStructure[]
   chargeCampaignAudiences ChargeCampaignAudience[]
+  eventSections           EventSection[]
 
   @@unique([schoolId, id], map: "classes_school_id_id_key")
   /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
@@ -518,6 +525,7 @@ model Section {
   promotionTargets        PromotionDecision[]
   timetableVersions       TimetableVersion[]
   timetableSubstitutions  TimetableSubstitution[]
+  eventSections           EventSection[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -691,6 +699,8 @@ model Staff {
   payslips               Payslip[]
   timetableSlots         TimetableSlot[]
   timetableSubstitutions TimetableSubstitution[]
+  eventDuties            EventDuty[]
+  contracts              StaffContract[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@unique([schoolId, deviceUserId], map: "staff_school_id_device_user_id_key")
@@ -899,6 +909,13 @@ model User {
   timetableVersionsVoided   TimetableVersion[]      @relation("TimetableVersionVoidedBy")
   timetableSubsCreated      TimetableSubstitution[] @relation("TimetableSubstitutionCreatedBy")
   timetableSubsVoided       TimetableSubstitution[] @relation("TimetableSubstitutionVoidedBy")
+  eventsCreated             Event[]                 @relation("EventCreatedBy")
+  eventsCancelled           Event[]                 @relation("EventCancelledBy")
+  eventDutiesCreated        EventDuty[]             @relation("EventDutyCreatedBy")
+  eventDutiesEnded          EventDuty[]             @relation("EventDutyEndedBy")
+  eventParticipations       EventParticipation[]    @relation("EventParticipationRecordedBy")
+  staffContractsCreated     StaffContract[]         @relation("StaffContractCreatedBy")
+  staffContractsEnded       StaffContract[]         @relation("StaffContractEndedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1139,6 +1156,8 @@ model Student {
   @@unique([schoolId, admissionNo], map: "students_school_id_admission_no_key")
   /// The possible-duplicate check at admission (name + date of birth).
   @@index([schoolId, dateOfBirth], map: "students_school_id_date_of_birth_idx")
+  /// Phase 5 slice 40: the incomplete-admissions report filters and sorts by admission date.
+  @@index([schoolId, admittedOn], map: "students_school_id_admitted_on_idx")
   @@map("students")
 }
 
@@ -1237,6 +1256,7 @@ model Enrolment {
   results               Result[]
   promotionDecisions    PromotionDecision[]   @relation("PromotionDecisionEnrolment")
   promotedInto          PromotionDecision[]   @relation("PromotionDecisionNewEnrolment")
+  eventParticipation    EventParticipation[]
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -2559,6 +2579,8 @@ model Announcement {
   noticeOf        Holiday[]               @relation("HolidayAnnouncement")
   audiences       AnnouncementAudience[]
   recipients      AnnouncementRecipient[]
+  eventInvitation Event?                  @relation("EventAnnouncement")
+  eventCancellation Event?                @relation("EventCancelAnnouncement")
 
   @@unique([schoolId, id], map: "announcements_school_id_id_key")
   /// The scheduled-send sweep source (§5.6).
@@ -3129,6 +3151,7 @@ model ChargeCampaign {
   audiences       ChargeCampaignAudience[]
   runs            ChargeRun[]
   charges         Charge[]
+  event           Event?
 
   @@unique([schoolId, id], map: "charge_campaigns_school_id_id_key")
   /// The target of charges.campaign_id and charge_runs.campaign_id: same year.
@@ -3291,9 +3314,15 @@ model Expense {
   voidedAt         DateTime?       @map("voided_at") @db.Timestamptz(3)
   voidedBy         BigInt?         @map("voided_by")
   voidReason       String?         @map("void_reason") @db.VarChar(500)
+  /// Phase 5 rule 34: the event this expense is for. Set once, by the slice 38 `tag-event` verb,
+  /// on an expense not voided and an event published or completed (trigger expenses_event_tag;
+  /// expenses_event_id_frozen keeps it from changing or clearing). Partial index
+  /// expenses_event_id_idx (migration SQL).
+  eventId          BigInt?         @map("event_id")
   updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   school             School          @relation(fields: [schoolId], references: [id], map: "expenses_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  event              Event?          @relation(fields: [schoolId, eventId], references: [schoolId, id], map: "expenses_event_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   recordedByUser     User            @relation("ExpenseRecordedBy", fields: [schoolId, recordedBy], references: [schoolId, id], map: "expenses_recorded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   decidedByUser      User?           @relation("ExpenseDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "expenses_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   voidedByUser       User?           @relation("ExpenseVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "expenses_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
@@ -3798,6 +3827,7 @@ model SalaryStructure {
   createdByUser User                       @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "salary_structures_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   components    SalaryStructureComponent[]
   payslips      Payslip[]
+  contracts     StaffContract[]
 
   @@unique([schoolId, id], map: "salary_structures_school_id_id_key")
   /// The target of payslips.structure_id and superseded_by: the same staff member.
@@ -5243,4 +5273,225 @@ model TimetableSubstitution {
   @@index([schoolId, createdBy], map: "timetable_substitutions_school_id_created_by_idx")
   @@index([schoolId, voidedBy], map: "timetable_substitutions_school_id_voided_by_idx")
   @@map("timetable_substitutions")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5 wave S (phase-5-extended.md §3.2 "Events" and "Contracts", rules 34-35, R310-R321):
+// events and PTM (slice 38), staff contracts (slice 39). Hand-written CHECKs, triggers and partial
+// indexes are in migration 20261010090000_wave_s_events_contracts and listed in
+// test/guardrails/schema-checks.ts (WAVE_S_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// Tenant: an event of one academic year (rule 34, A4). draft -> published | cancelled; published
+/// -> completed | cancelled (trigger events_status_transition). Born draft, and published only
+/// with a section (trigger events_guard). Its content (type, title, times, venue, details, the
+/// charge) changes only while draft (events_content_frozen). The charge is held here while draft;
+/// publish creates the invitation announcement and, with a charge, the campaign, and sets
+/// announcement_id and campaign_id in the same UPDATE as the status (CHECKs
+/// events_announcement_check, events_campaign_check). Cancelling a published event names its
+/// cancellation announcement in the same UPDATE (events_cancel_announcement_check). The campaign,
+/// the two announcements, the cancel trio and completed_at are each set once.
+model Event {
+  id                   BigInt      @id(map: "events_pkey") @default(autoincrement())
+  schoolId             BigInt      @map("school_id")
+  academicYearId       BigInt      @map("academic_year_id")
+  type                 EventType
+  /// 1-120, trimmed, never an identity number.
+  title                String      @db.VarChar(120)
+  /// Its date in school time lies inside the academic year (trigger events_guard).
+  startsAt             DateTime    @map("starts_at") @db.Timestamptz(3)
+  /// CHECK events_dates_check: >= starts_at.
+  endsAt               DateTime    @map("ends_at") @db.Timestamptz(3)
+  /// 1-120, trimmed, never an identity number.
+  venue                String      @db.VarChar(120)
+  /// 1-1000, trimmed, never an identity number.
+  details              String?     @db.VarChar(1000)
+  /// The event charge while draft, whole rupees > 0; null = no charge. The due date defaults to
+  /// the event date in the service (CHECK events_charge_check: a due date needs an amount).
+  chargeAmount         Int?        @map("charge_amount")
+  chargeDueOn          DateTime?   @map("charge_due_on") @db.Date
+  status               EventStatus @default(draft)
+  /// Set at publish exactly when the event has a charge; the campaign is of the event's year.
+  campaignId           BigInt?     @map("campaign_id")
+  /// The invitation, set at publish.
+  announcementId       BigInt?     @map("announcement_id")
+  /// The cancellation notice, set exactly when a published event is cancelled.
+  cancelAnnouncementId BigInt?     @map("cancel_announcement_id")
+  createdBy            BigInt      @map("created_by")
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set exactly when completed (CHECK events_completed_check).
+  completedAt          DateTime?   @map("completed_at") @db.Timestamptz(3)
+  /// Set together, exactly when cancelled (CHECK events_cancelled_check).
+  cancelledAt          DateTime?   @map("cancelled_at") @db.Timestamptz(3)
+  cancelledBy          BigInt?     @map("cancelled_by")
+  cancelReason         String?     @map("cancel_reason") @db.VarChar(500)
+  updatedAt            DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school             School               @relation(fields: [schoolId], references: [id], map: "events_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear       AcademicYear         @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "events_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  campaign           ChargeCampaign?      @relation(fields: [schoolId, campaignId, academicYearId], references: [schoolId, id, academicYearId], map: "events_campaign_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  announcement       Announcement?        @relation("EventAnnouncement", fields: [schoolId, announcementId], references: [schoolId, id], map: "events_announcement_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  cancelAnnouncement Announcement?        @relation("EventCancelAnnouncement", fields: [schoolId, cancelAnnouncementId], references: [schoolId, id], map: "events_cancel_announcement_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser      User                 @relation("EventCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "events_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  cancelledByUser    User?                @relation("EventCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "events_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  sections           EventSection[]
+  duties             EventDuty[]
+  participation      EventParticipation[]
+  expenses           Expense[]
+
+  @@unique([schoolId, id], map: "events_school_id_id_key")
+  /// Target of the (school_id, event_id, academic_year_id) FKs: a section or participant of the event's year.
+  @@unique([schoolId, id, academicYearId], map: "events_school_id_id_academic_year_id_key")
+  /// One event per campaign and per announcement (NULLs are distinct).
+  @@unique([schoolId, campaignId, academicYearId], map: "events_school_id_campaign_id_key")
+  @@unique([schoolId, announcementId], map: "events_school_id_announcement_id_key")
+  @@unique([schoolId, cancelAnnouncementId], map: "events_school_id_cancel_announcement_id_key")
+  /// GET /events: a year's events by date.
+  @@index([schoolId, academicYearId, startsAt], map: "events_school_id_academic_year_id_starts_at_idx")
+  @@index([schoolId, status, startsAt], map: "events_school_id_status_starts_at_idx")
+  @@index([schoolId, createdBy], map: "events_school_id_created_by_idx")
+  @@index([schoolId, cancelledBy], map: "events_school_id_cancelled_by_idx")
+  @@map("events")
+}
+
+/// Tenant: a section taking part in an event, of the event's year (the FKs carry the year). A
+/// draft's sections are a form field, replaced on PATCH: rows are inserted, updated and DELETED
+/// only while the event is draft (trigger event_sections_draft_only, the campaign-audience
+/// precedent); afterwards they are history. The one Phase 5 table with no no-delete trigger.
+model EventSection {
+  id             BigInt   @id(map: "event_sections_pkey") @default(autoincrement())
+  schoolId       BigInt   @map("school_id")
+  eventId        BigInt   @map("event_id")
+  sectionId      BigInt   @map("section_id")
+  classId        BigInt   @map("class_id")
+  academicYearId BigInt   @map("academic_year_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  school  School  @relation(fields: [schoolId], references: [id], map: "event_sections_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  event   Event   @relation(fields: [schoolId, eventId, academicYearId], references: [schoolId, id, academicYearId], map: "event_sections_event_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section Section @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "event_sections_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class   Class   @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "event_sections_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "event_sections_school_id_id_key")
+  @@unique([schoolId, eventId, sectionId], map: "event_sections_event_section_key")
+  @@index([schoolId, eventId, academicYearId], map: "event_sections_school_id_event_id_idx")
+  /// A family's events: the events of the child's section.
+  @@index([schoolId, sectionId, classId], map: "event_sections_school_id_section_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "event_sections_school_id_class_id_idx")
+  @@map("event_sections")
+}
+
+/// Tenant: a staff member's duty at an event (rule 34); each officer sees only their own. One live
+/// row per event, staff member and duty (partial unique event_duties_live_key). Written and ended
+/// only while the event is draft or published (trigger event_duties_guard); born live; ended,
+/// never edited.
+model EventDuty {
+  id        BigInt    @id(map: "event_duties_pkey") @default(autoincrement())
+  schoolId  BigInt    @map("school_id")
+  eventId   BigInt    @map("event_id")
+  staffId   BigInt    @map("staff_id")
+  duty      DutyKind
+  /// 1-200, trimmed, never an identity number.
+  note      String?   @db.VarChar(200)
+  createdBy BigInt    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together (CHECK event_duties_ended_check); once set, frozen.
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(3)
+  endedBy   BigInt?   @map("ended_by")
+  endReason String?   @map("end_reason") @db.VarChar(500)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School @relation(fields: [schoolId], references: [id], map: "event_duties_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  event         Event  @relation(fields: [schoolId, eventId], references: [schoolId, id], map: "event_duties_event_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff         Staff  @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "event_duties_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User   @relation("EventDutyCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "event_duties_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser   User?  @relation("EventDutyEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "event_duties_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "event_duties_school_id_id_key")
+  @@index([schoolId, eventId], map: "event_duties_school_id_event_id_idx")
+  /// The duty scope: a staff member's own duties.
+  @@index([schoolId, staffId, eventId], map: "event_duties_school_id_staff_id_idx")
+  @@index([schoolId, createdBy], map: "event_duties_school_id_created_by_idx")
+  @@index([schoolId, endedBy], map: "event_duties_school_id_ended_by_idx")
+  @@map("event_duties")
+}
+
+/// Tenant: whether a student came to an event (A5: per student, not per guardian). One row per
+/// event and student, edited in place (status, recorded_by, recorded_at) and written only while
+/// the event is published (trigger event_participation_guard): frozen at completion (R312). The
+/// enrolment is of the event's year and names the same student (the FKs carry both).
+model EventParticipation {
+  id             BigInt              @id(map: "event_participation_pkey") @default(autoincrement())
+  schoolId       BigInt              @map("school_id")
+  eventId        BigInt              @map("event_id")
+  academicYearId BigInt              @map("academic_year_id")
+  studentId      BigInt              @map("student_id")
+  enrolmentId    BigInt              @map("enrolment_id")
+  status         ParticipationStatus
+  recordedBy     BigInt              @map("recorded_by")
+  recordedAt     DateTime            @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School    @relation(fields: [schoolId], references: [id], map: "event_participation_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  event          Event     @relation(fields: [schoolId, eventId, academicYearId], references: [schoolId, id, academicYearId], map: "event_participation_event_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment      Enrolment @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "event_participation_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  recordedByUser User      @relation("EventParticipationRecordedBy", fields: [schoolId, recordedBy], references: [schoolId, id], map: "event_participation_recorded_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "event_participation_school_id_id_key")
+  @@unique([schoolId, eventId, studentId], map: "event_participation_event_student_key")
+  @@index([schoolId, eventId, academicYearId], map: "event_participation_school_id_event_id_idx")
+  @@index([schoolId, enrolmentId, studentId, academicYearId], map: "event_participation_school_id_enrolment_id_idx")
+  @@index([schoolId, recordedBy], map: "event_participation_school_id_recorded_by_idx")
+  @@map("event_participation")
+}
+
+/// Tenant: a staff member's contract (rule 35). permanent has no end; fixed_term and probation do
+/// (CHECK staff_contracts_type_end_check). One live contract per staff member (partial unique
+/// staff_contracts_live_key). It references the salary structure in force at its start and never
+/// restates pay (R321). Frozen except the end group (ended_at, ended_by, end_reason, ended_on, set
+/// together and once) and the two warning stamps (each once). A renewal is a new row.
+model StaffContract {
+  id                BigInt       @id(map: "staff_contracts_pkey") @default(autoincrement())
+  schoolId          BigInt       @map("school_id")
+  staffId           BigInt       @map("staff_id")
+  type              ContractType
+  startsOn          DateTime     @map("starts_on") @db.Date
+  /// The last working day (A6); null exactly for permanent. CHECK staff_contracts_dates_check.
+  endsOn            DateTime?    @map("ends_on") @db.Date
+  /// Informational: the structure at the start, of the same staff member (the FK carries staff_id).
+  salaryStructureId BigInt?      @map("salary_structure_id")
+  /// `{school_id}/{ULID}.{jpg|png|pdf}`; key, mime and size together (CHECK
+  /// staff_contracts_document_check, the expenses receipt shape). Streamed, never presigned (R43).
+  documentObjectKey String?      @map("document_object_key") @db.VarChar(64)
+  documentMime      String?      @map("document_mime") @db.VarChar(32)
+  documentSizeBytes Int?         @map("document_size_bytes")
+  /// 1-500, trimmed, never an identity number. Not shown to the staff member.
+  note              String?      @db.VarChar(500)
+  createdBy         BigInt       @map("created_by")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// The end group, set together and once (CHECK staff_contracts_ended_check): when, by whom,
+  /// why (`renewed`, `left` or free text) and the contract's actual last day (>= starts_on).
+  endedAt           DateTime?    @map("ended_at") @db.Timestamptz(3)
+  endedBy           BigInt?      @map("ended_by")
+  endReason         String?      @map("end_reason") @db.VarChar(500)
+  endedOn           DateTime?    @map("ended_on") @db.Date
+  /// The expiry job's stamps (R319): each set once; only on a contract with an end.
+  warned30At        DateTime?    @map("warned_30_at") @db.Timestamptz(3)
+  warned7At         DateTime?    @map("warned_7_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School           @relation(fields: [schoolId], references: [id], map: "staff_contracts_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff           Staff            @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "staff_contracts_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  salaryStructure SalaryStructure? @relation(fields: [schoolId, salaryStructureId, staffId], references: [schoolId, id, staffId], map: "staff_contracts_salary_structure_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser   User             @relation("StaffContractCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "staff_contracts_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser     User?            @relation("StaffContractEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "staff_contracts_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "staff_contracts_school_id_id_key")
+  /// GET /staff/:id/contracts, newest first.
+  @@index([schoolId, staffId, startsOn], map: "staff_contracts_school_id_staff_id_idx")
+  @@index([schoolId, salaryStructureId, staffId], map: "staff_contracts_school_id_salary_structure_id_idx")
+  @@index([schoolId, createdBy], map: "staff_contracts_school_id_created_by_idx")
+  @@index([schoolId, endedBy], map: "staff_contracts_school_id_ended_by_idx")
+  @@map("staff_contracts")
 }

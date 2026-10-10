@@ -820,9 +820,13 @@ const PHASE_5_FREE_TEXT: Record<string, string[]> = {
   timetable_slots: ['room'],
   timetable_substitutions: ['reason', 'void_reason'],
   timetable_versions: ['void_reason'],
+  // Wave S (slices 38, 39).
+  events: ['title', 'venue', 'details', 'cancel_reason'],
+  event_duties: ['note', 'end_reason'],
+  staff_contracts: ['note', 'end_reason'],
 };
 
-describe('R16 (Phase 5): document rejections, device user ids and timetable text, whole tables', () => {
+describe('R16 (Phase 5): document rejections, device user ids, timetable, event and contract text, whole tables', () => {
   let pg: Client;
 
   beforeAll(async () => {

@@ -17,7 +17,7 @@ import { SLICE_20_CONSTRAINTS } from './constraints-payments';
 import { SLICE_25_CONSTRAINTS } from './constraints-payroll';
 import { SLICE_21_CONSTRAINTS } from './constraints-claims';
 import { SLICE_29_CONSTRAINTS } from './constraints-academics';
-import { PHASE_5_GROUNDWORK_CONSTRAINTS, SLICE_37_CONSTRAINTS } from './constraints-phase5';
+import { PHASE_5_GROUNDWORK_CONSTRAINTS, SLICE_37_CONSTRAINTS, WAVE_S_CONSTRAINTS } from './constraints-phase5';
 
 /** What may be logged about a database error. */
 export interface DatabaseErrorSummary {
@@ -226,6 +226,7 @@ const BY_CONSTRAINT: Readonly<Record<string, () => ApiException>> = {
   ...SLICE_29_CONSTRAINTS,
   ...PHASE_5_GROUNDWORK_CONSTRAINTS,
   ...SLICE_37_CONSTRAINTS,
+  ...WAVE_S_CONSTRAINTS,
 };
 
 /**

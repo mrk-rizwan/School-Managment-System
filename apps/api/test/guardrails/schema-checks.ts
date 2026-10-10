@@ -1050,6 +1050,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_P_OBJECTS(),
   ...WAVE_R_OBJECTS(),
   ...SLICE_37_OBJECTS(),
+  ...WAVE_S_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -3301,5 +3302,101 @@ function SLICE_37_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'timetable_substitutions', name: 'timetable_substitutions_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'date', 'period', 'staff_id', 'reason', 'created_by', 'created_at')" },
     { kind: 'trigger', table: 'timetable_substitutions', name: 'timetable_substitutions_voided_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
     ...noDeleteTriggers('timetable_substitutions'),
+  ];
+}
+
+/**
+ * Phase 5 wave S (migrations 20261010090000_wave_s_events_contracts and the fix-forward
+ * 20261010090100_wave_s_cancel_notice_check): the tables of slices 38
+ * (events, event_sections, event_duties, event_participation) and 39 (staff_contracts), the
+ * expenses event tag, and their guards. event_sections is the one Phase 5 table with no no-delete
+ * trigger: a draft's sections are deleted and replaced on PATCH (event_sections_draft_only).
+ */
+function WAVE_S_OBJECTS(): ExpectedObject[] {
+  const trimmed = (column: string) =>
+    `CHECK ((((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text)))`;
+  const trimmedOrNull = (column: string) =>
+    `CHECK (((${column} IS NULL) OR (((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text))))`;
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_event_guard', definition: "v_refusal := 'events_born_draft'" },
+    { kind: 'function', name: 'asms_event_guard', definition: "v_refusal := 'events_in_year'" },
+    { kind: 'function', name: 'asms_event_guard', definition: "v_refusal := 'events_has_sections'" },
+    { kind: 'function', name: 'asms_event_guard', definition: '(NEW.starts_at AT TIME ZONE s.timezone)::date BETWEEN y.starts_on AND y.ends_on' },
+    { kind: 'function', name: 'asms_event_section_draft_only', definition: "DETAIL = 'constraint: event_sections_draft_only'" },
+    { kind: 'function', name: 'asms_event_section_draft_only', definition: 'FOR SHARE' },
+    { kind: 'function', name: 'asms_event_duty_guard', definition: "v_refusal := 'event_duties_born_live'" },
+    { kind: 'function', name: 'asms_event_duty_guard', definition: "v_refusal := 'event_duties_event_open'" },
+    { kind: 'function', name: 'asms_event_participation_guard', definition: "DETAIL = 'constraint: event_participation_event_published'" },
+    { kind: 'function', name: 'asms_event_participation_guard', definition: 'FOR SHARE' },
+    { kind: 'function', name: 'asms_expense_event_tag', definition: "v_refusal := 'expenses_event_tag_voided'" },
+    { kind: 'function', name: 'asms_expense_event_tag', definition: "v_refusal := 'expenses_event_tag_event_status'" },
+    // ---- events (R310, R313, R316)
+    { kind: 'constraint', table: 'events', name: 'events_title_check', definition: trimmed('title') },
+    { kind: 'constraint', table: 'events', name: 'events_title_no_id_check', definition: noIdCheck('title') },
+    { kind: 'constraint', table: 'events', name: 'events_venue_check', definition: trimmed('venue') },
+    { kind: 'constraint', table: 'events', name: 'events_venue_no_id_check', definition: noIdCheck('venue') },
+    { kind: 'constraint', table: 'events', name: 'events_details_check', definition: trimmedOrNull('details') },
+    { kind: 'constraint', table: 'events', name: 'events_details_no_id_check', definition: noIdCheck('details') },
+    { kind: 'constraint', table: 'events', name: 'events_cancel_reason_check', definition: trimmedOrNull('cancel_reason') },
+    { kind: 'constraint', table: 'events', name: 'events_cancel_reason_no_id_check', definition: noIdCheck('cancel_reason') },
+    { kind: 'constraint', table: 'events', name: 'events_dates_check', definition: 'CHECK ((ends_at >= starts_at))' },
+    { kind: 'constraint', table: 'events', name: 'events_charge_check', definition: 'CHECK ((((charge_amount IS NULL) OR (charge_amount > 0)) AND ((charge_due_on IS NULL) OR (charge_amount IS NOT NULL))))' },
+    { kind: 'constraint', table: 'events', name: 'events_campaign_check', definition: "CHECK ((((campaign_id IS NULL) OR (charge_amount IS NOT NULL)) AND ((status <> 'draft'::event_status) OR (campaign_id IS NULL)) AND ((status <> ALL (ARRAY['published'::event_status, 'completed'::event_status])) OR (charge_amount IS NULL) OR (campaign_id IS NOT NULL))))" },
+    { kind: 'constraint', table: 'events', name: 'events_announcement_check', definition: "CHECK ((((status <> 'draft'::event_status) OR (announcement_id IS NULL)) AND ((status <> ALL (ARRAY['published'::event_status, 'completed'::event_status])) OR (announcement_id IS NOT NULL))))" },
+    { kind: 'constraint', table: 'events', name: 'events_cancel_announcement_check', definition: "CHECK ((((cancel_announcement_id IS NOT NULL) = ((status = 'cancelled'::event_status) AND (announcement_id IS NOT NULL))) AND ((cancel_announcement_id IS NULL) OR (cancel_announcement_id <> announcement_id))))" },
+    { kind: 'constraint', table: 'events', name: 'events_cancelled_check', definition: "CHECK ((((status = 'cancelled'::event_status) = (cancelled_at IS NOT NULL)) AND ((cancelled_at IS NULL) = (cancelled_by IS NULL)) AND ((cancelled_at IS NULL) = (cancel_reason IS NULL))))" },
+    { kind: 'constraint', table: 'events', name: 'events_completed_check', definition: "CHECK (((status = 'completed'::event_status) = (completed_at IS NOT NULL)))" },
+    { kind: 'trigger', table: 'events', name: 'events_status_transition', definition: "EXECUTE FUNCTION asms_status_transition('draft:published', 'draft:cancelled', 'published:completed', 'published:cancelled')" },
+    { kind: 'trigger', table: 'events', name: 'events_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'events', name: 'events_content_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_unless_status('draft', 'type', 'title', 'starts_at', 'ends_at', 'venue', 'details', 'charge_amount', 'charge_due_on')" },
+    { kind: 'trigger', table: 'events', name: 'events_campaign_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('campaign_id')" },
+    { kind: 'trigger', table: 'events', name: 'events_announcement_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('announcement_id')" },
+    { kind: 'trigger', table: 'events', name: 'events_cancel_announcement_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('cancel_announcement_id')" },
+    { kind: 'trigger', table: 'events', name: 'events_cancelled_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('cancelled_at', 'cancelled_by', 'cancel_reason')" },
+    { kind: 'trigger', table: 'events', name: 'events_completed_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('completed_at')" },
+    { kind: 'trigger', table: 'events', name: 'events_guard', definition: 'BEFORE INSERT OR UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION asms_event_guard()' },
+    ...noDeleteTriggers('events'),
+    // ---- event_sections (R310): deletable while draft, never truncated
+    { kind: 'trigger', table: 'event_sections', name: 'event_sections_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('event_id', 'section_id', 'class_id', 'academic_year_id', 'created_at')" },
+    { kind: 'trigger', table: 'event_sections', name: 'event_sections_draft_only', definition: 'BEFORE INSERT OR DELETE OR UPDATE ON public.event_sections FOR EACH ROW EXECUTE FUNCTION asms_event_section_draft_only()' },
+    { kind: 'trigger', table: 'event_sections', name: 'event_sections_no_truncate', definition: 'BEFORE TRUNCATE ON public.event_sections FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()' },
+    // ---- event_duties (R311)
+    { kind: 'constraint', table: 'event_duties', name: 'event_duties_note_check', definition: trimmedOrNull('note') },
+    { kind: 'constraint', table: 'event_duties', name: 'event_duties_note_no_id_check', definition: noIdCheck('note') },
+    { kind: 'constraint', table: 'event_duties', name: 'event_duties_ended_check', definition: 'CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (end_reason IS NULL))))' },
+    { kind: 'constraint', table: 'event_duties', name: 'event_duties_end_reason_check', definition: trimmedOrNull('end_reason') },
+    { kind: 'constraint', table: 'event_duties', name: 'event_duties_end_reason_no_id_check', definition: noIdCheck('end_reason') },
+    { kind: 'index', table: 'event_duties', name: 'event_duties_live_key', definition: 'UNIQUE INDEX event_duties_live_key ON public.event_duties USING btree (school_id, event_id, staff_id, duty) WHERE (ended_at IS NULL)' },
+    { kind: 'trigger', table: 'event_duties', name: 'event_duties_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('event_id', 'staff_id', 'duty', 'note', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'event_duties', name: 'event_duties_ended_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by', 'end_reason')" },
+    { kind: 'trigger', table: 'event_duties', name: 'event_duties_guard', definition: 'BEFORE INSERT OR UPDATE ON public.event_duties FOR EACH ROW EXECUTE FUNCTION asms_event_duty_guard()' },
+    ...noDeleteTriggers('event_duties'),
+    // ---- event_participation (R312)
+    { kind: 'trigger', table: 'event_participation', name: 'event_participation_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('event_id', 'academic_year_id', 'student_id', 'enrolment_id', 'created_at')" },
+    { kind: 'trigger', table: 'event_participation', name: 'event_participation_guard', definition: 'BEFORE INSERT OR UPDATE ON public.event_participation FOR EACH ROW EXECUTE FUNCTION asms_event_participation_guard()' },
+    ...noDeleteTriggers('event_participation'),
+    // ---- expenses.event_id (R314)
+    { kind: 'index', table: 'expenses', name: 'expenses_event_id_idx', definition: 'ON public.expenses USING btree (school_id, event_id) WHERE (event_id IS NOT NULL)' },
+    { kind: 'trigger', table: 'expenses', name: 'expenses_event_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('event_id')" },
+    { kind: 'trigger', table: 'expenses', name: 'expenses_event_tag', definition: 'BEFORE INSERT OR UPDATE OF event_id ON public.expenses FOR EACH ROW EXECUTE FUNCTION asms_expense_event_tag()' },
+    // ---- staff_contracts (R318-R321)
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_type_end_check', definition: "CHECK (((type = 'permanent'::contract_type) = (ends_on IS NULL)))" },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_dates_check', definition: 'CHECK (((ends_on IS NULL) OR (ends_on >= starts_on)))' },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_ended_check', definition: 'CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (end_reason IS NULL)) AND ((ended_at IS NULL) = (ended_on IS NULL)) AND ((ended_on IS NULL) OR (ended_on >= starts_on))))' },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_warned_check', definition: 'CHECK (((ends_on IS NOT NULL) OR ((warned_30_at IS NULL) AND (warned_7_at IS NULL))))' },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_note_check', definition: trimmedOrNull('note') },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_note_no_id_check', definition: noIdCheck('note') },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_end_reason_check', definition: trimmedOrNull('end_reason') },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_end_reason_no_id_check', definition: noIdCheck('end_reason') },
+    { kind: 'constraint', table: 'staff_contracts', name: 'staff_contracts_document_check', definition: "(document_object_key)::text ~ (('^'::text || (school_id)::text) || '/[0-9A-HJKMNP-TV-Z]{26}\\.(jpg|png|pdf)$'::text)" },
+    { kind: 'index', table: 'staff_contracts', name: 'staff_contracts_document_object_key_key', definition: 'UNIQUE INDEX staff_contracts_document_object_key_key ON public.staff_contracts USING btree (school_id, document_object_key) WHERE (document_object_key IS NOT NULL)' },
+    { kind: 'index', table: 'staff_contracts', name: 'staff_contracts_live_key', definition: 'UNIQUE INDEX staff_contracts_live_key ON public.staff_contracts USING btree (school_id, staff_id) WHERE (ended_at IS NULL)' },
+    { kind: 'index', table: 'staff_contracts', name: 'staff_contracts_live_ends_on_idx', definition: 'ON public.staff_contracts USING btree (school_id, ends_on) WHERE (ended_at IS NULL)' },
+    { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'type', 'starts_on', 'ends_on', 'salary_structure_id', 'document_object_key', 'document_mime', 'document_size_bytes', 'note', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_ended_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by', 'end_reason', 'ended_on')" },
+    { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_warned_30_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('warned_30_at')" },
+    { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_warned_7_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('warned_7_at')" },
+    ...noDeleteTriggers('staff_contracts'),
   ];
 }

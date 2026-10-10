@@ -235,6 +235,7 @@ export const ErrorCode = {
   EVENT_DUTY_EXISTS: 'EVENT_DUTY_EXISTS', // details { eventId, dutyId }
   EVENT_PAYMENT_EXCEEDS_CHARGE: 'EVENT_PAYMENT_EXCEEDS_CHARGE', // details { eventId, outstanding }
   EVENT_NO_CHARGE: 'EVENT_NO_CHARGE', // details.eventId
+  EXPENSE_EVENT_TAGGED: 'EXPENSE_EVENT_TAGGED', // details { expenseId, eventId } (an expense is tagged to one event, once)
   STAFF_CONTRACT_LIVE_EXISTS: 'STAFF_CONTRACT_LIVE_EXISTS', // details { staffId, contractId }
   STAFF_CONTRACT_ENDED: 'STAFF_CONTRACT_ENDED', // details.staffId
   STAFF_CONTRACT_END_REQUIRED: 'STAFF_CONTRACT_END_REQUIRED', // 422, details { staffId, field: endsOn }

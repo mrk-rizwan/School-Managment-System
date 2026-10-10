@@ -75,3 +75,82 @@ export const SLICE_37_CONSTRAINTS: Readonly<Record<string, () => ApiException>> 
     'periodsPerDay cannot be lowered below a period the timetable uses',
   ),
 };
+
+// ---- wave S: events (slice 38) and staff contracts (slice 39), migration
+// 20261010090000_wave_s_events_contracts. The services check first; these answer a race loser
+// and any write that reaches the database's line. The CHECKs only a bug can break (the stamps
+// travelling together, the campaign and announcement pairing with the status, the document's
+// key, mime and size together, an event born draft, a duty born live) are deliberately unmapped:
+// a 500 says "bug" (the prisma-errors.ts rule).
+
+const eventNotDraft = (): ApiException =>
+  new ApiException(409, ErrorCode.EVENT_NOT_DRAFT, 'The event is no longer a draft.');
+
+const eventNotPublished = (): ApiException =>
+  new ApiException(409, ErrorCode.EVENT_NOT_PUBLISHED, 'The event is not published.');
+
+/** The draft content frozen once the event leaves draft (events_content_frozen). */
+const EVENT_CONTENT = ['type', 'title', 'starts_at', 'ends_at', 'venue', 'details', 'charge_amount', 'charge_due_on'];
+
+export const WAVE_S_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = {
+  // R316.
+  events_status_transition: () =>
+    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'The event cannot move to that status.'),
+  ...Object.fromEntries(EVENT_CONTENT.map((column) => [`events_${column}_frozen`, eventNotDraft])),
+  events_campaign_id_frozen: concurrentUpdate,
+  events_announcement_id_frozen: concurrentUpdate,
+  events_cancel_announcement_id_frozen: concurrentUpdate,
+  events_cancelled_at_frozen: concurrentUpdate,
+  events_completed_at_frozen: concurrentUpdate,
+  // A4, R310.
+  events_in_year: fieldInvalid('startsAt', 'startsAt must fall inside the academic year'),
+  events_has_sections: () =>
+    new ApiException(409, ErrorCode.EVENT_NO_SECTIONS, 'An event needs at least one section before it is published.'),
+  events_dates_check: fieldInvalid('endsAt', 'endsAt must not be before startsAt'),
+  events_charge_check: fieldInvalid('charge.amount', 'charge.amount must be at least 1'),
+  events_title_check: fieldInvalid('title', 'title must not be blank'),
+  events_venue_check: fieldInvalid('venue', 'venue must not be blank'),
+  events_details_check: fieldInvalid('details', 'details must not be blank'),
+  events_title_no_id_check: noIdentity('title'),
+  events_venue_no_id_check: noIdentity('venue'),
+  events_details_no_id_check: noIdentity('details'),
+  events_cancel_reason_no_id_check: noIdentity('reason'),
+  // R310: a draft's sections; a section of another year fails the class FK.
+  event_sections_draft_only: eventNotDraft,
+  event_sections_event_section_key: concurrentUpdate,
+  event_sections_class_id_fkey: fieldInvalid('sectionIds', "sectionIds must be sections of the event's academic year"),
+  // R311.
+  event_duties_live_key: () =>
+    new ApiException(409, ErrorCode.EVENT_DUTY_EXISTS, 'That staff member already holds that duty at this event.'),
+  event_duties_event_open: () =>
+    new ApiException(409, ErrorCode.ILLEGAL_STATUS_TRANSITION, 'The duties of a completed or cancelled event do not change.'),
+  event_duties_ended_at_frozen: concurrentUpdate,
+  event_duties_note_check: fieldInvalid('note', 'note must not be blank'),
+  event_duties_note_no_id_check: noIdentity('note'),
+  event_duties_end_reason_no_id_check: noIdentity('reason'),
+  // R312: recorded while published, frozen at completion; a concurrent first record of a student.
+  event_participation_event_published: eventNotPublished,
+  event_participation_event_student_key: concurrentUpdate,
+  // R314: an expense is tagged once, while not voided, to a published or completed event.
+  expenses_event_id_frozen: () =>
+    new ApiException(409, ErrorCode.EXPENSE_EVENT_TAGGED, 'This expense is already tagged to an event.'),
+  expenses_event_tag_voided: () =>
+    new ApiException(409, ErrorCode.STALE_STATUS, 'A voided expense cannot be tagged to an event.'),
+  expenses_event_tag_event_status: eventNotPublished,
+  // R318.
+  staff_contracts_live_key: () =>
+    new ApiException(409, ErrorCode.STAFF_CONTRACT_LIVE_EXISTS, 'This staff member already has a live contract.'),
+  staff_contracts_type_end_check: () =>
+    fieldRefused('endsOn', ErrorCode.STAFF_CONTRACT_END_REQUIRED, 'A permanent contract has no end date; any other contract has one.'),
+  staff_contracts_dates_check: fieldInvalid('endsOn', 'endsOn must not be before startsOn'),
+  staff_contracts_ended_check: fieldInvalid('endedOn', 'endedOn must not be before the contract starts'),
+  staff_contracts_ended_at_frozen: () =>
+    new ApiException(409, ErrorCode.STAFF_CONTRACT_ENDED, 'This contract has already ended.'),
+  staff_contracts_warned_30_at_frozen: concurrentUpdate,
+  staff_contracts_warned_7_at_frozen: concurrentUpdate,
+  staff_contracts_document_object_key_key: concurrentUpdate,
+  staff_contracts_note_check: fieldInvalid('note', 'note must not be blank'),
+  staff_contracts_note_no_id_check: noIdentity('note'),
+  staff_contracts_end_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  staff_contracts_end_reason_no_id_check: noIdentity('reason'),
+};
