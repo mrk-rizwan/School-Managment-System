@@ -5,6 +5,7 @@ import {
   Capability,
   ErrorCode,
   isStaffWorkingDay,
+  isTeachingDay,
   leaveBalance,
   type LeaveStatus,
   type SchoolCalendar,
@@ -28,6 +29,7 @@ import {
 import { LeaveTypeRepository, type LeaveTypeRecord } from '../../repositories/leave-type.repository';
 import { StaffRepository, type StaffRecord } from '../../repositories/staff.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
+import { spanHolds, TimetableReadsRepository } from '../../repositories/timetable-reads.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
@@ -44,6 +46,7 @@ import type {
   LeaveRequestDto,
   ListLeaveRequestsQueryDto,
   ListMyLeaveRequestsQueryDto,
+  PeriodNeedingCoverDto,
   SectionNeedingCoverDto,
   StaffLeaveRequestDto,
 } from './leave.dto';
@@ -146,6 +149,7 @@ export class LeaveRequestsService {
     private readonly audit: AuditLogRepository,
     private readonly notifications: NotificationService,
     private readonly idempotency: IdempotentRequests,
+    private readonly timetable: TimetableReadsRepository,
   ) {}
 
   // ---------------------------------------------------------------------------------- reads
@@ -526,6 +530,7 @@ export class LeaveRequestsService {
       rows.flatMap((r) => (r.decidedBy === null ? [] : [r.decidedBy])),
     );
     const needing = await this.sectionsNeedingCover(schoolId, rows);
+    const periods = await this.periodsNeedingCover(schoolId, rows);
     // R248: when a cancel or an end early ended the cover, the day it actually ended (an end
     // early dated in the past ends the cover yesterday, slice 10 refusing a past last day).
     const closed = rows.filter((r) => r.coverAssignmentId !== null && (r.status === 'cancelled' || r.status === 'ended_early'));
@@ -555,6 +560,7 @@ export class LeaveRequestsService {
         coverAssignmentId: row.coverAssignmentId?.toString() ?? null,
         coverEndedOn: coverEndedOn(row, coverLast),
         sectionsNeedingCover: needing.get(row.id) ?? [],
+        periodsNeedingCover: periods.get(row.id) ?? [],
         cancelledAt: row.cancelledAt,
         cancelReason: row.cancelReason,
       };
@@ -592,6 +598,54 @@ export class LeaveRequestsService {
         list.push({ sectionId: ct.sectionId.toString(), classId: label.classId.toString(), name: label.label });
       }
       out.set(row.id, list);
+    }
+    return out;
+  }
+
+  /**
+   * Phase 5 R307 (contracts/slice-37.md §3.4): per pending or approved request, the staff member's
+   * slots on each teaching day of the leave from the version live that day, less the periods a
+   * live substitution already takes. A fixed number of statements for the page.
+   */
+  private async periodsNeedingCover(
+    schoolId: SchoolId,
+    rows: LeaveRequestRecord[],
+  ): Promise<Map<bigint, PeriodNeedingCoverDto[]>> {
+    const open = rows.filter((r) => r.status === 'pending' || r.status === 'approved');
+    if (open.length === 0) return new Map();
+    const from = open.map((r) => r.startsOn).reduce(minDate);
+    const to = open.map(lastTaken).reduce(maxDate);
+    const slots = await this.timetable.staffSlotsOf(schoolId, open.map((r) => r.staffId), from, to);
+    const out = new Map<bigint, PeriodNeedingCoverDto[]>();
+    if (slots.length === 0) return out;
+    const { value: calendar } = await this.calendar.calendar(schoolId, from, to);
+    const taken = await this.timetable.substitutionsBetween(schoolId, {
+      sectionIds: slots.map((s) => s.sectionId),
+      from,
+      to,
+    });
+    const labels = await this.timetable.sectionLabels(schoolId, slots.map((s) => s.sectionId));
+    for (const row of open) {
+      const list: PeriodNeedingCoverDto[] = [];
+      for (let date = row.startsOn; date <= lastTaken(row); date = addDays(date, 1)) {
+        if (!isTeachingDay(toDateString(date), calendar)) continue;
+        for (const slot of slots) {
+          if (slot.staffId !== row.staffId || slot.weekday !== date.getUTCDay() || !spanHolds(slot, date)) continue;
+          const subbed = taken.some(
+            (t) => t.sectionId === slot.sectionId && t.period === slot.period && t.date.getTime() === date.getTime(),
+          );
+          if (subbed) continue;
+          const label = labels.get(slot.sectionId);
+          list.push({
+            date: toDateString(date),
+            period: slot.period,
+            sectionId: slot.sectionId.toString(),
+            sectionName: label ? `${label.className} ${label.sectionName}` : '',
+            subjectName: slot.subjectName,
+          });
+        }
+      }
+      out.set(row.id, list.sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period));
     }
     return out;
   }

@@ -345,6 +345,14 @@ describe('imports/past-results.ts (R339)', () => {
     expect(result.ok && result.rows).toEqual([]);
   });
 
+  it('two rows with a blank admission number are each "required", never "duplicate" (wave R review)', () => {
+    const result = parsePastResults(bytes('admission_no,English,Islamiyat\n101,1,1\n102,1,1\n,1,1\n,2,2\n'), ctx);
+    expect(result.ok && result.errors.map((e) => [e.row, e.field, e.code])).toEqual([
+      [4, 'admission_no', 'required'],
+      [5, 'admission_no', 'required'],
+    ]);
+  });
+
   it('a file that cannot be read says why', () => {
     expect(parsePastResults(bytes(''), ctx)).toEqual({ ok: false, problem: 'empty', line: null });
   });
@@ -383,6 +391,14 @@ describe('imports/opening-balances.ts (R339, R342)', () => {
       [8, 'note', 'identity_number'],
     ]);
     expect(result.ok && result.rows).toEqual([]);
+  });
+
+  it('two rows with a blank admission number are each "required", never "duplicate" (wave R review)', () => {
+    const result = parseOpeningBalances(bytes('admission_no,amount,note\n,5,First\n,6,Second\n'), ctx);
+    expect(result.ok && result.errors.map((e) => [e.row, e.field, e.code])).toEqual([
+      [2, 'admission_no', 'required'],
+      [3, 'admission_no', 'required'],
+    ]);
   });
 
   it('header: admission_no first, amount required, nothing unknown or repeated', () => {

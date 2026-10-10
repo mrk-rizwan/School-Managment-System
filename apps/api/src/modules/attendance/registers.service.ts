@@ -71,7 +71,10 @@ export class RegistersService {
     const { schoolId } = session;
     const section = await this.section(schoolId, sectionId);
     const date = fromDateString(query.date);
-    const { callerRole, writeRole, scope } = await this.access.readRole(session, sectionId, date);
+    const { callerRole, writeRole, scope } = await this.access.readRole(session, sectionId, date, {
+      period: query.period,
+      mode: section.attendanceMode,
+    });
     const today = await this.clock.today(schoolId);
     assertRegisterDate(date, today, section);
     const settings = await this.settings.read(schoolId);
@@ -134,7 +137,7 @@ export class RegistersService {
     const items = assertShape(dto);
     const section = await this.section(schoolId, sectionId);
     const date = fromDateString(dto.date);
-    const role = await this.access.writeRole(session, sectionId, date, section.attendanceMode);
+    const role = await this.access.writeRole(session, sectionId, date, section.attendanceMode, dto.period);
     const today = await this.clock.today(schoolId);
     const now = this.clock.now();
     assertRegisterDate(date, today, section);

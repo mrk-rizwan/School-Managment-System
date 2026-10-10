@@ -407,6 +407,21 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/users/:id/roles': 'capability: user.account.manage | role.manage',
   'POST /api/v1/users/:id/roles': 'capability: role.manage',
   'POST /api/v1/users/:id/sign-out-everywhere': 'capability: user.account.manage',
+  // Phase 5 slice 37 (contracts/slice-37.md §1): any staff member reads any section's week and
+  // their own; the families read names only; every write, the lists and the grid need
+  // timetable.manage.
+  'GET /api/v1/sections/:id/timetable': 'staff',
+  'POST /api/v1/sections/:id/timetable-versions': 'capability: timetable.manage',
+  'POST /api/v1/sections/:id/timetable-substitutions': 'capability: timetable.manage',
+  'GET /api/v1/timetable-versions': 'capability: timetable.manage',
+  'GET /api/v1/timetable-versions/:id': 'capability: timetable.manage',
+  'POST /api/v1/timetable-versions/:id/void': 'capability: timetable.manage',
+  'GET /api/v1/timetable-substitutions': 'capability: timetable.manage',
+  'POST /api/v1/timetable-substitutions/:id/void': 'capability: timetable.manage',
+  'GET /api/v1/timetable/grid': 'capability: timetable.manage',
+  'GET /api/v1/me/children/:id/timetable': 'capacity: guardian',
+  'GET /api/v1/me/student/timetable': 'capacity: student',
+  'GET /api/v1/me/staff/timetable': 'staff',
   'GET /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/waha': 'webhook: waha',

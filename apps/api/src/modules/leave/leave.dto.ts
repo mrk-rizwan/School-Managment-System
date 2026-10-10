@@ -160,6 +160,25 @@ export class SectionNeedingCoverDto {
   name: string;
 }
 
+/** Phase 5 R307 (contracts/slice-37.md §3.4): one timetabled period of the leave. */
+export class PeriodNeedingCoverDto {
+  @ApiProperty(DATE)
+  date: string;
+
+  @ApiProperty({ type: Number, minimum: 1, maximum: 12 })
+  period: number;
+
+  @ApiProperty(ID)
+  sectionId: string;
+
+  /** `<class> <section>`. */
+  @ApiProperty()
+  sectionName: string;
+
+  @ApiProperty()
+  subjectName: string;
+}
+
 export class LeaveRequestDto {
   @ApiProperty(ID)
   id: string;
@@ -238,6 +257,14 @@ export class LeaveRequestDto {
    */
   @ApiProperty({ type: () => SectionNeedingCoverDto, isArray: true })
   sectionsNeedingCover: SectionNeedingCoverDto[];
+
+  /**
+   * Phase 5 R307: the staff member's timetabled periods on each teaching day of the leave (to the
+   * day ended early), from the version live that day, less those a live substitution already
+   * takes; date then period order. Empty once the request is no longer pending or approved.
+   */
+  @ApiProperty({ type: () => PeriodNeedingCoverDto, isArray: true })
+  periodsNeedingCover: PeriodNeedingCoverDto[];
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   cancelledAt: Date | null;

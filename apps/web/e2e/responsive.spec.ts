@@ -4,6 +4,7 @@ import type { components as PlatformSchemas } from '../lib/api/platform';
 import type { ApiErrorEnvelope } from '../lib/api/errors';
 import { BILLING_STATUS, INVOICES, PLANS, SCHOOL_BILLING } from './support/billing';
 import { FINANCE_SETTINGS } from './support/settings';
+import { TT_FUTURE_VERSION, TT_SUBSTITUTION, TT_VERSION, ttGrid, ttWeek } from './support/timetable';
 import type {
   AcademicYearDto,
   ClassDto,
@@ -430,6 +431,7 @@ const SECTION_DAYS: SectionDayDto[] = [
     coverStaffName: 'Muhammad Bilal Ahmed Qureshi',
     coverStaffIds: ['st-bilal'],
     declaredHolidayAfter: false,
+    periods: [],
   },
 ];
 const REGISTER_VIEW: RegisterViewDto = {
@@ -1078,6 +1080,9 @@ async function mockApi(page: Page, session: Session) {
       '/promotion-sheets': [PROMOTION_SHEET],
       '/certificates': CERTIFICATES,
       '/me/student/assessments': MY_TESTS,
+      // Phase 5 slice 37: the timetable.
+      '/timetable-versions': [TT_FUTURE_VERSION, TT_VERSION],
+      '/timetable-substitutions': [TT_SUBSTITUTION],
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -1086,6 +1091,7 @@ async function mockApi(page: Page, session: Session) {
     if (path === '/messaging/whatsapp') return json(200, WHATSAPP);
     if (path === '/messaging/usage') return json(200, USAGE);
     if (path === '/calendar/teaching-days') return json(200, TEACHING_DAYS);
+    if (path === '/timetable/grid') return json(200, ttGrid('2026-10-05', 1));
     if (lists[path]) return json(200, page1(lists[path]));
     const one: Record<string, unknown> = {
       '/classes/c5': CLASSES[0],
@@ -1107,6 +1113,8 @@ async function mockApi(page: Page, session: Session) {
       '/promotion-sheets/ps1': PROMOTION_SHEET,
       '/me/student/results': MY_RESULTS,
       '/me/student/results/r1': { withheld: false, outstanding: null, result: MY_CARD },
+      '/sections/sec-a/timetable': ttWeek(),
+      '/timetable-versions/tv1': TT_VERSION,
     };
     if (one[path]) return json(200, one[path]);
     unmocked.push(`${method} ${path}`);
@@ -1179,6 +1187,12 @@ const SCREENS: Screen[] = [
   { path: '/promotion/ps1', heading: 'Promotion · Class 5 A', session: 'school' },
   { path: '/certificates', heading: 'Certificates', session: 'school' },
   { path: '/my-results', heading: 'My results', session: 'student' },
+  // Phase 5 slice 37: the period timetable.
+  { path: '/timetable?section=sec-a', heading: 'Timetable', session: 'school' },
+  { path: '/timetable/sections/sec-a/edit', heading: 'Edit timetable · Class 5 A', session: 'school' },
+  { path: '/timetable/versions', heading: 'Timetable versions', session: 'school' },
+  { path: '/timetable/substitutions', heading: 'Substitutions', session: 'school' },
+  { path: '/timetable/grid', heading: 'Timetable grid', session: 'school' },
   // Platform console
   { path: '/platform/login', heading: 'Platform sign in', session: 'none' },
   { path: '/platform/enrol', heading: 'Set up your authenticator', session: 'platform-enrolment' },

@@ -77,6 +77,14 @@ export function MyClassesScreen() {
       }}
       testID="classes.screen"
     >
+      <Sheet>
+        <ListRow
+          title="Timetable"
+          detail="Your week, period by period"
+          onPress={() => router.push('/classes/timetable')}
+          testID="classes.timetable"
+        />
+      </Sheet>
       {rows.length === 0 ? (
         waiting ? (
           <LoadingState />

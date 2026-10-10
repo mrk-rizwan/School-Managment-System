@@ -32,6 +32,7 @@ import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
 import { ResultsModule } from './modules/results/results.module';
 import { PromotionModule } from './modules/promotion/promotion.module';
+import { TimetableModule } from './modules/timetable/timetable.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -87,6 +88,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
     CertificatesModule,
     ResultsModule,
     PromotionModule,
+    // Phase 5 slice 37 (phase-5-extended.md §2).
+    TimetableModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -53,6 +53,7 @@ function request(patch: Partial<LeaveRequestDto> = {}): LeaveRequestDto {
     coverAssignmentId: null,
     coverEndedOn: null,
     sectionsNeedingCover: [],
+    periodsNeedingCover: [],
     cancelledAt: null,
     cancelReason: null,
     ...patch,

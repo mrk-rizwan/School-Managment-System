@@ -816,9 +816,13 @@ const PHASE_4_FREE_TEXT: Record<string, string[]> = {
 const PHASE_5_FREE_TEXT: Record<string, string[]> = {
   student_documents: ['reject_reason'],
   staff: ['device_user_id'],
+  // Slice 37 (wave R security review LOW-2).
+  timetable_slots: ['room'],
+  timetable_substitutions: ['reason', 'void_reason'],
+  timetable_versions: ['void_reason'],
 };
 
-describe('R16 (Phase 5): document rejections and device user ids, whole tables', () => {
+describe('R16 (Phase 5): document rejections, device user ids and timetable text, whole tables', () => {
   let pg: Client;
 
   beforeAll(async () => {

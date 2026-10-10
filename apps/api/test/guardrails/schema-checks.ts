@@ -1049,6 +1049,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_O_OBJECTS(),
   ...WAVE_P_OBJECTS(),
   ...WAVE_R_OBJECTS(),
+  ...SLICE_37_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -3243,5 +3244,62 @@ function WAVE_R_OBJECTS(): ExpectedObject[] {
     // ---- indexes for the reports
     { kind: 'index', table: 'audit_log', name: 'audit_log_school_id_action_created_at_idx', definition: 'ON public.audit_log USING btree (school_id, action varchar_pattern_ops, created_at) WHERE (action IS NOT NULL)' },
     { kind: 'index', table: 'payslips', name: 'payslips_school_id_paid_on_idx', definition: 'ON public.payslips USING btree (school_id, paid_on) WHERE (paid_on IS NOT NULL)' },
+  ];
+}
+
+/**
+ * Phase 5 slice 37 (migration 20261009140000_slice37_timetable, contracts/slice-37.md §6): the
+ * timetable's guards — the date-range exclusion constraints, the slot guard that copies the
+ * version's range and void, and the periods_per_day refusal on school_settings.
+ */
+function SLICE_37_OBJECTS(): ExpectedObject[] {
+  const daterange = "daterange(effective_from, effective_to, '[]'::text) WITH &&";
+  return [
+    // ---- functions
+    { kind: 'function', name: 'asms_timetable_version_guard', definition: "v_refusal := 'timetable_versions_in_year'" },
+    { kind: 'function', name: 'asms_timetable_version_guard', definition: "v_refusal := 'timetable_versions_voided_frozen'" },
+    { kind: 'function', name: 'asms_timetable_version_sync_slots', definition: 'UPDATE timetable_slots s SET updated_at = CURRENT_TIMESTAMP' },
+    { kind: 'function', name: 'asms_timetable_slot_guard', definition: 'NEW.effective_to := v_to;' },
+    { kind: 'function', name: 'asms_timetable_slot_guard', definition: "v_refusal := 'timetable_slots_period_in_day'" },
+    { kind: 'function', name: 'asms_timetable_slot_guard', definition: "v_refusal := 'timetable_slots_off_day'" },
+    { kind: 'function', name: 'asms_timetable_slot_guard', definition: "v_refusal := 'timetable_slots_version_voided'" },
+    { kind: 'function', name: 'asms_school_settings_periods_timetabled', definition: "DETAIL = 'constraint: school_settings_periods_per_day_timetabled'" },
+    // ---- timetable_versions (R301)
+    { kind: 'constraint', table: 'timetable_versions', name: 'timetable_versions_dates_check', definition: 'CHECK (((effective_to IS NULL) OR (effective_to >= effective_from)))' },
+    { kind: 'constraint', table: 'timetable_versions', name: 'timetable_versions_voided_check', definition: 'CHECK ((((voided_at IS NULL) = (voided_by IS NULL)) AND ((voided_at IS NULL) = (void_reason IS NULL))))' },
+    { kind: 'constraint', table: 'timetable_versions', name: 'timetable_versions_void_reason_check' },
+    { kind: 'constraint', table: 'timetable_versions', name: 'timetable_versions_void_reason_no_id_check', definition: noIdCheck('void_reason') },
+    { kind: 'constraint', table: 'timetable_versions', name: 'timetable_versions_live_excl', definition: `EXCLUDE USING gist (school_id WITH =, section_id WITH =, ${daterange}) WHERE ((voided_at IS NULL))` },
+    { kind: 'trigger', table: 'timetable_versions', name: 'timetable_versions_guard', definition: 'BEFORE INSERT OR UPDATE ON public.timetable_versions FOR EACH ROW EXECUTE FUNCTION asms_timetable_version_guard()' },
+    { kind: 'trigger', table: 'timetable_versions', name: 'timetable_versions_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'academic_year_id', 'effective_from', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'timetable_versions', name: 'timetable_versions_voided_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
+    { kind: 'trigger', table: 'timetable_versions', name: 'timetable_versions_sync_slots', definition: 'AFTER UPDATE OF effective_to, voided_at ON public.timetable_versions FOR EACH ROW WHEN (((old.effective_to IS DISTINCT FROM new.effective_to) OR (old.voided_at IS DISTINCT FROM new.voided_at))) EXECUTE FUNCTION asms_timetable_version_sync_slots()' },
+    ...noDeleteTriggers('timetable_versions'),
+    // ---- timetable_slots (R302)
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_weekday_check', definition: 'CHECK (((weekday >= 0) AND (weekday <= 6)))' },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_period_check', definition: 'CHECK (((period >= 1) AND (period <= 12)))' },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_room_check' },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_room_no_id_check', definition: noIdCheck('room') },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_dates_check' },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_teacher_excl', definition: `EXCLUDE USING gist (school_id WITH =, staff_id WITH =, weekday WITH =, period WITH =, ${daterange}) WHERE ((voided_at IS NULL))` },
+    { kind: 'constraint', table: 'timetable_slots', name: 'timetable_slots_room_excl', definition: `EXCLUDE USING gist (school_id WITH =, lower(btrim((room)::text)) WITH =, weekday WITH =, period WITH =, ${daterange}) WHERE (((voided_at IS NULL) AND (room IS NOT NULL)))` },
+    { kind: 'index', table: 'timetable_slots', name: 'timetable_slots_live_staff_idx', definition: 'USING btree (school_id, staff_id, weekday, period) WHERE (voided_at IS NULL)' },
+    { kind: 'trigger', table: 'timetable_slots', name: 'timetable_slots_guard', definition: 'BEFORE INSERT OR UPDATE ON public.timetable_slots FOR EACH ROW EXECUTE FUNCTION asms_timetable_slot_guard()' },
+    { kind: 'trigger', table: 'timetable_slots', name: 'timetable_slots_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('version_id', 'class_id', 'weekday', 'period', 'class_subject_id', 'staff_id', 'room', 'created_at')" },
+    ...noDeleteTriggers('timetable_slots'),
+    // ---- school_settings (§3.2)
+    { kind: 'trigger', table: 'school_settings', name: 'school_settings_periods_timetabled', definition: 'BEFORE UPDATE OF periods_per_day ON public.school_settings FOR EACH ROW EXECUTE FUNCTION asms_school_settings_periods_timetabled()' },
+    // ---- timetable_substitutions (R306)
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_period_check', definition: 'CHECK (((period >= 1) AND (period <= 12)))' },
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_reason_check' },
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_reason_no_id_check', definition: noIdCheck('reason') },
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_voided_check' },
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_void_reason_check' },
+    { kind: 'constraint', table: 'timetable_substitutions', name: 'timetable_substitutions_void_reason_no_id_check', definition: noIdCheck('void_reason') },
+    { kind: 'index', table: 'timetable_substitutions', name: 'timetable_substitutions_live_key', definition: 'UNIQUE INDEX timetable_substitutions_live_key ON public.timetable_substitutions USING btree (school_id, section_id, date, period) WHERE (voided_at IS NULL)' },
+    { kind: 'index', table: 'timetable_substitutions', name: 'timetable_substitutions_staff_live_key', definition: 'UNIQUE INDEX timetable_substitutions_staff_live_key ON public.timetable_substitutions USING btree (school_id, staff_id, date, period) WHERE (voided_at IS NULL)' },
+    { kind: 'trigger', table: 'timetable_substitutions', name: 'timetable_substitutions_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('section_id', 'class_id', 'date', 'period', 'staff_id', 'reason', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'timetable_substitutions', name: 'timetable_substitutions_voided_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
+    ...noDeleteTriggers('timetable_substitutions'),
   ];
 }

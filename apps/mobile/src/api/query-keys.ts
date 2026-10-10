@@ -71,7 +71,23 @@ export const queryKeys = {
    * class tests (online only, never cached on the phone: withholding is decided at read time).
    */
   familyResults: (studentId: string | null, ...parts: (string | number)[]) =>
-    [...(studentId === null ? ['me', 'student'] : ['me', 'children', studentId]), 'results', ...parts] as const,
+    [
+      ...(studentId === null ? ['me', 'student'] : ['me', 'children', studentId]),
+      'results',
+      ...parts,
+    ] as const,
+
+  /**
+   * Phase 5 slice 37: the teacher's week, and a child's (`studentId`) or the student's own (null)
+   * section week (online only, never cached on the phone).
+   */
+  staffTimetable: (weekOf: string) => ['me', 'staff', 'timetable', weekOf] as const,
+  familyTimetable: (studentId: string | null, date: string) =>
+    [
+      ...(studentId === null ? ['me', 'student'] : ['me', 'children', studentId]),
+      'timetable',
+      date,
+    ] as const,
 
   // Everyone (16b): the inbox
   inbox: (category: string, page: number) => ['me', 'inbox', category, page] as const,

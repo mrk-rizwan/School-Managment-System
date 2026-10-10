@@ -2324,6 +2324,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/children/{id}/timetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTimetableController_child"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/devices": {
         parameters: {
             query?: never;
@@ -2644,6 +2660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/staff/timetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTimetableController_staff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/student/assessments": {
         parameters: {
             query?: never;
@@ -2764,6 +2796,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyStudentResultsController_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/timetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTimetableController_own"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3780,6 +3828,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sections/{id}/timetable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SectionTimetableController_week"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sections/{id}/timetable-substitutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SectionTimetableController_createSubstitution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sections/{id}/timetable-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SectionTimetableController_createVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff": {
         parameters: {
             query?: never;
@@ -4382,6 +4478,102 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["TermsController_unskipClass"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable-substitutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TimetableSubstitutionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable-substitutions/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TimetableSubstitutionsController_void"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TimetableVersionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable-versions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TimetableVersionsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable-versions/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TimetableVersionsController_void"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timetable/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TimetableGridController_grid"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5973,6 +6165,17 @@ export interface components {
             code?: string | null;
             name: string;
         };
+        CreateSubstitutionDto: {
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            period: number;
+            reason: string;
+            /** @description The substitute; needs no assignment */
+            staffId: string;
+        };
         CreateTeacherAssignmentDto: {
             /** @description The academic year is the class’s */
             classId: string;
@@ -6010,6 +6213,17 @@ export interface components {
             startsOn: string;
             /** @description Default: what the year's other terms leave of 100 (never below 0); their weights are unchanged */
             weight?: number;
+        };
+        CreateTimetableVersionDto: {
+            /** @description Copy the slots of another version of the same class */
+            copyFromVersionId?: string;
+            /**
+             * Format: date
+             * @description Today or later, inside the academic year
+             * @example 2026-10-12
+             */
+            effectiveFrom: string;
+            slots?: components["schemas"]["TimetableSlotInputDto"][];
         };
         CurrentInvoiceDto: {
             /** @description Whole rupees */
@@ -6240,7 +6454,7 @@ export interface components {
         /** @enum {string} */
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
-        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "PROMOTION_ENROLMENT_AFTER_YEAR" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "TIMETABLE_SLOT_CLASH" | "TIMETABLE_TEACHER_NOT_ASSIGNED" | "TIMETABLE_OFF_DAY" | "TIMETABLE_VERSION_SUPERSEDED" | "TIMETABLE_VERSION_NOT_FUTURE" | "TIMETABLE_SUBSTITUTION_EXISTS" | "TIMETABLE_SUBSTITUTION_NOT_TIMETABLED" | "TIMETABLE_SUBSTITUTION_SAME_TEACHER" | "EVENT_NOT_DRAFT" | "EVENT_NOT_PUBLISHED" | "EVENT_NO_SECTIONS" | "EVENT_DUTY_EXISTS" | "EVENT_PAYMENT_EXCEEDS_CHARGE" | "EVENT_NO_CHARGE" | "STAFF_CONTRACT_LIVE_EXISTS" | "STAFF_CONTRACT_ENDED" | "STAFF_CONTRACT_END_REQUIRED" | "DOCUMENT_ALREADY_DECIDED" | "VEHICLE_RETIRED" | "VEHICLE_IN_USE" | "TRANSPORT_ROUTE_ARCHIVED" | "TRANSPORT_ROUTE_HAS_ASSIGNMENTS" | "TRANSPORT_ASSIGNMENT_LIVE" | "TRANSPORT_AMOUNT_PERIOD_PAST" | "IMPORT_DUPLICATE_FILE" | "IMPORT_NOT_PREVIEWED" | "IMPORT_ROWS_INVALID" | "IMPORT_SHEET_EXISTS" | "IMPORT_MARKS_EXIST" | "IMPORT_YEAR_CLOSED" | "IMPORT_EXPIRED" | "DEVICE_TOKEN_INVALID" | "ATTENDANCE_DISPUTE_PENDING_EXISTS" | "ATTENDANCE_DISPUTE_NOT_PENDING" | "SUPPORT_SESSION_OPEN" | "SUPPORT_SESSION_ENDED" | "SUPPORT_WRITE_REFUSED" | "SUPPORT_SESSION_LIMIT" | "UNEXPECTED_RESPONSE";
+        ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "PROMOTION_ENROLMENT_AFTER_YEAR" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "TIMETABLE_SLOT_CLASH" | "TIMETABLE_TEACHER_NOT_ASSIGNED" | "TIMETABLE_OFF_DAY" | "TIMETABLE_VERSION_SUPERSEDED" | "TIMETABLE_VERSION_NOT_FUTURE" | "TIMETABLE_SUBSTITUTION_EXISTS" | "TIMETABLE_SUBSTITUTION_NOT_TIMETABLED" | "TIMETABLE_SUBSTITUTION_SAME_TEACHER" | "TIMETABLE_SUBSTITUTIONS_EXIST" | "EVENT_NOT_DRAFT" | "EVENT_NOT_PUBLISHED" | "EVENT_NO_SECTIONS" | "EVENT_DUTY_EXISTS" | "EVENT_PAYMENT_EXCEEDS_CHARGE" | "EVENT_NO_CHARGE" | "STAFF_CONTRACT_LIVE_EXISTS" | "STAFF_CONTRACT_ENDED" | "STAFF_CONTRACT_END_REQUIRED" | "DOCUMENT_ALREADY_DECIDED" | "VEHICLE_RETIRED" | "VEHICLE_IN_USE" | "TRANSPORT_ROUTE_ARCHIVED" | "TRANSPORT_ROUTE_HAS_ASSIGNMENTS" | "TRANSPORT_ASSIGNMENT_LIVE" | "TRANSPORT_AMOUNT_PERIOD_PAST" | "IMPORT_DUPLICATE_FILE" | "IMPORT_NOT_PREVIEWED" | "IMPORT_ROWS_INVALID" | "IMPORT_SHEET_EXISTS" | "IMPORT_MARKS_EXIST" | "IMPORT_YEAR_CLOSED" | "IMPORT_EXPIRED" | "DEVICE_TOKEN_INVALID" | "ATTENDANCE_DISPUTE_PENDING_EXISTS" | "ATTENDANCE_DISPUTE_NOT_PENDING" | "SUPPORT_SESSION_OPEN" | "SUPPORT_SESSION_ENDED" | "SUPPORT_WRITE_REFUSED" | "SUPPORT_SESSION_LIMIT" | "UNEXPECTED_RESPONSE";
         ExamSetUpResultDto: {
             /** @description Exams created by this request */
             created: number;
@@ -6741,6 +6955,7 @@ export interface components {
             id: string;
             leaveType: components["schemas"]["LeaveRequestTypeDto"];
             onBehalf: boolean;
+            periodsNeedingCover: components["schemas"]["PeriodNeedingCoverDto"][];
             reason: string;
             /** Format: date-time */
             requestedAt: string;
@@ -7257,6 +7472,72 @@ export interface components {
             /** @description Staff working days in the range while employed */
             workingDays: number;
         };
+        MyStaffTimetableDayDto: {
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            periods: components["schemas"]["MyStaffTimetablePeriodDto"][];
+            teachingDay: boolean;
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+        };
+        MyStaffTimetableDto: {
+            /** @description Monday to Sunday */
+            days: components["schemas"]["MyStaffTimetableDayDto"][];
+            periodsPerDay: number;
+            /**
+             * Format: date
+             * @description The Monday of the week
+             * @example 2026-10-12
+             */
+            weekOf: string;
+        };
+        MyStaffTimetablePeriodDto: {
+            classId: string;
+            className: string;
+            kind: components["schemas"]["TimetablePeriodKind"];
+            period: number;
+            room: string | null;
+            sectionId: string;
+            sectionName: string;
+            subjectName: string | null;
+            /** @description A slot of yours another teacher takes that day */
+            substitutedByName: string | null;
+        };
+        MyTimetableDayDto: {
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            periods: components["schemas"]["MyTimetablePeriodDto"][];
+            teachingDay: boolean;
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+        };
+        MyTimetableDto: {
+            className: string | null;
+            /** @description Monday to Sunday */
+            days: components["schemas"]["MyTimetableDayDto"][];
+            periodsPerDay: number;
+            sectionName: string | null;
+            studentId: string;
+            /**
+             * Format: date
+             * @description The Monday of the week
+             * @example 2026-10-12
+             */
+            weekOf: string;
+        };
+        MyTimetablePeriodDto: {
+            period: number;
+            room: string | null;
+            subjectName: string;
+            /** @description The teacher's name (the substitute's on a substituted day) */
+            teacherName: string;
+        };
         OfficeResetDto: {
             clearEmail: boolean;
             reason: string;
@@ -7480,6 +7761,17 @@ export interface components {
         };
         /** @enum {string} */
         PercentageSort: "percentage" | "-percentage" | "fullName" | "className";
+        PeriodNeedingCoverDto: {
+            /**
+             * Format: date
+             * @example 2026-10-06
+             */
+            date: string;
+            period: number;
+            sectionId: string;
+            sectionName: string;
+            subjectName: string;
+        };
         PermissionRoleDto: {
             /** @description The role's defaults */
             capabilities: components["schemas"]["Capability"][];
@@ -8286,6 +8578,8 @@ export interface components {
             declaredHolidayAfter: boolean;
             /** @description The class's now */
             mode: components["schemas"]["AttendanceMode"];
+            /** @description Period mode: one row per period 1..periodsPerDay, named from the timetable live on the date (Phase 5 R305); daily mode: empty */
+            periods: components["schemas"]["SectionDayPeriodDto"][];
             recorded: boolean;
             /** @description 1 in daily mode, else periodsPerDay now */
             registersExpected: number;
@@ -8298,6 +8592,14 @@ export interface components {
             submittedAt: string | null;
             submittedBy: string | null;
             submittedByName: string | null;
+        };
+        SectionDayPeriodDto: {
+            period: number;
+            recorded: boolean;
+            /** @description From the version live on the date; null when untimetabled */
+            subjectName: string | null;
+            /** @description The slot's teacher, or the substitute's; null when untimetabled */
+            teacherName: string | null;
         };
         /** @enum {string} */
         SectionDaySort: "className" | "sectionName" | "-registersRecorded";
@@ -8359,6 +8661,33 @@ export interface components {
             termId: string | null;
             termName: string | null;
             version: number;
+        };
+        SectionTimetableDayDto: {
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            slots: components["schemas"]["TimetableSlotDto"][];
+            /** @description Live substitutions of the day */
+            substitutions: components["schemas"]["TimetableSubstitutionDto"][];
+            teachingDay: boolean;
+            /** @description The version live on this day (R309) */
+            versionId: string | null;
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+        };
+        SectionTimetableDto: {
+            /** @description Monday to Sunday */
+            days: components["schemas"]["SectionTimetableDayDto"][];
+            periodsPerDay: number;
+            section: components["schemas"]["TimetableSectionRefDto"];
+            /**
+             * Format: date
+             * @description The Monday of the week
+             * @example 2026-10-12
+             */
+            weekOf: string;
         };
         SendRemindersDto: {
             /** @description At most one of classId, sectionId and studentIds; none = every family */
@@ -8529,6 +8858,7 @@ export interface components {
             id: string;
             leaveType: components["schemas"]["LeaveRequestTypeDto"];
             onBehalf: boolean;
+            periodsNeedingCover: components["schemas"]["PeriodNeedingCoverDto"][];
             /** Format: date-time */
             requestedAt: string;
             requestedByUserId: string;
@@ -8971,6 +9301,153 @@ export interface components {
         TermSort: "sortOrder" | "-sortOrder";
         /** @enum {string} */
         TestType: "daily" | "weekly" | "monthly" | "other";
+        TimetableGridDto: {
+            academicYearId: string;
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            periodsPerDay: number;
+            sections: components["schemas"]["TimetableGridSectionDto"][];
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+            weeklyOffDays: number[];
+        };
+        TimetableGridSectionDto: {
+            cells: components["schemas"]["TimetableSlotDto"][];
+            classId: string;
+            className: string;
+            sectionId: string;
+            sectionName: string;
+            versionId: string | null;
+        };
+        /** @enum {string} */
+        TimetablePeriodKind: "slot" | "substitution";
+        TimetableSectionRefDto: {
+            academicYearId: string;
+            classId: string;
+            className: string;
+            id: string;
+            name: string;
+        };
+        TimetableSlotDto: {
+            /** @description False when the teacher holds no live assignment for the subject and section on the day (a version: its first day, or today when live): "no assigned teacher" (R303) */
+            assignedTeacher: boolean;
+            classSubjectId: string;
+            id: string;
+            period: number;
+            room: string | null;
+            staffId: string;
+            subjectName: string;
+            teacherName: string;
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+        };
+        TimetableSlotInputDto: {
+            classSubjectId: string;
+            period: number;
+            room?: string | null;
+            staffId: string;
+            /** @description 0 = Sunday ... 6 = Saturday */
+            weekday: number;
+        };
+        TimetableSubstitutionDto: {
+            classId: string;
+            className: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            date: string;
+            id: string;
+            period: number;
+            reason: string;
+            /** @description The slot's own teacher on the date; null when no longer timetabled */
+            regularStaffId: string | null;
+            regularTeacherName: string | null;
+            sectionId: string;
+            sectionName: string;
+            /** @description The substitute */
+            staffId: string;
+            subjectName: string | null;
+            teacherName: string;
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+        };
+        /** @enum {string} */
+        TimetableSubstitutionSort: "-date" | "date";
+        TimetableVersionDetailDto: {
+            academicYearId: string;
+            classId: string;
+            className: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            effectiveFrom: string;
+            /**
+             * Format: date
+             * @description Inclusive; null = open-ended
+             * @example 2026-10-12
+             */
+            effectiveTo: string | null;
+            id: string;
+            sectionId: string;
+            sectionName: string;
+            slotCount: number;
+            /** @description Weekday, then period order */
+            slots: components["schemas"]["TimetableSlotDto"][];
+            /** @description Against the school today */
+            status: components["schemas"]["TimetableVersionStatus"];
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidedByName: string | null;
+        };
+        TimetableVersionDto: {
+            academicYearId: string;
+            classId: string;
+            className: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
+            effectiveFrom: string;
+            /**
+             * Format: date
+             * @description Inclusive; null = open-ended
+             * @example 2026-10-12
+             */
+            effectiveTo: string | null;
+            id: string;
+            sectionId: string;
+            sectionName: string;
+            slotCount: number;
+            /** @description Against the school today */
+            status: components["schemas"]["TimetableVersionStatus"];
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            voidedByName: string | null;
+        };
+        /** @enum {string} */
+        TimetableVersionSort: "-effectiveFrom" | "effectiveFrom";
+        /**
+         * @description Against the school today
+         * @enum {string}
+         */
+        TimetableVersionStatus: "live" | "future" | "past" | "voided";
         UndoCarryForwardDto: {
             reason: string;
             /** @description The carry-forward of this payment to undo */
@@ -22620,6 +23097,78 @@ export interface operations {
             };
         };
     };
+    MyTimetableController_child: {
+        parameters: {
+            query?: {
+                /** @description Any day of the week; default today */
+                date?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTimetableDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MeSessionsController_registerDevice: {
         parameters: {
             query?: never;
@@ -24126,6 +24675,68 @@ export interface operations {
             };
         };
     };
+    MyTimetableController_staff: {
+        parameters: {
+            query?: {
+                /** @description Any day of the week; default today */
+                weekOf?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyStaffTimetableDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyStudentResultsController_assessments: {
         parameters: {
             query?: {
@@ -24630,6 +25241,68 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyTimetableController_own: {
+        parameters: {
+            query?: {
+                /** @description Any day of the week; default today */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTimetableDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -30053,6 +30726,264 @@ export interface operations {
             };
         };
     };
+    SectionTimetableController_week: {
+        parameters: {
+            query?: {
+                /** @description Any day of the week; default today */
+                date?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SectionTimetableDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SectionTimetableController_createSubstitution: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubstitutionDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableSubstitutionDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableSubstitutionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SectionTimetableController_createVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTimetableVersionDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableVersionDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableVersionDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     StaffController_list: {
         parameters: {
             query?: {
@@ -33834,6 +34765,439 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableSubstitutionsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                sectionId?: string;
+                staffId?: string;
+                from?: string;
+                to?: string;
+                /** @description Voided substitutions too */
+                includeVoided?: boolean;
+                sort?: components["schemas"]["TimetableSubstitutionSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimetableSubstitutionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableSubstitutionsController_void: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableSubstitutionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableVersionsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                sectionId?: string;
+                academicYearId?: string;
+                status?: components["schemas"]["TimetableVersionStatus"];
+                sort?: components["schemas"]["TimetableVersionSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TimetableVersionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableVersionsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableVersionDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableVersionsController_void: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableVersionDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TimetableGridController_grid: {
+        parameters: {
+            query: {
+                academicYearId: string;
+                /** @description Which versions are live; default today */
+                date?: string;
+                /** @description Default the date's weekday */
+                weekday?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimetableGridDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

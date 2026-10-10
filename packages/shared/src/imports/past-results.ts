@@ -90,7 +90,7 @@ export function parsePastResults(bytes: Uint8Array, ctx: PastResultsContext): Pa
     else if (student === undefined) {
       refuse(ADMISSION_NO_COLUMN, ctx.knownAdmissionNos.has(admissionNo) ? 'not_on_roster' : 'unknown_admission_no');
     }
-    seen.add(admissionNo);
+    if (admissionNo !== '') seen.add(admissionNo);
     const marks = ctx.subjects.map((subject) => {
       const read = readMark(cells[columnOf.get(subject.classSubjectId) ?? -1] ?? '', subject.examMaxMarks);
       if (typeof read === 'string') {

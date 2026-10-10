@@ -461,6 +461,7 @@ const sectionDay = (sectionId: string, sectionName: string, extra: Partial<Secti
   coverStaffName: null,
   coverStaffIds: [],
   declaredHolidayAfter: false,
+  periods: [],
   ...extra,
 });
 

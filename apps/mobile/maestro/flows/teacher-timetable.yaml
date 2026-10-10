@@ -1,0 +1,31 @@
+# Phase 5 slice 37 — CI only. Same session as teacher-diary: the teacher opens Classes →
+# Timetable and the week renders (the week header and the day switcher). The seed has no
+# timetable version, so the day may say "No periods on this day"; the rows are proved in Jest.
+# Env: none beyond the signed-in teacher's session.
+appId: pk.asms.app.dev
+---
+- launchApp
+- tapOn:
+    id: 'tabs.classes'
+- extendedWaitUntil:
+    visible:
+      id: 'classes.timetable'
+    timeout: 20000
+- tapOn:
+    id: 'classes.timetable'
+- extendedWaitUntil:
+    visible:
+      id: 'timetable.week.month'
+      text: 'Week of .*'
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      text: 'Day'
+    timeout: 20000
+- tapOn:
+    id: 'timetable.week.next'
+- extendedWaitUntil:
+    visible:
+      text: 'Day'
+    timeout: 20000
+- back

@@ -43,6 +43,7 @@ function sectionDay(patch: Partial<SectionDayDto> = {}): SectionDayDto {
     date: TODAY,
     declaredHolidayAfter: false,
     mode: 'daily',
+    periods: [],
     recorded: false,
     registersExpected: 1,
     registersRecorded: 0,

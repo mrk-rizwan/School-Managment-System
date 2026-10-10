@@ -122,7 +122,8 @@ describe('slice 11 attendance repositories: tenant isolation', () => {
     expect(await registers.enrolmentsInForce(b.id, allOfB, studentId, D(T))).toEqual([]);
     expect(await registers.enrolmentsOverlapping(b.id, allOfB, studentId, D(schoolDay(-60)), D(T))).toEqual([]);
     expect((await registers.sectionDays(b.id, allOfB, { date: D(T), sort: 'className', skip: 0, take: 50 })).rows).toEqual([]);
-    expect(await registers.unrecordedForDeadline(b.id, D(T))).toEqual([]);
+    expect(await registers.rosteredForDeadline(b.id, D(T))).toEqual([]);
+    expect(await registers.periodsRecorded(b.id, [section.id], D(T))).toEqual(new Map());
     const users = app.get(UserRepository, { strict: false });
     expect((await users.watcherCandidates(b.id, Capability.ATTENDANCE_STUDENT_MARK)).map((w) => w.userId)).not.toContain(
       (await registers.findView(a.id, section.id, D(T), 1))?.submittedBy,

@@ -158,6 +158,8 @@ absent="$(get "$teacher_token" "/sections/$SECTION_A/register?date=$today&period
 if [ "$absent" != "2" ]; then echo "the server's register has $absent absent marks, wanted 2"; exit 1; fi
 
 flow teacher-diary teacher-diary.yaml "${ids[@]}"
+# Phase 5 slice 37: the teacher's week opens from Classes (online only).
+flow teacher-timetable teacher-timetable.yaml "${ids[@]}"
 
 # --- Phase 4 slice 30: marks entered offline ---------------------------------------------------
 # Seeded over curl: English on Class 5's subject list (the principal), and a weekly test in 5 B

@@ -5303,6 +5303,37 @@
         ],
         "type": "object"
       },
+      "CreateSubstitutionDto": {
+        "properties": {
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "staffId": {
+            "description": "The substitute; needs no assignment",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "period",
+          "staffId",
+          "reason"
+        ],
+        "type": "object"
+      },
       "CreateTeacherAssignmentDto": {
         "properties": {
           "classId": {
@@ -5385,6 +5416,33 @@
           "name",
           "startsOn",
           "endsOn"
+        ],
+        "type": "object"
+      },
+      "CreateTimetableVersionDto": {
+        "properties": {
+          "copyFromVersionId": {
+            "description": "Copy the slots of another version of the same class",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "description": "Today or later, inside the academic year",
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotInputDto"
+            },
+            "maxItems": 84,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "effectiveFrom"
         ],
         "type": "object"
       },
@@ -6460,6 +6518,7 @@
           "TIMETABLE_SUBSTITUTION_EXISTS",
           "TIMETABLE_SUBSTITUTION_NOT_TIMETABLED",
           "TIMETABLE_SUBSTITUTION_SAME_TEACHER",
+          "TIMETABLE_SUBSTITUTIONS_EXIST",
           "EVENT_NOT_DRAFT",
           "EVENT_NOT_PUBLISHED",
           "EVENT_NO_SECTIONS",
@@ -8451,6 +8510,12 @@
           "onBehalf": {
             "type": "boolean"
           },
+          "periodsNeedingCover": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodNeedingCoverDto"
+            },
+            "type": "array"
+          },
           "reason": {
             "type": "string"
           },
@@ -8516,6 +8581,7 @@
           "coverAssignmentId",
           "coverEndedOn",
           "sectionsNeedingCover",
+          "periodsNeedingCover",
           "cancelledAt",
           "cancelReason"
         ],
@@ -10569,6 +10635,217 @@
         ],
         "type": "object"
       },
+      "MyStaffTimetableDayDto": {
+        "properties": {
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/MyStaffTimetablePeriodDto"
+            },
+            "type": "array"
+          },
+          "teachingDay": {
+            "type": "boolean"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "teachingDay",
+          "periods"
+        ],
+        "type": "object"
+      },
+      "MyStaffTimetableDto": {
+        "properties": {
+          "days": {
+            "description": "Monday to Sunday",
+            "items": {
+              "$ref": "#/components/schemas/MyStaffTimetableDayDto"
+            },
+            "type": "array"
+          },
+          "periodsPerDay": {
+            "type": "number"
+          },
+          "weekOf": {
+            "description": "The Monday of the week",
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekOf",
+          "periodsPerDay",
+          "days"
+        ],
+        "type": "object"
+      },
+      "MyStaffTimetablePeriodDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TimetablePeriodKind"
+              }
+            ]
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "room": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "subjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "substitutedByName": {
+            "description": "A slot of yours another teacher takes that day",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "subjectName",
+          "room",
+          "kind",
+          "substitutedByName"
+        ],
+        "type": "object"
+      },
+      "MyTimetableDayDto": {
+        "properties": {
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/MyTimetablePeriodDto"
+            },
+            "type": "array"
+          },
+          "teachingDay": {
+            "type": "boolean"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "teachingDay",
+          "periods"
+        ],
+        "type": "object"
+      },
+      "MyTimetableDto": {
+        "properties": {
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "days": {
+            "description": "Monday to Sunday",
+            "items": {
+              "$ref": "#/components/schemas/MyTimetableDayDto"
+            },
+            "type": "array"
+          },
+          "periodsPerDay": {
+            "type": "number"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "weekOf": {
+            "description": "The Monday of the week",
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "sectionName",
+          "className",
+          "weekOf",
+          "periodsPerDay",
+          "days"
+        ],
+        "type": "object"
+      },
+      "MyTimetablePeriodDto": {
+        "properties": {
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "room": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "teacherName": {
+            "description": "The teacher's name (the substitute's on a substituted day)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "subjectName",
+          "teacherName",
+          "room"
+        ],
+        "type": "object"
+      },
       "OfficeResetDto": {
         "properties": {
           "clearEmail": {
@@ -11518,6 +11795,38 @@
           "className"
         ],
         "type": "string"
+      },
+      "PeriodNeedingCoverDto": {
+        "properties": {
+          "date": {
+            "example": "2026-10-06",
+            "format": "date",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "period",
+          "sectionId",
+          "sectionName",
+          "subjectName"
+        ],
+        "type": "object"
       },
       "PermissionRoleDto": {
         "properties": {
@@ -14745,6 +15054,13 @@
             ],
             "description": "The class's now"
           },
+          "periods": {
+            "description": "Period mode: one row per period 1..periodsPerDay, named from the timetable live on the date (Phase 5 R305); daily mode: empty",
+            "items": {
+              "$ref": "#/components/schemas/SectionDayPeriodDto"
+            },
+            "type": "array"
+          },
           "recorded": {
             "type": "boolean"
           },
@@ -14800,7 +15116,37 @@
           "classTeacherName",
           "coverStaffIds",
           "coverStaffName",
-          "declaredHolidayAfter"
+          "declaredHolidayAfter",
+          "periods"
+        ],
+        "type": "object"
+      },
+      "SectionDayPeriodDto": {
+        "properties": {
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "recorded": {
+            "type": "boolean"
+          },
+          "subjectName": {
+            "description": "From the version live on the date; null when untimetabled",
+            "nullable": true,
+            "type": "string"
+          },
+          "teacherName": {
+            "description": "The slot's teacher, or the substitute's; null when untimetabled",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "subjectName",
+          "teacherName",
+          "recorded"
         ],
         "type": "object"
       },
@@ -15042,6 +15388,82 @@
           "averageBp",
           "grades",
           "subjects"
+        ],
+        "type": "object"
+      },
+      "SectionTimetableDayDto": {
+        "properties": {
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotDto"
+            },
+            "type": "array"
+          },
+          "substitutions": {
+            "description": "Live substitutions of the day",
+            "items": {
+              "$ref": "#/components/schemas/TimetableSubstitutionDto"
+            },
+            "type": "array"
+          },
+          "teachingDay": {
+            "type": "boolean"
+          },
+          "versionId": {
+            "description": "The version live on this day (R309)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "teachingDay",
+          "versionId",
+          "slots",
+          "substitutions"
+        ],
+        "type": "object"
+      },
+      "SectionTimetableDto": {
+        "properties": {
+          "days": {
+            "description": "Monday to Sunday",
+            "items": {
+              "$ref": "#/components/schemas/SectionTimetableDayDto"
+            },
+            "type": "array"
+          },
+          "periodsPerDay": {
+            "type": "number"
+          },
+          "section": {
+            "$ref": "#/components/schemas/TimetableSectionRefDto"
+          },
+          "weekOf": {
+            "description": "The Monday of the week",
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section",
+          "weekOf",
+          "periodsPerDay",
+          "days"
         ],
         "type": "object"
       },
@@ -15640,6 +16062,12 @@
           "onBehalf": {
             "type": "boolean"
           },
+          "periodsNeedingCover": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodNeedingCoverDto"
+            },
+            "type": "array"
+          },
           "requestedAt": {
             "format": "date-time",
             "type": "string"
@@ -15700,6 +16128,7 @@
           "coverAssignmentId",
           "coverEndedOn",
           "sectionsNeedingCover",
+          "periodsNeedingCover",
           "cancelledAt",
           "cancelReason"
         ],
@@ -17351,6 +17780,512 @@
           "weekly",
           "monthly",
           "other"
+        ],
+        "type": "string"
+      },
+      "TimetableGridDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "periodsPerDay": {
+            "type": "number"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableGridSectionDto"
+            },
+            "type": "array"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          },
+          "weeklyOffDays": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "date",
+          "weekday",
+          "periodsPerDay",
+          "weeklyOffDays",
+          "sections"
+        ],
+        "type": "object"
+      },
+      "TimetableGridSectionDto": {
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotDto"
+            },
+            "type": "array"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "versionId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "versionId",
+          "cells"
+        ],
+        "type": "object"
+      },
+      "TimetablePeriodKind": {
+        "enum": [
+          "slot",
+          "substitution"
+        ],
+        "type": "string"
+      },
+      "TimetableSectionRefDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "classId",
+          "className",
+          "academicYearId"
+        ],
+        "type": "object"
+      },
+      "TimetableSlotDto": {
+        "properties": {
+          "assignedTeacher": {
+            "description": "False when the teacher holds no live assignment for the subject and section on the day (a version: its first day, or today when live): \"no assigned teacher\" (R303)",
+            "type": "boolean"
+          },
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "room": {
+            "nullable": true,
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "weekday",
+          "period",
+          "classSubjectId",
+          "subjectName",
+          "staffId",
+          "teacherName",
+          "room",
+          "assignedTeacher"
+        ],
+        "type": "object"
+      },
+      "TimetableSlotInputDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "room": {
+            "maxLength": 40,
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "weekday": {
+            "description": "0 = Sunday ... 6 = Saturday",
+            "maximum": 6,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "weekday",
+          "period",
+          "classSubjectId",
+          "staffId"
+        ],
+        "type": "object"
+      },
+      "TimetableSubstitutionDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "date": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "period": {
+            "maximum": 12,
+            "minimum": 1,
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "regularStaffId": {
+            "description": "The slot's own teacher on the date; null when no longer timetabled",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "regularTeacherName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "staffId": {
+            "description": "The substitute",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "date",
+          "period",
+          "staffId",
+          "teacherName",
+          "regularStaffId",
+          "regularTeacherName",
+          "subjectName",
+          "reason",
+          "createdByName",
+          "createdAt",
+          "voidedAt",
+          "voidReason"
+        ],
+        "type": "object"
+      },
+      "TimetableSubstitutionSort": {
+        "enum": [
+          "-date",
+          "date"
+        ],
+        "type": "string"
+      },
+      "TimetableVersionDetailDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "description": "Inclusive; null = open-ended",
+            "example": "2026-10-12",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "slotCount": {
+            "type": "number"
+          },
+          "slots": {
+            "description": "Weekday, then period order",
+            "items": {
+              "$ref": "#/components/schemas/TimetableSlotDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TimetableVersionStatus"
+              }
+            ],
+            "description": "Against the school today"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedByName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "academicYearId",
+          "effectiveFrom",
+          "effectiveTo",
+          "status",
+          "slotCount",
+          "createdByName",
+          "createdAt",
+          "voidedAt",
+          "voidedByName",
+          "voidReason",
+          "slots"
+        ],
+        "type": "object"
+      },
+      "TimetableVersionDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "example": "2026-10-12",
+            "format": "date",
+            "type": "string"
+          },
+          "effectiveTo": {
+            "description": "Inclusive; null = open-ended",
+            "example": "2026-10-12",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "slotCount": {
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TimetableVersionStatus"
+              }
+            ],
+            "description": "Against the school today"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "voidedByName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sectionId",
+          "sectionName",
+          "classId",
+          "className",
+          "academicYearId",
+          "effectiveFrom",
+          "effectiveTo",
+          "status",
+          "slotCount",
+          "createdByName",
+          "createdAt",
+          "voidedAt",
+          "voidedByName",
+          "voidReason"
+        ],
+        "type": "object"
+      },
+      "TimetableVersionSort": {
+        "enum": [
+          "-effectiveFrom",
+          "effectiveFrom"
+        ],
+        "type": "string"
+      },
+      "TimetableVersionStatus": {
+        "description": "Against the school today",
+        "enum": [
+          "live",
+          "future",
+          "past",
+          "voided"
         ],
         "type": "string"
       },
@@ -38760,6 +39695,108 @@
         ]
       }
     },
+    "/api/v1/me/children/{id}/timetable": {
+      "get": {
+        "operationId": "MyTimetableController_child",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Any day of the week; default today",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTimetableDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/devices": {
       "post": {
         "operationId": "MeSessionsController_registerDevice",
@@ -40983,6 +42020,89 @@
         ]
       }
     },
+    "/api/v1/me/staff/timetable": {
+      "get": {
+        "operationId": "MyTimetableController_staff",
+        "parameters": [
+          {
+            "description": "Any day of the week; default today",
+            "in": "query",
+            "name": "weekOf",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyStaffTimetableDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/student/assessments": {
       "get": {
         "operationId": "MyStudentResultsController_assessments",
@@ -41822,6 +42942,89 @@
             "description": ""
           },
           "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/timetable": {
+      "get": {
+        "operationId": "MyTimetableController_own",
+        "parameters": [
+          {
+            "description": "Any day of the week; default today",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTimetableDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
             "content": {
               "application/json": {
                 "schema": {
@@ -49614,6 +50817,368 @@
         ]
       }
     },
+    "/api/v1/sections/{id}/timetable": {
+      "get": {
+        "operationId": "SectionTimetableController_week",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Any day of the week; default today",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionTimetableDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/timetable-substitutions": {
+      "post": {
+        "operationId": "SectionTimetableController_createSubstitution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubstitutionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableSubstitutionDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableSubstitutionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/sections/{id}/timetable-versions": {
+      "post": {
+        "operationId": "SectionTimetableController_createVersion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTimetableVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableVersionDetailDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableVersionDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
     "/api/v1/staff": {
       "get": {
         "operationId": "StaffController_list",
@@ -55565,6 +57130,744 @@
         },
         "tags": [
           "terms and results"
+        ]
+      }
+    },
+    "/api/v1/timetable-substitutions": {
+      "get": {
+        "operationId": "TimetableSubstitutionsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staffId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Voided substitutions too",
+            "in": "query",
+            "name": "includeVoided",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimetableSubstitutionSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TimetableSubstitutionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/timetable-substitutions/{id}/void": {
+      "post": {
+        "operationId": "TimetableSubstitutionsController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableSubstitutionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/timetable-versions": {
+      "get": {
+        "operationId": "TimetableVersionsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sectionId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimetableVersionStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimetableVersionSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TimetableVersionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/timetable-versions/{id}": {
+      "get": {
+        "operationId": "TimetableVersionsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableVersionDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/timetable-versions/{id}/void": {
+      "post": {
+        "operationId": "TimetableVersionsController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableVersionDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
+        ]
+      }
+    },
+    "/api/v1/timetable/grid": {
+      "get": {
+        "operationId": "TimetableGridController_grid",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academicYearId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which versions are live; default today",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "example": "2026-10-12",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default the date's weekday",
+            "in": "query",
+            "name": "weekday",
+            "required": false,
+            "schema": {
+              "maximum": 6,
+              "minimum": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableGridDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "timetable"
         ]
       }
     },

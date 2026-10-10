@@ -65,7 +65,7 @@ export function parseOpeningBalances(bytes: Uint8Array, ctx: OpeningBalancesCont
     else if (student === undefined) {
       refuse(ADMISSION_NO_COLUMN, ctx.knownAdmissionNos.has(admissionNo) ? 'not_on_roster' : 'unknown_admission_no');
     }
-    seen.add(admissionNo);
+    if (admissionNo !== '') seen.add(admissionNo);
     const amount = at(cells, 'amount');
     if (amount === '') refuse('amount', 'required');
     else if (!AMOUNT.test(amount)) refuse('amount', 'invalid_amount');

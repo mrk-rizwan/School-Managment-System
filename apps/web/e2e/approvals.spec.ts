@@ -126,6 +126,7 @@ const leave: LeaveRequestDto = {
   coverAssignmentId: null,
   coverEndedOn: null,
   sectionsNeedingCover: [{ sectionId: 'sec-a', classId: 'c5', name: 'Class 5 A' }],
+  periodsNeedingCover: [],
   cancelledAt: null,
   cancelReason: null,
 };

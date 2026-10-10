@@ -4,8 +4,9 @@ import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiException, fieldRefused } from '../../common/errors/api-exception';
 import { daysBetween } from '../../common/school-clock';
 import type { RegisterSection } from '../../repositories/attendance-register.repository';
+import { TimetableReadsRepository, type SubstituteAdmission } from '../../repositories/timetable-reads.repository';
 import type { DatedScope, Scope } from '../../tenancy/scope';
-import { PermissionsService, rowScope } from '../access/permissions.service';
+import { PermissionsService, rowScope, rowScopeWith } from '../access/permissions.service';
 import type { CallerRole } from './attendance.dto';
 
 // contracts/slice-11.md §1.2, §1.3, §3.2 (R118-R125, R175): the dated, role-aware scope of a
@@ -31,6 +32,13 @@ function roleIn(scope: DatedScope | null, sectionId: bigint): WriteRole | null {
 /** A subject teacher writes only in period mode (§1.2). */
 const writesIn = (role: WriteRole, mode: AttendanceMode): boolean =>
   role !== 'subject_teacher' || mode === 'period';
+
+/** Phase 5 R304: a subject teacher outside their timetabled periods once the section has one. */
+const notTimetabledPeriod = (period: number): ApiException =>
+  new ApiException(403, ErrorCode.PERMISSION_DENIED, 'That period is not yours on the timetable.', {
+    reason: 'not_timetabled_period',
+    period,
+  });
 
 const subjectTeacherDaily = (): ApiException =>
   new ApiException(
@@ -81,7 +89,34 @@ export function assertWritablePeriod(period: number, mode: AttendanceMode, perio
 
 @Injectable()
 export class AttendanceAccess {
-  constructor(private readonly permissions: PermissionsService) {}
+  constructor(
+    private readonly permissions: PermissionsService,
+    private readonly timetable: TimetableReadsRepository,
+  ) {}
+
+  /**
+   * Phase 5 R304, R306 (contracts/slice-37.md §2.5), period mode only: with a version live on the
+   * date, a subject teacher keeps the period only when its slot names them or a live substitution
+   * does ('denied' otherwise); a caller with no role in the section on the date gains the subject
+   * teacher's write on a period a live substitution names them for (the lookup's SubstituteAdmission,
+   * the only thing rowScopeWith accepts). Without a live
+   * version, or for any other role, nothing changes ('unchanged': R120 stands).
+   */
+  private async byTimetable(
+    session: SchoolSessionContext,
+    sectionId: bigint,
+    on: Date,
+    period: number,
+    role: WriteRole | null,
+  ): Promise<'unchanged' | 'denied' | SubstituteAdmission> {
+    if (role !== null && role !== 'subject_teacher') return 'unchanged';
+    const staffId = session.access.staffId;
+    if (staffId === null) return 'unchanged';
+    const access = await this.timetable.periodAccess(session.schoolId, { sectionId, date: on, period, staffId });
+    if (role === null) return access.substitute ?? 'unchanged';
+    if (!access.live) return 'unchanged';
+    return access.slotStaffId === staffId || access.substitute !== null ? 'unchanged' : 'denied';
+  }
 
   /** The dated scope of the mark key, or null when it is not held. */
   private markScope(session: SchoolSessionContext, on: Date): Promise<DatedScope | null> {
@@ -98,10 +133,20 @@ export class AttendanceAccess {
     session: SchoolSessionContext,
     sectionId: bigint,
     on: Date,
+    period?: { period: number; mode: AttendanceMode },
   ): Promise<{ callerRole: CallerRole; writeRole: WriteRole | null; scope: Scope }> {
     const mark = await this.markScope(session, on);
     const writeRole = roleIn(mark, sectionId);
-    if (mark !== null && writeRole !== null) return { callerRole: writeRole, writeRole, scope: rowScope(mark) };
+    const tt =
+      mark !== null && period?.mode === 'period'
+        ? await this.byTimetable(session, sectionId, on, period.period, writeRole)
+        : 'unchanged';
+    if (mark !== null && typeof tt === 'object') {
+      return { callerRole: 'subject_teacher', writeRole: 'subject_teacher', scope: rowScopeWith(mark, tt) };
+    }
+    if (mark !== null && writeRole !== null) {
+      return { callerRole: writeRole, writeRole: tt === 'denied' ? null : writeRole, scope: rowScope(mark) };
+    }
     const view = await this.permissions.scopeOf(session, {
       capability: Capability.ATTENDANCE_STUDENT_VIEW_ALL,
       on,
@@ -119,8 +164,15 @@ export class AttendanceAccess {
     sectionId: bigint,
     on: Date,
     mode: AttendanceMode,
+    period: number,
   ): Promise<WriteRole> {
-    const role = roleIn(await this.markScope(session, on), sectionId);
+    const mark = await this.markScope(session, on);
+    let role = roleIn(mark, sectionId);
+    if (mark !== null && mode === 'period') {
+      const tt = await this.byTimetable(session, sectionId, on, period, role);
+      if (tt === 'denied') throw notTimetabledPeriod(period);
+      if (typeof tt === 'object') role = 'subject_teacher';
+    }
     if (role === null) return this.permissions.refuseOutsideDate(session, sectionId);
     if (!writesIn(role, mode)) throw subjectTeacherDaily();
     return role;

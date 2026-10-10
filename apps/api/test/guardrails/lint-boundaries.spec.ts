@@ -301,6 +301,32 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Slice 37 (phase-5-extended.md §2): attendance and leave read the timetable only through
+  // TimetableReadsRepository; the write repository is the timetable module's alone.
+  it.each([
+    ['timetable-repository-import.ts', 'src/modules/attendance/registers.service.ts'],
+    ['timetable-repository-import.ts', 'src/modules/leave/leave-requests.service.ts'],
+    ['timetable-repository-import.ts', 'src/modules/academics/sections.service.ts'],
+    ['timetable-reads-repository-import.ts', 'src/modules/academics/sections.service.ts'],
+    ['timetable-reads-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    // Wave R security review (MEDIUM-1): rowScopeWith is attendance-access's alone.
+    ['row-scope-with-import.ts', 'src/modules/attendance/registers.service.ts'],
+    ['row-scope-with-import.ts', 'src/modules/leave/leave-requests.service.ts'],
+    ['row-scope-with-import.ts', 'src/modules/timetable/timetable.service.ts'],
+  ])('refuses %s at %s (slice 37)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['timetable-repository-import.ts', 'src/modules/timetable/timetable.service.ts'],
+    ['timetable-reads-repository-import.ts', 'src/modules/timetable/timetable.service.ts'],
+    ['timetable-reads-repository-import.ts', 'src/modules/attendance/registers.service.ts'],
+    ['timetable-reads-repository-import.ts', 'src/modules/leave/leave-requests.service.ts'],
+    ['row-scope-with-import.ts', 'src/modules/attendance/attendance-access.ts'],
+  ])('allows %s at %s (slice 37)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

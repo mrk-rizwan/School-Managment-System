@@ -238,6 +238,16 @@ export class MarkChangeDto {
   @ApiProperty() reason: string;
 }
 
+/** Phase 5 slice 37 (contracts/slice-37.md §3.2): one period of a period-mode section-day. */
+export class SectionDayPeriodDto {
+  @ApiProperty({ type: Number, minimum: 1, maximum: 12 }) period: number;
+  @ApiProperty({ type: String, nullable: true, description: 'From the version live on the date; null when untimetabled' })
+  subjectName: string | null;
+  @ApiProperty({ type: String, nullable: true, description: "The slot's teacher, or the substitute's; null when untimetabled" })
+  teacherName: string | null;
+  @ApiProperty() recorded: boolean;
+}
+
 export class SectionDayDto {
   @ApiProperty(ID) sectionId: string;
   @ApiProperty() sectionName: string;
@@ -262,6 +272,13 @@ export class SectionDayDto {
   coverStaffName: string | null;
   @ApiProperty({ description: 'Recorded on a day later declared a holiday (R167)' })
   declaredHolidayAfter: boolean;
+  @ApiProperty({
+    type: SectionDayPeriodDto,
+    isArray: true,
+    description:
+      'Period mode: one row per period 1..periodsPerDay, named from the timetable live on the date (Phase 5 R305); daily mode: empty',
+  })
+  periods: SectionDayPeriodDto[];
 }
 
 export class DailySummaryDto {

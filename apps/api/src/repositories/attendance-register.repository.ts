@@ -391,6 +391,34 @@ export class AttendanceRegisterRepository {
     });
   }
 
+  /** Phase 5 (R305, SectionDayDto.periods): the periods recorded per section on a date. */
+  async periodsRecorded(schoolId: SchoolId, sectionIds: readonly bigint[], date: Date): Promise<Map<bigint, Set<number>>> {
+    if (sectionIds.length === 0) return new Map();
+    const rows = await this.txHost.tx.attendanceRegister.findMany({
+      where: { schoolId, sectionId: { in: [...new Set(sectionIds)] }, date },
+      select: { sectionId: true, period: true },
+    });
+    const out = new Map<bigint, Set<number>>();
+    for (const row of rows) out.set(row.sectionId, (out.get(row.sectionId) ?? new Set<number>()).add(row.period));
+    return out;
+  }
+
+  /**
+   * R129's set for the deadline job (§8.4), widened by Phase 5 R305: every section of the school
+   * with a non-empty roster on the date, recorded or not (the job lists a timetabled section's
+   * unrecorded periods, and any other section only when it has no register at all). Sections and
+   * registers only, no student row, so the worker asks it without a caller's scope.
+   */
+  async rosteredForDeadline(schoolId: SchoolId, date: Date): Promise<SectionDayRow[]> {
+    const { rows } = await this.sectionDayPage(schoolId, Prisma.sql`TRUE`, {
+      date,
+      sort: 'className',
+      skip: 0,
+      take: 10_000,
+    });
+    return rows;
+  }
+
   /** Registers recorded for a section-day (live; the rollup's registers_recorded). */
   async countForSectionDay(schoolId: SchoolId, sectionId: bigint, date: Date): Promise<number> {
     return this.txHost.tx.attendanceRegister.count({ where: { schoolId, sectionId, date } });
@@ -407,22 +435,6 @@ export class AttendanceRegisterRepository {
     query: SectionDayQuery,
   ): Promise<{ rows: SectionDayRow[]; total: number }> {
     return this.sectionDayPage(schoolId, sectionInScope(scope, Prisma.sql`s.id`), query);
-  }
-
-  /**
-   * R129's unrecorded set for the deadline job (§8.4): every section of the school with a
-   * non-empty roster on the date and no register at all. Sections and registers only, no student
-   * row, so the worker asks it without a caller's scope.
-   */
-  async unrecordedForDeadline(schoolId: SchoolId, date: Date): Promise<SectionDayRow[]> {
-    const { rows } = await this.sectionDayPage(schoolId, Prisma.sql`TRUE`, {
-      date,
-      recorded: false,
-      sort: 'className',
-      skip: 0,
-      take: 10_000,
-    });
-    return rows;
   }
 
   private async sectionDayPage(

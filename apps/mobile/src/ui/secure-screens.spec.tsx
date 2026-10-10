@@ -26,6 +26,8 @@ const SECURE: Record<string, boolean> = {
   // Slice 31: the term picker names no child; the sheet's preview does.
   'marks/[sectionId]/sheet.tsx': false,
   'marks/sheet/[id].tsx': true,
+  // Phase 5 slice 37: the teacher's week names sections, not children
+  'classes/timetable.tsx': false,
   // Parent (§5.1–5.4)
   'children/index.tsx': true,
   'children/[studentId]/attendance.tsx': true,
@@ -37,6 +39,8 @@ const SECURE: Record<string, boolean> = {
   // Phase 4 slice 33: a child's results and report card
   'children/[studentId]/results/index.tsx': true,
   'children/[studentId]/results/[resultId].tsx': true,
+  // Phase 5 slice 37: a section's week — subjects, teachers, rooms; no child's name (§3.7)
+  'children/[studentId]/timetable.tsx': false,
   // Student (§5.5)
   'student/index.tsx': true,
   'student/attendance.tsx': true,
@@ -45,6 +49,7 @@ const SECURE: Record<string, boolean> = {
   // Phase 4 slice 33: the student's own results and report card
   'student/results/index.tsx': true,
   'student/results/[resultId].tsx': true,
+  'student/timetable.tsx': false,
   // Everyone (§7.3): secure when the user is a guardian (set from capacities at render)
   'inbox/index.tsx': true,
   'inbox/[id].tsx': true,

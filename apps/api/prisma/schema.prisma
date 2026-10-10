@@ -194,6 +194,9 @@ model School {
   resultSubjects                ResultSubject[]                @ignore
   promotionSheets               PromotionSheet[]               @ignore
   promotionDecisions            PromotionDecision[]            @ignore
+  timetableVersions             TimetableVersion[]             @ignore
+  timetableSlots                TimetableSlot[]                @ignore
+  timetableSubstitutions        TimetableSubstitution[]        @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -467,6 +470,7 @@ model Class {
   resultSheets            ResultSheet[]
   promotionSheets         PromotionSheet[]
   promotionTargets        PromotionDecision[]
+  timetableVersions       TimetableVersion[]
   sections                Section[]
   teacherAssignments      TeacherAssignment[]
   enrolments              Enrolment[]
@@ -512,6 +516,8 @@ model Section {
   resultSheets            ResultSheet[]
   promotionSheets         PromotionSheet[]
   promotionTargets        PromotionDecision[]
+  timetableVersions       TimetableVersion[]
+  timetableSubstitutions  TimetableSubstitution[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -683,6 +689,8 @@ model Staff {
   salaryStructures       SalaryStructure[]
   salaryAdvances         SalaryAdvance[]
   payslips               Payslip[]
+  timetableSlots         TimetableSlot[]
+  timetableSubstitutions TimetableSubstitution[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@unique([schoolId, deviceUserId], map: "staff_school_id_device_user_id_key")
@@ -887,6 +895,10 @@ model User {
   promotionSheetsOpened     PromotionSheet[]        @relation("PromotionSheetOpenedBy")
   promotionSheetsApplied    PromotionSheet[]        @relation("PromotionSheetAppliedBy")
   promotionDecisionsDecided PromotionDecision[]     @relation("PromotionDecisionDecidedBy")
+  timetableVersionsCreated  TimetableVersion[]      @relation("TimetableVersionCreatedBy")
+  timetableVersionsVoided   TimetableVersion[]      @relation("TimetableVersionVoidedBy")
+  timetableSubsCreated      TimetableSubstitution[] @relation("TimetableSubstitutionCreatedBy")
+  timetableSubsVoided       TimetableSubstitution[] @relation("TimetableSubstitutionVoidedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -4369,6 +4381,7 @@ model ClassSubject {
   archivedByUser User?           @relation(fields: [schoolId, archivedBy], references: [schoolId, id], map: "class_subjects_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   assessments    Assessment[]
   resultSubjects ResultSubject[]
+  timetableSlots TimetableSlot[]
 
   @@unique([schoolId, id], map: "class_subjects_school_id_id_key")
   /// Target of (school_id, class_subject_id, class_id) FKs: a row naming a class-subject names its class.
@@ -5111,4 +5124,123 @@ enum StatementBasis {
   verified
 
   @@map("statement_basis")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5 slice 37 (phase-5-extended.md §3.2 "Timetable", rule 33, R301-R309): the period
+// timetable. Hand-written CHECKs, the exclusion constraints, triggers and partial indexes are in
+// migration 20261009140000_slice37_timetable and listed in test/guardrails/schema-checks.ts
+// (SLICE_37_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// Tenant: one section's week from a date (rule 33). A version is a date range, never edited: a
+/// change opens a new version and closes the live one the day before (effective_to); a future
+/// version may be voided, which restores its predecessor's effective_to. Live versions of one
+/// section never overlap (EXCLUDE timetable_versions_live_excl). Frozen except effective_to and the
+/// void trio; effective_from inside the class's year (trigger timetable_versions_guard).
+model TimetableVersion {
+  id             BigInt    @id(map: "timetable_versions_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  sectionId      BigInt    @map("section_id")
+  classId        BigInt    @map("class_id")
+  academicYearId BigInt    @map("academic_year_id")
+  effectiveFrom  DateTime  @map("effective_from") @db.Date
+  /// Inclusive last day; null = open-ended. CHECK timetable_versions_dates_check: >= effective_from.
+  effectiveTo    DateTime? @map("effective_to") @db.Date
+  createdBy      BigInt    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together (CHECK timetable_versions_voided_check); once set, frozen.
+  voidedAt       DateTime? @map("voided_at") @db.Timestamptz(3)
+  voidedBy       BigInt?   @map("voided_by")
+  voidReason     String?   @map("void_reason") @db.VarChar(500)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School          @relation(fields: [schoolId], references: [id], map: "timetable_versions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  section       Section         @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "timetable_versions_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class         Class           @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "timetable_versions_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User            @relation("TimetableVersionCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "timetable_versions_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?           @relation("TimetableVersionVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "timetable_versions_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  slots         TimetableSlot[]
+
+  @@unique([schoolId, id], map: "timetable_versions_school_id_id_key")
+  /// Target of the slots' (school_id, version_id, class_id) FK: a slot's class-subject is of the version's class.
+  @@unique([schoolId, id, classId], map: "timetable_versions_school_id_id_class_id_key")
+  @@index([schoolId, sectionId, classId, effectiveFrom], map: "timetable_versions_school_id_section_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "timetable_versions_school_id_class_id_idx")
+  @@index([schoolId, createdBy], map: "timetable_versions_school_id_created_by_idx")
+  @@index([schoolId, voidedBy], map: "timetable_versions_school_id_voided_by_idx")
+  @@map("timetable_versions")
+}
+
+/// Tenant: one weekday-period of a version (A2: a double period is two slots). Its range and void
+/// are copied from the version (triggers timetable_slots_guard and timetable_versions_sync_slots),
+/// so the clash constraints see "live on a day" without a join: a teacher once per weekday-period
+/// (timetable_slots_teacher_excl), a room once (timetable_slots_room_excl, lower-cased), one slot
+/// per version-weekday-period. Frozen.
+model TimetableSlot {
+  id             BigInt    @id(map: "timetable_slots_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  versionId      BigInt    @map("version_id")
+  classId        BigInt    @map("class_id")
+  /// 0 = Sunday ... 6 = Saturday, as weekly_off_days.
+  weekday        Int       @db.SmallInt
+  /// 1 .. school_settings.periods_per_day (trigger timetable_slots_guard), at most 12.
+  period         Int       @db.SmallInt
+  classSubjectId BigInt    @map("class_subject_id")
+  staffId        BigInt    @map("staff_id")
+  /// Free text, trimmed, at most 40 (§1.1); null = no room.
+  room           String?   @db.VarChar(40)
+  /// Copies of the version's, written by trigger only.
+  effectiveFrom  DateTime  @map("effective_from") @db.Date
+  effectiveTo    DateTime? @map("effective_to") @db.Date
+  voidedAt       DateTime? @map("voided_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school       School           @relation(fields: [schoolId], references: [id], map: "timetable_slots_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  version      TimetableVersion @relation(fields: [schoolId, versionId, classId], references: [schoolId, id, classId], map: "timetable_slots_version_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  classSubject ClassSubject     @relation(fields: [schoolId, classSubjectId, classId], references: [schoolId, id, classId], map: "timetable_slots_class_subject_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff        Staff            @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "timetable_slots_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "timetable_slots_school_id_id_key")
+  @@unique([schoolId, versionId, weekday, period], map: "timetable_slots_version_weekday_period_key")
+  @@index([schoolId, versionId, classId], map: "timetable_slots_school_id_version_id_class_id_idx")
+  @@index([schoolId, classSubjectId, classId], map: "timetable_slots_school_id_class_subject_id_idx")
+  @@index([schoolId, staffId], map: "timetable_slots_school_id_staff_id_idx")
+  @@map("timetable_slots")
+}
+
+/// Tenant: a one-off substitution (rule 33, §1.1): a named teacher, who need not hold an
+/// assignment, takes one section's period on one date. One live per section-date-period and per
+/// teacher-date-period (partial uniques). Voided, never edited; A3: the version is untouched.
+model TimetableSubstitution {
+  id         BigInt    @id(map: "timetable_substitutions_pkey") @default(autoincrement())
+  schoolId   BigInt    @map("school_id")
+  sectionId  BigInt    @map("section_id")
+  classId    BigInt    @map("class_id")
+  date       DateTime  @db.Date
+  /// 1-12.
+  period     Int       @db.SmallInt
+  staffId    BigInt    @map("staff_id")
+  reason     String    @db.VarChar(500)
+  createdBy  BigInt    @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together (CHECK timetable_substitutions_voided_check); once set, frozen.
+  voidedAt   DateTime? @map("voided_at") @db.Timestamptz(3)
+  voidedBy   BigInt?   @map("voided_by")
+  voidReason String?   @map("void_reason") @db.VarChar(500)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School  @relation(fields: [schoolId], references: [id], map: "timetable_substitutions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  section       Section @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "timetable_substitutions_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff         Staff   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "timetable_substitutions_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User    @relation("TimetableSubstitutionCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "timetable_substitutions_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?   @relation("TimetableSubstitutionVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "timetable_substitutions_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "timetable_substitutions_school_id_id_key")
+  @@index([schoolId, sectionId, classId, date], map: "timetable_substitutions_school_id_section_id_idx")
+  @@index([schoolId, staffId, date], map: "timetable_substitutions_school_id_staff_id_date_idx")
+  @@index([schoolId, createdBy], map: "timetable_substitutions_school_id_created_by_idx")
+  @@index([schoolId, voidedBy], map: "timetable_substitutions_school_id_voided_by_idx")
+  @@map("timetable_substitutions")
 }

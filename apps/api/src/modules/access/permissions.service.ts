@@ -40,6 +40,7 @@ import {
   type GrantInput,
 } from './effective-permissions';
 import { defaultPasswordActionBlocks, defaultPasswordBlocks, notAssignedOnDate } from './access.errors';
+import type { SubstituteAdmission } from '../../repositories/timetable-reads.repository';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
 export const SCHOOL_ROLES = ['principal', 'office_staff', 'teacher', 'parent', 'student'] as const;
@@ -100,6 +101,16 @@ export const DEFAULT_PASSWORD_BLOCKED_ACTION = 'user.default_password_blocked';
  */
 export function rowScope(dated: DatedScope): Scope {
   return dated.kind === 'all' ? scopeAll() : scopeSections([...dated.sections.keys()]);
+}
+
+/**
+ * rowScope widened by one section (Phase 5 R306): a substitute named for a section's period reads
+ * and writes that register without an assignment there, so the register view's student-linked
+ * reads need the section in scope. It takes the lookup's proof, never a bare section id, and lint
+ * confines its import to src/modules/attendance/attendance-access.ts (wave R security review).
+ */
+export function rowScopeWith(dated: DatedScope, admission: SubstituteAdmission): Scope {
+  return dated.kind === 'all' ? scopeAll() : scopeSections([...dated.sections.keys(), admission.sectionId]);
 }
 
 /**

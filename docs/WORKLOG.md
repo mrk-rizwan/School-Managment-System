@@ -19,9 +19,11 @@ writes the production code.** Do not start application code in a planning sessio
   do" item 1). **Phase 5 (Extended) is planned:** decisions taken 2026-10-09 ("go with default":
   CLAUDE.md rules 32-40; register items 20 and 31 closed; the nine Phase 4 defaults kept); the plan
   `docs/plans/phase-5-extended.md` (slices 37-47, R301-R357, 38 days) was reviewed by four agents
-  and rewritten once (entry below). Project = 143.5 / 181.5 days = 79 % (the table's Phase 5
-  estimate rose from 20 to 38). **Next: the owner approves the estimate and §1.2; then wave R
-  (groundwork + slice 37, the timetable) with Opus.**
+  and rewritten once (entry below). The owner said "proceed phase" (2026-10-09), accepting the
+  estimate and the §1.2 defaults. **Wave R is done:** groundwork `82c5aeb` (CI green) and slice 37
+  the period timetable (security PASS, correctness review fixed, committed with this entry).
+  Project = 149.5 / 181.5 days = 82 %. **Next: wave S** — slices 38 (events), 39 (contracts),
+  40 (document verification) in parallel.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -132,6 +134,37 @@ done before slice 0 are not counted.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-09/10 — Phase 5 wave R: groundwork and slice 37 (Opus 5.5 builds, Fable 5.1 reviews)
+
+**Groundwork `82c5aeb`** (CI green): migrations `phase5_enums`, `phase5_groundwork`,
+`audit_action_index_partial` (fix-forward: Prisma 7.10 reads a `varchar_pattern_ops` index back
+differently, so it is hand-written and partial); shared enums, codes, the 53 keys, the pure
+functions; the device-token lookup (`schoolIdFromDeviceToken`, exception 4 widened) and the
+`@DeviceToken()` / `@DefaultPasswordInert()` markers, applied to no route yet. Four FK columns
+wait for the slices that create their targets: `result_sheets.import_id`, `charges.import_id`
+(43), `expenses.event_id` (38), `staff_attendance.device_punch_id` (44). Seeded heads: Transport,
+Event, Opening balance (other, once, not concession-eligible, not refundable).
+
+**Slice 37, the period timetable:** date-range versions with gist exclusion constraints, slots,
+substitutions; R304 (a subject teacher marks only their timetabled periods once the section has a
+version live on the register's date), R305 per timetabled period, `periodsNeedingCover`; web
+editor, versions, substitutions, grid; mobile teacher week and family view; Maestro
+`teacher-timetable`. Contract `contracts/slice-37.md` with 16 deviations. Security review PASS;
+the fix round closed `rowScopeWith` as a confined widener taking a `SubstituteAdmission` proof
+(lint-confined to `attendance-access.ts`), substitutions blocking a version change that would
+orphan them (`TIMETABLE_SUBSTITUTIONS_EXIST`), same-day correction (void allowed from today), the
+R305 per-weekday fallback, and the identity scan for the new free-text columns. Notes carried to
+slice 44 (device throttles before `@DeviceToken()` is applied) and slice 46 (the R68 snapshot
+records `@DefaultPasswordInert`).
+
+**Environment:** C: filled up during the groundwork test run (Docker's VM went read-only, Postgres
+crashed and recovered cleanly); the owner freed space. **The local `asms_test` database is
+bloated** (4.9 GB: 2.4M charges, 2.5M marks from earlier runs) and fails timing budgets
+spuriously; timing suites pass on a fresh database (`asms_perfcheck` on the same server was used).
+Run timing checks there, or recreate `asms_test` empty with the owner's go-ahead. After a session
+restart Docker Desktop does not start by itself: `C:\Users\mrk\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe`,
+then `docker start schoolmanagmentsystem-{postgres,redis,minio,mailpit}-1`.
 
 ## 2026-10-09 — Phase 5 planned: decisions, plan, four reviews, one rewrite (Fable 5.1)
 

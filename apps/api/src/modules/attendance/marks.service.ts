@@ -84,7 +84,7 @@ export class MarksService {
     }
     const found = await this.marks.findById(schoolId, markId);
     if (!found) throw notFound();
-    const role = await this.access.writeRole(session, found.sectionId, found.date, found.mode);
+    const role = await this.access.writeRole(session, found.sectionId, found.date, found.mode, found.period);
     if (!(await this.registers.lock(schoolId, found.registerId))) throw notFound();
     const mark = await this.marks.lock(schoolId, markId);
     if (!mark) throw notFound();
@@ -149,7 +149,7 @@ export class MarksService {
     if (!first) throw arrivalNotAbsent(null);
     const found = await this.marks.findById(schoolId, first.markId);
     if (!found) throw notFound();
-    const role: WriteRole = await this.access.writeRole(session, found.sectionId, date, found.mode);
+    const role: WriteRole = await this.access.writeRole(session, found.sectionId, date, found.mode, found.period);
     if (!(await this.registers.lock(schoolId, found.registerId))) throw notFound();
     const mark = await this.marks.lock(schoolId, first.markId);
     if (!mark) throw notFound();
@@ -194,7 +194,7 @@ export class MarksService {
     const { schoolId } = session;
     const mark = await this.marks.findById(schoolId, markId);
     if (!mark) throw notFound();
-    await this.access.readRole(session, mark.sectionId, mark.date);
+    await this.access.readRole(session, mark.sectionId, mark.date, { period: mark.period, mode: mark.mode });
     const { rows, total } = await this.marks.changes(
       schoolId,
       markId,

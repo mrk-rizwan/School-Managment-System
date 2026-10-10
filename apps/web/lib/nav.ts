@@ -12,6 +12,7 @@ import {
   ClipboardPenLineIcon,
   UserCheckIcon,
   CalendarDaysIcon,
+  CalendarClockIcon,
   CircleUserRoundIcon,
   SchoolIcon,
   SettingsIcon,
@@ -47,8 +48,8 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   capability: Capability | readonly Capability[] | null;
-  /** Shown only to a session holding this capacity (a guardian's own pages, slice 21). */
-  capacity?: 'guardian' | 'student';
+  /** Shown only to a session holding this capacity (a guardian's own pages, slice 21; staff pages, slice 37). */
+  capacity?: 'staff' | 'guardian' | 'student';
 };
 
 export const schoolNav: NavItem[] = [
@@ -121,6 +122,9 @@ export const schoolNav: NavItem[] = [
   },
   // Every staff member may read the academic structure (@RequireStaff); writes are per capability.
   { href: '/academics', label: 'Academic structure', icon: BookOpenIcon, capability: null },
+  // Phase 5 slice 37: every staff member reads any section's week (@RequireStaff); versions,
+  // substitutions and the grid need timetable.manage (contracts/slice-37.md §7).
+  { href: '/timetable', label: 'Timetable', icon: CalendarClockIcon, capability: null, capacity: 'staff' },
   // Every staff member may read the published calendar (@RequireStaff); drafts and writes need
   // holiday.manage (contracts/slice-10.md §1).
   { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, capability: null },

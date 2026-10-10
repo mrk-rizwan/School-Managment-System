@@ -228,6 +228,7 @@ export const ErrorCode = {
   TIMETABLE_SUBSTITUTION_EXISTS: 'TIMETABLE_SUBSTITUTION_EXISTS', // details { sectionId, date, period }
   TIMETABLE_SUBSTITUTION_NOT_TIMETABLED: 'TIMETABLE_SUBSTITUTION_NOT_TIMETABLED', // details { sectionId, date, period }
   TIMETABLE_SUBSTITUTION_SAME_TEACHER: 'TIMETABLE_SUBSTITUTION_SAME_TEACHER', // details { sectionId, date, period }
+  TIMETABLE_SUBSTITUTIONS_EXIST: 'TIMETABLE_SUBSTITUTIONS_EXIST', // details { substitutionIds } (live substitutions a version change would orphan)
   EVENT_NOT_DRAFT: 'EVENT_NOT_DRAFT', // details.eventId
   EVENT_NOT_PUBLISHED: 'EVENT_NOT_PUBLISHED', // details.eventId
   EVENT_NO_SECTIONS: 'EVENT_NO_SECTIONS', // details.eventId

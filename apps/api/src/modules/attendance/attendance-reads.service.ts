@@ -37,6 +37,7 @@ import type {
   StudentAttendanceQueryDto,
 } from './attendance.dto';
 import { alertsByChildDay, alertSummary, childDayKey } from './attendance.mappers';
+import { TimetablePeriods } from './timetable-periods';
 
 // contracts/slice-11.md §10 (R128-R131, R165, R167): the console, the reports and a student's
 // attendance. The calendar is applied at read (§7): nothing stored says whether a date is a
@@ -65,6 +66,7 @@ export class AttendanceReadsService {
     private readonly calendar: CalendarService,
     private readonly settings: SchoolSettingsReader,
     private readonly clock: SchoolClock,
+    private readonly timetablePeriods: TimetablePeriods,
   ) {}
 
   /** §10.1: the registers console, live, in today's scope. */
@@ -82,6 +84,20 @@ export class AttendanceReadsService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
+    // Phase 5 (contracts/slice-37.md §3.2): the period-mode rows' periods, named from the timetable.
+    const periodRows = rows.filter((r) => r.mode === 'period');
+    const timetabled = await this.timetablePeriods.on(schoolId, periodRows, date);
+    const recordedPeriods = await this.registers.periodsRecorded(schoolId, periodRows.map((r) => r.sectionId), date);
+    const periodsOf = (sectionId: bigint) =>
+      Array.from({ length: periodsPerDay }, (_, i) => {
+        const slot = timetabled.get(sectionId)?.find((p) => p.period === i + 1);
+        return {
+          period: i + 1,
+          subjectName: slot?.subjectName ?? null,
+          teacherName: slot?.teacherName ?? null,
+          recorded: recordedPeriods.get(sectionId)?.has(i + 1) ?? false,
+        };
+      });
     return toPage(
       rows.map((r) => ({
         sectionId: r.sectionId.toString(),
@@ -103,6 +119,7 @@ export class AttendanceReadsService {
         coverStaffIds: r.coverStaffIds.map((id) => id.toString()),
         coverStaffName: r.coverStaffName,
         declaredHolidayAfter: r.registersRecorded > 0 && !teachingDay,
+        periods: r.mode === 'period' ? periodsOf(r.sectionId) : [],
       })),
       query,
       total,

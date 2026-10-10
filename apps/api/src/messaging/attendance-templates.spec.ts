@@ -87,4 +87,23 @@ describe('attendance templates (contracts/slice-11.md §6.5)', () => {
     const one = renderMessage('register_unrecorded', { date, deadlineTime: '09:45', sections: sections.slice(1, 2) }, ctx);
     expect(one.body).toMatch(/: 1 register not recorded by 09:45 on Wed 30 Sept?: Class 2 A$/);
   });
+
+  it('R305: register_unrecorded names a timetabled section\'s periods after the sections, "no assigned teacher" where none', () => {
+    const r = renderMessage(
+      'register_unrecorded',
+      {
+        date: new Date('2026-10-05T00:00:00.000Z'),
+        deadlineTime: '10:00',
+        sections: [{ className: 'Class 6', sectionName: 'B', coverStaffName: null }],
+        periods: [
+          { className: 'Class 5', sectionName: 'A', period: 2, subjectName: 'English', teacherName: null },
+          { className: 'Class 5', sectionName: 'A', period: 4, subjectName: 'Maths', teacherName: 'Tariq' },
+        ],
+      },
+      ctx,
+    );
+    expect(r.body).toBe(
+      'Government Girls High School: 3 registers not recorded by 10:00 on Mon 5 Oct: Class 6 B, Class 5 A P2 English (no assigned teacher), Class 5 A P4 Maths (Tariq)',
+    );
+  });
 });

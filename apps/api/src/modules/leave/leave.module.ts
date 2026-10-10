@@ -8,6 +8,7 @@ import { IdempotencyKeyRepository } from '../../repositories/idempotency-key.rep
 import { LeaveRequestRepository } from '../../repositories/leave-request.repository';
 import { LeaveTypeRepository } from '../../repositories/leave-type.repository';
 import { StaffRepository } from '../../repositories/staff.repository';
+import { TimetableReadsRepository } from '../../repositories/timetable-reads.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { CalendarModule } from '../calendar/calendar.module';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
@@ -44,6 +45,8 @@ import { LeaveTypesService } from './leave-types.service';
     ChangeContextRepository,
     IdempotencyKeyRepository,
     AuditLogRepository,
+    // Phase 5 R307: periodsNeedingCover reads the timetable through it.
+    TimetableReadsRepository,
   ],
   // The Approvals read (slice 27) lists the pending queue through the service.
   exports: [LeaveRequestsService],

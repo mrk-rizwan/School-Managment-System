@@ -73,6 +73,17 @@ export interface TemplateVarsMap {
       readonly sectionName: string;
       readonly coverStaffName: string | null;
     }[];
+    /**
+     * Phase 5 R305 (contracts/slice-37.md §3.1): a timetabled section's periods without a
+     * register; teacherName null = "no assigned teacher". Absent on rows written before slice 37.
+     */
+    readonly periods?: readonly {
+      readonly className: string;
+      readonly sectionName: string;
+      readonly period: number;
+      readonly subjectName: string;
+      readonly teacherName: string | null;
+    }[];
   };
   sms_cap_reached: { readonly cap: number; readonly nextMonthStart: Date };
   messaging_test: { readonly senderName: string; readonly time: Date };

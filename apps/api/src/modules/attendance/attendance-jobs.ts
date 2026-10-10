@@ -19,6 +19,7 @@ import { toDateString } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { atTimeOn, SchoolSettingsReader } from '../../common/school-settings-reader';
+import { TimetablePeriods } from './timetable-periods';
 
 // contracts/slice-11.md §8 (R129, R131): the worker side of attendance. Every body runs inside
 // QueueTenancy.runAsSchool (src/jobs/job-runner.ts) with a SchoolId; nothing here is audited (no
@@ -176,6 +177,7 @@ export class RegisterDeadlineSweep {
     private readonly settings: SchoolSettingsReader,
     private readonly permissions: PermissionsService,
     private readonly notifications: NotificationService,
+    private readonly timetablePeriods: TimetablePeriods,
   ) {}
 
   /** The register watchers: confirmed holders of attendance.student.mark with all scope. */
@@ -207,8 +209,29 @@ export class RegisterDeadlineSweep {
     if ((await this.messages.findBySubject(schoolId, 'register_deadline', subjectId)).length > 0) {
       return 'already_sent';
     }
-    const unrecorded = await this.registers.unrecordedForDeadline(schoolId, today);
-    if (unrecorded.length === 0) return 'all_recorded';
+    // R305 (contracts/slice-37.md §3.1): a period-mode section with timetabled periods today lists its
+    // timetabled periods without a register; every other section falls back to Phase 2 (no
+    // register at all).
+    const rostered = await this.registers.rosteredForDeadline(schoolId, today);
+    const timetabled = await this.timetablePeriods.on(
+      schoolId,
+      rostered.filter((s) => s.mode === 'period'),
+      today,
+    );
+    const recordedPeriods = await this.registers.periodsRecorded(schoolId, [...timetabled.keys()], today);
+    const unrecorded = rostered.filter((s) => !timetabled.has(s.sectionId) && s.registersRecorded === 0);
+    const periods = rostered.flatMap((s) =>
+      (timetabled.get(s.sectionId) ?? [])
+        .filter((p) => !(recordedPeriods.get(s.sectionId)?.has(p.period) ?? false))
+        .map((p) => ({
+          className: s.className,
+          sectionName: s.sectionName,
+          period: p.period,
+          subjectName: p.subjectName,
+          teacherName: p.assigned ? p.teacherName : null,
+        })),
+    );
+    if (unrecorded.length === 0 && periods.length === 0) return 'all_recorded';
     const watchers = await this.watchers(schoolId);
     if (watchers.length === 0) return 'no_watchers';
     await this.notifications.send(schoolId, {
@@ -223,6 +246,7 @@ export class RegisterDeadlineSweep {
           sectionName: s.sectionName,
           coverStaffName: s.coverStaffName,
         })),
+        periods,
       },
     });
     return 'sent';

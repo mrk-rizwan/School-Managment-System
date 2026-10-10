@@ -22,7 +22,7 @@ export const addDays = (date: string, days: number) => iso(ms(date) + days * DAY
 export const weekday = (date: string) => new Date(ms(date)).getUTCDay();
 
 /** The Monday on or before `date`. */
-function mondayOf(date: string): string {
+export function mondayOf(date: string): string {
   return addDays(date, -((weekday(date) + 6) % 7));
 }
 

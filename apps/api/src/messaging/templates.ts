@@ -373,14 +373,19 @@ const RENDERERS: Renderers = {
   // contracts/slice-11.md §8.4 (R129): push and email only, so no segment limit; the first five
   // sections are named.
   register_unrecorded: (vars, ctx) => {
-    const n = vars.sections.length;
-    const named = vars.sections
-      .slice(0, UNRECORDED_NAMED)
-      .map(
+    // Phase 5 R305: a timetabled section's periods are named after the Phase 2 sections.
+    const labels = [
+      ...vars.sections.map(
         (s) =>
           `${s.className} ${s.sectionName}${s.coverStaffName === null ? '' : ` (cover: ${s.coverStaffName})`}`,
-      )
-      .join(', ');
+      ),
+      ...(vars.periods ?? []).map(
+        (p) =>
+          `${p.className} ${p.sectionName} P${p.period} ${p.subjectName} (${p.teacherName ?? 'no assigned teacher'})`,
+      ),
+    ];
+    const n = labels.length;
+    const named = labels.slice(0, UNRECORDED_NAMED).join(', ');
     const more = n > UNRECORDED_NAMED ? `, ... (+${n - UNRECORDED_NAMED} more)` : '';
     return `${schoolLabel(ctx.schoolName)}: ${n} ${n === 1 ? 'register' : 'registers'} not recorded by ${vars.deadlineTime} on ${formatDay(vars.date)}: ${named}${more}`.slice(
       0,

@@ -107,3 +107,9 @@ export type MyResultDto = Schemas['MyResultDto'];
 export type MyAssessmentMarkDto = Schemas['MyAssessmentMarkDto'];
 // Phase 4 slice 32: the report card, the stored result row (ReportCardView renders it).
 export type ResultDto = Schemas['ResultDto'];
+
+// Phase 5 slice 37: the teacher's week and a section's week for families (online only, never
+// cached on the phone).
+export type MyStaffTimetableDto = Schemas['MyStaffTimetableDto'];
+export type MyStaffTimetablePeriodDto = Schemas['MyStaffTimetablePeriodDto'];
+export type MyTimetableDto = Schemas['MyTimetableDto'];

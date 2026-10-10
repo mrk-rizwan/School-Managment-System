@@ -39,3 +39,39 @@ export const PHASE_5_GROUNDWORK_CONSTRAINTS: Readonly<Record<string, () => ApiEx
   school_settings_contract_warning_days_check: fieldInvalid('contractWarningDays', 'contractWarningDays is 1-90'),
   platform_settings_support_session_hours_check: fieldInvalid('supportSessionHours', 'supportSessionHours is 1-24'),
 };
+
+// ---- slice 37: the period timetable (contracts/slice-37.md §4). The services check first; these
+// answer a race loser and any write that reaches the database's line.
+
+const slotClash = (kind: 'teacher' | 'room' | 'section') => (): ApiException =>
+  new ApiException(409, ErrorCode.TIMETABLE_SLOT_CLASH, 'That period is already taken.', { kind });
+
+export const SLICE_37_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = {
+  // R302.
+  timetable_slots_teacher_excl: slotClash('teacher'),
+  timetable_slots_room_excl: slotClash('room'),
+  timetable_slots_version_weekday_period_key: slotClash('section'),
+  timetable_slots_off_day: () =>
+    new ApiException(409, ErrorCode.TIMETABLE_OFF_DAY, 'A slot cannot fall on a weekly-off day.'),
+  timetable_slots_period_in_day: fieldInvalid('period', "period must be within the school's periods per day"),
+  timetable_slots_version_voided: concurrentUpdate,
+  timetable_slots_room_check: fieldInvalid('room', 'room is 1-40 characters, trimmed'),
+  timetable_slots_room_no_id_check: noIdentity('room'),
+  // R301: a racing create or void of the same section.
+  timetable_versions_live_excl: concurrentUpdate,
+  timetable_versions_voided_frozen: concurrentUpdate,
+  timetable_versions_in_year: fieldInvalid('effectiveFrom', 'effectiveFrom must be inside the academic year'),
+  timetable_versions_void_reason_no_id_check: noIdentity('reason'),
+  // R306.
+  timetable_substitutions_live_key: () =>
+    new ApiException(409, ErrorCode.TIMETABLE_SUBSTITUTION_EXISTS, 'That period already has a substitution.'),
+  timetable_substitutions_staff_live_key: () =>
+    new ApiException(409, ErrorCode.TIMETABLE_SUBSTITUTION_EXISTS, 'That teacher already substitutes in that period.'),
+  timetable_substitutions_reason_no_id_check: noIdentity('reason'),
+  timetable_substitutions_void_reason_no_id_check: noIdentity('reason'),
+  // §3.3: lowering periods_per_day below a live or future slot.
+  school_settings_periods_per_day_timetabled: fieldInvalid(
+    'periodsPerDay',
+    'periodsPerDay cannot be lowered below a period the timetable uses',
+  ),
+};

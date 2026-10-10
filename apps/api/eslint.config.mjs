@@ -150,6 +150,26 @@ const IMPORTS = {
     regex: `(^|/)repositories/promotion\\.repository${EXT}$`,
     message: 'PromotionRepository is imported only from src/modules/promotion/**.',
   },
+  // Phase 5 slice 37 (phase-5-extended.md §2): the timetable module owns its write repository;
+  // attendance (R304, R305) and leave (R307) read the timetable only through the read-only
+  // TimetableReadsRepository.
+  timetableRepository: {
+    regex: `(^|/)repositories/timetable\\.repository${EXT}$`,
+    message: 'TimetableRepository is imported only from src/modules/timetable/**.',
+  },
+  timetableReadsRepository: {
+    regex: `(^|/)repositories/timetable-reads\\.repository${EXT}$`,
+    message:
+      'TimetableReadsRepository is imported only from src/modules/timetable/**, src/modules/attendance/** and src/modules/leave/**.',
+  },
+  // Wave R security review (MEDIUM-1): rowScopeWith widens a register's row scope by the section a
+  // SubstituteAdmission proves; only the attendance access check may call it.
+  rowScopeWith: {
+    // Matched against the specifier as written (`../access/permissions.service`), not a resolved path.
+    regex: `(^|/)access/permissions\\.service${EXT}$`,
+    importNames: ['rowScopeWith'],
+    message: 'rowScopeWith is imported only by src/modules/attendance/attendance-access.ts (R306).',
+  },
   // Nothing reaches a parent except through NotificationService (plan rule 0.11).
   messagingDrivers: {
     regex: '(^|/)messaging/drivers(/|$)',
@@ -717,7 +737,12 @@ export default tseslint.config(
   },
   {
     files: ['src/modules/access/**/*.ts'],
-    rules: restrictImports({ exempt: ['scopeMint'] }),
+    // rowScopeWith's parameter is the SubstituteAdmission proof type (wave R review): a type-only
+    // import of the timetable reads repository, never its value.
+    rules: restrictImports({
+      exempt: ['scopeMint'],
+      narrowed: [{ key: 'timetableReadsRepository', allowTypeImports: true }],
+    }),
   },
   {
     // The root module wires DatabaseModule in.
@@ -788,6 +813,22 @@ export default tseslint.config(
       exempt: ['promotionRepository'],
       extra: [PROMOTION_STUDENT_REPOSITORY_IMPORT, { ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/promotion/** reads dues only through FinanceReportsService.clearance (§5.1).' }],
     }),
+  },
+  {
+    // Slice 37 (§2): the timetable module owns both timetable repositories; its suites probe them.
+    files: ['src/modules/timetable/**/*.ts', 'test/timetable/**/*.ts'],
+    rules: restrictImports({ exempt: ['timetableRepository', 'timetableReadsRepository'] }),
+  },
+  {
+    // Slice 37 (§2): attendance (R304, R305, SectionDayDto.periods) and leave (R307) read the
+    // timetable through TimetableReadsRepository only, never the module's write repository.
+    files: ['src/modules/attendance/**/*.ts', 'src/modules/leave/**/*.ts'],
+    rules: restrictImports({ exempt: ['timetableReadsRepository'] }),
+  },
+  {
+    // Wave R security review (MEDIUM-1): the one caller of rowScopeWith.
+    files: ['src/modules/attendance/attendance-access.ts'],
+    rules: restrictImports({ exempt: ['timetableReadsRepository', 'rowScopeWith'] }),
   },
   {
     files: ['test/promotion/**/*.ts'],

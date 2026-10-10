@@ -235,6 +235,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   // Phase 4 slice 33 (R274, R285, R286): a child's published results and class tests, capacity scope.
   ['GET', '/api/v1/me/children/:id/results', 'capacity'],
   ['GET', '/api/v1/me/children/:id/results/:resultId', 'capacity'],
+  // Phase 5 slice 37 (R308): the family timetable, names only.
+  ['GET', '/api/v1/me/children/:id/timetable', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
   // contracts/slice-14.md §7 (R166): any live session's own inbox, by person at read time.
   ['GET', '/api/v1/me/inbox', 'authenticated-only'],
@@ -264,6 +266,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/staff/payslips/:id', 'staff'],
   ['GET', '/api/v1/me/staff/payslips/:id/print', 'staff'],
   ['GET', '/api/v1/me/staff/salary-structure', 'staff'],
+  // Phase 5 slice 37: the caller's own week.
+  ['GET', '/api/v1/me/staff/timetable', 'staff'],
   // Phase 4 slice 33 (R286): class-test marks as entered, capacity scope.
   ['GET', '/api/v1/me/student/assessments', 'capacity'],
   // contracts/slice-11.md §1.1: the student's own attendance.
@@ -276,10 +280,13 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   // Phase 4 slice 33: the student's own results and class tests (the student from the session).
   ['GET', '/api/v1/me/student/results', 'capacity'],
   ['GET', '/api/v1/me/student/results/:resultId', 'capacity'],
+  ['GET', '/api/v1/me/student/timetable', 'capacity'],
   // Phase 3 slice 21 (R199): a guardian's deposit slip, under /me (R78) with a daily cap.
   ['POST', '/api/v1/me/uploads', 'capacity'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
   ['GET', '/api/v1/sections/:id', 'staff'],
+  // Phase 5 slice 37 (§1.1): every staff member reads any section's week.
+  ['GET', '/api/v1/sections/:id/timetable', 'staff'],
   ['GET', '/api/v1/subjects', 'staff'],
   ['GET', '/api/v1/subjects/:id', 'staff'],
 ];
@@ -466,6 +473,12 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/students/:id/certificates': ['certificate.issued', 'school_settings.updated'],
   'POST /api/v1/certificates/:id/reissue': ['certificate.reissued'],
   'POST /api/v1/certificates/:id/void': ['certificate.voided'],
+  // Phase 5 slice 37 (contracts/slice-37.md §5). A replayed create writes no row; a repeated void
+  // answers 200 unchanged and writes none.
+  'POST /api/v1/sections/:id/timetable-versions': ['timetable_version.created'],
+  'POST /api/v1/timetable-versions/:id/void': ['timetable_version.voided'],
+  'POST /api/v1/sections/:id/timetable-substitutions': ['timetable_substitution.created'],
+  'POST /api/v1/timetable-substitutions/:id/void': ['timetable_substitution.voided'],
   // Phase 3 slice 23 (contracts/slice-23.md §3). A replayed create, a no-op patch and the same
   // receipt sent again write no row.
   'POST /api/v1/expenses': ['expense.recorded'],

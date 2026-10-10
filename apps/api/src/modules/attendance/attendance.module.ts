@@ -8,6 +8,7 @@ import { AttendanceReportRepository } from '../../repositories/attendance-report
 import { AttendanceSummaryRepository } from '../../repositories/attendance-summary.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import { StudentRepository } from '../../repositories/student.repository';
+import { TimetableReadsRepository } from '../../repositories/timetable-reads.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { CalendarModule } from '../calendar/calendar.module';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
@@ -23,6 +24,7 @@ import { MarkHistoryProbe } from './mark-history-probe';
 import { MarksService } from './marks.service';
 import { MyAttendanceController } from './my-attendance.controller';
 import { RegistersService } from './registers.service';
+import { TimetablePeriods } from './timetable-periods';
 
 /**
  * Student attendance (Phase 2 slice 11, contracts/slice-11.md): registers, marks, the gate's
@@ -62,6 +64,9 @@ import { RegistersService } from './registers.service';
     ChangeContextRepository,
     StudentRepository,
     UserRepository,
+    // Phase 5 slice 37: R304, R305 and SectionDayDto.periods read the timetable through it.
+    TimetableReadsRepository,
+    TimetablePeriods,
   ],
   exports: [MarkHistoryProbe, AttendanceAlertProcessor, AttendanceRollup, AttendanceSweeps, RegisterDeadlineSweep],
 })
