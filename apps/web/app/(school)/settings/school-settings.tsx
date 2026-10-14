@@ -33,6 +33,7 @@ import {
 } from './_lib/settings-ui';
 import { DOCUMENT_TYPE_LABELS } from '../students/_lib/students-ui';
 import { BillingStatusCard } from './billing-status';
+import { DeviceTokenCard } from './device-token-card';
 import { PaymentAccountsCard } from './payment-accounts';
 
 // contracts/slice-2.md §6 (fee due day 1–28, student sign-in) and contracts/slice-9.md §4 (the
@@ -94,6 +95,8 @@ const schema = z
     certificateShowIdentityNo: z.boolean(),
     // Phase 5 slice 40: the documents asked for at admission (none is allowed).
     requiredDocumentTypes: z.array(z.enum(DOCUMENT_TYPES)),
+    // Phase 5 slice 44: blank means a device never marks anyone late.
+    staffLateAfter: z.string().refine((v) => v === '' || isTime(v), 'Enter a time such as 08:30, or leave it blank.'),
   })
   .superRefine((v, ctx) => {
     if (v.lateCountsAs === 'absent_after_cutoff' && !isTime(v.lateCutoffTime)) {
@@ -135,6 +138,8 @@ export function SchoolSettings() {
         </QueryStates>
         {/* Its own resource and its own actions, outside the settings form's Save. */}
         <PaymentAccountsCard />
+        {/* Phase 5 slice 44: the biometric device's token, rotated on its own (shown once). */}
+        {settings.data && <DeviceTokenCard rotatedAt={settings.data.deviceTokenRotatedAt} />}
         {/* Slice 26 (A18): the school's own ASMS subscription and invoice. */}
         <BillingStatusCard />
       </div>
@@ -169,6 +174,7 @@ function valuesOf(settings: SchoolSettingsDto): SettingsValues {
     certificateSignatoryName: settings.certificateSignatoryName ?? '',
     certificateShowIdentityNo: settings.certificateShowIdentityNo,
     requiredDocumentTypes: [...settings.requiredDocumentTypes],
+    staffLateAfter: settings.staffLateAfter ?? '',
   };
 }
 
@@ -221,6 +227,7 @@ function changesOf(v: SettingsValues, saved: SchoolSettingsDto): UpdateSchoolSet
       certificateShowIdentityNo: v.certificateShowIdentityNo,
     }),
     ...(required.join() !== saved.requiredDocumentTypes.join() && { requiredDocumentTypes: required }),
+    ...((v.staffLateAfter || null) !== saved.staffLateAfter && { staffLateAfter: v.staffLateAfter || null }),
   };
   return body;
 }
@@ -415,6 +422,13 @@ function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {
             name="leaveCountsAs"
             label="Approved leave counts as"
             options={options(LEAVE_COUNTS_AS, LEAVE_COUNTS_AS_LABELS)}
+          />
+          <FormField
+            control={form.control}
+            name="staffLateAfter"
+            label="Staff late after (biometric device)"
+            hint="A member's first punch of the day after this time marks them late. Leave blank to mark everyone present."
+            type="time"
           />
         </CardContent>
       </Card>

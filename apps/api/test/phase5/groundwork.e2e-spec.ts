@@ -189,8 +189,10 @@ describe('Phase 5 groundwork: database rules (wave R)', () => {
         where: { id: school.id },
         data: { deviceTokenHash: createHash('sha256').update(raw).digest('hex'), deviceTokenRotatedAt: new Date() },
       });
+    // Express links the response to the request; authorise answers 500 without one (slice 44), so
+    // the fake carries a response the school's hourly bucket can set Retry-After on.
     const authorise = (headers: Record<string, string>) =>
-      app.get(DevicePunchService).authorise({ headers } as Request);
+      app.get(DevicePunchService).authorise(Object.assign({ headers } as Request, { res: { setHeader: () => undefined } }));
     const outcome = async (headers: Record<string, string>) => {
       try {
         await authorise(headers);

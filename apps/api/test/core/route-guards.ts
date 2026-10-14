@@ -7,7 +7,9 @@
 // declared order, ANY of which admits (contracts/slice-2.md §1); the row scope of a capability
 // route is computed per request (R53, R79) and is not a decorator argument. @RequireCapacity names
 // the capacity, @Webhook the provider, @PlatformSession the level. Print the actual table with
-// PRINT_ROUTE_GUARDS=1 when editing; never paste it unread.
+// PRINT_ROUTE_GUARDS=1 when editing; never paste it unread. Rule 24's reach (Phase 5 R355) is not
+// an access rule but is recorded the same way: a route carrying @DefaultPasswordInert(action)
+// reads `<guard> + inert: <action>` (contracts/slice-46.md §5).
 
 export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/academic-years': 'staff',
@@ -40,6 +42,9 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/assessments/:id/marks': 'capability: marks.enter | marks.view_all',
   'POST /api/v1/assessments/:id/submit-marks': 'capability: marks.enter',
   'POST /api/v1/assessments/:id/void': 'capability: marks.enter | assessment.define',
+  // Phase 5 slice 46 (contracts/slice-46.md §1): the audit screen, inert on a default password.
+  'GET /api/v1/audit-log': 'capability: audit.view + inert: audit_log.view',
+  'GET /api/v1/audit-log/:id': 'capability: audit.view + inert: audit_log.view_entry',
   'POST /api/v1/attendance-arrivals': 'capability: attendance.student.mark',
   'POST /api/v1/attendance-marks/:id/amend': 'capability: attendance.student.mark',
   'GET /api/v1/attendance-marks/:id/changes': 'capability: attendance.student.mark | attendance.student.view_all',
@@ -123,6 +128,10 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/me/inbox/:id/thumbnail': 'authenticated-only',
   'POST /api/v1/me/sessions/revoke-others': 'authenticated-only',
   'GET /api/v1/me/staff/attendance': 'staff',
+  // Phase 5 slice 44 (R346): the caller's own disputes; the staff id is the session's.
+  'GET /api/v1/me/staff/attendance-disputes': 'staff',
+  'POST /api/v1/me/staff/attendance-disputes': 'staff',
+  'POST /api/v1/me/staff/attendance-disputes/:id/withdraw': 'staff',
   // Phase 3 slice 24: a staff member's own leave (staff id from the session).
   'GET /api/v1/me/staff/leave-balance': 'staff',
   'GET /api/v1/me/staff/leave-requests': 'staff',
@@ -191,9 +200,9 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/fee-structures/copy': 'capability: fee_head.manage',
   'GET /api/v1/me/payment-accounts': 'capacity: guardian',
   'GET /api/v1/payment-accounts': 'capability: fee_head.manage | charge.create | fee.statement.view | payment.record',
-  'POST /api/v1/payment-accounts': 'capability: school.settings.manage',
+  'POST /api/v1/payment-accounts': 'capability: school.settings.manage + inert: payment_account.create',
   'GET /api/v1/payment-accounts/:id': 'capability: fee_head.manage | charge.create | fee.statement.view | payment.record',
-  'POST /api/v1/payment-accounts/:id/disable': 'capability: school.settings.manage',
+  'POST /api/v1/payment-accounts/:id/disable': 'capability: school.settings.manage + inert: payment_account.disable',
   // Phase 3 slice 19 (contracts/slice-19.md §1): charges, runs, concessions, campaigns, statement.
   'GET /api/v1/charges': 'capability: fee.statement.view | charge.create',
   'POST /api/v1/charges': 'capability: charge.create',
@@ -201,8 +210,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/charges/generation-runs': 'capability: charge.create | finance.report.view',
   'GET /api/v1/charges/generation-runs/:id': 'capability: charge.create | finance.report.view',
   'GET /api/v1/charges/:id': 'capability: fee.statement.view | charge.create',
-  'POST /api/v1/charges/:id/void': 'capability: charge.create | concession.grant',
-  'POST /api/v1/charges/:id/waive': 'capability: concession.grant',
+  'POST /api/v1/charges/:id/void': 'capability: charge.create | concession.grant + inert: charge.void',
+  'POST /api/v1/charges/:id/waive': 'capability: concession.grant + inert: charge.waive',
   'POST /api/v1/charges/:id/adjust': 'capability: concession.grant',
   'GET /api/v1/students/:id/fee-statement': 'capability: fee.statement.view',
   'GET /api/v1/concessions': 'capability: concession.grant | charge.create',
@@ -226,9 +235,9 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/payments': 'capability: payment.record',
   'GET /api/v1/payments': 'capability: payment.record | fee.statement.view',
   'GET /api/v1/payments/:id': 'capability: payment.record | fee.statement.view',
-  'POST /api/v1/payments/:id/void': 'capability: payment.void',
-  'POST /api/v1/payments/:id/refund': 'capability: payment.void',
-  'POST /api/v1/payments/:id/reverse-refund': 'capability: payment.void',
+  'POST /api/v1/payments/:id/void': 'capability: payment.void + inert: payment.void',
+  'POST /api/v1/payments/:id/refund': 'capability: payment.void + inert: payment.refund',
+  'POST /api/v1/payments/:id/reverse-refund': 'capability: payment.void + inert: payment.reverse_refund',
   'POST /api/v1/payments/:id/carry-forward': 'capability: payment.record',
   'POST /api/v1/payments/:id/carry-forward/undo': 'capability: payment.record',
   'GET /api/v1/receipts/:id': 'capability: payment.record | fee.statement.view',
@@ -241,8 +250,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/cash-handovers': 'capability: collection.handover.confirm',
   'GET /api/v1/cash-handovers/:id': 'capability: collection.handover.confirm',
   'GET /api/v1/cash-handovers/:id/payments': 'capability: collection.handover.confirm',
-  'POST /api/v1/cash-handovers/:id/confirm': 'capability: collection.handover.confirm',
-  'POST /api/v1/cash-handovers/:id/resolve-shortfall': 'capability: collection.handover.confirm',
+  'POST /api/v1/cash-handovers/:id/confirm': 'capability: collection.handover.confirm + inert: cash_handover.confirm',
+  'POST /api/v1/cash-handovers/:id/resolve-shortfall': 'capability: collection.handover.confirm + inert: cash_handover.resolve_shortfall',
   // Phase 3 slice 21 (contracts/slice-21.md §1): the office's claim queue (payment.verify); the
   // guardian's dues, receipts, deposit claims and upload, all under /me (R78, R198).
   'GET /api/v1/payment-claims': 'capability: payment.verify',
@@ -273,7 +282,7 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/finance-reports/payroll': 'capability: finance.report.view',
   'POST /api/v1/fee-reminders/send': 'capability: charge.campaign.send',
   'GET /api/v1/students/:id/dues-clearance': 'capability: fee.statement.view',
-  'POST /api/v1/students/:id/dues-clearance/override': 'capability: certificate.issue',
+  'POST /api/v1/students/:id/dues-clearance/override': 'capability: certificate.issue + inert: dues_clearance.override',
   // Phase 4 slice 34 (contracts/slice-34.md §1): certificate.issue everywhere (the void adds the
   // principal gate in the service, R293); the student's list also with student.view, scoped.
   'GET /api/v1/certificates': 'capability: certificate.issue',
@@ -287,8 +296,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/expenses': 'capability: expense.record | expense.approve | finance.report.view',
   'POST /api/v1/expenses': 'capability: expense.record',
   'GET /api/v1/expenses/:id': 'capability: expense.record | expense.approve | finance.report.view',
-  'PATCH /api/v1/expenses/:id': 'capability: expense.record',
-  'POST /api/v1/expenses/:id/approve': 'capability: expense.approve',
+  'PATCH /api/v1/expenses/:id': 'capability: expense.record + inert: expense.payee_change',
+  'POST /api/v1/expenses/:id/approve': 'capability: expense.approve + inert: expense.approve',
   'GET /api/v1/expenses/:id/receipt': 'capability: expense.record | expense.approve | finance.report.view',
   'PATCH /api/v1/expenses/:id/receipt': 'capability: expense.record',
   'GET /api/v1/expenses/:id/receipt/thumbnail': 'capability: expense.record | expense.approve | finance.report.view',
@@ -328,6 +337,16 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/staff': 'capability: staff.view',
   'POST /api/v1/staff': 'capability: staff.create',
   'GET /api/v1/staff-attendance': 'capability: attendance.staff.manage',
+  // Phase 5 slice 44 (contracts/slice-44.md §1): the device route takes the school's device token
+  // and no session (R348); the rest are the school side.
+  'POST /api/v1/device-punches': 'device-token',
+  'GET /api/v1/device-punches': 'capability: attendance.staff.manage',
+  'POST /api/v1/school/device-token/rotate': 'capability: school.settings.manage + inert: device_token.rotate',
+  'POST /api/v1/school/device-token/revoke': 'capability: school.settings.manage + inert: device_token.revoke',
+  'PATCH /api/v1/staff/:id/device-user': 'capability: attendance.staff.manage',
+  'GET /api/v1/staff-attendance-disputes': 'capability: attendance.staff.manage',
+  'POST /api/v1/staff-attendance-disputes/:id/approve': 'capability: attendance.staff.manage',
+  'POST /api/v1/staff-attendance-disputes/:id/reject': 'capability: attendance.staff.manage',
   'POST /api/v1/staff-attendance/:id/amend': 'capability: attendance.staff.manage',
   'POST /api/v1/staff-attendance/submit': 'capability: attendance.staff.manage',
   'GET /api/v1/staff/:id': 'capability: staff.view',
@@ -368,7 +387,7 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/result-reports/section-summary': 'capability: marks.view_all',
   'GET /api/v1/result-reports/subject': 'capability: marks.view_all',
   'GET /api/v1/salary-advances': 'capability: payroll.view',
-  'POST /api/v1/salary-advances': 'capability: payroll.run',
+  'POST /api/v1/salary-advances': 'capability: payroll.run + inert: salary_advance.grant',
   'GET /api/v1/salary-advances/:id': 'capability: payroll.view',
   'POST /api/v1/salary-advances/:id/write-off': 'capability: payroll.run',
   'GET /api/v1/payroll-runs': 'capability: payroll.view',
@@ -377,11 +396,11 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/payroll-runs/:id/payslips': 'capability: payroll.view',
   'POST /api/v1/payroll-runs/:id/payslips': 'capability: payroll.run',
   'POST /api/v1/payroll-runs/:id/recompute': 'capability: payroll.run',
-  'POST /api/v1/payroll-runs/:id/finalise': 'capability: payroll.run',
+  'POST /api/v1/payroll-runs/:id/finalise': 'capability: payroll.run + inert: payroll_run.finalise',
   'GET /api/v1/payslips/:id': 'capability: payroll.view',
   'GET /api/v1/payslips/:id/print': 'capability: payroll.view',
   'POST /api/v1/payslips/:id/adjust': 'capability: payroll.run',
-  'POST /api/v1/payslips/:id/mark-paid': 'capability: payroll.run',
+  'POST /api/v1/payslips/:id/mark-paid': 'capability: payroll.run + inert: payslip.mark_paid',
   // Phase 3 slice 24: leave types and the approvers' queue.
   'GET /api/v1/leave-types': 'staff',
   'POST /api/v1/leave-types': 'capability: school.settings.manage',
@@ -461,6 +480,26 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/staff-contracts/:id/document': 'capability: staff.contract.manage',
   'GET /api/v1/me/staff/contract': 'staff',
   'GET /api/v1/me/staff/contract/document': 'staff',
+  // Phase 5 slice 41 (contracts/slice-41.md §1): set-up and assignments need transport.manage;
+  // the student page's card any student.view holder in scope; families and the driver under /me.
+  'GET /api/v1/vehicles': 'capability: transport.manage',
+  'POST /api/v1/vehicles': 'capability: transport.manage',
+  'PATCH /api/v1/vehicles/:id': 'capability: transport.manage',
+  'POST /api/v1/vehicles/:id/retire': 'capability: transport.manage',
+  'GET /api/v1/transport-routes': 'capability: transport.manage',
+  'POST /api/v1/transport-routes': 'capability: transport.manage',
+  'GET /api/v1/transport-routes/:id': 'capability: transport.manage',
+  'PATCH /api/v1/transport-routes/:id': 'capability: transport.manage',
+  'POST /api/v1/transport-routes/:id/archive': 'capability: transport.manage',
+  'POST /api/v1/transport-routes/:id/amounts': 'capability: transport.manage',
+  'GET /api/v1/transport-routes/:id/assignments': 'capability: transport.manage',
+  'POST /api/v1/transport-routes/:id/assignments': 'capability: transport.manage',
+  'POST /api/v1/transport-route-amounts/:id/void': 'capability: transport.manage',
+  'POST /api/v1/transport-assignments/:id/end': 'capability: transport.manage',
+  'GET /api/v1/students/:id/transport': 'capability: transport.manage | student.view',
+  'GET /api/v1/me/children/:id/transport': 'capacity: guardian',
+  'GET /api/v1/me/student/transport': 'capacity: student',
+  'GET /api/v1/me/staff/transport-routes': 'staff',
   'GET /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/waha': 'webhook: waha',

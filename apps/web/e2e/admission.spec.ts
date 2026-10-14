@@ -23,6 +23,7 @@ const OFFICE_ME: MeDto = {
   hasVerifiedEmail: true,
   passwordIsDefault: false,
   blockedCapabilities: [],
+  blockedActions: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),

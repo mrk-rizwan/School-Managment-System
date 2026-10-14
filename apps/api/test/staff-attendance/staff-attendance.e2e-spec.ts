@@ -541,7 +541,20 @@ describe('staff attendance (e2e)', () => {
     expect(mine.status).toBe(200);
     const own = mine.body as History;
     expect(own).toMatchObject({ staffId: String(f.teacher.staffId), absent: 1, workingDays: 1, unrecorded: 0 });
-    expect(own.days).toEqual([{ date, workingDay: true, employed: true, status: 'absent', amended: false }]);
+    // Phase 5 slice 44: the mark's id, source and dispute, so its owner can dispute it.
+    expect(own.days).toEqual([
+      {
+        date,
+        workingDay: true,
+        employed: true,
+        status: 'absent',
+        amended: false,
+        markId: expect.stringMatching(/^[1-9][0-9]*$/),
+        source: 'manual',
+        disputeId: null,
+        disputeStatus: null,
+      },
+    ]);
     expect(mine.text).not.toContain('Did not inform');
     expect(mine.text).not.toContain('Omar Office');
 

@@ -20,7 +20,7 @@ import { refusalMessage } from '@/lib/api/errors';
 import { payrollApi, type AdvanceDto, type CounterPaymentMethod, type PayrollRunDto } from '@/lib/api/school-payroll-contract';
 import { formatDay } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { DEFAULT_PASSWORD_HINT, useBlockedActions, useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { cn } from '@/lib/utils';
 import { AdvanceStatusBadge, PAYROLL_REFUSALS, RunStatusBadge, payrollKeys } from './_lib/payroll-ui';
 
@@ -166,6 +166,8 @@ function Advances() {
   const queryClient = useQueryClient();
   const isPrincipal = (me.data?.roles ?? []).includes('principal');
   const mayGrant = can(Capability.PAYROLL_RUN) && isPrincipal;
+  // Rule 24's reach (R355): granting an advance is greyed on a default password.
+  const grantBlocked = useBlockedActions()('salary_advance.grant');
   const [page, setPage] = useListPage([]);
   const [granting, setGranting] = useState(false);
   const [writingOff, setWritingOff] = useState<AdvanceDto | null>(null);
@@ -218,7 +220,13 @@ function Advances() {
     <>
       {mayGrant && (
         <div className="mb-4 flex justify-end">
-          <Button onClick={() => setGranting(true)}>Grant an advance</Button>
+          <Button
+            disabled={grantBlocked}
+            title={grantBlocked ? DEFAULT_PASSWORD_HINT : undefined}
+            onClick={() => setGranting(true)}
+          >
+            Grant an advance
+          </Button>
         </div>
       )}
       <DataTable

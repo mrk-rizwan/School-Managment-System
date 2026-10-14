@@ -161,12 +161,23 @@ export class SchoolSettingsDto {
   @ApiProperty(range(CONTRACT_WARNING_DAYS))
   contractWarningDays: number;
 
+  /**
+   * Phase 5 rule 40 (contracts/slice-44.md): a biometric device's first punch of the day strictly
+   * after this local time marks `late`; null (the default) never marks late.
+   */
+  @ApiProperty({ ...TIME, nullable: true })
+  staffLateAfter: string | null;
+
+  /** When the biometric device token was last rotated; null while the school has none. Never the token. */
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deviceTokenRotatedAt: Date | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
 }
 
 /**
- * Absent = unchanged; `null` is 422 on every field but lateCutoffTime (which null clears). An
+ * Absent = unchanged; `null` is 422 on every field but lateCutoffTime and staffLateAfter (which null clears). An
  * empty body changes nothing. smsMonthlyCap is not declared, so sending it is 422 UNKNOWN_FIELD.
  */
 export class UpdateSchoolSettingsDto {
@@ -337,4 +348,11 @@ export class UpdateSchoolSettingsDto {
   @Min(CONTRACT_WARNING_DAYS.min)
   @Max(CONTRACT_WARNING_DAYS.max)
   contractWarningDays?: number;
+
+  /** Phase 5 rule 40: null clears it (nobody is marked late by a device). */
+  @ApiPropertyOptional({ ...TIME, nullable: true })
+  @IfPresentNotNull()
+  @IsString()
+  @Matches(LOCAL_TIME_PATTERN, { message: 'staffLateAfter must be HH:MM' })
+  staffLateAfter?: string | null;
 }

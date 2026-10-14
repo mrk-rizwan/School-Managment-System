@@ -21,4 +21,7 @@ export const FINANCE_SETTINGS = {
   requiredDocumentTypes: ['b_form', 'photo'] as SchoolSettingsDto['requiredDocumentTypes'],
   // Phase 5 slice 39 (rule 35): the contract-expiry warning at its default.
   contractWarningDays: 30,
+  // Phase 5 slice 44: no late-after time and no device token yet.
+  staffLateAfter: null,
+  deviceTokenRotatedAt: null,
 } as const satisfies Partial<SchoolSettingsDto>;

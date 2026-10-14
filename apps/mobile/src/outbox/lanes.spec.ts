@@ -57,6 +57,11 @@ test('the online-only list after Phase 3 (§3.9, R226)', () => {
       // Phase 5 slice 40: document verification.
       'verify_document',
       'reject_document',
+      // Phase 5 slice 44: attendance disputes.
+      'raise_attendance_dispute',
+      'withdraw_attendance_dispute',
+      'approve_attendance_dispute',
+      'reject_attendance_dispute',
     ].sort(),
   );
 });

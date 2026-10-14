@@ -20,7 +20,7 @@ import { ApiError, toastApiError } from '@/lib/api/errors';
 import { paymentsApi, type HandoverDto, type HandoverListQuery, type HandoverStatus } from '@/lib/api/school-payments-contract';
 import { formatDateTime } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities } from '@/lib/school-session';
+import { inertRowAction, useBlockedActions, useCapabilities } from '@/lib/school-session';
 import { digitsOnly, feesKeys, useIsPrincipal } from '../_lib/fees-ui';
 
 const LIMIT = 25;
@@ -169,6 +169,8 @@ function ConfirmQueue() {
   const [page, setPage] = useListPage([status]);
   const [counting, setCounting] = useState<HandoverDto | null>(null);
   const [resolving, setResolving] = useState<HandoverDto | null>(null);
+  // Rule 24's reach (R355): counting (confirm) and resolving are greyed on a default password.
+  const blocked = useBlockedActions();
   const query: HandoverListQuery = { page, limit: LIMIT, ...(status && { status }) };
   const list = useQuery({
     queryKey: [...handoverKeys, 'queue', query],
@@ -183,10 +185,12 @@ function ConfirmQueue() {
   });
   const actions = useMemo(
     () => (h: HandoverDto): RowAction[] => [
-      ...(h.status === 'open' ? [{ label: 'Count…', onSelect: () => setCounting(h) }] : []),
-      ...(principal && (h.shortfallAmount ?? 0) > 0 && h.shortfallResolution === null ? [{ label: 'Resolve shortfall…', onSelect: () => setResolving(h) }] : []),
+      ...(h.status === 'open' ? [{ label: 'Count…', onSelect: () => setCounting(h), ...inertRowAction(blocked('cash_handover.confirm')) }] : []),
+      ...(principal && (h.shortfallAmount ?? 0) > 0 && h.shortfallResolution === null
+        ? [{ label: 'Resolve shortfall…', onSelect: () => setResolving(h), ...inertRowAction(blocked('cash_handover.resolve_shortfall')) }]
+        : []),
     ],
-    [principal],
+    [principal, blocked],
   );
   const columns = useHandoverColumns(actions);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: handoverKeys });

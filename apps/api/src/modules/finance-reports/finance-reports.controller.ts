@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
-import { RequireCapability } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
@@ -132,6 +132,7 @@ export class DuesClearanceController {
   @Post(':id/dues-clearance/override')
   @HttpCode(200)
   @RequireCapability(Capability.CERTIFICATE_ISSUE)
+  @DefaultPasswordInert('dues_clearance.override')
   @ApiIdParam()
   @ApiOkResponse({ type: DuesClearanceDto })
   @ApiErrors(...COMMON, 404, 409, 422)

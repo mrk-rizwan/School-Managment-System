@@ -15,6 +15,7 @@ import { StudentRepository } from '../../../repositories/student.repository';
 import { UserRepository } from '../../../repositories/user.repository';
 import { AttendanceModule } from '../../attendance/attendance.module';
 import { DocumentsModule } from '../../documents/documents.module';
+import { TransportModule } from '../../transport/transport.module';
 import { MarkHistoryProbe } from '../../attendance/mark-history-probe';
 import { AttendanceHistoryProbe } from './attendance-history-probe';
 import { EnrolmentsController } from './enrolments.controller';
@@ -37,7 +38,9 @@ import { StudentsService } from './students.service';
   // AttendanceModule provides the real history probe (contracts/slice-11.md §9.1); it never
   // imports this module, so there is no cycle.
   // DocumentsModule: the list's documents badge (Phase 5 slice 40).
-  imports: [CryptoModule, AttendanceModule, DocumentsModule],
+  // TransportModule: leaving ends the student's live route assignments (Phase 5 slice 41); it
+  // never imports this module.
+  imports: [CryptoModule, AttendanceModule, DocumentsModule, TransportModule],
   controllers: [StudentsController, GuardianLinksController, EnrolmentsController],
   providers: [
     SchoolContext,

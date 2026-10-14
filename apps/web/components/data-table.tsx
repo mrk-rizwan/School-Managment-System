@@ -236,7 +236,11 @@ export function SortHeader<F extends string>({
   );
 }
 
-export type RowAction = { label: string; onSelect: () => void; destructive?: boolean };
+/**
+ * `disabled` greys an action the user holds but may not take now (rule 24's reach: a default
+ * password), with `hint` saying why.
+ */
+export type RowAction = { label: string; onSelect: () => void; destructive?: boolean; disabled?: boolean; hint?: string };
 
 /** The per-row actions menu. Renders nothing when the user may take no action on the row. */
 export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
@@ -254,6 +258,8 @@ export function RowActions({ label, actions }: { label: string; actions: RowActi
             key={action.label}
             variant={action.destructive ? 'destructive' : 'default'}
             onClick={action.onSelect}
+            disabled={action.disabled}
+            title={action.disabled ? action.hint : undefined}
           >
             {action.label}
           </DropdownMenuItem>

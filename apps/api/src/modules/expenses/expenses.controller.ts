@@ -14,7 +14,7 @@ import {
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Capability } from '@asms/shared';
-import { RequireCapability } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotency';
 import { ApiIdParam, IdParam } from '../../common/ids';
@@ -100,6 +100,7 @@ export class ExpensesController {
   /** The recorder, while recorded or pending (not_recorder, EXPENSE_NOT_OPEN). */
   @Patch(':id')
   @RequireCapability(Capability.EXPENSE_RECORD)
+  @DefaultPasswordInert('expense.payee_change')
   @ApiIdParam()
   @ApiOkResponse({ type: ExpenseDto })
   @ApiErrors(...COMMON, 404, 409, 422)
@@ -128,6 +129,7 @@ export class ExpensesController {
   @Post(':id/approve')
   @HttpCode(200)
   @RequireCapability(Capability.EXPENSE_APPROVE)
+  @DefaultPasswordInert('expense.approve')
   @ApiIdParam()
   @ApiOkResponse({ type: ExpenseDto })
   @ApiErrors(...COMMON, 404, 409, 422)

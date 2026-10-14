@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Query, Req, Res, UseGuards } fro
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
 import type { Request, Response } from 'express';
-import { RequireCapability, RequireStaff } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability, RequireStaff } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotency';
 import { ApiIdParam, IdParam } from '../../common/ids';
@@ -121,6 +121,7 @@ export class PaymentsController {
   @Post(':id/void')
   @HttpCode(200)
   @RequireCapability(Capability.PAYMENT_VOID)
+  @DefaultPasswordInert('payment.void')
   @ApiIdParam()
   @ApiOkResponse({ type: PaymentDto })
   @ApiErrors(...COMMON, 404, 409, 422)
@@ -131,6 +132,7 @@ export class PaymentsController {
   /** R192: payment.void and the principal role. */
   @Post(':id/refund')
   @RequireCapability(Capability.PAYMENT_VOID)
+  @DefaultPasswordInert('payment.refund')
   @UseGuards(IdempotencyKeyGuard)
   @ApiHeader(IDEMPOTENCY_HEADER_DOC)
   @ApiIdParam()
@@ -152,6 +154,7 @@ export class PaymentsController {
 
   @Post(':id/reverse-refund')
   @RequireCapability(Capability.PAYMENT_VOID)
+  @DefaultPasswordInert('payment.reverse_refund')
   @UseGuards(IdempotencyKeyGuard)
   @ApiHeader(IDEMPOTENCY_HEADER_DOC)
   @ApiIdParam()
@@ -313,6 +316,7 @@ export class CashHandoversController {
   @Post(':id/confirm')
   @HttpCode(200)
   @RequireCapability(Capability.COLLECTION_HANDOVER_CONFIRM)
+  @DefaultPasswordInert('cash_handover.confirm')
   @ApiIdParam()
   @ApiOkResponse({ type: HandoverDto })
   @ApiErrors(...COMMON, 404, 409, 422)
@@ -324,6 +328,7 @@ export class CashHandoversController {
   @Post(':id/resolve-shortfall')
   @HttpCode(200)
   @RequireCapability(Capability.COLLECTION_HANDOVER_CONFIRM)
+  @DefaultPasswordInert('cash_handover.resolve_shortfall')
   @ApiIdParam()
   @ApiOkResponse({ type: HandoverDto })
   @ApiErrors(...COMMON, 404, 409, 422)

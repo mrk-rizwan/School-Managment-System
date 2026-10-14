@@ -37,7 +37,7 @@ import { OPTIONS_LIMIT, unwrap } from '@/lib/api/client';
 import { ApiError, refusalMessage, toastApiError, type RefusalMessages } from '@/lib/api/errors';
 import { feesApi, type PaymentAccountDto } from '@/lib/api/school-fees-contract';
 import { formatDate } from '@/lib/format';
-import { useCapabilities } from '@/lib/school-session';
+import { DEFAULT_PASSWORD_HINT, useBlockedActions, useCapabilities } from '@/lib/school-session';
 import { useIsPrincipal } from '../fees/_lib/fees-ui';
 import { nameSchema } from '@/lib/validation';
 
@@ -56,6 +56,10 @@ export function PaymentAccountsCard() {
   const { can } = useCapabilities();
   const principal = useIsPrincipal();
   const canChange = can(Capability.SCHOOL_SETTINGS_MANAGE) && principal;
+  // Rule 24's reach (R355): adding and disabling an account are greyed on a default password.
+  const blocked = useBlockedActions();
+  const createBlocked = blocked('payment_account.create');
+  const disableBlocked = blocked('payment_account.disable');
   const [adding, setAdding] = useState(false);
   const [disabling, setDisabling] = useState<PaymentAccountDto | null>(null);
 
@@ -120,6 +124,8 @@ export function PaymentAccountsCard() {
                 variant="outline"
                 size="sm"
                 aria-label={`Disable ${account.title}`}
+                disabled={disableBlocked}
+                title={disableBlocked ? DEFAULT_PASSWORD_HINT : undefined}
                 onClick={() => setDisabling(account)}
               >
                 Disable
@@ -140,7 +146,13 @@ export function PaymentAccountsCard() {
         </CardDescription>
         {canChange && (
           <CardAction>
-            <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={createBlocked}
+              title={createBlocked ? DEFAULT_PASSWORD_HINT : undefined}
+              onClick={() => setAdding(true)}
+            >
               <PlusIcon />
               Add account
             </Button>

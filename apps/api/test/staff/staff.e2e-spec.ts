@@ -186,6 +186,7 @@ describe('staff (e2e)', () => {
         userId: null,
         systemRoles: [],
         customRoleNames: [],
+        deviceUserId: null,
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });

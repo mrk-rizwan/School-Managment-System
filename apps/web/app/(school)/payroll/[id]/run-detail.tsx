@@ -19,7 +19,7 @@ import { unwrap } from '@/lib/api/client';
 import { refusalMessage } from '@/lib/api/errors';
 import { payrollApi, type CounterPaymentMethod, type PayrollRunDto, type PayslipDto } from '@/lib/api/school-payroll-contract';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { DEFAULT_PASSWORD_HINT, inertRowAction, useBlockedActions, useCapabilities, useSchoolMe } from '@/lib/school-session';
 import {
   PAYROLL_REFUSALS,
   PayslipBreakdown,
@@ -64,6 +64,9 @@ function Run({ run }: { run: PayrollRunDto }) {
   const [finalising, setFinalising] = useState(false);
   const draft = run.status === 'draft';
   const mayRun = can(Capability.PAYROLL_RUN);
+  // Rule 24's reach (R355): finalising the run and marking a slip paid are greyed on a default password.
+  const blocked = useBlockedActions();
+  const finaliseBlocked = blocked('payroll_run.finalise');
   const refresh = () => void queryClient.invalidateQueries({ queryKey: payrollKeys.run(run.id) });
 
   const payslips = useQuery({
@@ -155,7 +158,7 @@ function Run({ run }: { run: PayrollRunDto }) {
           const own = s.staffId === me.data?.staffId;
           const actions: RowAction[] = [];
           if (mayRun && draft && !own) actions.push({ label: 'Adjust', onSelect: () => setAdjusting(s) });
-          if (mayRun && !draft && s.status === 'pending') actions.push({ label: 'Mark paid', onSelect: () => setPaying(s) });
+          if (mayRun && !draft && s.status === 'pending') actions.push({ label: 'Mark paid', onSelect: () => setPaying(s), ...inertRowAction(blocked('payslip.mark_paid')) });
           return (
             <div className="flex items-center gap-3">
               <PrintLink href={`/api/v1/payslips/${s.id}/print`} />
@@ -165,7 +168,7 @@ function Run({ run }: { run: PayrollRunDto }) {
         },
       }),
     ];
-  }, [draft, mayRun, me.data?.staffId]);
+  }, [draft, mayRun, me.data?.staffId, blocked]);
 
   return (
     <>
@@ -180,7 +183,13 @@ function Run({ run }: { run: PayrollRunDto }) {
                 <Button variant="outline" disabled={recompute.isPending} onClick={() => recompute.mutate()}>
                   {recompute.isPending ? 'Recomputing…' : 'Recompute'}
                 </Button>
-                <Button onClick={() => setFinalising(true)}>Finalise</Button>
+                <Button
+                  disabled={finaliseBlocked}
+                  title={finaliseBlocked ? DEFAULT_PASSWORD_HINT : undefined}
+                  onClick={() => setFinalising(true)}
+                >
+                  Finalise
+                </Button>
               </>
             )}
           </>

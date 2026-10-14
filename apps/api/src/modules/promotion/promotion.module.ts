@@ -6,6 +6,7 @@ import { IdempotencyKeyRepository } from '../../repositories/idempotency-key.rep
 import { PromotionRepository } from '../../repositories/promotion.repository';
 import { FinanceReportsModule } from '../finance-reports/finance-reports.module';
 import { StudentsModule } from '../people/students/students.module';
+import { TransportModule } from '../transport/transport.module';
 import { PromotionController, PromotionWritesThrottleGuard } from './promotion.controller';
 import { PromotionService } from './promotion.service';
 
@@ -17,7 +18,8 @@ import { PromotionService } from './promotion.service';
  * AccessModule. The year-close guard (R299) lives in AcademicYearsService.
  */
 @Module({
-  imports: [StudentsModule, FinanceReportsModule],
+  // TransportModule: apply ends the year's live route assignments (Phase 5 slice 41).
+  imports: [StudentsModule, FinanceReportsModule, TransportModule],
   controllers: [PromotionController],
   providers: [
     SchoolContext,

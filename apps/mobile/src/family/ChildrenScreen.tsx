@@ -49,7 +49,7 @@ function ChildCard({ child }: { child: MyChildDto }) {
   const data = query.data?.body;
   const day = data?.days.find((d) => d.date === today);
   const open = (
-    screen: 'attendance' | 'diary' | 'remarks' | 'fees' | 'results' | 'timetable' | 'events',
+    screen: 'attendance' | 'diary' | 'remarks' | 'fees' | 'results' | 'timetable' | 'events' | 'transport',
   ) =>
     router.push({
       pathname: `/children/[studentId]/${screen}`,
@@ -112,6 +112,11 @@ function ChildCard({ child }: { child: MyChildDto }) {
         title="Events"
         onPress={() => open('events')}
         testID={`children.card.${child.studentId}.events`}
+      />
+      <ListRow
+        title="Transport"
+        onPress={() => open('transport')}
+        testID={`children.card.${child.studentId}.transport`}
       />
       <ListRow
         title="Fees"

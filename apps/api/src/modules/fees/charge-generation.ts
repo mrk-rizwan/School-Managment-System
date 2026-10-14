@@ -16,6 +16,7 @@ import { ChargeRunRepository, type ChargeRunRecord, type RunCounts, type Skipped
 import { FeeHeadRepository } from '../../repositories/fee-head.repository';
 import { OwnSchoolRepository } from '../../repositories/own-school.repository';
 import { SchoolSettingsRepository, type SchoolSettingsRecord } from '../../repositories/school-settings.repository';
+import { TransportReadsRepository } from '../../repositories/transport-reads.repository';
 import type { AfterCommitPrismaAdapter } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
@@ -60,6 +61,7 @@ export class ChargeGeneration {
     private readonly notifications: NotificationService,
     private readonly audit: AuditLogRepository,
     private readonly advances: Advances,
+    private readonly transport: TransportReadsRepository,
   ) {}
 
   // ------------------------------------------------------------------------- scheduled
@@ -288,6 +290,10 @@ export class ChargeGeneration {
       candidates += result.candidates;
       inserted.push(...result.inserted);
     }
+    // Phase 5 rule 37 (R327): the riders' route amounts, after the classes, in their own transaction.
+    const transport = await this.generateTransport(schoolId, base, monthLabel(period));
+    candidates += transport.candidates;
+    inserted.push(...transport.inserted);
     return {
       inserted,
       studentsCharged: new Set(inserted.map((c) => c.studentId)).size,
@@ -310,6 +316,32 @@ export class ChargeGeneration {
     const inserted = [...monthly.inserted, ...yearly.inserted];
     await this.applyAdvances(schoolId, g.academicYearId, inserted, 'charge-generate');
     return { candidates: monthly.candidates + yearly.candidates, inserted };
+  }
+
+  /**
+   * Phase 5 rule 37 (R327, R328; contracts/slice-41.md §2.6): one transaction for the year-period's
+   * transport charges, under the school's live monthly Transport head (none, or not monthly: no
+   * transport charges). The riders come from TransportReadsRepository (§2 boundaries).
+   */
+  @Transactional<AfterCommitPrismaAdapter>({ timeout: CHARGE_JOB_TIMEOUT_MS })
+  private async generateTransport(
+    schoolId: SchoolId,
+    g: Omit<ClassGeneration, 'classId' | 'label'>,
+    monthName: string,
+  ): Promise<{ candidates: number; inserted: InsertedCharge[] }> {
+    await this.generation.lockHeadsShared(schoolId);
+    const head = await this.heads.findLiveByCategory(schoolId, 'transport');
+    if (!head || head.frequency !== 'monthly') return { candidates: 0, inserted: [] };
+    const riders = await this.transport.riders(schoolId, {
+      academicYearId: g.academicYearId,
+      period: g.period,
+      periodStart: g.periodStart,
+      cutoffDate: g.cutoffDate,
+    });
+    if (riders.length === 0) return { candidates: 0, inserted: [] };
+    const result = await this.generation.generateTransport(schoolId, { ...g, label: monthName }, head.id, riders);
+    await this.applyAdvances(schoolId, g.academicYearId, result.inserted, 'charge-generate');
+    return result;
   }
 
   /** A campaign's charges (R184), one transaction; null when the campaign is not generating. */

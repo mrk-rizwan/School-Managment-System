@@ -39,6 +39,8 @@ export interface SchoolSettingsRecord {
   requiredDocumentTypes: DocumentType[];
   // Phase 5 rule 35 (contracts/slice-39.md): 1-90 (CHECK).
   contractWarningDays: number;
+  // Phase 5 rule 40 (contracts/slice-44.md): a device's first punch after it is late; null never.
+  staffLateAfter: Date | null;
   updatedAt: Date;
 }
 
@@ -76,6 +78,7 @@ const SELECT = {
   certificateShowIdentityNo: true,
   requiredDocumentTypes: true,
   contractWarningDays: true,
+  staffLateAfter: true,
   updatedAt: true,
 } as const;
 

@@ -272,6 +272,11 @@ export const ONLINE_ONLY_ACTIONS = [
   // Phase 5 slice 40 (§3.7): document verification is online only.
   'verify_document',
   'reject_document',
+  // Phase 5 slice 44 (§3.7): attendance disputes are online only.
+  'raise_attendance_dispute',
+  'withdraw_attendance_dispute',
+  'approve_attendance_dispute',
+  'reject_attendance_dispute',
 ] as const;
 
 export type OnlineOnlyAction = (typeof ONLINE_ONLY_ACTIONS)[number];

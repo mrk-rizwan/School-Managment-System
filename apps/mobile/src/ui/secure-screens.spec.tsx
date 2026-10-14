@@ -56,6 +56,9 @@ const SECURE: Record<string, boolean> = {
   'student/results/[resultId].tsx': true,
   'student/timetable.tsx': false,
   'student/events.tsx': false,
+  // Phase 5 slice 41: a child's route, stop, pickup time and driver; no child's name
+  'children/[studentId]/transport.tsx': false,
+  'student/transport.tsx': false,
   // Everyone (§7.3): secure when the user is a guardian (set from capacities at render)
   'inbox/index.tsx': true,
   'inbox/[id].tsx': true,
@@ -76,6 +79,8 @@ const SECURE: Record<string, boolean> = {
   'home/my-leave.tsx': false,
   // Phase 3 slice 25: the staff member's own payslips, no child's name
   'home/my-payslips.tsx': false,
+  // Phase 5 slice 41: a driver's routes name the children who board at each stop
+  'home/my-routes.tsx': true,
   // Phase 3 slice 23: expense capture, no child's name
   'home/expenses/index.tsx': false,
   'home/expenses/new.tsx': false,

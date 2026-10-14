@@ -1,6 +1,23 @@
-import { ApiError, ErrorCode, formatDateTime, formatDay, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
+import {
+  ApiError,
+  ATTENDANCE_STATUS_LABELS,
+  ErrorCode,
+  formatDateTime,
+  formatDay,
+  formatRupees,
+  PAYMENT_METHOD_LABELS,
+} from '@asms/shared';
 import { api, isNetworkError, unwrap } from '../api/client';
-import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, QueuedDocumentDto, ResultSheetDto } from '../api/contracts';
+import type {
+  ApprovalsDto,
+  AttendanceDisputeDto,
+  ClaimDto,
+  ExpenseDto,
+  HandoverDto,
+  LeaveRequestDto,
+  QueuedDocumentDto,
+  ResultSheetDto,
+} from '../api/contracts';
 
 // The Approvals tab (phase-3-financial.md slice 27, R226, R227): GET /me/approvals holds only the
 // sections whose key the user has, each its queue's first ten rows and total. Every decision is
@@ -78,3 +95,10 @@ export const documentLine = (d: QueuedDocumentDto): string =>
   [d.student.className && d.student.sectionName ? `${d.student.className} ${d.student.sectionName}` : null, `uploaded by ${d.uploadedByName ?? 'staff'}, ${formatDateTime(d.createdAt)}`]
     .filter((part): part is string => part !== null)
     .join(' · ');
+
+// Phase 5 slice 44 (contracts/slice-44.md §2.6, R347): a staff attendance dispute.
+export const disputeTitle = (d: AttendanceDisputeDto): string => `${d.staffName} · ${formatDay(d.date)}`;
+export const disputeChange = (d: Pick<AttendanceDisputeDto, 'markStatus' | 'requestedStatus'>): string =>
+  `${ATTENDANCE_STATUS_LABELS[d.markStatus]} → ${ATTENDANCE_STATUS_LABELS[d.requestedStatus]}`;
+export const disputeLine = (d: AttendanceDisputeDto): string =>
+  `${disputeChange(d)}${d.markSource === 'device' ? ' · marked by the device' : ''}`;

@@ -79,9 +79,22 @@ export const defaultPasswordActionBlocks = (): ApiException =>
     'Change your password first. This action is off while you use the default password.',
   );
 
+const DEFAULT_PASSWORD_BLOCKS_MESSAGE =
+  'Change your password first. Managing user accounts and roles is off while you use the default password.';
+
 export const defaultPasswordBlocks = (): ApiException =>
-  new ApiException(
-    403,
-    ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION,
-    'Change your password first. Managing user accounts and roles is off while you use the default password.',
-  );
+  new ApiException(403, ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION, DEFAULT_PASSWORD_BLOCKS_MESSAGE);
+
+/**
+ * The same refusal raised inside a transaction (rule 24's reach, R356): an audit row written there
+ * would roll back with it, so the non-transactional caller records it after the rollback through
+ * PermissionsService.recordDeferredRefusal. The client sees exactly defaultPasswordBlocks().
+ */
+export class DeferredDefaultPasswordRefusal extends ApiException {
+  constructor(
+    readonly userId: bigint,
+    readonly capabilities: readonly Capability[],
+  ) {
+    super(403, ErrorCode.DEFAULT_PASSWORD_BLOCKS_ACTION, DEFAULT_PASSWORD_BLOCKS_MESSAGE);
+  }
+}

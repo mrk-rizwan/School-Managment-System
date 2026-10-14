@@ -24,8 +24,11 @@ writes the production code.** Do not start application code in a planning sessio
   the period timetable (security PASS, correctness review fixed, committed with this entry).
   **Wave S is done** (2026-10-14): schema `05167e2`, then slices 38 events, 39 staff contracts,
   40 document verification (security PASS, correctness findings fixed, committed with this entry).
-  Project = 159.5 / 181.5 days = 88 %. **Next: wave T** — slices 41 (transport), 44 (biometric),
-  46 (audit screen and rule 24's reach): schema first, then the three in parallel.
+  **Wave T is done** (2026-10-15): schema `a8dad20`, then slices 41 transport, 44 biometric staff
+  attendance and disputes, 46 audit screen and rule 24's reach (security PASS, correctness findings
+  fixed, committed with this entry). Project = 168.5 / 181.5 days = 93 %. **Next: wave U** — slices
+  42 (reporting, class rankings, CSV), 43 (commencement imports), 45 (platform support access):
+  schema first, then the three in parallel; then slice 47, the phase close and gate.
 - **New machine since 2026-10-12** (owner moved to a new SSD): repo at `E:\Node Apps\School Managment System`,
   user profile `C:\Users\mrkri`. **pnpm now works**: pnpm 12 is a native Rust binary that needs the
   Microsoft Visual C++ runtime; its absence (`STATUS_DLL_NOT_FOUND`) was also why pnpm never ran on the
@@ -148,6 +151,53 @@ done before slice 0 are not counted.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-14/15 — Phase 5 wave T: transport, biometric attendance, audit screen and rule 24 (Opus 5.5 builds, Fable 5.1 reviews)
+
+**Schema `a8dad20`:** vehicles, transport routes, stops, route amounts (a future amount may be voided
+before its month starts and replaced), transport assignments keyed per student per academic year
+with the enrolment as a snapshot; `device_punches` (append-only, replay unique, outcome);
+`staff_attendance.device_punch_id` with the source/actor/punch CHECK (`NOT VALID`, so rows written
+before it are not re-checked); `staff_attendance_disputes` (withdraw added). The dev database was
+recreated empty from the migrations after the schema agent re-applied an edited migration to it.
+
+**Slice 41, transport:** vehicles, routes with stops and amounts, assignments, the student page's
+Transport tab, family and driver views on the phone. The bus fee is charged in the existing monthly
+run and its daily catch-up (separate transaction after the class loop): the assignment in force that
+started on or before the cut-off day, the amount in force for the month, the enrolment live in the
+month, once per student-month on the generated-charge key; concessions on the Transport head apply.
+Withdrawal, transfer and promotion apply end live assignments. An end is never dated before the last
+day of the previous month (a charge already generated stands).
+
+**Slice 44, biometric staff attendance:** per-school device token (rotate shown once; revoke),
+`POST /device-punches` (`@DeviceToken()`, batch ≤ 500, outcomes marked/stored/unmapped/duplicate/
+inactive/rejected, identical 401, per-IP lockout 10 bad tokens/min → 15 min, per-school 600/h,
+app-version floor exempt for that one route), device-user mapping, punches day view, disputes raised
+and withdrawn by the staff member, decided by another `attendance.staff.manage` holder through the
+Phase 2 amend path; Approvals gains Disputes on web and phone. A punch never amends an existing mark.
+
+**Slice 46, audit screen and rule 24's reach:** `GET /audit-log` (`audit.view`, inert on a default
+password, one of actor/subject/≤ 92-day range required, the access family `user.*`, `user_role.*`,
+`custom_role.*`, `capability_grant.*` excluded, identity/phone/email masked, platform actor shown as
+"Platform support"); `@DefaultPasswordInert` on every built R355 route (18, plus the device token's
+rotate and revoke), `/me.blockedActions` greying those buttons on the web; the staff-status and
+assignment overrides read effective holdings (R356), their refusals audited outside the
+transaction. The expense marker refuses the whole `PATCH /expenses/:id` (a route marker cannot see
+the body); void and re-record still work.
+
+**Reviews.** Security PASS (three Low, fixed or recorded: LIKE escaping on the audit filter, a
+device-token revoke, the CLAUDE.md record of exception 4 for the phase close). Correctness: R356
+refusals were never audited (rolled back), a backdated transport end left a charge standing, the
+student card could show a never-in-force assignment as current, a replay lost the capacity warning,
+and idempotency keys were missing on vehicle and route creation — all fixed. Full API suite before
+the fix round 2,974/2,979 (three out-of-date tests, fixed).
+
+**For the owner:** money verbs the plan's rule 24 list does not name and so are not blocked on a
+default password: salary-advance write-off, expense void, payslip adjust, charge adjust. Say if they
+should be added (a one-line marker each). **Known gap (pre-existing, widened):** if a step of the
+monthly charge run fails after earlier classes committed, those classes' `fee_charged` messages are
+never sent; the transport step adds one more such step. A durable fix notifies from the committed
+rows instead of the in-memory list.
 
 ## 2026-10-10/14 — Phase 5 wave S: events, staff contracts, document verification (Opus 5.5 builds, Fable 5.1 reviews)
 

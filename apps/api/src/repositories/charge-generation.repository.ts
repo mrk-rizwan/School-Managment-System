@@ -18,6 +18,9 @@ import type { PrismaTxAdapter } from './prisma';
 /** Late fees per INSERT: 12 bound parameters a row, well under Postgres's 65,535. */
 const LATE_FEE_CHUNK = 2000;
 
+/** Transport riders per INSERT (rule 37): two bound values a rider. */
+const TRANSPORT_CHUNK = 5000;
+
 /** One new charge a statement inserted. */
 export interface InsertedCharge {
   id: bigint;
@@ -333,6 +336,89 @@ export class ChargeGenerationRepository {
         RETURNING id, student_id, amount
       )
       SELECT (SELECT count(*) FROM rows)::int AS candidates,
+             COALESCE((SELECT json_agg(json_build_array(id::text, student_id::text, amount)) FROM ins), '[]'::json) AS inserted`;
+    const row = rows[0];
+    return { candidates: row?.candidates ?? 0, inserted: parseInserted(row?.inserted ?? []) };
+  }
+
+  /**
+   * Phase 5 rule 37 (R327, R328; contracts/slice-41.md §2.6): the riders' transport charges for one
+   * period, under the school's Transport head on the generated monthly key — one per student and
+   * period whatever their section or route changes. Each on the student's enrolment live in the
+   * period (the one in force on the first day, else the earliest to start in it); a student with
+   * none (left before the period) is not charged. The concession naming the head applies; a
+   * voided generated row is regenerated only when `regenerateVoided`. `riders` (from
+   * TransportReadsRepository.riders) are written in chunks of TRANSPORT_CHUNK.
+   */
+  async generateTransport(
+    schoolId: SchoolId,
+    g: Omit<ClassGeneration, 'classId' | 'cutoffDate'>,
+    feeHeadId: bigint,
+    riders: readonly { studentId: bigint; amount: number }[],
+  ): Promise<GenerationResult> {
+    const result: GenerationResult = { candidates: 0, inserted: [] };
+    for (let i = 0; i < riders.length; i += TRANSPORT_CHUNK) {
+      const chunk = await this.generateTransportChunk(schoolId, g, feeHeadId, riders.slice(i, i + TRANSPORT_CHUNK));
+      result.candidates += chunk.candidates;
+      result.inserted.push(...chunk.inserted);
+    }
+    return result;
+  }
+
+  private async generateTransportChunk(
+    schoolId: SchoolId,
+    g: Omit<ClassGeneration, 'classId' | 'cutoffDate'>,
+    feeHeadId: bigint,
+    riders: readonly { studentId: bigint; amount: number }[],
+  ): Promise<GenerationResult> {
+    const values = riders.map((r) => Prisma.sql`(${r.studentId}::bigint, ${r.amount}::int)`);
+    const rows = await this.txHost.tx.$queryRaw<{ candidates: number; inserted: unknown }[]>`
+      WITH riders (student_id, gross) AS (VALUES ${Prisma.join(values)}),
+      chosen AS (
+        SELECT ch.enrolment_id, r.student_id, r.gross
+          FROM riders r
+          JOIN LATERAL (
+            SELECT e.id AS enrolment_id
+              FROM enrolments e
+             WHERE e.school_id = ${schoolId} AND e.student_id = r.student_id
+               AND e.academic_year_id = ${g.academicYearId}
+               AND e.started_on <= ${g.periodEnd}::date
+               AND (e.ended_on IS NULL OR e.ended_on >= ${g.periodStart}::date)
+             ORDER BY (e.started_on <= ${g.periodStart}::date) DESC,
+                      CASE WHEN e.started_on <= ${g.periodStart}::date THEN e.started_on END DESC NULLS LAST,
+                      e.started_on ASC, e.id ASC
+             LIMIT 1) ch ON TRUE
+      ), todo AS (
+        SELECT c.* FROM chosen c
+         WHERE ${g.regenerateVoided}::boolean OR NOT EXISTS (
+                 SELECT 1 FROM charges x
+                  WHERE x.school_id = ${schoolId} AND x.student_id = c.student_id
+                    AND x.fee_head_id = ${feeHeadId} AND x.period = ${g.period}::text
+                    AND x.kind = 'generated' AND x.head_frequency = 'monthly'::fee_frequency)
+      ), rows AS (
+        SELECT t.enrolment_id, t.student_id, h.id AS fee_head_id, h.name AS head_name,
+               t.gross, con.id AS concession_id, ${conceded(Prisma.sql`t.gross`)} AS conceded
+          FROM todo t
+          JOIN fee_heads h
+            ON h.school_id = ${schoolId} AND h.id = ${feeHeadId}
+           AND h.status = 'active' AND h.frequency = 'monthly'::fee_frequency
+          ${concessionJoin(schoolId, g.academicYearId, Prisma.sql`t.student_id`, g.period, g.periodStartsAt)}
+      ), ins AS (
+        INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id,
+                             head_frequency, kind, period, concession_id, gross_amount,
+                             concession_amount, amount, description, due_on, status, settled_at,
+                             created_by)
+        SELECT ${schoolId}, r.enrolment_id, r.student_id, ${g.academicYearId}, r.fee_head_id,
+               'monthly'::fee_frequency, 'generated'::charge_kind, ${g.period}, r.concession_id, r.gross,
+               r.conceded, r.gross - r.conceded, r.head_name || ' ' || ${g.label}::text, ${g.dueOn}::date,
+               CASE WHEN r.gross = r.conceded THEN 'settled'::charge_status ELSE 'open'::charge_status END,
+               CASE WHEN r.gross = r.conceded THEN now() END, NULL
+          FROM rows r
+        ON CONFLICT (school_id, student_id, fee_head_id, period)
+           WHERE kind = 'generated' AND head_frequency = 'monthly' AND status <> 'voided' DO NOTHING
+        RETURNING id, student_id, amount
+      )
+      SELECT (SELECT count(*) FROM chosen)::int AS candidates,
              COALESCE((SELECT json_agg(json_build_array(id::text, student_id::text, amount)) FROM ins), '[]'::json) AS inserted`;
     const row = rows[0];
     return { candidates: row?.candidates ?? 0, inserted: parseInserted(row?.inserted ?? []) };

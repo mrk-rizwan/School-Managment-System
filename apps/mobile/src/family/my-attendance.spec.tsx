@@ -19,7 +19,9 @@ function mine(patch: Partial<MyStaffAttendanceDto> = {}): MyStaffAttendanceDto {
     absent: 1,
     dateFrom: `${TODAY.slice(0, 8)}01`,
     dateTo: TODAY,
-    days: [{ amended: false, date: TODAY, employed: true, status: 'present', workingDay: true }],
+    days: [
+      { amended: false, date: TODAY, employed: true, status: 'present', workingDay: true, markId: '501', source: 'device', disputeId: null, disputeStatus: null },
+    ],
     late: 1,
     onLeave: 0,
     present: 17,

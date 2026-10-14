@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode, isStaffWorkingDay, weekdayOf } from '@asms/shared';
+import { ErrorCode, isStaffWorkingDay, markFromPunch, weekdayOf } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import {
   ApiException,
@@ -12,10 +12,12 @@ import {
 import { diffMarks } from '../../common/diff';
 import { recoverConstraint } from '../../common/errors/prisma-errors';
 import { toPage, type Page } from '../../common/pagination';
-import { addDays, daysBetween, SchoolClock } from '../../common/school-clock';
+import { addDays, dayStart, daysBetween, SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
+import { AttendanceDisputeRepository } from '../../repositories/attendance-dispute.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
+import { DevicePunchRepository } from '../../repositories/device-punch.repository';
 import { LeaveRequestRepository } from '../../repositories/leave-request.repository';
 import { LeaveTypeRepository } from '../../repositories/leave-type.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
@@ -77,6 +79,8 @@ export class StaffAttendanceService {
     private readonly clock: SchoolClock,
     private readonly leave: LeaveRequestRepository,
     private readonly leaveTypes: LeaveTypeRepository,
+    private readonly disputes: AttendanceDisputeRepository,
+    private readonly punches: DevicePunchRepository,
   ) {}
 
   /** §4.1: the day's sheet. */
@@ -95,15 +99,40 @@ export class StaffAttendanceService {
       take: query.limit,
     });
     const leave = await this.approvedLeaveOn(schoolId, date, rows.map((row) => row.staffId));
+    // Phase 5 slice 44 (contracts/slice-44.md §2.7): each mark's dispute, and the day's punches.
+    const disputes = await this.disputes.latestForMarks(
+      schoolId,
+      rows.flatMap((row) => (row.mark === null ? [] : [row.mark.id])),
+    );
+    const timezone = await this.clock.timezone(schoolId);
+    const punches = await this.punches.firstPunches(
+      schoolId,
+      rows.map((row) => row.staffId),
+      dayStart(timezone, date),
+      dayStart(timezone, addDays(date, 1)),
+    );
+    const lateAfter = (await this.settings.find(schoolId))?.staffLateAfter ?? null;
     return toPage(
-      rows.map((row) => ({
-        staffId: row.staffId.toString(),
-        fullName: row.fullName,
-        designation: row.designation,
-        staffStatus: row.staffStatus,
-        mark: row.mark && toStaffMarkDto(row.mark),
-        approvedLeave: leave.get(row.staffId) ?? null,
-      })),
+      rows.map((row) => {
+        const dispute = row.mark === null ? undefined : disputes.get(row.mark.id);
+        const punch = punches.get(row.staffId) ?? null;
+        return {
+          staffId: row.staffId.toString(),
+          fullName: row.fullName,
+          designation: row.designation,
+          staffStatus: row.staffStatus,
+          mark: row.mark && toStaffMarkDto(row.mark),
+          approvedLeave: leave.get(row.staffId) ?? null,
+          disputeId: dispute?.id.toString() ?? null,
+          disputeStatus: dispute?.status ?? null,
+          punch,
+          punchConflict:
+            row.mark !== null &&
+            punch !== null &&
+            row.mark.status !==
+              markFromPunch(punch.firstPunchAt, lateAfter === null ? null : lateAfter.toISOString().slice(11, 19), timezone),
+        };
+      }),
       query,
       total,
     );
@@ -123,8 +152,17 @@ export class StaffAttendanceService {
   }
 
   /** §4.3: one mark, with the status the client last saw. */
+  /**
+   * `disputeId`: the approval of a staff member's dispute amends through here (contracts/slice-44.md
+   * §2.6), and the audit row names it.
+   */
   @Transactional()
-  async amend(session: SchoolSessionContext, id: bigint, dto: StaffAmendDto): Promise<StaffMarkDto> {
+  async amend(
+    session: SchoolSessionContext,
+    id: bigint,
+    dto: StaffAmendDto,
+    disputeId?: bigint,
+  ): Promise<StaffMarkDto> {
     const { schoolId, userId } = this.context.actor();
     const found = await this.marks.findById(schoolId, id);
     if (!found) throw notFound();
@@ -151,6 +189,7 @@ export class StaffAttendanceService {
         to: dto.status,
         noteChanged: note !== row.note,
         afterWindow: await this.afterWindow(schoolId, row.date),
+        ...(disputeId === undefined ? {} : { disputeId: disputeId.toString() }),
       },
     });
     const updated = await this.marks.findById(schoolId, id);
@@ -174,13 +213,7 @@ export class StaffAttendanceService {
     const { days, ...totals } = await this.read(staffId, query);
     return {
       ...totals,
-      days: days.map(({ date, workingDay, employed, status, amended }) => ({
-        date,
-        workingDay,
-        employed,
-        status,
-        amended,
-      })),
+      days: days.map(({ note: _note, markedByName: _marker, ...day }) => day),
     };
   }
 
@@ -362,6 +395,7 @@ export class StaffAttendanceService {
       ]),
     );
     const { value } = await this.calendar.calendar(schoolId, from, to);
+    const disputes = await this.disputes.latestForMarks(schoolId, [...rows.values()].map((row) => row.id));
 
     const totals = { workingDays: 0, present: 0, absent: 0, late: 0, onLeave: 0 };
     const days: StaffAttendanceDto['days'] = [];
@@ -382,6 +416,10 @@ export class StaffAttendanceService {
         note: row?.note ?? null,
         markedByName: row?.markedByName ?? null,
         amended: row !== undefined && row.lastAmendedAt !== null,
+        markId: row?.id.toString() ?? null,
+        source: row?.source ?? null,
+        disputeId: (row && disputes.get(row.id)?.id.toString()) ?? null,
+        disputeStatus: (row && disputes.get(row.id)?.status) ?? null,
       });
     }
     const marked = totals.present + totals.absent + totals.late + totals.onLeave;

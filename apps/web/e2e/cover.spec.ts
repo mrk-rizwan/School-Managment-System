@@ -18,6 +18,7 @@ const PRINCIPAL_ME: MeDto = {
   hasVerifiedEmail: true,
   passwordIsDefault: false,
   blockedCapabilities: [],
+  blockedActions: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
@@ -32,6 +33,7 @@ const PRINCIPAL_ME: MeDto = {
 const staffRow = (id: string, fullName: string, extra: Partial<StaffDto> = {}): StaffDto => ({
   id,
   fullName,
+  deviceUserId: null,
   cnicMasked: '35201-*****-1',
   hasCnic: true,
   phone: '+923001234567',

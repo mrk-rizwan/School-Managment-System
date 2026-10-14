@@ -25,7 +25,7 @@ import {
 } from '@/lib/api/school-payments-contract';
 import { formatDate } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities } from '@/lib/school-session';
+import { inertRowAction, useBlockedActions, useCapabilities } from '@/lib/school-session';
 import { useYears } from '../../academics/_lib/options';
 import { digitsOnly, feesKeys, useIsPrincipal } from '../_lib/fees-ui';
 
@@ -50,6 +50,8 @@ export function PaymentList() {
   const principal = useIsPrincipal();
   const canVoid = can(Capability.PAYMENT_VOID);
   const canRecord = can(Capability.PAYMENT_RECORD);
+  // Rule 24's reach (R355): void, refund and its reversal are greyed on a default password.
+  const blocked = useBlockedActions();
   const [status, setStatus] = useState<PaymentStatus | ''>('verified');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -170,10 +172,10 @@ export function PaymentList() {
           const p = info.row.original;
           const actions: RowAction[] = [];
           if (p.status === 'verified') {
-            if (canVoid && p.method !== 'carried_forward') actions.push({ label: 'Void', destructive: true, onSelect: () => setDialog({ kind: 'void', payment: p }) });
-            if (canVoid && principal && p.unallocatedAmount > 0) actions.push({ label: 'Refund advance…', onSelect: () => setDialog({ kind: 'refund', payment: p }) });
+            if (canVoid && p.method !== 'carried_forward') actions.push({ label: 'Void', destructive: true, onSelect: () => setDialog({ kind: 'void', payment: p }), ...inertRowAction(blocked('payment.void')) });
+            if (canVoid && principal && p.unallocatedAmount > 0) actions.push({ label: 'Refund advance…', onSelect: () => setDialog({ kind: 'refund', payment: p }), ...inertRowAction(blocked('payment.refund')) });
             for (const r of p.reversals.filter((x) => x.kind === 'refund' && !x.reversed)) {
-              if (canVoid && principal) actions.push({ label: `Reverse refund of ${formatRupees(r.amount)}`, onSelect: () => setDialog({ kind: 'reverse', payment: p, refund: r }) });
+              if (canVoid && principal) actions.push({ label: `Reverse refund of ${formatRupees(r.amount)}`, onSelect: () => setDialog({ kind: 'reverse', payment: p, refund: r }), ...inertRowAction(blocked('payment.reverse_refund')) });
             }
             if (canRecord && p.unallocatedAmount > 0) actions.push({ label: 'Carry advance forward…', onSelect: () => setDialog({ kind: 'carry', payment: p }) });
             for (const r of p.reversals.filter((x) => x.kind === 'carried_forward' && !x.reversed)) {
@@ -184,7 +186,7 @@ export function PaymentList() {
         },
       }),
     ];
-  }, [canVoid, canRecord, principal]);
+  }, [canVoid, canRecord, principal, blocked]);
 
   return (
     <>

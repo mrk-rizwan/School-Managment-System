@@ -358,6 +358,62 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs('staff-contract-repository-import.ts', 'src/modules/people/staff/staff-contracts.service.ts')).toEqual([]);
   });
 
+  // Slice 44 (contracts/slice-44.md §5): the punch and dispute repositories are the staff-attendance
+  // module's alone (Approvals reads disputes through the service), and the device-punch service, the
+  // named-exception site, imports neither.
+  it.each([
+    ['device-punch-repository-import.ts', 'src/modules/approvals/approvals.service.ts'],
+    ['device-punch-repository-import.ts', 'src/modules/people/staff/staff.service.ts'],
+    ['attendance-dispute-repository-import.ts', 'src/modules/approvals/approvals.service.ts'],
+    ['attendance-dispute-repository-import.ts', 'src/modules/leave/leave-requests.service.ts'],
+    ['device-punch-repository-import.ts', 'src/modules/staff-attendance/device-punch.service.ts'],
+    ['attendance-dispute-repository-import.ts', 'src/modules/staff-attendance/device-punch.service.ts'],
+  ])('refuses %s at %s (slice 44)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['device-punch-repository-import.ts', 'src/modules/staff-attendance/punch-intake.service.ts'],
+    ['attendance-dispute-repository-import.ts', 'src/modules/staff-attendance/attendance-disputes.service.ts'],
+  ])('allows %s at %s (slice 44)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 41 (contracts/slice-41.md, phase-5-extended.md §2): the transport repository is the
+  // transport module's alone; the charge job reads assignments only through TransportReadsRepository.
+  it.each([
+    ['transport-repository-import.ts', 'src/modules/fees/charge-generation.ts'],
+    ['transport-repository-import.ts', 'src/modules/people/students/students.service.ts'],
+    ['transport-repository-import.ts', 'src/modules/promotion/promotion.service.ts'],
+    ['transport-reads-repository-import.ts', 'src/modules/fees/charges.service.ts'],
+    ['transport-reads-repository-import.ts', 'src/modules/finance-reports/finance-reports.service.ts'],
+  ])('refuses %s at %s (slice 41)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['transport-repository-import.ts', 'src/modules/transport/transport.service.ts'],
+    ['transport-reads-repository-import.ts', 'src/modules/transport/transport.service.ts'],
+    ['transport-reads-repository-import.ts', 'src/modules/fees/charge-generation.ts'],
+    ['transport-repository-import.ts', 'test/transport/support.ts'],
+  ])('allows %s at %s (slice 41)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 46 (contracts/slice-46.md §4): the audit screen's read-only repository is the audit
+  // module's alone (slice 45's support views read audit_log through SupportReadsRepository).
+  it.each([
+    ['audit-reads-repository-import.ts', 'src/modules/access/permissions.service.ts'],
+    ['audit-reads-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['audit-reads-repository-import.ts', 'src/jobs/job-runner.ts'],
+  ])('refuses %s at %s (slice 46)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it('allows the audit reads repository in the audit module (slice 46)', async () => {
+    expect(await lintAs('audit-reads-repository-import.ts', 'src/modules/audit/audit.service.ts')).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

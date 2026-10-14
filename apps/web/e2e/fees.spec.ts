@@ -1,4 +1,4 @@
-import { Capability } from '@asms/shared';
+import { Capability, DEFAULT_PASSWORD_INERT_ACTION_NAMES } from '@asms/shared';
 import { expect as baseExpect, test } from '@playwright/test';
 import type { AcademicYearDto } from '../lib/api/school-academics-contract';
 import type { MeDto } from '../lib/api/school-contract';
@@ -540,6 +540,7 @@ test.describe('rule 24 and the sidebar', () => {
         (c) => c !== Capability.ROLE_MANAGE && c !== Capability.USER_ACCOUNT_MANAGE,
       ),
       blockedCapabilities: [Capability.ROLE_MANAGE, Capability.USER_ACCOUNT_MANAGE],
+      blockedActions: [...DEFAULT_PASSWORD_INERT_ACTION_NAMES],
     };
     await mockSchoolApi(page, {
       me,

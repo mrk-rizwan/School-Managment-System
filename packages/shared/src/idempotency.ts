@@ -32,6 +32,8 @@ export const IDEMPOTENT_ENDPOINTS = [
   'events',
   'event_payments',
   'staff_contracts',
+  'vehicles',
+  'transport_routes',
   'transport_assignments',
   'imports',
   'attendance_disputes',

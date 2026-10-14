@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 import {
+  DEFAULT_PASSWORD_INERT_ACTION_NAMES,
+  type DefaultPasswordInertAction,
   ATTENDANCE_MODES,
   CAPABILITY_SCOPES,
   CAPACITIES,
@@ -164,6 +166,18 @@ export class MeDto {
    */
   @ApiProperty({ enum: Object.values(Capability), enumName: 'Capability', isArray: true })
   blockedCapabilities: Capability[];
+
+  /**
+   * Rule 24's reach (Phase 5 R355, contracts/slice-46.md §3): the verbs refused while the user
+   * signs in with the default password (stable names from packages/shared rule24.ts), so the web
+   * greys their buttons. Every name while the password is the default; empty once it is changed.
+   */
+  @ApiProperty({
+    enum: DEFAULT_PASSWORD_INERT_ACTION_NAMES,
+    enumName: 'DefaultPasswordInertAction',
+    isArray: true,
+  })
+  blockedActions: DefaultPasswordInertAction[];
 
   @ApiProperty({ type: String, format: 'date-time' })
   sessionExpiresAt: Date;

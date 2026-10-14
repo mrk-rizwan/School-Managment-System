@@ -68,6 +68,10 @@ export class StaffDto {
   @ApiProperty(STATUS)
   status: StaffStatus;
 
+  /** Phase 5 rule 40: set through PATCH /staff/:id/device-user (attendance.staff.manage). */
+  @ApiProperty({ type: String, nullable: true, maxLength: 40, description: 'The user number on the biometric device' })
+  deviceUserId: string | null;
+
   @ApiProperty({ ...NULLABLE_ID, description: 'The login whose staff_id is this row, if any' })
   userId: string | null;
 

@@ -75,6 +75,7 @@ const PRINCIPAL_ME: MeDto = {
   hasVerifiedEmail: true,
   passwordIsDefault: false,
   blockedCapabilities: [],
+  blockedActions: [],
   school: { id: 's1', name: 'Green Valley Higher Secondary School', shortCode: 'greenvalley', status: 'active' },
   roles: ['principal'],
   capabilities: Object.values(Capability).sort(),
@@ -151,6 +152,7 @@ const SUBJECTS = [subject('sub-m', 'Mathematics', 'MATH'), subject('sub-e', 'Eng
 const staffRow = (id: string, fullName: string, extra: Partial<StaffDto> = {}): StaffDto => ({
   id,
   fullName,
+  deviceUserId: null,
   cnicMasked: '35201-*****-1',
   hasCnic: true,
   phone: '+923001234567',
@@ -463,6 +465,10 @@ const STAFF_DAY: StaffDayDto[] = STAFF.map((s) => ({
   staffStatus: s.status,
   mark: null,
   approvedLeave: null,
+  disputeId: null,
+  disputeStatus: null,
+  punch: null,
+  punchConflict: false,
 }));
 const MY_ATTENDANCE: MyStaffAttendanceDto = {
   staffId: 'st1',
@@ -1042,6 +1048,8 @@ async function mockApi(page: Page, session: Session) {
       return json(500, errorBody('INTERNAL_ERROR', `Unmocked ${method} ${path}`));
     }
     const lists: Record<string, unknown[]> = {
+      // Phase 5 slice 44: "My attendance" lists the caller's own disputes.
+      '/me/staff/attendance-disputes': [],
       '/academic-years': YEARS,
       '/classes': CLASSES,
       '/subjects': SUBJECTS,

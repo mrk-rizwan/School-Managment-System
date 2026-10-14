@@ -276,6 +276,7 @@ export class StaffService {
       designation: row.designation,
       joinedOn: row.joinedOn === null ? null : toDateString(row.joinedOn),
       status: row.status,
+      deviceUserId: row.deviceUserId,
       userId: row.userId?.toString() ?? null,
       systemRoles,
       customRoleNames,

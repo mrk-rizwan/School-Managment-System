@@ -1,8 +1,11 @@
 'use client';
 
+import { DISPUTE_STATUS_LABELS } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { QueryStates } from '@/components/page-states';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { unwrap } from '@/lib/api/client';
 import {
   staffAttendanceApi,
@@ -19,7 +22,17 @@ import { MonthHeatMap, MonthNav, monthOf, monthRange, type HeatMapDay } from '..
 
 type Source = { kind: 'staff'; staffId: string; name: string } | { kind: 'me' };
 
-export function StaffAttendanceMonth({ source }: { source: Source }) {
+/**
+ * `onDispute` (Phase 5 slice 44, "My attendance" only): lists the month's marks, each with its
+ * dispute status and a Dispute button while none is pending.
+ */
+export function StaffAttendanceMonth({
+  source,
+  onDispute,
+}: {
+  source: Source;
+  onDispute?: (day: MyStaffAttendanceDayDto) => void;
+}) {
   const [month, setMonth] = useState(monthOf(todayInSchool()));
   const { from, to } = monthRange(month);
   const query = { dateFrom: from, dateTo: to };
@@ -48,6 +61,7 @@ export function StaffAttendanceMonth({ source }: { source: Source }) {
             detail: 'note' in d && d.note ? d.note : undefined,
           }));
           const notes = days.filter((d): d is StaffAttendanceDayDto => 'markedByName' in d && d.status !== null);
+          const marked = days.filter((d) => d.status !== null && d.markId !== null);
           return (
             <>
               <p className="text-sm" data-testid="staff-attendance-counts">
@@ -65,6 +79,27 @@ export function StaffAttendanceMonth({ source }: { source: Source }) {
                 countedLabel="working day"
                 label={source.kind === 'me' ? 'Your attendance' : `${source.name}'s attendance`}
               />
+              {onDispute && marked.length > 0 && (
+                <ul className="grid gap-1 text-sm" aria-label="Your recorded days" data-testid="my-marks">
+                  {marked.map((d) => (
+                    <li key={d.date} className="flex flex-wrap items-center gap-x-2 gap-y-1" data-day={d.date}>
+                      <span className="w-28 shrink-0 text-muted-foreground">{formatDay(d.date)}</span>
+                      <span className="font-medium">{STATUS_LABELS[d.status!]}</span>
+                      {d.source === 'device' && <span className="text-xs text-muted-foreground">by the device</span>}
+                      {d.disputeStatus && (
+                        <Badge variant={d.disputeStatus === 'pending' ? 'default' : 'outline'}>
+                          Dispute {DISPUTE_STATUS_LABELS[d.disputeStatus].toLowerCase()}
+                        </Badge>
+                      )}
+                      {d.disputeStatus !== 'pending' && (
+                        <Button variant="ghost" size="sm" onClick={() => onDispute(d)}>
+                          Dispute
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {source.kind === 'staff' && notes.length > 0 && (
                 <ul className="grid gap-1 text-sm" aria-label="Marks this month">
                   {notes.map((d) => (

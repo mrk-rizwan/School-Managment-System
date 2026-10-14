@@ -54,6 +54,11 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const PLATFORM_PATH = `/${API_PREFIX}/platform/`;
 const WEBHOOK_PATH = `/${API_PREFIX}/webhooks/`;
 const HEALTH_PATH = `/${API_PREFIX}/health`;
+/**
+ * Phase 5 slice 44: a biometric device posts punches with the school's device token as a bearer
+ * token; it is not the mobile app and sends no X-App-Version (contracts/slice-44.md §2.2).
+ */
+const DEVICE_PUNCH_POST = new RegExp(`^/${API_PREFIX}/device-punches/?$`);
 
 /**
  * R65, R170 / contract slice-1 §1, slice-9 §1.3: a state-changing request that a browser could
@@ -113,7 +118,8 @@ export function appVersionFloor(minimumVersion: string) {
     if (
       (header === undefined && !bearer) ||
       path === HEALTH_PATH ||
-      path.startsWith(WEBHOOK_PATH)
+      path.startsWith(WEBHOOK_PATH) ||
+      (req.method === 'POST' && header === undefined && DEVICE_PUNCH_POST.test(path))
     ) {
       next();
       return;

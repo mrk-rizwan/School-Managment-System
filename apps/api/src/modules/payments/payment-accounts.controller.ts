@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
-import { RequireCapability, RequireCapacity } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability, RequireCapacity } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
@@ -39,6 +39,7 @@ export class PaymentAccountsController {
 
   @Post()
   @RequireCapability(Capability.SCHOOL_SETTINGS_MANAGE)
+  @DefaultPasswordInert('payment_account.create')
   @ApiCreatedResponse({ type: PaymentAccountDto })
   @ApiErrors(...COMMON, 422)
   create(
@@ -61,6 +62,7 @@ export class PaymentAccountsController {
   @Post(':id/disable')
   @HttpCode(200)
   @RequireCapability(Capability.SCHOOL_SETTINGS_MANAGE)
+  @DefaultPasswordInert('payment_account.disable')
   @ApiIdParam()
   @ApiOkResponse({ type: PaymentAccountDto })
   @ApiErrors(...COMMON, 404, 422)

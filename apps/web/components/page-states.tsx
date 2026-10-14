@@ -64,7 +64,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
     return (
       <StateFrame icon={<LockIcon className="size-5" />} title="Change your password first">
         <p className="text-sm text-muted-foreground">
-          Managing user accounts and roles is off while you use the default password.
+          This is off while you use the default password.
         </p>
         <div className="pt-2">
           <Link href="/account" className="text-sm font-medium underline underline-offset-4">

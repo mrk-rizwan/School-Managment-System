@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Patch, Post, Query, Req, Res, UseGuard
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Capability } from '@asms/shared';
 import type { Request, Response } from 'express';
-import { RequireCapability } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotency';
 import { ApiIdParam, IdParam } from '../../common/ids';
@@ -137,6 +137,7 @@ export class ChargesController {
   @Post(':id/void')
   @HttpCode(200)
   @RequireCapability(Capability.CHARGE_CREATE, Capability.CONCESSION_GRANT)
+  @DefaultPasswordInert('charge.void')
   @ApiIdParam()
   @ApiOkResponse({ type: ChargeDto })
   @ApiErrors(...COMMON, 404, 409, 422)
@@ -152,6 +153,7 @@ export class ChargesController {
   @Post(':id/waive')
   @HttpCode(200)
   @RequireCapability(Capability.CONCESSION_GRANT)
+  @DefaultPasswordInert('charge.waive')
   @ApiIdParam()
   @ApiOkResponse({ type: ChargeDto })
   @ApiErrors(...COMMON, 404, 409, 422)

@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Post, Query, Req, Res, UseGuards } fro
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Capability } from '@asms/shared';
-import { RequireCapability, RequireStaff } from '../../common/auth/route-access';
+import { DefaultPasswordInert, RequireCapability, RequireStaff } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { notFound } from '../../common/errors/api-exception';
 import { IDEMPOTENCY_HEADER, IdempotencyKeyGuard } from '../../common/idempotency';
@@ -122,6 +122,7 @@ export class SalaryAdvancesController {
   /** payroll.run and the principal role (R233); never one's own (R235). */
   @Post()
   @RequireCapability(Capability.PAYROLL_RUN)
+  @DefaultPasswordInert('salary_advance.grant')
   @UseGuards(IdempotencyKeyGuard)
   @ApiHeader(IDEMPOTENCY_HEADER_DOC)
   @ApiCreatedResponse({ type: AdvanceDto })
@@ -228,6 +229,7 @@ export class PayrollRunsController {
   @Post(':id/finalise')
   @HttpCode(200)
   @RequireCapability(Capability.PAYROLL_RUN)
+  @DefaultPasswordInert('payroll_run.finalise')
   @ApiIdParam()
   @ApiOkResponse({ type: PayrollRunDto })
   @ApiErrors(...COMMON, 404, 409, 422)
@@ -291,6 +293,7 @@ export class PayslipsController {
   @Post(':id/mark-paid')
   @HttpCode(200)
   @RequireCapability(Capability.PAYROLL_RUN)
+  @DefaultPasswordInert('payslip.mark_paid')
   @ApiIdParam()
   @ApiOkResponse({ type: PayslipDto })
   @ApiErrors(...COMMON, 404, 409, 422)

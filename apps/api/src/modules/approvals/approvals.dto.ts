@@ -5,6 +5,7 @@ import { LeaveRequestDto } from '../leave/leave.dto';
 import { ClaimDto } from '../payments/claims.dto';
 import { HandoverDto } from '../payments/payments.dto';
 import { ResultSheetDto } from '../results/results.dto';
+import { AttendanceDisputeDto } from '../staff-attendance/attendance-disputes.dto';
 
 // phase-3-financial.md slice 27 (R227); contracts/slice-27.md. Each section is the first page of
 // the existing queue with its total, so `count` is what that queue's own endpoint reports.
@@ -41,6 +42,11 @@ export class ApprovalDocumentsDto {
   @ApiProperty({ type: () => QueuedDocumentDto, isArray: true, maxItems: 10 }) items: QueuedDocumentDto[];
 }
 
+export class ApprovalDisputesDto {
+  @ApiProperty(COUNT) count: number;
+  @ApiProperty({ type: () => AttendanceDisputeDto, isArray: true, maxItems: 10 }) items: AttendanceDisputeDto[];
+}
+
 /** Only the sections whose key the caller holds; none at all is `{}`. */
 export class ApprovalsDto {
   /** `payment.verify`: pending deposit claims with their slip (GET /payment-claims), oldest first. */
@@ -61,4 +67,10 @@ export class ApprovalsDto {
    * first, each with `ownUpload` (the caller may not decide their own upload).
    */
   @ApiPropertyOptional({ type: () => ApprovalDocumentsDto }) documents?: ApprovalDocumentsDto;
+  /**
+   * `attendance.staff.manage` (Phase 5 slice 44, R347): pending staff attendance disputes
+   * (GET /staff-attendance-disputes?status=pending), newest first. The caller's own may be listed
+   * (as in the queue) and is refused on decision; compare `staffId` with /me.
+   */
+  @ApiPropertyOptional({ type: () => ApprovalDisputesDto }) disputes?: ApprovalDisputesDto;
 }

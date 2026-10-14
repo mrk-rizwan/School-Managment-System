@@ -14,7 +14,7 @@ import { unwrap } from '@/lib/api/client';
 import { refusalMessage } from '@/lib/api/errors';
 import { reportsApi } from '@/lib/api/school-reports-contract';
 import { formatDate, formatDateTime } from '@/lib/format';
-import { useCapabilities } from '@/lib/school-session';
+import { DEFAULT_PASSWORD_HINT, useBlockedActions, useCapabilities } from '@/lib/school-session';
 import { feesKeys, useIsPrincipal } from '../../fees/_lib/fees-ui';
 
 /** The student's dues across every academic year (slice 22): one key, so the panel and the status dialog share it. */
@@ -40,6 +40,8 @@ export function DuesClearancePanel({ studentId }: { studentId: string }) {
   const { can } = useCapabilities();
   const principal = useIsPrincipal();
   const canOverride = principal && can(Capability.CERTIFICATE_ISSUE);
+  // Rule 24's reach (R355): the override is greyed on a default password.
+  const overrideBlocked = useBlockedActions()('dues_clearance.override');
   const [overriding, setOverriding] = useState(false);
   const clearance = useDuesClearance(studentId);
   const override = useMutation({
@@ -120,7 +122,12 @@ export function DuesClearancePanel({ studentId }: { studentId: string }) {
             )}
             {canOverride && !data.cleared && data.outstanding > 0 && (
               <div>
-                <Button variant="outline" onClick={() => setOverriding(true)}>
+                <Button
+                  variant="outline"
+                  disabled={overrideBlocked}
+                  title={overrideBlocked ? DEFAULT_PASSWORD_HINT : undefined}
+                  onClick={() => setOverriding(true)}
+                >
                   Override
                 </Button>
               </div>

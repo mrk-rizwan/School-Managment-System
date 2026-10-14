@@ -20,6 +20,8 @@ export interface StaffRecord {
   joinedOn: Date | null;
   status: StaffStatus;
   leftOn: Date | null;
+  /** Phase 5 rule 40: the user number on the school's biometric device (contracts/slice-44.md §2.3). */
+  deviceUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
   /** The login whose staff_id is this row, if any. */
@@ -67,6 +69,7 @@ const SELECT = {
   joinedOn: true,
   status: true,
   leftOn: true,
+  deviceUserId: true,
   createdAt: true,
   updatedAt: true,
   user: { select: { id: true } },

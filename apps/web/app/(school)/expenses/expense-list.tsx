@@ -48,7 +48,7 @@ import {
 } from '@/lib/api/school-expenses-contract';
 import { formatDay, todayInSchool } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { inertRowAction, useBlockedActions, useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { useIsPrincipal } from '../fees/_lib/fees-ui';
 import { nameSchema } from '@/lib/validation';
 import { ACCEPT_ATTRIBUTE, ACCEPTED_TYPES, MAX_UPLOAD_BYTES, saveBlob, uploadFile } from '../students/_lib/documents';
@@ -74,6 +74,8 @@ const isOpen = (e: ExpenseDto) => e.status === 'recorded' || e.status === 'pendi
 export function ExpenseList() {
   const queryClient = useQueryClient();
   const { can } = useCapabilities();
+  // Rule 24's reach (R355): an edit (payee, amount, method) and an approval are greyed on a default password.
+  const blocked = useBlockedActions();
   const me = useSchoolMe().data;
   const canRecord = can(Capability.EXPENSE_RECORD);
   const canApprove = can(Capability.EXPENSE_APPROVE);
@@ -147,9 +149,9 @@ export function ExpenseList() {
       const actions: RowAction[] = [];
       if (e.hasReceipt) actions.push({ label: 'Download receipt', onSelect: () => void downloadReceipt(e) });
       if (mine(e) && canRecord && !e.hasReceipt) actions.push({ label: 'Attach receipt', onSelect: () => setAttaching(e) });
-      if (mine(e) && canRecord && isOpen(e)) actions.push({ label: 'Edit', onSelect: () => setEditing(e) });
+      if (mine(e) && canRecord && isOpen(e)) actions.push({ label: 'Edit', onSelect: () => setEditing(e), ...inertRowAction(blocked('expense.payee_change')) });
       if (canApprove && e.status === 'pending_approval' && !mine(e)) {
-        actions.push({ label: 'Approve', onSelect: () => setApproving(e) });
+        actions.push({ label: 'Approve', onSelect: () => setApproving(e), ...inertRowAction(blocked('expense.approve')) });
         actions.push({ label: 'Reject', onSelect: () => setRejecting(e), destructive: true });
       }
       const voidable =
@@ -196,7 +198,7 @@ export function ExpenseList() {
         cell: (info) => <RowActions label={`expense ${info.row.original.expenseNo}`} actions={actionsFor(info.row.original)} />,
       }),
     ];
-  }, [me, canRecord, canApprove, isPrincipal]);
+  }, [me, canRecord, canApprove, isPrincipal, blocked]);
 
   return (
     <>

@@ -22,6 +22,7 @@ const OFFICE_ME: MeDto = {
   hasVerifiedEmail: true,
   passwordIsDefault: false,
   blockedCapabilities: [],
+  blockedActions: [],
   school: { id: 's1', name: 'Green Valley School', shortCode: 'greenvalley', status: 'active' },
   roles: ['office_staff'],
   capabilities: [...SYSTEM_ROLE_DEFAULTS.office_staff].sort(),
@@ -68,6 +69,7 @@ const customRole = (id: string, name: string, extra: Partial<CustomRoleDto> = {}
 const staffRow = (id: string, fullName: string, extra: Partial<StaffDto> = {}): StaffDto => ({
   id,
   fullName,
+  deviceUserId: null,
   cnicMasked: '35201-*****-1',
   hasCnic: true,
   phone: '+923001234567',

@@ -33,7 +33,7 @@ import {
 } from '@/lib/api/school-charges-contract';
 import { formatDate, todayInSchool } from '@/lib/format';
 import { useListPage } from '@/lib/hooks';
-import { useCapabilities } from '@/lib/school-session';
+import { inertRowAction, useBlockedActions, useCapabilities } from '@/lib/school-session';
 import { useYears } from '../../academics/_lib/options';
 import {
   CHARGE_KIND_LABELS,
@@ -55,6 +55,8 @@ const LIMIT = 25;
 export function ChargeList() {
   const queryClient = useQueryClient();
   const { can } = useCapabilities();
+  // Rule 24's reach (R355): void and waive are greyed on a default password.
+  const blocked = useBlockedActions();
   const principal = useIsPrincipal();
   const canCreate = can(Capability.CHARGE_CREATE);
   const canGrant = can(Capability.CONCESSION_GRANT);
@@ -173,8 +175,8 @@ export function ChargeList() {
           if (charge.status === 'open' && charge.allocatedAmount === 0) {
             const officeVoid = (charge.kind === 'manual' || charge.kind === 'campaign') && canCreate;
             const principalVoid = (charge.kind === 'generated' || charge.kind === 'late_fee') && canGrant && principal;
-            if (officeVoid || principalVoid) actions.push({ label: 'Void', onSelect: () => setVoiding(charge), destructive: true });
-            if (charge.kind === 'late_fee' && canGrant && principal) actions.push({ label: 'Waive late fee', onSelect: () => setWaiving(charge) });
+            if (officeVoid || principalVoid) actions.push({ label: 'Void', onSelect: () => setVoiding(charge), destructive: true, ...inertRowAction(blocked('charge.void')) });
+            if (charge.kind === 'late_fee' && canGrant && principal) actions.push({ label: 'Waive late fee', onSelect: () => setWaiving(charge), ...inertRowAction(blocked('charge.waive')) });
           }
           if ((charge.status === 'open' || charge.status === 'settled') && charge.kind !== 'adjustment' && canGrant && principal) {
             actions.push({ label: 'Credit…', onSelect: () => setAdjusting(charge) });
@@ -183,7 +185,7 @@ export function ChargeList() {
         },
       }),
     ];
-  }, [canCreate, canGrant, principal]);
+  }, [canCreate, canGrant, principal, blocked]);
 
   return (
     <>

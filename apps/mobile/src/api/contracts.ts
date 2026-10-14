@@ -89,6 +89,8 @@ export type ClaimDto = Schemas['ClaimDto'];
 export type HandoverDto = Schemas['HandoverDto'];
 // Phase 5 slice 40: the Documents section (document.verify).
 export type QueuedDocumentDto = Schemas['QueuedDocumentDto'];
+// Phase 5 slice 44 (contracts/slice-44.md): a staff attendance dispute.
+export type AttendanceDisputeDto = Schemas['AttendanceDisputeDto'];
 
 // Phase 4 slice 30: class tests and the marks grid (§3.8).
 export type AssessmentDto = Schemas['AssessmentDto'];
@@ -122,4 +124,9 @@ export type EventDto = Schemas['EventDto'];
 export type EventRosterDto = Schemas['EventRosterDto'];
 export type EventRosterRowDto = Schemas['EventRosterRowDto'];
 export type MyEventDto = Schemas['MyEventDto'];
+
+// Phase 5 slice 41: transport — a child's route (route, stop, pickup time, driver name) and a
+// driver's routes (names and stops). Online only, never cached on the phone.
+export type MyTransportDto = Schemas['MyTransportDto'];
+export type MyDriverRouteDto = Schemas['MyDriverRouteDto'];
 export type PaymentDto = Schemas['PaymentDto'];

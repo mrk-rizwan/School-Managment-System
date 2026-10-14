@@ -3,6 +3,7 @@
 import { weekdayOf, type StaffAttendanceStatus } from '@asms/shared';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/app-shell';
@@ -11,7 +12,7 @@ import { FilterSelect, SearchField } from '@/components/list-filters';
 import { EmptyState, ErrorState, LoadingState, NoPermissionState, isPermissionDenied } from '@/components/page-states';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,6 +47,17 @@ export function StaffAttendanceScreen() {
       <PageHeader
         title="Staff attendance"
         description="Record each member of staff for the day. Only the rows you change are saved."
+        actions={
+          <>
+            {/* Phase 5 slice 44: the biometric device's punches and staff disputes. */}
+            <Link href="/staff-attendance/punches" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Device punches
+            </Link>
+            <Link href="/staff-attendance/disputes" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              Disputes
+            </Link>
+          </>
+        }
       />
       <div className="mb-4 flex flex-wrap items-end gap-2">
         <div className="grid gap-1.5">
@@ -284,7 +296,8 @@ function StaffDaySheet({ date }: { date: string }) {
                     <TableCell className="px-4 text-xs text-muted-foreground">
                       {row.mark ? (
                         <>
-                          {row.mark.markedByName ?? 'Unknown'}, {formatTime(row.mark.markedAt)}
+                          {row.mark.source === 'device' ? 'Biometric device' : (row.mark.markedByName ?? 'Unknown')},{' '}
+                          {formatTime(row.mark.markedAt)}
                           {row.mark.amended && (
                             <Badge variant="ghost" className="ml-1">
                               Amended{row.mark.lastAmendedByName ? ` by ${row.mark.lastAmendedByName}` : ''}
@@ -293,6 +306,23 @@ function StaffDaySheet({ date }: { date: string }) {
                         </>
                       ) : (
                         '—'
+                      )}
+                      {/* Phase 5 slice 44 (§2.7): the day's punches beside the mark, a disagreement flagged. */}
+                      {row.punch && (
+                        <p data-testid="staff-punch">
+                          Punched {formatTime(row.punch.firstPunchAt)}
+                          {row.punch.count > 1 && ` (+${row.punch.count - 1} more)`}
+                          {row.punchConflict && (
+                            <Badge variant="destructive" className="ml-1" data-testid="punch-conflict">
+                              Conflict
+                            </Badge>
+                          )}
+                        </p>
+                      )}
+                      {row.disputeStatus === 'pending' && (
+                        <Link href="/staff-attendance/disputes" className="underline-offset-4 hover:underline" data-testid="staff-disputed">
+                          Disputed by the member
+                        </Link>
                       )}
                     </TableCell>
                     <TableCell className="px-2">

@@ -39,6 +39,7 @@ export function meFixture(overrides: Partial<MeDto> = {}): MeDto {
     capabilities,
     capabilityScopes: capabilities.map((capability) => ({ capability, scope })),
     blockedCapabilities: [],
+    blockedActions: [],
     sessionExpiresAt: '2027-01-02T00:00:00.000Z',
     capacities: ['staff'],
     assignments: [],

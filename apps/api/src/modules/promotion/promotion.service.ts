@@ -31,6 +31,7 @@ import { PermissionsService } from '../access/permissions.service';
 import { FinanceReportsService } from '../finance-reports/finance-reports.service';
 import { EnrolmentsService, type EnrolmentTarget } from '../people/students/enrolments.service';
 import { StudentsService } from '../people/students/students.service';
+import { TransportAssignmentsService } from '../transport/transport-assignments.service';
 import type {
   ListPromotionSheetsQueryDto,
   OpenPromotionSheetDto,
@@ -141,6 +142,7 @@ export class PromotionService {
     private readonly idempotency: IdempotentRequests,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly transport: TransportAssignmentsService,
   ) {}
 
   // ---------------------------------------------------------------------------------- reads
@@ -548,6 +550,17 @@ export class PromotionService {
     );
     // Every row read active must close now: one that left meanwhile is a race, retried.
     if (closing.some((r) => !done.has(r.enrolmentId))) throw concurrentUpdate();
+    // 4. Phase 5 A8 (contracts/slice-41.md §2.7): the year's live route assignments end on its last
+    //    day (the withdrawals' already ended in step 1); a new year needs a new assignment.
+    await this.transport.endForStudents(
+      schoolId,
+      userId,
+      closing.map((r) => r.studentId),
+      year.endsOn,
+      'Promotion applied',
+      'promotion',
+      sheet.academicYearId,
+    );
     const marked = await this.promotion.markDecisionsApplied(
       schoolId,
       live.map((r) => ({ id: r.id, newEnrolmentId: done.get(r.enrolmentId)?.opened ?? null })),

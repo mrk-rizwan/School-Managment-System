@@ -13,7 +13,6 @@ import { asSchool, tx } from '../messaging/support';
 import { ORIGIN } from '../school-auth/support';
 import { createSchoolSession, createSchoolUser } from '../support/school-session';
 import { closeTestDb, createSchool, testDb, type TestSchool } from '../support/schools';
-import { createClassWithSection } from '../support/students';
 
 const db = () => testDb();
 
@@ -98,26 +97,18 @@ describe('rule 24: privileged capabilities on a default password (R225)', () => 
     expect(await refusals(school.id, teacher.user.userId)).toEqual([]);
   });
 
-  it('R225: everything else works: a default-password principal marks a clerk left, assigns themselves class teacher, sets up a fee head', async () => {
+  it('R225: everything else works: a default-password principal marks a clerk left and sets up a fee head (self-assignment: R356)', async () => {
     const school = await createSchool();
     await db().schoolSettings.create({ data: { schoolId: school.id, feeDueDay: 10 } });
     const { user, session } = await signIn(school, 'principal', true);
     const send = (path: string, body: object) =>
       http().post(`/api/v1${path}`).set('Cookie', session.cookie).set('Origin', ORIGIN).send(body);
 
-    // staff-status overrides through role.manage and the R14 subset rule (both read nominally).
+    // The R14 subset rule reads the actor nominally; the role.manage overrides read effective
+    // holdings since Phase 5 (R356, test/access/rule24-reach.e2e-spec.ts).
     const clerk = await createSchoolUser(db(), school, { systemRole: 'office_staff' });
     const left = await send(`/staff/${clerk.staffId}/change-status`, { status: 'left', reason: 'Moved to another city' });
     expect(left.status).toBe(200);
-
-    // R74's self-assignment override: only a role.manage holder may assign themselves.
-    const { klass: cls, section } = await createClassWithSection(db(), school);
-    const assigned = await send(`/staff/${user.staffId}/teacher-assignments`, {
-      role: 'class_teacher',
-      classId: cls.id.toString(),
-      sectionId: section.id.toString(),
-    });
-    expect(assigned.status).toBe(201);
 
     // A slice-18 write.
     await send('/fee-heads', { name: 'Transport', category: 'other', frequency: 'monthly' }).expect(201);

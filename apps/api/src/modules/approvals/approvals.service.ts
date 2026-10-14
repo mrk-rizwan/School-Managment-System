@@ -15,6 +15,8 @@ import { ClaimsService } from '../payments/claims.service';
 import { ListHandoversQueryDto } from '../payments/payments.dto';
 import { ResultSheetsService } from '../results/result-sheets.service';
 import { ListResultSheetsQueryDto } from '../results/results.dto';
+import { ListDisputesQueryDto } from '../staff-attendance/attendance-disputes.dto';
+import { AttendanceDisputesService } from '../staff-attendance/attendance-disputes.service';
 import type { ApprovalsDto } from './approvals.dto';
 
 /** The first page of each section (phase-3-financial.md slice 27). */
@@ -44,6 +46,7 @@ export class ApprovalsService {
     private readonly leave: LeaveRequestsService,
     private readonly resultSheets: ResultSheetsService,
     private readonly documents: DocumentVerificationService,
+    private readonly disputes: AttendanceDisputesService,
   ) {}
 
   async forCaller(session: SchoolSessionContext): Promise<ApprovalsDto> {
@@ -73,6 +76,10 @@ export class ApprovalsService {
     if (holds(Capability.DOCUMENT_VERIFY)) {
       // Phase 5 slice 40: exactly GET /documents (its defaults: uploaded, oldest first).
       dto.documents = section(await this.documents.queue(session, firstPage(ListDocumentQueueQueryDto, {})));
+    }
+    if (holds(Capability.ATTENDANCE_STAFF_MANAGE)) {
+      // Phase 5 slice 44 (R347): exactly GET /staff-attendance-disputes?status=pending, newest first.
+      dto.disputes = section(await this.disputes.list(firstPage(ListDisputesQueryDto, { status: 'pending' })));
     }
     return dto;
   }

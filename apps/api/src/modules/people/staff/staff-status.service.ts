@@ -61,6 +61,8 @@ export class StaffStatusService {
         await this.apply(session, id, dto);
         break;
       } catch (error) {
+        // R356: a rule-24 refusal rolled the transaction back; its audit row is written here.
+        await this.permissions.recordDeferredRefusal(session.schoolId, error);
         if (!(error instanceof LoginChangedDuringLock)) throw error;
         if (attempt >= ATTEMPTS) throw concurrentUpdate();
       }
@@ -163,9 +165,16 @@ export class StaffStatusService {
     user: UserCredentialRow,
   ): Promise<void> {
     const actor = session.access;
-    // Nominal, not effective: rule 24 makes only the role.manage routes refuse (R225).
-    if (this.permissions.holdsNominally(actor, Capability.ROLE_MANAGE)) return;
-    if (await this.roles.hasLivePrincipalRole(schoolId, user.id)) throw denied('target_is_principal');
+    // Effective (rule 24's reach, R356): on the default password role.manage is inert, so the
+    // override is off and a principal target is refused as rule 24 says, audited once a day by
+    // changeStatus after the rollback (a row written here would roll back with the refusal).
+    if (this.permissions.holds(actor, Capability.ROLE_MANAGE)) return;
+    if (await this.roles.hasLivePrincipalRole(schoolId, user.id)) {
+      throw (
+        this.permissions.deferredDefaultPasswordRefusal(actor, [Capability.ROLE_MANAGE]) ??
+        denied('target_is_principal')
+      );
+    }
     const target = await this.permissions.load(schoolId, user.id);
     if (target && !this.permissions.isSubset(target, actor)) throw denied('target_exceeds_actor');
   }

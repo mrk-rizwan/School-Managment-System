@@ -929,6 +929,27 @@
         ],
         "type": "object"
       },
+      "ApprovalDisputesDto": {
+        "properties": {
+          "count": {
+            "description": "The queue's total: what its own list endpoint reports",
+            "minimum": 0,
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceDisputeDto"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "items"
+        ],
+        "type": "object"
+      },
       "ApprovalDocumentsDto": {
         "properties": {
           "count": {
@@ -1039,6 +1060,9 @@
           "claims": {
             "$ref": "#/components/schemas/ApprovalClaimsDto"
           },
+          "disputes": {
+            "$ref": "#/components/schemas/ApprovalDisputesDto"
+          },
           "documents": {
             "$ref": "#/components/schemas/ApprovalDocumentsDto"
           },
@@ -1064,6 +1088,16 @@
             "description": "Credit the open charges of the named heads from effectiveFrom (A6): one adjustment each",
             "type": "boolean"
           },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ApproveDisputeDto": {
+        "properties": {
           "reason": {
             "maxLength": 500,
             "minLength": 3,
@@ -1572,6 +1606,104 @@
         ],
         "type": "string"
       },
+      "AttendanceDisputeDto": {
+        "properties": {
+          "attendanceId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "date": {
+            "description": "The disputed day",
+            "format": "date",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "decidedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "decisionReason": {
+            "maxLength": 500,
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "markSource": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceSource"
+              }
+            ]
+          },
+          "markStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ],
+            "description": "The mark’s status now"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "requestedStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ]
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisputeStatus"
+              }
+            ]
+          },
+          "withdrawnAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "attendanceId",
+          "staffId",
+          "staffName",
+          "date",
+          "markStatus",
+          "markSource",
+          "requestedStatus",
+          "reason",
+          "status",
+          "createdAt",
+          "decidedByName",
+          "decidedAt",
+          "decisionReason",
+          "withdrawnAt"
+        ],
+        "type": "object"
+      },
       "AttendanceMarkDto": {
         "properties": {
           "amended": {
@@ -1808,6 +1940,101 @@
           "students"
         ],
         "type": "string"
+      },
+      "AuditActorDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditActorKind"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "userId",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AuditActorKind": {
+        "enum": [
+          "user",
+          "platform",
+          "system"
+        ],
+        "type": "string"
+      },
+      "AuditDetailDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object"
+      },
+      "AuditEntryDto": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/AuditActorDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/components/schemas/AuditDetailDto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subjectId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "action",
+          "subjectType",
+          "subjectId",
+          "actor",
+          "reason",
+          "details"
+        ],
+        "type": "object"
       },
       "BillingPlanDto": {
         "properties": {
@@ -2263,6 +2490,22 @@
           "student"
         ],
         "type": "string"
+      },
+      "CapacityWarningDto": {
+        "properties": {
+          "capacity": {
+            "type": "number"
+          },
+          "riders": {
+            "description": "Live riders on the route, this one included",
+            "type": "number"
+          }
+        },
+        "required": [
+          "capacity",
+          "riders"
+        ],
+        "type": "object"
       },
       "CarryForwardDto": {
         "properties": {
@@ -5641,6 +5884,77 @@
         ],
         "type": "object"
       },
+      "CreateTransportAssignmentDto": {
+        "properties": {
+          "startsOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "stopId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "startsOn"
+        ],
+        "type": "object"
+      },
+      "CreateTransportRouteDto": {
+        "properties": {
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "stops": {
+            "description": "New stops (no id)",
+            "items": {
+              "$ref": "#/components/schemas/StopInputDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "vehicleId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateVehicleDto": {
+        "properties": {
+          "capacity": {
+            "maximum": 120,
+            "minimum": 1,
+            "type": "number"
+          },
+          "driverStaffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "registration": {
+            "example": "LES-1234",
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "registration",
+          "capacity"
+        ],
+        "type": "object"
+      },
       "CurrentInvoiceDto": {
         "properties": {
           "amount": {
@@ -5967,6 +6281,31 @@
         ],
         "type": "object"
       },
+      "DefaultPasswordInertAction": {
+        "enum": [
+          "payment.refund",
+          "payment.void",
+          "payment.reverse_refund",
+          "payment_account.create",
+          "payment_account.disable",
+          "payroll_run.finalise",
+          "payslip.mark_paid",
+          "salary_advance.grant",
+          "expense.approve",
+          "expense.payee_change",
+          "cash_handover.confirm",
+          "cash_handover.resolve_shortfall",
+          "charge.void",
+          "charge.waive",
+          "dues_clearance.override",
+          "import.opening_balances",
+          "device_token.rotate",
+          "device_token.revoke",
+          "audit_log.view",
+          "audit_log.view_entry"
+        ],
+        "type": "string"
+      },
       "DefaulterDto": {
         "properties": {
           "admissionNo": {
@@ -6161,6 +6500,197 @@
         ],
         "type": "string"
       },
+      "DevicePunchBatchDto": {
+        "properties": {
+          "punches": {
+            "items": {
+              "$ref": "#/components/schemas/DevicePunchInDto"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "punches"
+        ],
+        "type": "object"
+      },
+      "DevicePunchBatchResultDto": {
+        "properties": {
+          "results": {
+            "description": "In request order",
+            "items": {
+              "$ref": "#/components/schemas/DevicePunchResultDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "type": "object"
+      },
+      "DevicePunchDto": {
+        "properties": {
+          "deviceUserId": {
+            "description": "The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[!-~]{1,40}$",
+            "type": "string"
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PunchDirection"
+              }
+            ],
+            "nullable": true
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PunchOutcome"
+              }
+            ]
+          },
+          "punchedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "receivedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "staffAttendanceId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffId": {
+            "description": "The holder at receipt; null when unmapped (A11)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "staffName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "deviceUserId",
+          "staffId",
+          "staffName",
+          "punchedAt",
+          "direction",
+          "outcome",
+          "receivedAt",
+          "staffAttendanceId"
+        ],
+        "type": "object"
+      },
+      "DevicePunchInDto": {
+        "properties": {
+          "deviceUserId": {
+            "description": "The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[!-~]{1,40}$",
+            "type": "string"
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PunchDirection"
+              }
+            ]
+          },
+          "punchedAt": {
+            "description": "The instant of the punch with its offset; accepted from 7 days before receipt to 5 minutes after",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,3})?)?(Z|[+-]\\d{2}:\\d{2})$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceUserId",
+          "punchedAt"
+        ],
+        "type": "object"
+      },
+      "DevicePunchResultDto": {
+        "properties": {
+          "deviceUserId": {
+            "description": "The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[!-~]{1,40}$",
+            "type": "string"
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PunchResultOutcome"
+              }
+            ],
+            "description": "marked: made the day’s mark; stored: kept, no mark (a later punch, a non-working day, a day already marked); unmapped: no staff member holds the id; inactive: its holder is not active; duplicate: already received; rejected: outside the accepted window, not stored"
+          },
+          "punchedAt": {
+            "description": "As sent",
+            "format": "date-time",
+            "type": "string"
+          },
+          "staffAttendanceId": {
+            "description": "The mark this punch made (outcome marked)",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceUserId",
+          "punchedAt",
+          "outcome",
+          "staffAttendanceId"
+        ],
+        "type": "object"
+      },
+      "DeviceTokenDto": {
+        "properties": {
+          "rotatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "token": {
+            "description": "Shown once: only its hash is kept. The device sends it as `Authorization: Bearer <token>`.",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "rotatedAt"
+        ],
+        "type": "object"
+      },
+      "DeviceTokenRevokedDto": {
+        "properties": {
+          "revoked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "type": "object"
+      },
       "DiaryEntryDto": {
         "properties": {
           "academicYearId": {
@@ -6286,6 +6816,16 @@
         ],
         "type": "object"
       },
+      "DisputeStatus": {
+        "description": "The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "withdrawn"
+        ],
+        "type": "string"
+      },
       "DocumentChecklistDto": {
         "properties": {
           "complete": {
@@ -6407,6 +6947,23 @@
           "other"
         ],
         "type": "string"
+      },
+      "DriverRiderDto": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "stopId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "stopId"
+        ],
+        "type": "object"
       },
       "DuesClearanceDto": {
         "properties": {
@@ -6563,6 +7120,26 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "EndTransportAssignmentDto": {
+        "properties": {
+          "endedOn": {
+            "description": "The last day on the route (startsOn − 1: never in force)",
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "endedOn",
+          "reason"
+        ],
         "type": "object"
       },
       "EndingContractSort": {
@@ -9650,6 +10227,12 @@
             "nullable": true,
             "type": "string"
           },
+          "blockedActions": {
+            "items": {
+              "$ref": "#/components/schemas/DefaultPasswordInertAction"
+            },
+            "type": "array"
+          },
           "blockedCapabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
@@ -9725,6 +10308,7 @@
           "capabilities",
           "capabilityScopes",
           "blockedCapabilities",
+          "blockedActions",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -10222,6 +10806,12 @@
             },
             "type": "array"
           },
+          "blockedActions": {
+            "items": {
+              "$ref": "#/components/schemas/DefaultPasswordInertAction"
+            },
+            "type": "array"
+          },
           "blockedCapabilities": {
             "items": {
               "$ref": "#/components/schemas/Capability"
@@ -10297,6 +10887,7 @@
           "capabilities",
           "capabilityScopes",
           "blockedCapabilities",
+          "blockedActions",
           "sessionExpiresAt",
           "capacities",
           "assignments",
@@ -11112,6 +11703,40 @@
         ],
         "type": "object"
       },
+      "MyDriverRouteDto": {
+        "properties": {
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/TransportStopDto"
+            },
+            "type": "array"
+          },
+          "students": {
+            "items": {
+              "$ref": "#/components/schemas/DriverRiderDto"
+            },
+            "type": "array"
+          },
+          "vehicleRegistration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "vehicleRegistration",
+          "stops",
+          "students"
+        ],
+        "type": "object"
+      },
       "MyDuesDto": {
         "properties": {
           "academicYearId": {
@@ -11608,9 +12233,36 @@
             "format": "date",
             "type": "string"
           },
+          "disputeId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "disputeStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisputeStatus"
+              }
+            ],
+            "description": "The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)",
+            "nullable": true
+          },
           "employed": {
             "description": "On or after joined_on and, when set, on or before left_on",
             "type": "boolean"
+          },
+          "markId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceSource"
+              }
+            ],
+            "nullable": true
           },
           "status": {
             "allOf": [
@@ -11630,7 +12282,11 @@
           "workingDay",
           "employed",
           "status",
-          "amended"
+          "amended",
+          "markId",
+          "source",
+          "disputeId",
+          "disputeStatus"
         ],
         "type": "object"
       },
@@ -11962,6 +12618,84 @@
           "subjectName",
           "teacherName",
           "room"
+        ],
+        "type": "object"
+      },
+      "MyTransportDto": {
+        "properties": {
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyTransportItemDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "current"
+        ],
+        "type": "object"
+      },
+      "MyTransportItemDto": {
+        "properties": {
+          "driverName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "pickupTime": {
+            "description": "HH:MM, school time",
+            "example": "07:10",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "routeName": {
+            "type": "string"
+          },
+          "startsOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "stopName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "routeName",
+          "stopName",
+          "pickupTime",
+          "driverName",
+          "startsOn",
+          "endsOn"
+        ],
+        "type": "object"
+      },
+      "NextRouteAmountDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "minimum": 0,
+            "type": "number"
+          },
+          "effectivePeriod": {
+            "example": "2026-11",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effectivePeriod"
         ],
         "type": "object"
       },
@@ -13589,6 +14323,34 @@
         ],
         "type": "string"
       },
+      "PunchDirection": {
+        "enum": [
+          "in",
+          "out"
+        ],
+        "type": "string"
+      },
+      "PunchOutcome": {
+        "enum": [
+          "marked",
+          "stored",
+          "unmapped",
+          "inactive"
+        ],
+        "type": "string"
+      },
+      "PunchResultOutcome": {
+        "description": "marked: made the day’s mark; stored: kept, no mark (a later punch, a non-working day, a day already marked); unmapped: no staff member holds the id; inactive: its holder is not active; duplicate: already received; rejected: outside the accepted window, not stored",
+        "enum": [
+          "marked",
+          "stored",
+          "unmapped",
+          "inactive",
+          "duplicate",
+          "rejected"
+        ],
+        "type": "string"
+      },
       "QueuedDocumentDto": {
         "properties": {
           "createdAt": {
@@ -13671,6 +14433,34 @@
           "rejectReason",
           "student",
           "ownUpload"
+        ],
+        "type": "object"
+      },
+      "RaiseDisputeDto": {
+        "properties": {
+          "attendanceId": {
+            "description": "One of the caller’s own marks (GET /me/staff/attendance markId)",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "requestedStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceStatus"
+              }
+            ],
+            "description": "What the mark should say; not what it says now"
+          }
+        },
+        "required": [
+          "attendanceId",
+          "requestedStatus",
+          "reason"
         ],
         "type": "object"
       },
@@ -15896,6 +16686,31 @@
         ],
         "type": "object"
       },
+      "RouteVehicleDto": {
+        "properties": {
+          "capacity": {
+            "type": "number"
+          },
+          "driverName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "registration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "registration",
+          "capacity",
+          "driverName"
+        ],
+        "type": "object"
+      },
       "SalaryComponentDto": {
         "properties": {
           "amount": {
@@ -16081,6 +16896,11 @@
             "minimum": 1,
             "type": "number"
           },
+          "deviceTokenRotatedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "expenseApprovalThreshold": {
             "description": "Whole rupees",
             "maximum": 10000000,
@@ -16193,6 +17013,12 @@
             "readOnly": true,
             "type": "number"
           },
+          "staffLateAfter": {
+            "example": "09:30",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
           "studentLoginEnabled": {
             "type": "boolean"
           },
@@ -16240,6 +17066,8 @@
           "certificateShowIdentityNo",
           "requiredDocumentTypes",
           "contractWarningDays",
+          "staffLateAfter",
+          "deviceTokenRotatedAt",
           "updatedAt"
         ],
         "type": "object"
@@ -16786,6 +17614,42 @@
         ],
         "type": "object"
       },
+      "SetDeviceUserDto": {
+        "properties": {
+          "deviceUserId": {
+            "description": "null clears the mapping",
+            "maxLength": 40,
+            "minLength": 1,
+            "nullable": true,
+            "pattern": "^[!-~]{1,40}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceUserId"
+        ],
+        "type": "object"
+      },
+      "SetRouteAmountDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "minimum": 0,
+            "type": "number"
+          },
+          "effectivePeriod": {
+            "description": "The next period or later (a route with no amount in force may start now)",
+            "example": "2026-11",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effectivePeriod"
+        ],
+        "type": "object"
+      },
       "SetUpExamsDto": {
         "properties": {
           "classIds": {
@@ -16969,9 +17833,28 @@
             "format": "date",
             "type": "string"
           },
+          "disputeId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "disputeStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisputeStatus"
+              }
+            ],
+            "description": "The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)",
+            "nullable": true
+          },
           "employed": {
             "description": "On or after joined_on and, when set, on or before left_on",
             "type": "boolean"
+          },
+          "markId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
           },
           "markedByName": {
             "nullable": true,
@@ -16980,6 +17863,14 @@
           "note": {
             "nullable": true,
             "type": "string"
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceSource"
+              }
+            ],
+            "nullable": true
           },
           "status": {
             "allOf": [
@@ -17001,7 +17892,11 @@
           "status",
           "note",
           "markedByName",
-          "amended"
+          "amended",
+          "markId",
+          "source",
+          "disputeId",
+          "disputeStatus"
         ],
         "type": "object"
       },
@@ -17061,6 +17956,14 @@
           "days"
         ],
         "type": "object"
+      },
+      "StaffAttendanceSource": {
+        "description": "device: a biometric punch made the mark (Phase 5 rule 40)",
+        "enum": [
+          "manual",
+          "device"
+        ],
+        "type": "string"
       },
       "StaffAttendanceStatus": {
         "enum": [
@@ -17214,6 +18117,20 @@
             "nullable": true,
             "type": "string"
           },
+          "disputeId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "disputeStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisputeStatus"
+              }
+            ],
+            "description": "The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)",
+            "nullable": true
+          },
           "fullName": {
             "type": "string"
           },
@@ -17225,6 +18142,20 @@
             ],
             "nullable": true,
             "type": "object"
+          },
+          "punch": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffDayPunchDto"
+              }
+            ],
+            "description": "The member’s device punches that day",
+            "nullable": true,
+            "type": "object"
+          },
+          "punchConflict": {
+            "description": "A mark and a punch exist and the mark differs from what the first punch would have marked",
+            "type": "boolean"
           },
           "staffId": {
             "pattern": "^[1-9][0-9]{0,18}$",
@@ -17245,7 +18176,11 @@
           "designation",
           "staffStatus",
           "mark",
-          "approvedLeave"
+          "approvedLeave",
+          "disputeId",
+          "disputeStatus",
+          "punch",
+          "punchConflict"
         ],
         "type": "object"
       },
@@ -17262,6 +18197,23 @@
         "required": [
           "leaveRequestId",
           "typeName"
+        ],
+        "type": "object"
+      },
+      "StaffDayPunchDto": {
+        "properties": {
+          "count": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "firstPunchAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstPunchAt",
+          "count"
         ],
         "type": "object"
       },
@@ -17316,6 +18268,27 @@
         ],
         "type": "object"
       },
+      "StaffDeviceUserDto": {
+        "properties": {
+          "deviceUserId": {
+            "description": "The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces",
+            "maxLength": 40,
+            "minLength": 1,
+            "nullable": true,
+            "pattern": "^[!-~]{1,40}$",
+            "type": "string"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "staffId",
+          "deviceUserId"
+        ],
+        "type": "object"
+      },
       "StaffDto": {
         "properties": {
           "cnicMasked": {
@@ -17335,6 +18308,12 @@
             "type": "array"
           },
           "designation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "deviceUserId": {
+            "description": "The user number on the biometric device",
+            "maxLength": 40,
             "nullable": true,
             "type": "string"
           },
@@ -17391,6 +18370,7 @@
           "designation",
           "joinedOn",
           "status",
+          "deviceUserId",
           "userId",
           "systemRoles",
           "customRoleNames",
@@ -17571,6 +18551,14 @@
             "nullable": true,
             "type": "string"
           },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceSource"
+              }
+            ],
+            "description": "device: a biometric punch made the mark (Phase 5 rule 40)"
+          },
           "staffId": {
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
@@ -17591,6 +18579,7 @@
           "note",
           "markedBy",
           "markedByName",
+          "source",
           "markedAt",
           "amended",
           "lastAmendedAt",
@@ -17721,6 +18710,14 @@
               }
             ]
           },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffAttendanceSource"
+              }
+            ],
+            "description": "device: a biometric punch made the mark (Phase 5 rule 40)"
+          },
           "staffId": {
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
@@ -17741,6 +18738,7 @@
           "note",
           "markedBy",
           "markedByName",
+          "source",
           "markedAt",
           "amended",
           "lastAmendedAt",
@@ -18027,6 +19025,36 @@
           "changedBy",
           "changedByName",
           "createdAt"
+        ],
+        "type": "object"
+      },
+      "StopInputDto": {
+        "properties": {
+          "id": {
+            "description": "A live stop of the route, edited in place; absent adds one",
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pickupTime": {
+            "description": "HH:MM, school time",
+            "example": "07:10",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "sortOrder": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "sortOrder",
+          "name"
         ],
         "type": "object"
       },
@@ -18551,6 +19579,31 @@
           "alumni"
         ],
         "type": "string"
+      },
+      "StudentTransportDto": {
+        "properties": {
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransportAssignmentDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "history": {
+            "description": "Earlier assignments, newest first (at most 20)",
+            "items": {
+              "$ref": "#/components/schemas/TransportAssignmentDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "current",
+          "history"
+        ],
+        "type": "object"
       },
       "SubjectDto": {
         "properties": {
@@ -19729,6 +20782,494 @@
         ],
         "type": "string"
       },
+      "TransportAssignmentCreatedDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "capacityWarning": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapacityWarningDto"
+              }
+            ],
+            "description": "R331: over capacity warns, never blocks",
+            "nullable": true,
+            "type": "object"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "The last day on the route",
+            "example": "2026-11-01",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "pickupTime": {
+            "description": "HH:MM, school time",
+            "example": "07:10",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "routeId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "routeName": {
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "startsOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransportAssignmentStatus"
+              }
+            ]
+          },
+          "stopId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "stopName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "academicYearId",
+          "routeId",
+          "routeName",
+          "stopId",
+          "stopName",
+          "pickupTime",
+          "startsOn",
+          "endsOn",
+          "status",
+          "endReason",
+          "endedByName",
+          "createdAt",
+          "capacityWarning"
+        ],
+        "type": "object"
+      },
+      "TransportAssignmentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "The last day on the route",
+            "example": "2026-11-01",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "pickupTime": {
+            "description": "HH:MM, school time",
+            "example": "07:10",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "routeId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "routeName": {
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "startsOn": {
+            "example": "2026-11-01",
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransportAssignmentStatus"
+              }
+            ]
+          },
+          "stopId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "stopName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "academicYearId",
+          "routeId",
+          "routeName",
+          "stopId",
+          "stopName",
+          "pickupTime",
+          "startsOn",
+          "endsOn",
+          "status",
+          "endReason",
+          "endedByName",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "TransportAssignmentStatus": {
+        "enum": [
+          "live",
+          "upcoming",
+          "ended"
+        ],
+        "type": "string"
+      },
+      "TransportRouteAmountDto": {
+        "properties": {
+          "amount": {
+            "description": "Whole rupees",
+            "minimum": 0,
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "effectivePeriod": {
+            "example": "2026-11",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "routeId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "voidReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "voidable": {
+            "description": "Live and its period not yet started",
+            "type": "boolean"
+          },
+          "voidedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "routeId",
+          "effectivePeriod",
+          "amount",
+          "createdByName",
+          "createdAt",
+          "voidedAt",
+          "voidReason",
+          "voidable"
+        ],
+        "type": "object"
+      },
+      "TransportRouteDetailDto": {
+        "properties": {
+          "amounts": {
+            "description": "Newest period first, voided included",
+            "items": {
+              "$ref": "#/components/schemas/TransportRouteAmountDto"
+            },
+            "type": "array"
+          },
+          "archiveReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "currentAmount": {
+            "description": "The amount in force this period",
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nextAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NextRouteAmountDto"
+              }
+            ],
+            "description": "A live amount from a later period",
+            "nullable": true,
+            "type": "object"
+          },
+          "riders": {
+            "description": "Live assignments",
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransportRouteStatus"
+              }
+            ]
+          },
+          "stopCount": {
+            "type": "number"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/TransportStopDto"
+            },
+            "type": "array"
+          },
+          "vehicle": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RouteVehicleDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "vehicle",
+          "riders",
+          "currentAmount",
+          "nextAmount",
+          "stopCount",
+          "archivedAt",
+          "archiveReason",
+          "stops",
+          "amounts"
+        ],
+        "type": "object"
+      },
+      "TransportRouteDto": {
+        "properties": {
+          "archiveReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "currentAmount": {
+            "description": "The amount in force this period",
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nextAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NextRouteAmountDto"
+              }
+            ],
+            "description": "A live amount from a later period",
+            "nullable": true,
+            "type": "object"
+          },
+          "riders": {
+            "description": "Live assignments",
+            "type": "number"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransportRouteStatus"
+              }
+            ]
+          },
+          "stopCount": {
+            "type": "number"
+          },
+          "vehicle": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RouteVehicleDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "vehicle",
+          "riders",
+          "currentAmount",
+          "nextAmount",
+          "stopCount",
+          "archivedAt",
+          "archiveReason"
+        ],
+        "type": "object"
+      },
+      "TransportRouteFilter": {
+        "enum": [
+          "active",
+          "archived",
+          "all"
+        ],
+        "type": "string"
+      },
+      "TransportRouteStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "type": "string"
+      },
+      "TransportStopDto": {
+        "properties": {
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pickupTime": {
+            "description": "HH:MM, school time",
+            "example": "07:10",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "sortOrder": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "sortOrder",
+          "name",
+          "pickupTime"
+        ],
+        "type": "object"
+      },
       "UndoCarryForwardDto": {
         "properties": {
           "reason": {
@@ -20434,6 +21975,12 @@
             "type": "array",
             "uniqueItems": true
           },
+          "staffLateAfter": {
+            "example": "09:30",
+            "nullable": true,
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
           "studentLoginEnabled": {
             "type": "boolean"
           },
@@ -20568,6 +22115,57 @@
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTransportRouteDto": {
+        "properties": {
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Required when a stop ends",
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "stops": {
+            "description": "The live stops as a whole: listed ones are kept or added, the rest end (needs reason)",
+            "items": {
+              "$ref": "#/components/schemas/StopInputDto"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "vehicleId": {
+            "description": "null removes the vehicle",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateVehicleDto": {
+        "properties": {
+          "capacity": {
+            "maximum": 120,
+            "minimum": 1,
+            "type": "number"
+          },
+          "driverStaffId": {
+            "description": "null removes the driver",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "registration": {
+            "maxLength": 20,
+            "minLength": 1,
+            "type": "string"
           }
         },
         "type": "object"
@@ -20831,6 +22429,86 @@
         "enum": [
           "active",
           "disabled"
+        ],
+        "type": "string"
+      },
+      "VehicleDto": {
+        "properties": {
+          "capacity": {
+            "maximum": 120,
+            "minimum": 1,
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "driverName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "driverStaffId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "registration": {
+            "type": "string"
+          },
+          "retireReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "retiredAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "routeNames": {
+            "description": "The active routes it serves",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VehicleStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "registration",
+          "capacity",
+          "driverStaffId",
+          "driverName",
+          "status",
+          "routeNames",
+          "retiredAt",
+          "retireReason",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "VehicleFilter": {
+        "enum": [
+          "active",
+          "retired",
+          "all"
+        ],
+        "type": "string"
+      },
+      "VehicleStatus": {
+        "enum": [
+          "active",
+          "retired"
         ],
         "type": "string"
       },
@@ -25526,6 +27204,270 @@
         },
         "tags": [
           "attendance"
+        ]
+      }
+    },
+    "/api/v1/audit-log": {
+      "get": {
+        "operationId": "AuditController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "The acting school user",
+            "in": "query",
+            "name": "actorUserId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With subjectId",
+            "in": "query",
+            "name": "subjectType",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With subjectType",
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With createdTo; inclusive",
+            "in": "query",
+            "name": "createdFrom",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With createdFrom; inclusive; at most 92 days on",
+            "in": "query",
+            "name": "createdTo",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A family (`payment`, meaning `payment.*`) or the start of an action (`payment.ref`)",
+            "in": "query",
+            "name": "actionPrefix",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,40}(\\.[a-z0-9_]{0,40})?$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AuditEntryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/api/v1/audit-log/{id}": {
+      "get": {
+        "operationId": "AuditController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "audit"
         ]
       }
     },
@@ -31524,6 +33466,228 @@
         },
         "tags": [
           "custom-roles"
+        ]
+      }
+    },
+    "/api/v1/device-punches": {
+      "get": {
+        "operationId": "DevicePunchesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "The school day (school time), not in the future",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staffId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only punches no staff member held the id of",
+            "in": "query",
+            "name": "unmapped",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DevicePunchDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "DevicePunches",
+          "staff-attendance"
+        ]
+      },
+      "post": {
+        "description": "Authorization: Bearer <the school device token>; no cookie, no Origin. Always 200 with one outcome per punch.",
+        "operationId": "DevicePunchesController_receive",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePunchBatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePunchBatchResultDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "A biometric device posts punches",
+        "tags": [
+          "DevicePunches",
+          "device"
         ]
       }
     },
@@ -43776,6 +45940,87 @@
         ]
       }
     },
+    "/api/v1/me/children/{id}/transport": {
+      "get": {
+        "operationId": "MyTransportController_child",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTransportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/devices": {
       "post": {
         "operationId": "MeSessionsController_registerDevice",
@@ -44816,6 +47061,345 @@
             "description": ""
           },
           "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/attendance-disputes": {
+      "get": {
+        "operationId": "MyAttendanceDisputesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DisputeStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AttendanceDisputeDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "operationId": "MyAttendanceDisputesController_raise",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaiseDisputeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDisputeDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDisputeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/staff/attendance-disputes/{id}/withdraw": {
+      "post": {
+        "operationId": "MyAttendanceDisputesController_withdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDisputeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
             "content": {
               "application/json": {
                 "schema": {
@@ -46227,6 +48811,70 @@
         ]
       }
     },
+    "/api/v1/me/staff/transport-routes": {
+      "get": {
+        "operationId": "MyTransportController_driver",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MyDriverRouteDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/api/v1/me/student/assessments": {
       "get": {
         "operationId": "MyStudentResultsController_assessments",
@@ -47331,6 +49979,77 @@
             "description": ""
           },
           "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/student/transport": {
+      "get": {
+        "operationId": "MyTransportController_own",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTransportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
@@ -53887,6 +56606,128 @@
         ]
       }
     },
+    "/api/v1/school/device-token/revoke": {
+      "post": {
+        "operationId": "DeviceTokenController_revoke",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenRevokedDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "school settings"
+        ]
+      }
+    },
+    "/api/v1/school/device-token/rotate": {
+      "post": {
+        "operationId": "DeviceTokenController_rotate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceTokenDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "school settings"
+        ]
+      }
+    },
     "/api/v1/school/settings": {
       "get": {
         "operationId": "SchoolSettingsController_get",
@@ -55915,6 +58756,366 @@
         ]
       }
     },
+    "/api/v1/staff-attendance-disputes": {
+      "get": {
+        "operationId": "AttendanceDisputesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DisputeStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "staffId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AttendanceDisputeDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
+    "/api/v1/staff-attendance-disputes/{id}/approve": {
+      "post": {
+        "operationId": "AttendanceDisputesController_approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveDisputeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDisputeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
+    "/api/v1/staff-attendance-disputes/{id}/reject": {
+      "post": {
+        "operationId": "AttendanceDisputesController_reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceDisputeDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
+        ]
+      }
+    },
     "/api/v1/staff-attendance/submit": {
       "post": {
         "operationId": "StaffAttendanceController_submit",
@@ -57267,6 +60468,117 @@
         },
         "tags": [
           "staff"
+        ]
+      }
+    },
+    "/api/v1/staff/{id}/device-user": {
+      "patch": {
+        "operationId": "StaffDeviceUserController_setDeviceUser",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDeviceUserDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffDeviceUserDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff-attendance"
         ]
       }
     },
@@ -61167,6 +64479,87 @@
         ]
       }
     },
+    "/api/v1/students/{id}/transport": {
+      "get": {
+        "operationId": "TransportController_forStudent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentTransportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
     "/api/v1/subjects": {
       "get": {
         "operationId": "SubjectsController_list",
@@ -63000,6 +66393,1178 @@
         ]
       }
     },
+    "/api/v1/transport-assignments/{id}/end": {
+      "post": {
+        "operationId": "TransportController_endAssignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndTransportAssignmentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportAssignmentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-route-amounts/{id}/void": {
+      "post": {
+        "operationId": "TransportController_voidAmount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteAmountDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-routes": {
+      "get": {
+        "operationId": "TransportController_listRoutes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Part of the route name",
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "maxLength": 50,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TransportRouteFilter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TransportRouteDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      },
+      "post": {
+        "operationId": "TransportController_createRoute",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransportRouteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteDetailDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-routes/{id}": {
+      "get": {
+        "operationId": "TransportController_getRoute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      },
+      "patch": {
+        "operationId": "TransportController_updateRoute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransportRouteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-routes/{id}/amounts": {
+      "post": {
+        "operationId": "TransportController_setAmount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRouteAmountDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteAmountDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-routes/{id}/archive": {
+      "post": {
+        "operationId": "TransportController_archiveRoute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRouteDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/transport-routes/{id}/assignments": {
+      "get": {
+        "operationId": "TransportController_listAssignments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Ended assignments too",
+            "in": "query",
+            "name": "includeEnded",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Part of the student’s name",
+            "in": "query",
+            "name": "studentName",
+            "required": false,
+            "schema": {
+              "maxLength": 50,
+              "minLength": 2,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TransportAssignmentDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      },
+      "post": {
+        "operationId": "TransportController_createAssignment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransportAssignmentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportAssignmentCreatedDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportAssignmentCreatedDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
     "/api/v1/uploads": {
       "post": {
         "operationId": "DocumentsController_upload",
@@ -64366,6 +68931,477 @@
         },
         "tags": [
           "users"
+        ]
+      }
+    },
+    "/api/v1/vehicles": {
+      "get": {
+        "operationId": "TransportController_listVehicles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Part of the registration",
+            "in": "query",
+            "name": "registration",
+            "required": false,
+            "schema": {
+              "maxLength": 20,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VehicleFilter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/VehicleDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      },
+      "post": {
+        "operationId": "TransportController_createVehicle",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVehicleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleDto"
+                }
+              }
+            },
+            "description": "Replay of a committed create"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{id}": {
+      "patch": {
+        "operationId": "TransportController_updateVehicle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
+        ]
+      }
+    },
+    "/api/v1/vehicles/{id}/retire": {
+      "post": {
+        "operationId": "TransportController_retireVehicle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "transport"
         ]
       }
     }

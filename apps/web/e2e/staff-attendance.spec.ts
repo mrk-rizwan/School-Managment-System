@@ -35,6 +35,7 @@ const staffMark = (staffId: string, status: StaffMarkDto['status'], extra: Parti
   note: null,
   markedBy: 'u-office',
   markedByName: 'Bilal Office',
+  source: 'manual',
   markedAt: '2026-10-06T03:15:00.000Z',
   amended: false,
   lastAmendedAt: null,
@@ -48,6 +49,10 @@ const day = (staffId: string, fullName: string, mark: StaffMarkDto | null = null
   staffStatus: 'active',
   mark,
   approvedLeave: null,
+  disputeId: null,
+  disputeStatus: null,
+  punch: null,
+  punchConflict: false,
 });
 const DAY = [
   day('st-p', 'Amina Principal'),
@@ -251,6 +256,10 @@ function month(withNotes: boolean): StaffAttendanceDto {
       note: withNotes && status === 'absent' ? 'Wedding in the family' : null,
       markedByName: withNotes && status ? 'Bilal Office' : null,
       amended: false,
+      markId: status ? `sm-${date}` : null,
+      source: status ? ('manual' as const) : null,
+      disputeId: null,
+      disputeStatus: null,
     };
   });
   return {
@@ -269,6 +278,7 @@ function month(withNotes: boolean): StaffAttendanceDto {
 
 const STAFF: StaffDto = {
   id: 'st1',
+  deviceUserId: null,
   fullName: 'Ayesha Malik',
   cnicMasked: '35201-*****-1',
   hasCnic: true,
@@ -308,11 +318,26 @@ test('My attendance: the teacher’s own month, without notes or who marked', as
   const { days, ...rest } = month(false);
   const mine: MyStaffAttendanceDto = {
     ...rest,
-    days: days.map((d) => ({ date: d.date, workingDay: d.workingDay, employed: d.employed, status: d.status, amended: d.amended })),
+    days: days.map((d) => ({
+      date: d.date,
+      workingDay: d.workingDay,
+      employed: d.employed,
+      status: d.status,
+      amended: d.amended,
+      markId: d.markId,
+      source: d.source,
+      disputeId: d.disputeId,
+      disputeStatus: d.disputeStatus,
+    })),
   };
   await mockSchoolApi(page, {
     me: TEACHER_ME,
-    handler: ({ path }) => (path === '/me/staff/attendance' ? { status: 200, body: mine } : undefined),
+    handler: ({ path }) =>
+      path === '/me/staff/attendance'
+        ? { status: 200, body: mine }
+        : path === '/me/staff/attendance-disputes'
+          ? { status: 200, body: page1([]) }
+          : undefined,
   });
   await open(page, '/my-attendance');
   await expect(page.getByRole('heading', { name: 'My attendance' })).toBeVisible();

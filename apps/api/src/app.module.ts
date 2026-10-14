@@ -34,6 +34,8 @@ import { ResultsModule } from './modules/results/results.module';
 import { PromotionModule } from './modules/promotion/promotion.module';
 import { TimetableModule } from './modules/timetable/timetable.module';
 import { EventsModule } from './modules/events/events.module';
+import { TransportModule } from './modules/transport/transport.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -92,6 +94,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     // Phase 5 slice 37 (phase-5-extended.md §2).
     TimetableModule,
     EventsModule,
+    // Phase 5 slice 41: transport.
+    TransportModule,
+    // Phase 5 slice 46: the audit screen.
+    AuditModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

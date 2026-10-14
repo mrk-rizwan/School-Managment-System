@@ -25,6 +25,7 @@ const KEY = /^[A-Za-z0-9_-]{16,64}$/;
 
 const STAFF: StaffDto = {
   id: 'st1',
+  deviceUserId: null,
   fullName: 'Rabia Teacher',
   cnicMasked: '35201-*****-1',
   hasCnic: true,

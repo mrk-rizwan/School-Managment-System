@@ -4,7 +4,16 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { api, unwrap } from '../api/client';
-import type { ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, MeDto, QueuedDocumentDto, StaffDto } from '../api/contracts';
+import type {
+  AttendanceDisputeDto,
+  ClaimDto,
+  ExpenseDto,
+  HandoverDto,
+  LeaveRequestDto,
+  MeDto,
+  QueuedDocumentDto,
+  StaffDto,
+} from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { holds } from '../auth/capabilities';
 import { useSession } from '../auth/session';
@@ -26,6 +35,9 @@ import {
   confirmedMessage,
   decisionFailure,
   digitsOnly,
+  disputeChange,
+  disputeLine,
+  disputeTitle,
   documentLine,
   documentTitle,
   documentWord,
@@ -53,7 +65,8 @@ type Open =
   | { kind: 'handover'; row: HandoverDto }
   | { kind: 'expense'; row: ExpenseDto }
   | { kind: 'leave'; row: LeaveRequestDto }
-  | { kind: 'document'; row: QueuedDocumentDto };
+  | { kind: 'document'; row: QueuedDocumentDto }
+  | { kind: 'dispute'; row: AttendanceDisputeDto };
 
 /** What every decision sheet is given: close with a message (done or stale), or just close. */
 type SheetProps = { me: MeDto; onSettled: (message: string) => void; onClose: () => void };
@@ -95,7 +108,13 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
         <LoadingState />
       ) : approvals.isError || !data ? (
         <ErrorState error={approvals.error} onRetry={() => void approvals.refetch()} />
-      ) : !data.claims && !data.handovers && !data.expenses && !data.leave && !data.results && !data.documents ? (
+      ) : !data.claims &&
+        !data.handovers &&
+        !data.expenses &&
+        !data.leave &&
+        !data.results &&
+        !data.documents &&
+        !data.disputes ? (
         <EmptyState title="Nothing for you to approve" />
       ) : (
         <>
@@ -167,6 +186,21 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
               ))}
             </Section>
           ) : null}
+          {/* Phase 5 slice 44 (R347): staff attendance disputes; one's own is never decided here. */}
+          {data.disputes ? (
+            <Section title="Attendance disputes" count={data.disputes.count} testID="approvals.disputes" empty="No attendance disputes are waiting.">
+              {data.disputes.items.map((d) => (
+                <ListRow
+                  key={d.id}
+                  title={disputeTitle(d)}
+                  detail={disputeLine(d)}
+                  value={d.staffId === me.body.staffId ? 'Your own' : null}
+                  onPress={() => setOpen({ kind: 'dispute', row: d })}
+                  testID={`approvals.dispute.${d.id}`}
+                />
+              ))}
+            </Section>
+          ) : null}
           {data.leave ? (
             <Section title="Staff leave" count={data.leave.count} testID="approvals.leave" empty="No leave requests are waiting.">
               {data.leave.items.map((l) => (
@@ -187,6 +221,7 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
       {open?.kind === 'expense' ? <ExpenseSheet key={open.row.id} expense={open.row} {...sheet} /> : null}
       {open?.kind === 'leave' ? <LeaveSheet key={open.row.id} request={open.row} {...sheet} /> : null}
       {open?.kind === 'document' ? <DocumentSheet key={open.row.id} document={open.row} {...sheet} /> : null}
+      {open?.kind === 'dispute' ? <DisputeSheet key={open.row.id} dispute={open.row} {...sheet} /> : null}
     </Screen>
   );
 }
@@ -620,6 +655,90 @@ function DocumentSheet({ document, onSettled, onClose }: SheetProps & { document
         label={word}
         cachePolicy="none"
       />
+    </ModalSheet>
+  );
+}
+
+// -------------------------------------------------------------------------- attendance dispute
+
+/**
+ * Phase 5 slice 44 (contracts/slice-44.md §2.6, R346): approving amends the mark to what was asked,
+ * from whatever it says now; rejecting needs a reason. Nobody decides their own.
+ */
+function DisputeSheet({ dispute, me, onSettled, onClose }: SheetProps & { dispute: AttendanceDisputeDto }) {
+  const approveGate = useOnlineOnly('approve_attendance_dispute');
+  const rejectGate = useOnlineOnly('reject_attendance_dispute');
+  const { busy, failure, run } = useDecision(onSettled);
+  const [rejecting, setRejecting] = useState(false);
+  const own = dispute.staffId === me.staffId;
+
+  if (rejecting) {
+    return (
+      <ReasonSheet
+        visible
+        title="Reject this dispute"
+        changes={[`${disputeTitle(dispute)}: ${disputeChange(dispute)}. The mark stays as it is.`]}
+        confirmLabel="Reject"
+        busy={busy}
+        disabledReason={rejectGate.reason}
+        onConfirm={(reason) =>
+          void run(async () => {
+            await unwrap(
+              api.POST('/api/v1/staff-attendance-disputes/{id}/reject', { params: { path: { id: dispute.id } }, body: { reason } }),
+            );
+            return `Dispute rejected. ${dispute.staffName} is told.`;
+          })
+        }
+        onClose={() => setRejecting(false)}
+      />
+    );
+  }
+
+  return (
+    <ModalSheet
+      visible
+      title="Attendance dispute"
+      onClose={onClose}
+      testID="approvals.disputeSheet"
+      footer={
+        <>
+          {failure !== null ? (
+            <Text style={styles.error} testID="approvals.dispute.failure">
+              {failure}
+            </Text>
+          ) : null}
+          {approveGate.reason ? <Text style={styles.note}>{approveGate.reason}</Text> : null}
+          <Button
+            label="Approve"
+            onPress={() =>
+              void run(async () => {
+                await unwrap(
+                  api.POST('/api/v1/staff-attendance-disputes/{id}/approve', { params: { path: { id: dispute.id } }, body: {} }),
+                );
+                return `Dispute approved; the mark now says what was asked. ${dispute.staffName} is told.`;
+              })
+            }
+            disabled={!approveGate.enabled || own}
+            busy={busy}
+            testID="approvals.dispute.approve"
+          />
+          <Button
+            label="Reject…"
+            variant="secondary"
+            onPress={() => setRejecting(true)}
+            disabled={!rejectGate.enabled || own}
+            testID="approvals.dispute.reject"
+          />
+        </>
+      }
+    >
+      <Text style={styles.heading}>{disputeTitle(dispute)}</Text>
+      <Lines lines={[disputeLine(dispute), `Reason: ${dispute.reason}`]} />
+      {own ? (
+        <Text style={styles.note} testID="approvals.dispute.own">
+          {'This is your own attendance: a colleague decides it.'}
+        </Text>
+      ) : null}
     </ModalSheet>
   );
 }

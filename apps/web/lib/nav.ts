@@ -14,6 +14,7 @@ import {
   CalendarDaysIcon,
   CalendarClockIcon,
   CalendarRangeIcon,
+  BusIcon,
   CircleUserRoundIcon,
   SchoolIcon,
   SettingsIcon,
@@ -24,6 +25,7 @@ import {
   LayersIcon,
   ReceiptTextIcon,
   ReceiptIcon,
+  ScrollTextIcon,
   WalletIcon,
   FileTextIcon,
   FileCheckIcon,
@@ -62,7 +64,8 @@ export const schoolNav: NavItem[] = [
     label: 'Approvals',
     icon: ListChecksIcon,
     // Phase 5 slice 40: the Documents section, for document.verify (office by default).
-    capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve', 'document.verify'],
+    // Phase 5 slice 44: the Disputes section, for attendance.staff.manage (office and principal).
+    capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve', 'document.verify', 'attendance.staff.manage'],
   },
   { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
   // Phase 5 slice 40: the verification queue and the incomplete-admissions report.
@@ -136,6 +139,8 @@ export const schoolNav: NavItem[] = [
   // Phase 5 slice 38: every staff member reads the published events (@RequireStaff); drafts and
   // writes need holiday.manage (contracts/slice-38.md §6).
   { href: '/events', label: 'Events', icon: CalendarRangeIcon, capability: null, capacity: 'staff' },
+  // Phase 5 slice 41: vehicles, routes, amounts and riders (transport.manage: principal and office).
+  { href: '/transport', label: 'Transport', icon: BusIcon, capability: 'transport.manage' },
   // Fee heads and the fee structure are read with any finance key; writes need fee_head.manage
   // (phase-3-financial.md slice 18). Teachers hold none of these.
   {
@@ -176,6 +181,8 @@ export const schoolNav: NavItem[] = [
     icon: KeyRoundIcon,
     capability: 'user.account.manage',
   },
+  // Phase 5 slice 46: the audit log (audit.view, principal by default; inert on a default password).
+  { href: '/audit', label: 'Audit log', icon: ScrollTextIcon, capability: 'audit.view' },
   {
     href: '/settings',
     label: 'School settings',

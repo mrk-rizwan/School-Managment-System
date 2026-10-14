@@ -82,6 +82,7 @@ function summaryRow(patch: Partial<DailySummaryDto> = {}): DailySummaryDto {
 }
 
 const staffMember = (id: string, fullName: string): StaffDto => ({
+  deviceUserId: null,
   cnicMasked: '35202-*****-**2',
   createdAt: '2026-09-01T00:00:00.000Z',
   customRoleNames: [],

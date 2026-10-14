@@ -174,6 +174,33 @@ const IMPORTS = {
     regex: `(^|/)repositories/event\\.repository${EXT}$`,
     message: 'EventRepository is imported only from src/modules/events/**.',
   },
+  // Phase 5 slice 44 (contracts/slice-44.md §5): the staff-attendance module owns the punches and
+  // the disputes; Approvals reads the dispute queue through AttendanceDisputesService.
+  devicePunchRepository: {
+    regex: `(^|/)repositories/device-punch\\.repository${EXT}$`,
+    message: 'DevicePunchRepository is imported only from src/modules/staff-attendance/**.',
+  },
+  attendanceDisputeRepository: {
+    regex: `(^|/)repositories/attendance-dispute\\.repository${EXT}$`,
+    message: 'AttendanceDisputeRepository is imported only from src/modules/staff-attendance/**.',
+  },
+  // Phase 5 slice 41 (phase-5-extended.md §2, contracts/slice-41.md): the transport module owns its
+  // repository; the charge job reads assignments only through the read-only TransportReadsRepository.
+  transportRepository: {
+    regex: `(^|/)repositories/transport\\.repository${EXT}$`,
+    message: 'TransportRepository is imported only from src/modules/transport/**.',
+  },
+  transportReadsRepository: {
+    regex: `(^|/)repositories/transport-reads\\.repository${EXT}$`,
+    message:
+      'TransportReadsRepository is imported only from src/modules/transport/**, src/modules/fees/charge-generation.ts and src/modules/fees/fees.module.ts.',
+  },
+  // Phase 5 slice 46 (phase-5-extended.md §2, contracts/slice-46.md §4): the audit screen reads
+  // audit_log only through this read-only repository, and only the audit module may import it.
+  auditReadsRepository: {
+    regex: `(^|/)repositories/audit-reads\\.repository${EXT}$`,
+    message: 'AuditReadsRepository is imported only from src/modules/audit/**.',
+  },
   // Wave R security review (MEDIUM-1): rowScopeWith widens a register's row scope by the section a
   // SubstituteAdmission proves; only the attendance access check may call it.
   rowScopeWith: {
@@ -415,6 +442,10 @@ const RAW_SQL_FILES = [
   // type (DISTINCT ON) and the incomplete-admissions report; read-only, school_id filtered on
   // every table read (test/documents/verification-isolation.e2e-spec.ts).
   'src/repositories/student-document.repository.ts',
+  // Phase 5 slice 41 (contracts/slice-41.md §2.6): the charge job's riders per period (DISTINCT ON
+  // and the amount in force by LATERAL); read-only, school_id filtered on every table read
+  // (test/transport/isolation.e2e-spec.ts).
+  'src/repositories/transport-reads.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -864,6 +895,30 @@ export default tseslint.config(
   {
     files: ['test/events/**/*.ts'],
     rules: restrictImports({ exempt: ['eventRepository'] }),
+  },
+  {
+    // Slice 44 (contracts/slice-44.md §5): the staff-attendance module owns the punch and dispute
+    // repositories; its suites probe them. The device-punch service has its own block below and
+    // stays tenant-repository-free.
+    files: ['src/modules/staff-attendance/**/*.ts', 'test/staff-attendance/**/*.ts'],
+    rules: restrictImports({ exempt: ['devicePunchRepository', 'attendanceDisputeRepository'] }),
+  },
+  {
+    // Slice 41 (§2): the transport module owns both transport repositories; its suites probe them.
+    files: ['src/modules/transport/**/*.ts', 'test/transport/**/*.ts'],
+    rules: restrictImports({ exempt: ['transportRepository', 'transportReadsRepository'] }),
+  },
+  {
+    // Slice 41 (§2 boundaries): the charge job reads transport assignments only through
+    // TransportReadsRepository, never the module's write repository.
+    files: ['src/modules/fees/charge-generation.ts', 'src/modules/fees/fees.module.ts'],
+    rules: restrictImports({ exempt: ['transportReadsRepository'] }),
+  },
+  {
+    // Slice 46 (contracts/slice-46.md §4): the audit module owns AuditReadsRepository; its suites
+    // probe it.
+    files: ['src/modules/audit/**/*.ts', 'test/audit/**/*.ts'],
+    rules: restrictImports({ exempt: ['auditReadsRepository'] }),
   },
   {
     // Wave R security review (MEDIUM-1): the one caller of rowScopeWith.

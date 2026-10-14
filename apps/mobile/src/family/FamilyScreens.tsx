@@ -21,6 +21,7 @@ import { Sheet } from '../ui/Sheet';
 import { AsOf, cachedOfflineBanner, EmptyState, NoDataState, OfflineNotice } from '../ui/states';
 import { colors, fontSize, space } from '../ui/theme';
 import { attachmentBase, familyRead, staffAttendanceRead, type FamilySource } from './source';
+import { StaffDisputes } from './StaffDisputes';
 
 // A child's (or a student's own) attendance, diary and remarks (slice-16 §5.2–§5.5). One
 // component per concern, bound to a source; every one is secure — the header is a child's name.
@@ -85,8 +86,10 @@ export function AttendanceMonthScreen({
             <>
               <AttendanceMonth kind="staff" data={cached.body} />
               <Text style={styles.caption}>
-                Marked by the office. Ask the office about a mistake.
+                Marked by the office or the biometric device. If a day is wrong, dispute it.
               </Text>
+              {/* Phase 5 slice 44 (R346): a staff member disputes their own mark, online only. */}
+              <StaffDisputes days={cached.body.days} />
             </>
           ) : (
             <AttendanceMonth kind="student" data={cached.body} />

@@ -39,6 +39,7 @@ import { accessKeys } from '../../custom-roles/_lib/custom-roles-ui';
 import { StaffAttendanceMonth } from '../../staff-attendance/_lib/staff-attendance-month';
 import { AssignmentsTab } from './assignments-tab';
 import { contractKeys, ContractsTab } from './contracts-tab';
+import { DeviceUserCard } from './device-user-card';
 import { PermissionsTab } from './permissions-tab';
 import { LoginAndRolesTab } from './roles-tab';
 import { SalaryTab } from './salary-tab';
@@ -144,7 +145,17 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
               </div>
               <div role="tabpanel" id={`staff-panel-${active}`} aria-labelledby={`staff-tab-${active}`}>
                 {/* Keyed by the last update so the form restarts from the saved values. */}
-                {active === 'details' && <EditStaffForm key={data.updatedAt} staff={data} />}
+                {active === 'details' && (
+                  <>
+                    <EditStaffForm key={data.updatedAt} staff={data} />
+                    {/* Phase 5 slice 44: the biometric device user id (attendance.staff.manage). */}
+                    <DeviceUserCard
+                      key={`device-${data.updatedAt}`}
+                      staff={data}
+                      isSelf={isSelf || (me.data?.staffId ?? null) === data.id}
+                    />
+                  </>
+                )}
                 {active === 'roles' && <LoginAndRolesTab staff={data} isSelf={isSelf} />}
                 {active === 'assignments' && <AssignmentsTab staff={data} />}
                 {active === 'attendance' && (

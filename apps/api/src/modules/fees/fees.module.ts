@@ -14,6 +14,7 @@ import { ConcessionRepository } from '../../repositories/concession.repository';
 import { FeeHeadRepository } from '../../repositories/fee-head.repository';
 import { FeeStructureRepository } from '../../repositories/fee-structure.repository';
 import { IdempotencyKeyRepository } from '../../repositories/idempotency-key.repository';
+import { TransportReadsRepository } from '../../repositories/transport-reads.repository';
 import { PaymentsModule } from '../payments/payments.module';
 import { AdmissionFees } from './admission-fees';
 import { CampaignsService } from './campaigns.service';
@@ -64,6 +65,8 @@ import { FeeStructuresService } from './fee-structures.service';
     ChargeRepository,
     ChargeRunRepository,
     ChargeGenerationRepository,
+    // Phase 5 rule 37: the charge job's read of transport assignments (§2 boundaries).
+    TransportReadsRepository,
     ChargeCampaignRepository,
     ConcessionRepository,
     AcademicYearRepository,

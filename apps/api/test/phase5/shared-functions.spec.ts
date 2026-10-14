@@ -439,7 +439,8 @@ describe('capabilities.ts and rule24.ts (§0.36, R325, R354, R355)', () => {
     const document = JSON.parse(readFileSync(join(__dirname, '../../openapi/school.json'), 'utf8')) as {
       paths: Record<string, Record<string, unknown>>;
     };
-    const LATER = new Set(['import.opening_balances', 'device_token.rotate', 'audit_log.view']);
+    // Built by wave T (slices 44, 46 and the fix round's device_token.revoke); slice 43 builds the import.
+    const LATER = new Set(['import.opening_balances']);
     for (const [action, route] of Object.entries(DEFAULT_PASSWORD_INERT_ACTIONS)) {
       const path = `/api/v1${route.path.replace(/:([a-zA-Z]+)/g, '{$1}')}`;
       const exists = document.paths[path]?.[route.method.toLowerCase()] !== undefined;

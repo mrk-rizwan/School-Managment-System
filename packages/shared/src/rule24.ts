@@ -43,8 +43,8 @@ export const DEFAULT_PASSWORD_INERT_ACTIONS = {
   'payslip.mark_paid': { method: 'POST', path: '/payslips/:id/mark-paid' },
   'salary_advance.grant': { method: 'POST', path: '/salary-advances' },
   'expense.approve': { method: 'POST', path: '/expenses/:id/approve' },
-  // The payee is edited through the expense PATCH (slice 46 decides whether the marker refuses
-  // every edit or only a payee change).
+  // The payee is edited through the expense PATCH, which also edits the amount and the method:
+  // the marker refuses the whole edit (contracts/slice-46.md §6).
   'expense.payee_change': { method: 'PATCH', path: '/expenses/:id' },
   'cash_handover.confirm': { method: 'POST', path: '/cash-handovers/:id/confirm' },
   'cash_handover.resolve_shortfall': { method: 'POST', path: '/cash-handovers/:id/resolve-shortfall' },
@@ -53,7 +53,12 @@ export const DEFAULT_PASSWORD_INERT_ACTIONS = {
   'dues_clearance.override': { method: 'POST', path: '/students/:id/dues-clearance/override' },
   'import.opening_balances': { method: 'POST', path: '/imports/opening-balances' },
   'device_token.rotate': { method: 'POST', path: '/school/device-token/rotate' },
+  // Fix round (wave T security LOW-2): turning the device off is the same key and the same rule.
+  'device_token.revoke': { method: 'POST', path: '/school/device-token/revoke' },
   'audit_log.view': { method: 'GET', path: '/audit-log' },
+  // Slice 46: one entry of the audit screen is the screen too (one action per route keeps the
+  // route snapshot a plain comparison).
+  'audit_log.view_entry': { method: 'GET', path: '/audit-log/:id' },
 } as const satisfies Record<string, InertRoute>;
 
 export type DefaultPasswordInertAction = keyof typeof DEFAULT_PASSWORD_INERT_ACTIONS;

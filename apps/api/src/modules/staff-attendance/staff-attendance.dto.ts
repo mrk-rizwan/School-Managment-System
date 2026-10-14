@@ -10,10 +10,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  DISPUTE_STATUSES,
   MARK_OUTCOMES,
+  STAFF_ATTENDANCE_SOURCES,
   STAFF_ATTENDANCE_STATUSES,
   STAFF_STATUSES,
+  type DisputeStatus,
   type MarkOutcome,
+  type StaffAttendanceSource,
   type StaffAttendanceStatus,
   type StaffStatus,
 } from '@asms/shared';
@@ -35,6 +39,13 @@ const DATE = { type: String, format: 'date' } as const;
 const DATE_TIME = { type: String, format: 'date-time' } as const;
 const STATUS = { enum: STAFF_ATTENDANCE_STATUSES, enumName: 'StaffAttendanceStatus' } as const;
 const NULLABLE_STRING = { type: String, nullable: true } as const;
+const SOURCE = { enum: STAFF_ATTENDANCE_SOURCES, enumName: 'StaffAttendanceSource' } as const;
+const DISPUTE = {
+  enum: DISPUTE_STATUSES,
+  enumName: 'DisputeStatus',
+  nullable: true,
+  description: 'The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)',
+} as const;
 
 
 // ------------------------------------------------------------------------------------ responses
@@ -64,6 +75,9 @@ export class StaffMarkDto {
 
   @ApiProperty({ ...NULLABLE_STRING, description: 'The first writer’s staff name' })
   markedByName: string | null;
+
+  @ApiProperty({ ...SOURCE, description: 'device: a biometric punch made the mark (Phase 5 rule 40)' })
+  source: StaffAttendanceSource;
 
   @ApiProperty(DATE_TIME)
   markedAt: Date;
@@ -109,6 +123,29 @@ export class StaffDayDto {
    */
   @ApiProperty({ type: () => StaffDayLeaveDto, nullable: true })
   approvedLeave: StaffDayLeaveDto | null;
+
+  /** Phase 5 slice 44 (contracts/slice-44.md §2.7). */
+  @ApiProperty({ ...ID, nullable: true })
+  disputeId: string | null;
+
+  @ApiProperty(DISPUTE)
+  disputeStatus: DisputeStatus | null;
+
+  @ApiProperty({ type: () => StaffDayPunchDto, nullable: true, description: 'The member’s device punches that day' })
+  punch: StaffDayPunchDto | null;
+
+  @ApiProperty({
+    description: 'A mark and a punch exist and the mark differs from what the first punch would have marked',
+  })
+  punchConflict: boolean;
+}
+
+export class StaffDayPunchDto {
+  @ApiProperty(DATE_TIME)
+  firstPunchAt: Date;
+
+  @ApiProperty({ minimum: 1 })
+  count: number;
 }
 
 export class StaffDayLeaveDto {
@@ -174,6 +211,19 @@ export class StaffAttendanceDayDto {
 
   @ApiProperty()
   amended: boolean;
+
+  /** Phase 5 slice 44: the mark's id, so its owner can dispute it (contracts/slice-44.md §2.7). */
+  @ApiProperty({ ...ID, nullable: true })
+  markId: string | null;
+
+  @ApiProperty({ ...SOURCE, nullable: true })
+  source: StaffAttendanceSource | null;
+
+  @ApiProperty({ ...ID, nullable: true })
+  disputeId: string | null;
+
+  @ApiProperty(DISPUTE)
+  disputeStatus: DisputeStatus | null;
 }
 
 /** R135, decision 6: the member's own history carries no office note and no marker. */

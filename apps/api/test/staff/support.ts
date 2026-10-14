@@ -112,8 +112,8 @@ export class StaffHarness {
       channel: 'cookie',
       expiresAt: new Date(Date.now() + 60_000),
       school: { id: school.id, name: 'Test School', shortCode: school.shortCode, status: 'active' },
-      // Effective and nominal alike (a grant adds both): rule 24's in-service overrides read the
-      // nominal lines (PermissionsService.holdsNominally).
+      // Effective and nominal alike (a grant adds both): the in-service overrides read the
+      // effective set (R356) and the R14 subset rule the nominal lines.
       access: {
         ...access,
         capabilities: new Set([...access.capabilities, ...extra]),

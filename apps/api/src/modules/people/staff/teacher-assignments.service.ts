@@ -151,7 +151,15 @@ export class TeacherAssignmentsService {
     assertShape(dto);
     return recoverConstraint(
       CLASS_TEACHER_EXCL,
-      () => this.createInTransaction(actor, session, staffId, dto),
+      async () => {
+        try {
+          return await this.createInTransaction(actor, session, staffId, dto);
+        } catch (error) {
+          // R356: a rule-24 refusal rolled the transaction back; its audit row is written here.
+          await this.permissions.recordDeferredRefusal(actor.schoolId, error);
+          throw error;
+        }
+      },
       async (error) => {
         if (!dto.sectionId) throw error;
         // The default start depends on the class's year, so it is resolved as the transaction did.
@@ -212,9 +220,13 @@ export class TeacherAssignmentsService {
     // R74 (§4.3): a teacher's row scope comes from their own assignments and class.manage is
     // delegable, so assigning yourself would widen your own scope. Only a role.manage holder
     // (a principal) may. Ending your own row only narrows it, so §4.4 does not refuse it.
-    // Nominal (rule 24, R225): a principal on the default password may still assign themselves.
-    if (staff.userId === userId && !this.permissions.holdsNominally(session.access, Capability.ROLE_MANAGE)) {
-      throw selfForbidden();
+    // Effective (rule 24's reach, R356): on the default password role.manage is inert, so a
+    // principal may not assign themselves until the password is changed (audited by create).
+    if (staff.userId === userId && !this.permissions.holds(session.access, Capability.ROLE_MANAGE)) {
+      throw (
+        this.permissions.deferredDefaultPasswordRefusal(session.access, [Capability.ROLE_MANAGE]) ??
+        selfForbidden()
+      );
     }
 
     // References, each a 422 when not in this school (the year is the class's, never input).

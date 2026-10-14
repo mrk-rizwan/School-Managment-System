@@ -60,6 +60,7 @@ import { EnrolmentsTab } from './enrolments-tab';
 import { GuardianLinksTab } from './guardian-links-tab';
 import { RemarksTab } from './remarks-tab';
 import { ResultsPanel } from './results-panel';
+import { TransportCard } from './transport-card';
 import { FeeStatementTab } from '../../fees/_lib/fee-statement';
 import { NotesField } from '../_lib/notes-field';
 
@@ -73,6 +74,7 @@ type Tab =
   | 'documents'
   | 'fees'
   | 'certificates'
+  | 'transport'
   | 'history';
 
 /** contracts/slice-6.md §3, §10. Write controls follow GET /me; the API checks every request. */
@@ -111,6 +113,8 @@ export function StudentDetail({ id }: { id: string }) {
             // Phase 4 slice 34: its own tab, so a certificate.issue holder without
             // fee.statement.view reaches it too (wave N review).
             ...(can(Capability.CERTIFICATE_ISSUE) ? [{ value: 'certificates' as const, label: 'Certificates' }] : []),
+            // Phase 5 slice 41: the route, stop and pickup time, read with student.view.
+            { value: 'transport', label: 'Transport' },
             { value: 'history', label: 'Status history' },
           ];
           const place = placeLabel(data.current);
@@ -172,6 +176,7 @@ export function StudentDetail({ id }: { id: string }) {
                   </div>
                 )}
                 {tab === 'certificates' && <CertificatesPanel student={data} />}
+                {tab === 'transport' && <TransportCard studentId={data.id} />}
                 {tab === 'history' && <StatusHistory studentId={data.id} />}
               </div>
             </>

@@ -342,7 +342,7 @@ describe('school login, logout and /me', () => {
       expect(me.capabilities.slice(0, 2)).toEqual(['transport.manage', 'user.account.manage']);
       expect(me.capabilities).not.toContain('role.manage');
       expect(Object.keys(me).sort()).toEqual(
-        ['assignments', 'blockedCapabilities', 'capabilities', 'capabilityScopes', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],
+        ['assignments', 'blockedActions', 'blockedCapabilities', 'capabilities', 'capabilityScopes', 'capacities', 'children', 'email', 'fullName', 'hasVerifiedEmail', 'id', 'passwordIsDefault', 'roles', 'school', 'sessionExpiresAt', 'staffId'],
       );
       expect(JSON.stringify(me)).not.toMatch(/[0-9]{13}/);
     });

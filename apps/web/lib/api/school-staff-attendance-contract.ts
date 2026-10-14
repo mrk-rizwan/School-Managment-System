@@ -58,3 +58,21 @@ export type StaffNonWorkingDayDetails = { reason: 'weekly_off' | 'staff_holiday'
  * fallback in prisma-errors.ts sends no details.
  */
 export type SelfActionDetails = { staffId: string };
+
+// ---- Phase 5 slice 44 (contracts/slice-44.md): the biometric device and disputes ----
+
+/** POST /school/device-token/rotate: the token is in this answer only. */
+export type DeviceTokenDto = Schemas['DeviceTokenDto'];
+/** PATCH /staff/:id/device-user. */
+export type StaffDeviceUserDto = Schemas['StaffDeviceUserDto'];
+export type SetDeviceUserBody = Schemas['SetDeviceUserDto'];
+/** GET /device-punches (§2.4): one school day. */
+export type DevicePunchDto = Schemas['DevicePunchDto'];
+export type DevicePunchesQuery = operations['DevicePunchesController_list']['parameters']['query'];
+/** The day sheet's punch columns (§2.7). */
+export type StaffDayPunchDto = Schemas['StaffDayPunchDto'];
+/** A staff attendance dispute (§2.5, §2.6). */
+export type AttendanceDisputeDto = Schemas['AttendanceDisputeDto'];
+export type RaiseDisputeBody = Schemas['RaiseDisputeDto'];
+export type DisputesQuery = operations['AttendanceDisputesController_list']['parameters']['query'];
+export type { DisputeStatus, PunchOutcome } from '@asms/shared';

@@ -14,6 +14,8 @@ import type { OpenAPIObject } from '@nestjs/swagger';
 import { Client } from 'pg';
 import {
   AuthenticatedOnly,
+  DefaultPasswordInert,
+  DeviceToken,
   PlatformSession,
   Public,
   RequireCapability,
@@ -21,7 +23,7 @@ import {
   RequireStaff,
   Webhook,
 } from '../../src/common/auth/route-access';
-import { Capability } from '@asms/shared';
+import { Capability, DEFAULT_PASSWORD_INERT_ACTIONS, type DefaultPasswordInertAction } from '@asms/shared';
 import { API_PREFIX } from '../../src/common/http';
 import { buildOpenApiDocuments } from '../../src/openapi-documents';
 import { PlatformModule } from '../../src/modules/platform/platform.module';
@@ -35,7 +37,8 @@ type Access =
   | 'platform-session'
   | 'staff'
   | 'capacity'
-  | 'webhook';
+  | 'webhook'
+  | 'device-token';
 interface Route {
   method: string;
   path: string;
@@ -45,6 +48,8 @@ interface Route {
   handler: string;
   /** The @PlatformSession level, if declared. */
   level: string | undefined;
+  /** The @DefaultPasswordInert action, if declared (rule 24's reach, R355). */
+  inert: DefaultPasswordInertAction | undefined;
   /** Whether the controller belongs to PlatformModule's module tree. */
   inPlatformModule: boolean;
 }
@@ -67,8 +72,13 @@ const ACCESS_KEYS: [Access, string][] = [
   ['staff', keyOf(RequireStaff())],
   ['capacity', keyOf(RequireCapacity('guardian'))],
   ['webhook', keyOf(Webhook('waha'))],
+  // Phase 5 slice 44 (R348): the biometric device's route, no session.
+  ['device-token', keyOf(DeviceToken())],
 ];
 const PLATFORM_KEY = keyOf(PlatformSession());
+// Not an access rule: rule 24's extra refusal, recorded in the R68 table as ` + inert: <action>`
+// (contracts/slice-37.md §9, slice-46.md §5), so adding or dropping a marker is a visible diff.
+const INERT_KEY = keyOf(DefaultPasswordInert('audit_log.view'));
 
 /**
  * A guard as the R68 table records it: the decorator and what it was given. @RequireCapability's
@@ -139,7 +149,10 @@ function nestRoutes(app: NestExpressApplication): Route[] {
           return value === undefined ? [] : [[label, value]];
         });
         const access = declared.map(([label]) => label);
-        const guard = declared.map(([label, value]) => guardText(label, value)).join(' + ');
+        const inert = reflector.getAllAndOverride<DefaultPasswordInertAction | undefined>(INERT_KEY, [handler, controller]);
+        const guard =
+          declared.map(([label, value]) => guardText(label, value)).join(' + ') +
+          (inert === undefined ? '' : ` + inert: ${inert}`);
         for (const c of controllerPaths) {
           for (const m of asArray(methodPaths)) {
             routes.push({
@@ -149,6 +162,7 @@ function nestRoutes(app: NestExpressApplication): Route[] {
               guard,
               handler: `${controller.name}.${name}`,
               level: reflector.getAllAndOverride<string | undefined>(PLATFORM_KEY, [handler, controller]),
+              inert,
               inPlatformModule: platformTree.has(module.metatype),
             });
           }
@@ -250,6 +264,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/children/:id/results/:resultId', 'capacity'],
   // Phase 5 slice 37 (R308): the family timetable, names only.
   ['GET', '/api/v1/me/children/:id/timetable', 'capacity'],
+  // Phase 5 slice 41 (R330): the child's route, stop, pickup time and driver name.
+  ['GET', '/api/v1/me/children/:id/transport', 'capacity'],
   ['POST', '/api/v1/me/devices', 'authenticated-only'],
   // contracts/slice-14.md §7 (R166): any live session's own inbox, by person at read time.
   ['GET', '/api/v1/me/inbox', 'authenticated-only'],
@@ -264,6 +280,10 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['POST', '/api/v1/me/sessions/revoke-others', 'authenticated-only'],
   // contracts/slice-12.md §1 (R135): any active staff member reads their own attendance.
   ['GET', '/api/v1/me/staff/attendance', 'staff'],
+  // Phase 5 slice 44 (R346): the caller's own attendance disputes.
+  ['GET', '/api/v1/me/staff/attendance-disputes', 'staff'],
+  ['POST', '/api/v1/me/staff/attendance-disputes', 'staff'],
+  ['POST', '/api/v1/me/staff/attendance-disputes/:id/withdraw', 'staff'],
   // Phase 3 slice 20: any active staff member's own cash in hand and handovers (the user from the
   // session only); opening one needs payment.record.
   ['GET', '/api/v1/me/staff/cash-handovers', 'staff'],
@@ -287,6 +307,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/staff/salary-structure', 'staff'],
   // Phase 5 slice 37: the caller's own week.
   ['GET', '/api/v1/me/staff/timetable', 'staff'],
+  // Phase 5 slice 41 (R330): the routes whose vehicle names the caller as driver; names and stops.
+  ['GET', '/api/v1/me/staff/transport-routes', 'staff'],
   // Phase 4 slice 33 (R286): class-test marks as entered, capacity scope.
   ['GET', '/api/v1/me/student/assessments', 'capacity'],
   // contracts/slice-11.md §1.1: the student's own attendance.
@@ -302,6 +324,7 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/student/results', 'capacity'],
   ['GET', '/api/v1/me/student/results/:resultId', 'capacity'],
   ['GET', '/api/v1/me/student/timetable', 'capacity'],
+  ['GET', '/api/v1/me/student/transport', 'capacity'],
   // Phase 3 slice 21 (R199): a guardian's deposit slip, under /me (R78) with a daily cap.
   ['POST', '/api/v1/me/uploads', 'capacity'],
   ['POST', '/api/v1/platform/auth/login', 'public'],
@@ -359,7 +382,8 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   // withdrawals and completions write the student's status change through StudentsService.
   'POST /api/v1/sections/:id/promotion-sheets': ['promotion_sheet.opened'],
   'PATCH /api/v1/promotion-sheets/:id': ['promotion_sheet.decided'],
-  'POST /api/v1/promotion-sheets/:id/apply': ['promotion_sheet.applied', 'student.status_changed'],
+  // Slice 41 (§2.7): apply also ends the year's live route assignments.
+  'POST /api/v1/promotion-sheets/:id/apply': ['promotion_sheet.applied', 'student.status_changed', 'transport_assignment.ended'],
   'POST /api/v1/promotion-sheets/:id/cancel': ['promotion_sheet.cancelled'],
   // Phase 4 slice 31 (contracts/slice-31.md §7). A repeated create answers the open version and
   // writes no row; remarks are a draft's text, recorded by their row (written_by).
@@ -541,6 +565,18 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/staff/:id/contracts': ['staff_contract.created'],
   'POST /api/v1/staff-contracts/:id/renew': ['staff_contract.renewed'],
   'POST /api/v1/staff-contracts/:id/end': ['staff_contract.ended'],
+  // Phase 5 slice 41 (contracts/slice-41.md §2). A no-op patch and a replayed start write no row;
+  // a start over capacity also writes transport.capacity_exceeded (R331).
+  'POST /api/v1/vehicles': ['vehicle.created'],
+  'PATCH /api/v1/vehicles/:id': ['vehicle.updated'],
+  'POST /api/v1/vehicles/:id/retire': ['vehicle.retired'],
+  'POST /api/v1/transport-routes': ['transport_route.created'],
+  'PATCH /api/v1/transport-routes/:id': ['transport_route.updated'],
+  'POST /api/v1/transport-routes/:id/archive': ['transport_route.archived'],
+  'POST /api/v1/transport-routes/:id/amounts': ['transport_amount.set'],
+  'POST /api/v1/transport-route-amounts/:id/void': ['transport_amount.voided'],
+  'POST /api/v1/transport-routes/:id/assignments': ['transport_assignment.started', 'transport.capacity_exceeded'],
+  'POST /api/v1/transport-assignments/:id/end': ['transport_assignment.ended'],
   'POST /api/v1/salary-advances': ['salary_advance.granted', 'expense.recorded'],
   'POST /api/v1/salary-advances/:id/write-off': ['salary_advance.written_off'],
   'POST /api/v1/payroll-runs': ['payroll_run.prepared'],
@@ -560,7 +596,20 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   // contracts/slice-12.md §6. An identical replay is a 200 with no row.
   'POST /api/v1/staff-attendance/submit': ['staff_attendance.recorded', 'staff_attendance.amended'],
   'POST /api/v1/staff-attendance/:id/amend': ['staff_attendance_mark.amended'],
-  'POST /api/v1/students/:id/change-status': ['student.status_changed'],
+  // Phase 5 slice 44 (contracts/slice-44.md §4). An unchanged device user id writes no row; the
+  // punch route audits only refused punches (no actor: a device, not a person); the punch rows are
+  // the record of the rest. An approval that changes the mark also writes the mark's amendment.
+  'POST /api/v1/school/device-token/rotate': ['device_token.rotated'],
+  // Turning the device off when no token is set writes nothing.
+  'POST /api/v1/school/device-token/revoke': ['device_token.revoked'],
+  'POST /api/v1/device-punches': ['device_punch.rejected'],
+  'PATCH /api/v1/staff/:id/device-user': ['staff.device_user_set'],
+  'POST /api/v1/me/staff/attendance-disputes': ['attendance_dispute.raised'],
+  'POST /api/v1/me/staff/attendance-disputes/:id/withdraw': ['attendance_dispute.withdrawn'],
+  'POST /api/v1/staff-attendance-disputes/:id/approve': ['attendance_dispute.approved', 'staff_attendance_mark.amended'],
+  'POST /api/v1/staff-attendance-disputes/:id/reject': ['attendance_dispute.rejected'],
+  // Slice 41 (§2.7): a withdrawal or transfer also ends the live route assignments.
+  'POST /api/v1/students/:id/change-status': ['student.status_changed', 'transport_assignment.ended'],
   'POST /api/v1/students/:id/documents': ['document.added'],
   'POST /api/v1/students/:id/guardian-links': ['guardian_link.created'],
   'POST /api/v1/students/:id/issue-login': ['user.login_issued'],
@@ -639,6 +688,7 @@ const auditActions = (): string[] => [
  */
 const ACTORLESS_ACTIONS: Record<string, string> = {
   login_failure_spike: 'anonymous failed logins in a burst, recorded by the alarm, not by a person',
+  'device_punch.rejected': 'punches a biometric device sent outside the accepted window, counted per batch; a device is not a person (slice 44)',
 };
 
 const OPERATIONS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
@@ -808,6 +858,35 @@ describe('Routes and OpenAPI over the real AppModule', () => {
     if (process.env.PRINT_ROUTE_GUARDS) process.stdout.write(`${JSON.stringify(actual, null, 2)}
 `);
     expect(actual).toEqual(ROUTE_GUARDS);
+  });
+
+  // Phase 5 R355 (contracts/slice-46.md §5): the list is data. Every marked route is the one its
+  // action names in DEFAULT_PASSWORD_INERT_ACTIONS, and every action whose route exists is marked
+  // on it. An action whose route a later slice has not built yet is listed here and nowhere else.
+  const INERT_ROUTES_NOT_YET_BUILT: readonly DefaultPasswordInertAction[] = [
+    'import.opening_balances', // slice 43
+  ];
+
+  it('R355: the @DefaultPasswordInert routes are exactly DEFAULT_PASSWORD_INERT_ACTIONS', () => {
+    const key = (method: string, path: string) => `${method} /${API_PREFIX}${path}`;
+    const marked = Object.fromEntries(
+      routes.flatMap((r) => (r.inert === undefined ? [] : [[`${r.method} ${r.path}`, r.inert]])),
+    );
+    const served = new Set(routes.map((r) => `${r.method} ${r.path}`));
+    const expected = Object.fromEntries(
+      Object.entries(DEFAULT_PASSWORD_INERT_ACTIONS).flatMap(([action, route]) =>
+        served.has(key(route.method, route.path)) ? [[key(route.method, route.path), action]] : [],
+      ),
+    );
+    expect(marked).toEqual(expected);
+    const unbuilt = Object.entries(DEFAULT_PASSWORD_INERT_ACTIONS)
+      .filter(([, route]) => !served.has(key(route.method, route.path)))
+      .map(([action]) => action);
+    expect(INERT_ROUTES_NOT_YET_BUILT).toEqual(expect.arrayContaining(unbuilt));
+    // Every marked route is a school route (RouteAccessGuard refuses the marker elsewhere, 500).
+    expect(
+      routes.filter((r) => r.inert !== undefined && !r.access.every((a) => a === 'capability' || a === 'staff')),
+    ).toEqual([]);
   });
 
   it('R68: the routes needing no capability match the reviewed snapshot', () => {

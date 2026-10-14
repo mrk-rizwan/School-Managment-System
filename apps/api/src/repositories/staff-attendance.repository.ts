@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import {
   STAFF_ATTENDANCE_STATUSES,
+  type StaffAttendanceSource,
   type StaffAttendanceStatus,
   type StaffStatus,
 } from '@asms/shared';
@@ -31,6 +32,8 @@ export interface StaffMarkView {
   /** Null for a mark a biometric device made (Phase 5 rule 40, source `device`). */
   markedBy: bigint | null;
   markedByName: string | null;
+  /** Phase 5 rule 40: `device` when a biometric punch made the mark. */
+  source: StaffAttendanceSource;
   markedAt: Date;
   /** The latest staff_attendance_changes row, if any. */
   lastAmendedAt: Date | null;
@@ -84,6 +87,7 @@ const MARK_SELECT = {
   note: true,
   markedBy: true,
   markedAt: true,
+  source: true,
   markedByUser: staffName,
   changes: {
     select: { changedAt: true, changedByUser: staffName },
@@ -275,6 +279,41 @@ export class StaffAttendanceRepository {
       data,
       select: { id: true },
     });
+  }
+
+  /**
+   * Marks made by biometric punches (contracts/slice-44.md §2.2, R345): source `device`, no
+   * marking user, the punch that made each (the wave T trigger checks it was received `marked`
+   * on the mark's own school day). A day marked meanwhile fails staff_attendance_natural_key.
+   */
+  async createDeviceMarks(
+    schoolId: SchoolId,
+    marks: { staffId: bigint; date: Date; status: StaffAttendanceStatus; devicePunchId: bigint }[],
+  ): Promise<{ id: bigint; devicePunchId: bigint }[]> {
+    if (marks.length === 0) return [];
+    const rows = await this.txHost.tx.staffAttendance.createManyAndReturn({
+      data: marks.map((m) => ({
+        schoolId,
+        staffId: m.staffId,
+        date: m.date,
+        status: m.status,
+        source: 'device' as const,
+        markedBy: null,
+        devicePunchId: m.devicePunchId,
+      })),
+      select: { id: true, devicePunchId: true },
+    });
+    return rows.flatMap((r) => (r.devicePunchId === null ? [] : [{ id: r.id, devicePunchId: r.devicePunchId }]));
+  }
+
+  /** The (staff, date) pairs already marked among these staff and dates, as `staffId|YYYY-MM-DD`. */
+  async markedDays(schoolId: SchoolId, staffIds: bigint[], dates: Date[]): Promise<Set<string>> {
+    if (staffIds.length === 0 || dates.length === 0) return new Set();
+    const rows = await this.txHost.tx.staffAttendance.findMany({
+      where: { schoolId, staffId: { in: staffIds }, date: { in: dates } },
+      select: { staffId: true, date: true },
+    });
+    return new Set(rows.map((r) => `${r.staffId}|${r.date.toISOString().slice(0, 10)}`));
   }
 
   /** The submit's summary (§2): markable staff on `date` and the marks recorded on it. */

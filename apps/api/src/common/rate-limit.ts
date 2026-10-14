@@ -155,16 +155,21 @@ export const oneIfBodyHasString =
 /** Guardian and staff create and patch: only a body carrying a CNIC can answer *_CNIC_EXISTS. */
 export const CnicProbeThrottleGuard = identityProbeThrottle(oneIfBodyHasString('cnic'));
 
-/** `failures` consecutive failures for one key lock it for `durationMs`. */
+/**
+ * `failures` consecutive failures for one key lock it for `durationMs`. The failure count lapses
+ * `windowMs` after the latest failure (default `durationMs`), so a short window with a long lock
+ * reads "n failures a minute lock it out for longer" (the device route, contracts/slice-44.md).
+ */
 export interface LockoutPolicy {
   failures: number;
   durationMs: number;
+  windowMs?: number;
 }
 
 // Atomic: count the failure and, at the threshold, set the lock and clear the count.
 const RECORD_FAILURE = `
 local n = redis.call('INCR', KEYS[1])
-redis.call('PEXPIRE', KEYS[1], ARGV[1])
+redis.call('PEXPIRE', KEYS[1], ARGV[3])
 if n >= tonumber(ARGV[2]) then
   redis.call('SET', KEYS[2], '1', 'PX', ARGV[1])
   redis.call('DEL', KEYS[1])
@@ -196,6 +201,7 @@ export class RedisLockout {
       this.lockKey(key),
       String(this.policy.durationMs),
       String(this.policy.failures),
+      String(this.policy.windowMs ?? this.policy.durationMs),
     ]);
   }
 

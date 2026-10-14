@@ -53,9 +53,29 @@ export type PunchDirection = (typeof PUNCH_DIRECTIONS)[number];
 export const PUNCH_OUTCOMES = ['marked', 'stored', 'unmapped', 'inactive'] as const;
 export type PunchOutcome = (typeof PUNCH_OUTCOMES)[number];
 
-/** The per-punch outcome `POST /device-punches` answers (slice 44): a stored outcome or a replay. */
-export const PUNCH_RESULT_OUTCOMES = [...PUNCH_OUTCOMES, 'duplicate'] as const;
+/**
+ * The per-punch outcome `POST /device-punches` answers (slice 44): a stored outcome, a replay
+ * (`duplicate`), or `rejected` — outside PUNCH_WINDOW, or a device user id shaped like an identity
+ * number — which is never stored (contracts/slice-44.md deviation 1).
+ */
+export const PUNCH_RESULT_OUTCOMES = [...PUNCH_OUTCOMES, 'duplicate', 'rejected'] as const;
 export type PunchResultOutcome = (typeof PUNCH_RESULT_OUTCOMES)[number];
+
+/** Slice 44: what the web and the phone call a dispute's status. */
+export const DISPUTE_STATUS_LABELS: Record<DisputeStatus, string> = {
+  pending: 'Pending',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+};
+
+/** Slice 44: what the punches day view calls a stored punch's outcome. */
+export const PUNCH_OUTCOME_LABELS: Record<PunchOutcome, string> = {
+  marked: 'Made the mark',
+  stored: 'Stored',
+  unmapped: 'Unknown device user',
+  inactive: 'Staff member not active',
+};
 
 /** `attendance_registers.source`, derived from the session channel: bearer = app, cookie = web. */
 export const REGISTER_SOURCES = ['app', 'web'] as const;

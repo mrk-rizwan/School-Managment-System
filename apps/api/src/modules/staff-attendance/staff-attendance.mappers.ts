@@ -13,6 +13,7 @@ export function toStaffMarkDto(row: StaffMarkView): StaffMarkDto {
     note: row.note,
     markedBy: row.markedBy?.toString() ?? null,
     markedByName: row.markedByName,
+    source: row.source,
     markedAt: row.markedAt,
     amended: row.lastAmendedAt !== null,
     lastAmendedAt: row.lastAmendedAt,

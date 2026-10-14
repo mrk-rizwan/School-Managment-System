@@ -50,6 +50,11 @@ export function StudentIndexScreen({ secure }: { secure?: boolean }) {
           onPress={() => router.push('/student/events')}
           testID="student.events"
         />
+        <ListRow
+          title="Transport"
+          onPress={() => router.push('/student/transport')}
+          testID="student.transport"
+        />
       </Sheet>
     </Screen>
   );

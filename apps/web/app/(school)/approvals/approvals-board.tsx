@@ -1,6 +1,6 @@
 'use client';
 
-import { addDaysTo, Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, resultTermLabel, yearMonthOf } from '@asms/shared';
+import { addDaysTo, ATTENDANCE_STATUS_LABELS, Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, resultTermLabel, yearMonthOf } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -220,8 +220,9 @@ function Row({ title, detail, amount, badge }: { title: string; detail: string; 
 }
 
 function Queues({ approvals }: { approvals: ApprovalsDto }) {
-  const { claims, handovers, expenses, leave, results, documents } = approvals;
-  if (!claims && !handovers && !expenses && !leave && !results && !documents) {
+  const { claims, handovers, expenses, leave, results, documents, disputes } = approvals;
+  const ownStaffId = useSchoolMe().data?.staffId ?? null;
+  if (!claims && !handovers && !expenses && !leave && !results && !documents && !disputes) {
     return (
       <Card>
         <CardContent>
@@ -307,6 +308,19 @@ function Queues({ approvals }: { approvals: ApprovalsDto }) {
               title={`${d.student.fullName} · ${DOCUMENT_TYPE_LABELS[d.type]}`}
               detail={`${d.uploadedByName ?? 'Uploaded'}, ${formatDateTime(d.createdAt)}`}
               badge={d.ownUpload ? 'your upload' : undefined}
+            />
+          ))}
+        </Queue>
+      )}
+      {/* Phase 5 slice 44 (R347): staff attendance disputes; decided on the queue page. */}
+      {disputes && (
+        <Queue title="Attendance disputes" count={disputes.count} href="/staff-attendance/disputes" testId="disputes" empty="No attendance disputes are waiting.">
+          {disputes.items.map((d) => (
+            <Row
+              key={d.id}
+              title={`${d.staffName} · ${formatDate(d.date)}`}
+              detail={`${ATTENDANCE_STATUS_LABELS[d.markStatus]} → ${ATTENDANCE_STATUS_LABELS[d.requestedStatus]}: ${d.reason}`}
+              badge={ownStaffId !== null && d.staffId === ownStaffId ? 'your own' : undefined}
             />
           ))}
         </Queue>

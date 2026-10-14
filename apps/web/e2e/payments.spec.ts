@@ -1,3 +1,4 @@
+import { DEFAULT_PASSWORD_INERT_ACTION_NAMES } from '@asms/shared';
 import { expect as baseExpect, test } from '@playwright/test';
 import type { ChargeDto } from '../lib/api/school-charges-contract';
 import type { GuardianDuesDto, HandoverDto, PaymentDto, PaymentPreviewDto, ReversalDto } from '../lib/api/school-payments-contract';
@@ -246,6 +247,25 @@ test.describe('payments', () => {
     await page.getByRole('button', { name: 'Void payment' }).click();
     await expect(page.getByText('Payment of Rs 5,000 voided.')).toBeVisible();
     expect(calls(requests, 'POST', '/payments/p1/void')[0]?.postDataJSON()).toEqual({ reason: 'Wrong family' });
+  });
+
+  test('rule 24 (R355): on a default password the principal sees void and refund greyed, with the reason', async ({ page }) => {
+    const me = { ...PRINCIPAL_ME, passwordIsDefault: true, blockedActions: [...DEFAULT_PASSWORD_INERT_ACTION_NAMES] };
+    const { requests } = await mockSchoolApi(page, {
+      me,
+      handler: ({ method, path }) =>
+        method === 'GET' && path === '/payments' ? { status: 200, body: page1([payment({ unallocatedAmount: 1000 })]) } : undefined,
+    });
+    await open(page, '/fees/payments');
+    await page.getByRole('button', { name: /actions/i }).first().click();
+    for (const name of ['Void', 'Refund advance…']) {
+      const item = page.getByRole('menuitem', { name });
+      await expect(item).toBeDisabled();
+      await expect(item).toHaveAttribute('title', /default password/);
+    }
+    // Carrying an advance forward is not a money-out verb: it stays available.
+    await expect(page.getByRole('menuitem', { name: 'Carry advance forward…' })).toBeEnabled();
+    expect(calls(requests, 'POST', '/payments/p1/void')).toHaveLength(0);
   });
 
   test('the office undoes a carry-forward with a reason and a key; a spent carry is refused', async ({ page }) => {

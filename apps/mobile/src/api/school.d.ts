@@ -452,6 +452,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AuditController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-log/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AuditController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -1134,6 +1166,26 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["CustomRolesController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/device-punches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DevicePunchesController_list"];
+        put?: never;
+        /**
+         * A biometric device posts punches
+         * @description Authorization: Bearer <the school device token>; no cookie, no Origin. Always 200 with one outcome per punch.
+         */
+        post: operations["DevicePunchesController_receive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2628,6 +2680,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/children/{id}/transport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTransportController_child"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/devices": {
         parameters: {
             query?: never;
@@ -2782,6 +2850,38 @@ export interface paths {
         get: operations["MyStaffAttendanceController_mine"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/staff/attendance-disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyAttendanceDisputesController_list"];
+        put?: never;
+        post: operations["MyAttendanceDisputesController_raise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/staff/attendance-disputes/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MyAttendanceDisputesController_withdraw"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2996,6 +3096,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/staff/transport-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTransportController_driver"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/student/assessments": {
         parameters: {
             query?: never;
@@ -3164,6 +3280,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyTimetableController_own"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/transport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyTransportController_own"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4052,6 +4184,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/school/device-token/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeviceTokenController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/school/device-token/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeviceTokenController_rotate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/school/settings": {
         parameters: {
             query?: never;
@@ -4260,6 +4424,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff-attendance-disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceDisputesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-attendance-disputes/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AttendanceDisputesController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-attendance-disputes/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AttendanceDisputesController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff-attendance/submit": {
         parameters: {
             query?: never;
@@ -4418,6 +4630,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/{id}/device-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["StaffDeviceUserController_setDeviceUser"];
         trace?: never;
     };
     "/api/v1/staff/{id}/issue-login": {
@@ -4804,6 +5032,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/students/{id}/transport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransportController_forStudent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subjects": {
         parameters: {
             query?: never;
@@ -5028,6 +5272,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transport-assignments/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransportController_endAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transport-route-amounts/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransportController_voidAmount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transport-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransportController_listRoutes"];
+        put?: never;
+        post: operations["TransportController_createRoute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transport-routes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransportController_getRoute"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["TransportController_updateRoute"];
+        trace?: never;
+    };
+    "/api/v1/transport-routes/{id}/amounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransportController_setAmount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transport-routes/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransportController_archiveRoute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transport-routes/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransportController_listAssignments"];
+        put?: never;
+        post: operations["TransportController_createAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/uploads": {
         parameters: {
             query?: never;
@@ -5198,6 +5554,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["UsersController_signOutEverywhere"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TransportController_listVehicles"];
+        put?: never;
+        post: operations["TransportController_createVehicle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["TransportController_updateVehicle"];
+        trace?: never;
+    };
+    "/api/v1/vehicles/{id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TransportController_retireVehicle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5442,6 +5846,11 @@ export interface components {
             count: number;
             items: components["schemas"]["ClaimDto"][];
         };
+        ApprovalDisputesDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["AttendanceDisputeDto"][];
+        };
         ApprovalDocumentsDto: {
             /** @description The queue's total: what its own list endpoint reports */
             count: number;
@@ -5469,6 +5878,7 @@ export interface components {
         };
         ApprovalsDto: {
             claims?: components["schemas"]["ApprovalClaimsDto"];
+            disputes?: components["schemas"]["ApprovalDisputesDto"];
             documents?: components["schemas"]["ApprovalDocumentsDto"];
             expenses?: components["schemas"]["ApprovalExpensesDto"];
             handovers?: components["schemas"]["ApprovalHandoversDto"];
@@ -5481,6 +5891,9 @@ export interface components {
              * @default false
              */
             applyToOpenCharges?: boolean;
+            reason?: string;
+        };
+        ApproveDisputeDto: {
             reason?: string;
         };
         ApproveExpenseDto: {
@@ -5623,6 +6036,31 @@ export interface components {
         AttendanceAlertStatus: "pending" | "sent" | "cancelled";
         /** @enum {string} */
         AttendanceDayListSort: "className" | "rollNo" | "fullName";
+        AttendanceDisputeDto: {
+            attendanceId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date
+             * @description The disputed day
+             */
+            date: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            decisionReason: string | null;
+            id: string;
+            markSource: components["schemas"]["StaffAttendanceSource"];
+            /** @description The mark’s status now */
+            markStatus: components["schemas"]["StaffAttendanceStatus"];
+            reason: string;
+            requestedStatus: components["schemas"]["StaffAttendanceStatus"];
+            staffId: string;
+            staffName: string;
+            status: components["schemas"]["DisputeStatus"];
+            /** Format: date-time */
+            withdrawnAt: string | null;
+        };
         AttendanceMarkDto: {
             /** @description At least one change row exists */
             amended: boolean;
@@ -5677,6 +6115,28 @@ export interface components {
         AudiencePreviewWarning: "sms_cap_short" | "sms_too_long" | "no_recipients" | "whatsapp_not_connected";
         /** @enum {string} */
         AudienceRole: "parents" | "students";
+        AuditActorDto: {
+            kind: components["schemas"]["AuditActorKind"];
+            name: string;
+            userId: string | null;
+        };
+        /** @enum {string} */
+        AuditActorKind: "user" | "platform" | "system";
+        AuditDetailDto: {
+            key: string;
+            value: string;
+        };
+        AuditEntryDto: {
+            action: string;
+            actor: components["schemas"]["AuditActorDto"];
+            /** Format: date-time */
+            createdAt: string;
+            details: components["schemas"]["AuditDetailDto"][];
+            id: string;
+            reason: string | null;
+            subjectId: string | null;
+            subjectType: string;
+        };
         BillingPlanDto: {
             name: string;
             smsAllowance: number;
@@ -5770,6 +6230,11 @@ export interface components {
         CapabilitySourceKind: "system_role" | "custom_role" | "grant";
         /** @enum {string} */
         Capacity: "staff" | "guardian" | "student";
+        CapacityWarningDto: {
+            capacity: number;
+            /** @description Live riders on the route, this one included */
+            riders: number;
+        };
         CarryForwardDto: {
             /** @description The target year; the child needs an enrolment in it */
             academicYearId: string;
@@ -6737,6 +7202,27 @@ export interface components {
             effectiveFrom: string;
             slots?: components["schemas"]["TimetableSlotInputDto"][];
         };
+        CreateTransportAssignmentDto: {
+            /**
+             * Format: date
+             * @example 2026-11-01
+             */
+            startsOn: string;
+            stopId?: string;
+            studentId: string;
+        };
+        CreateTransportRouteDto: {
+            name: string;
+            /** @description New stops (no id) */
+            stops?: components["schemas"]["StopInputDto"][];
+            vehicleId?: string;
+        };
+        CreateVehicleDto: {
+            capacity: number;
+            driverStaffId?: string;
+            /** @example LES-1234 */
+            registration: string;
+        };
         CurrentInvoiceDto: {
             /** @description Whole rupees */
             amount: number;
@@ -6825,6 +7311,8 @@ export interface components {
             amount: number;
             name: string;
         };
+        /** @enum {string} */
+        DefaultPasswordInertAction: "payment.refund" | "payment.void" | "payment.reverse_refund" | "payment_account.create" | "payment_account.disable" | "payroll_run.finalise" | "payslip.mark_paid" | "salary_advance.grant" | "expense.approve" | "expense.payee_change" | "cash_handover.confirm" | "cash_handover.resolve_shortfall" | "charge.void" | "charge.waive" | "dues_clearance.override" | "import.opening_balances" | "device_token.rotate" | "device_token.revoke" | "audit_log.view" | "audit_log.view_entry";
         DefaulterDto: {
             admissionNo: string;
             className: string | null;
@@ -6872,6 +7360,60 @@ export interface components {
         };
         /** @enum {string} */
         DevicePlatform: "android" | "ios";
+        DevicePunchBatchDto: {
+            punches: components["schemas"]["DevicePunchInDto"][];
+        };
+        DevicePunchBatchResultDto: {
+            /** @description In request order */
+            results: components["schemas"]["DevicePunchResultDto"][];
+        };
+        DevicePunchDto: {
+            /** @description The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces */
+            deviceUserId: string;
+            direction: components["schemas"]["PunchDirection"] | null;
+            id: string;
+            outcome: components["schemas"]["PunchOutcome"];
+            /** Format: date-time */
+            punchedAt: string;
+            /** Format: date-time */
+            receivedAt: string;
+            staffAttendanceId: string | null;
+            /** @description The holder at receipt; null when unmapped (A11) */
+            staffId: string | null;
+            staffName: string | null;
+        };
+        DevicePunchInDto: {
+            /** @description The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces */
+            deviceUserId: string;
+            direction?: components["schemas"]["PunchDirection"];
+            /**
+             * Format: date-time
+             * @description The instant of the punch with its offset; accepted from 7 days before receipt to 5 minutes after
+             */
+            punchedAt: string;
+        };
+        DevicePunchResultDto: {
+            /** @description The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces */
+            deviceUserId: string;
+            /** @description marked: made the day’s mark; stored: kept, no mark (a later punch, a non-working day, a day already marked); unmapped: no staff member holds the id; inactive: its holder is not active; duplicate: already received; rejected: outside the accepted window, not stored */
+            outcome: components["schemas"]["PunchResultOutcome"];
+            /**
+             * Format: date-time
+             * @description As sent
+             */
+            punchedAt: string;
+            /** @description The mark this punch made (outcome marked) */
+            staffAttendanceId: string | null;
+        };
+        DeviceTokenDto: {
+            /** Format: date-time */
+            rotatedAt: string;
+            /** @description Shown once: only its hash is kept. The device sends it as `Authorization: Bearer <token>`. */
+            token: string;
+        };
+        DeviceTokenRevokedDto: {
+            revoked: boolean;
+        };
         DiaryEntryDto: {
             academicYearId: string;
             assignment: string | null;
@@ -6909,6 +7451,11 @@ export interface components {
         DisableWhatsAppDto: {
             reason: string;
         };
+        /**
+         * @description The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)
+         * @enum {string}
+         */
+        DisputeStatus: "pending" | "approved" | "rejected" | "withdrawn";
         DocumentChecklistDto: {
             complete: boolean;
             items: components["schemas"]["DocumentChecklistItemDto"][];
@@ -6935,6 +7482,10 @@ export interface components {
         };
         /** @enum {string} */
         DocumentType: "b_form" | "photo" | "previous_school_leaving" | "guardian_cnic" | "other";
+        DriverRiderDto: {
+            name: string;
+            stopId: string | null;
+        };
         DuesClearanceDto: {
             /** @description Whole rupees */
             advance: number;
@@ -6979,6 +7530,15 @@ export interface components {
              */
             endsOn?: string;
             reason?: string;
+        };
+        EndTransportAssignmentDto: {
+            /**
+             * Format: date
+             * @description The last day on the route (startsOn − 1: never in force)
+             * @example 2026-11-01
+             */
+            endedOn: string;
+            reason: string;
         };
         /** @enum {string} */
         EndingContractSort: "endsOn";
@@ -7703,6 +8263,7 @@ export interface components {
             assignments: components["schemas"]["MeAssignmentDto"][];
             /** @description Bearer sessions only; null for cookie. */
             bearerToken: string | null;
+            blockedActions: components["schemas"]["DefaultPasswordInertAction"][];
             blockedCapabilities: components["schemas"]["Capability"][];
             capabilities: components["schemas"]["Capability"][];
             capabilityScopes: components["schemas"]["MeCapabilityScopeDto"][];
@@ -7845,6 +8406,7 @@ export interface components {
         };
         MeDto: {
             assignments: components["schemas"]["MeAssignmentDto"][];
+            blockedActions: components["schemas"]["DefaultPasswordInertAction"][];
             blockedCapabilities: components["schemas"]["Capability"][];
             capabilities: components["schemas"]["Capability"][];
             capabilityScopes: components["schemas"]["MeCapabilityScopeDto"][];
@@ -8048,6 +8610,13 @@ export interface components {
             status: components["schemas"]["DocumentChecklistStatus"];
             type: components["schemas"]["DocumentType"];
         };
+        MyDriverRouteDto: {
+            id: string;
+            name: string;
+            stops: components["schemas"]["TransportStopDto"][];
+            students: components["schemas"]["DriverRiderDto"][];
+            vehicleRegistration: string;
+        };
         MyDuesDto: {
             academicYearId: string | null;
             /** @description Whole rupees */
@@ -8175,8 +8744,13 @@ export interface components {
             amended: boolean;
             /** Format: date */
             date: string;
+            disputeId: string | null;
+            /** @description The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44) */
+            disputeStatus: components["schemas"]["DisputeStatus"] | null;
             /** @description On or after joined_on and, when set, on or before left_on */
             employed: boolean;
+            markId: string | null;
+            source: components["schemas"]["StaffAttendanceSource"] | null;
             status: components["schemas"]["StaffAttendanceStatus"] | null;
             /** @description A staff working day as the calendar says now (R136) */
             workingDay: boolean;
@@ -8284,6 +8858,35 @@ export interface components {
             subjectName: string;
             /** @description The teacher's name (the substitute's on a substituted day) */
             teacherName: string;
+        };
+        MyTransportDto: {
+            current: components["schemas"]["MyTransportItemDto"] | null;
+        };
+        MyTransportItemDto: {
+            driverName: string | null;
+            /**
+             * Format: date
+             * @example 2026-11-01
+             */
+            endsOn: string | null;
+            /**
+             * @description HH:MM, school time
+             * @example 07:10
+             */
+            pickupTime: string | null;
+            routeName: string;
+            /**
+             * Format: date
+             * @example 2026-11-01
+             */
+            startsOn: string;
+            stopName: string | null;
+        };
+        NextRouteAmountDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /** @example 2026-11 */
+            effectivePeriod: string;
         };
         OfficeResetDto: {
             clearEmail: boolean;
@@ -8673,6 +9276,15 @@ export interface components {
         PromotionSheetSort: "-openedAt" | "openedAt";
         /** @enum {string} */
         PromotionSheetStatus: "open" | "applied" | "cancelled";
+        /** @enum {string} */
+        PunchDirection: "in" | "out";
+        /** @enum {string} */
+        PunchOutcome: "marked" | "stored" | "unmapped" | "inactive";
+        /**
+         * @description marked: made the day’s mark; stored: kept, no mark (a later punch, a non-working day, a day already marked); unmapped: no staff member holds the id; inactive: its holder is not active; duplicate: already received; rejected: outside the accepted window, not stored
+         * @enum {string}
+         */
+        PunchResultOutcome: "marked" | "stored" | "unmapped" | "inactive" | "duplicate" | "rejected";
         QueuedDocumentDto: {
             /** Format: date-time */
             createdAt: string;
@@ -8690,6 +9302,13 @@ export interface components {
             type: components["schemas"]["DocumentType"];
             uploadedBy: string;
             uploadedByName: string | null;
+        };
+        RaiseDisputeDto: {
+            /** @description One of the caller’s own marks (GET /me/staff/attendance markId) */
+            attendanceId: string;
+            reason: string;
+            /** @description What the mark should say; not what it says now */
+            requestedStatus: components["schemas"]["StaffAttendanceStatus"];
         };
         ReadmissionResultDto: {
             /** @description Digits */
@@ -9248,6 +9867,12 @@ export interface components {
             studentFullName: string;
             studentId: string;
         };
+        RouteVehicleDto: {
+            capacity: number;
+            driverName: string | null;
+            id: string;
+            registration: string;
+        };
         SalaryComponentDto: {
             /** @description Whole rupees */
             amount: number;
@@ -9300,6 +9925,8 @@ export interface components {
             certificateShowIdentityNo: boolean;
             certificateSignatoryName: string | null;
             contractWarningDays: number;
+            /** Format: date-time */
+            deviceTokenRotatedAt: string | null;
             /** @description Whole rupees */
             expenseApprovalThreshold: number;
             feeCutoffDay: number;
@@ -9326,6 +9953,8 @@ export interface components {
             requiredDocumentTypes: components["schemas"]["DocumentType"][];
             smsAllowedTypes: components["schemas"]["MessageType"][];
             readonly smsMonthlyCap: number;
+            /** @example 09:30 */
+            staffLateAfter: string | null;
             studentLoginEnabled: boolean;
             /** Format: date-time */
             updatedAt: string;
@@ -9479,6 +10108,19 @@ export interface components {
         SessionsRevokedDto: {
             revoked: number;
         };
+        SetDeviceUserDto: {
+            /** @description null clears the mapping */
+            deviceUserId: string | null;
+        };
+        SetRouteAmountDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /**
+             * @description The next period or later (a route with no amount in force may start now)
+             * @example 2026-11
+             */
+            effectivePeriod: string;
+        };
         SetUpExamsDto: {
             /** @description Default: every class of the term's year that is not archived */
             classIds?: string[];
@@ -9530,10 +10172,15 @@ export interface components {
             amended: boolean;
             /** Format: date */
             date: string;
+            disputeId: string | null;
+            /** @description The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44) */
+            disputeStatus: components["schemas"]["DisputeStatus"] | null;
             /** @description On or after joined_on and, when set, on or before left_on */
             employed: boolean;
+            markId: string | null;
             markedByName: string | null;
             note: string | null;
+            source: components["schemas"]["StaffAttendanceSource"] | null;
             status: components["schemas"]["StaffAttendanceStatus"] | null;
             /** @description A staff working day as the calendar says now (R136) */
             workingDay: boolean;
@@ -9556,6 +10203,11 @@ export interface components {
             /** @description Staff working days in the range while employed */
             workingDays: number;
         };
+        /**
+         * @description device: a biometric punch made the mark (Phase 5 rule 40)
+         * @enum {string}
+         */
+        StaffAttendanceSource: "manual" | "device";
         /** @enum {string} */
         StaffAttendanceStatus: "present" | "absent" | "late" | "on_leave";
         StaffContractDto: {
@@ -9604,8 +10256,15 @@ export interface components {
         StaffDayDto: {
             approvedLeave: components["schemas"]["StaffDayLeaveDto"] | null;
             designation: string | null;
+            disputeId: string | null;
+            /** @description The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44) */
+            disputeStatus: components["schemas"]["DisputeStatus"] | null;
             fullName: string;
             mark: components["schemas"]["StaffMarkDto"] | null;
+            /** @description The member’s device punches that day */
+            punch: components["schemas"]["StaffDayPunchDto"] | null;
+            /** @description A mark and a punch exist and the mark differs from what the first punch would have marked */
+            punchConflict: boolean;
             staffId: string;
             /** @description `active`, or the current status of a member marked that day who is no longer active */
             staffStatus: components["schemas"]["StaffStatus"];
@@ -9613,6 +10272,11 @@ export interface components {
         StaffDayLeaveDto: {
             leaveRequestId: string;
             typeName: string;
+        };
+        StaffDayPunchDto: {
+            count: number;
+            /** Format: date-time */
+            firstPunchAt: string;
         };
         /** @enum {string} */
         StaffDaySort: "fullName" | "-fullName" | "status";
@@ -9628,6 +10292,11 @@ export interface components {
             /** @description Staff markable on the date: active now, joined on or before it */
             staff: number;
         };
+        StaffDeviceUserDto: {
+            /** @description The person's user number on the school's biometric device: 1-40 printable ASCII, no spaces */
+            deviceUserId: string | null;
+            staffId: string;
+        };
         StaffDto: {
             /** @description Masked, e.g. 35201-*****-1 */
             cnicMasked: string | null;
@@ -9636,6 +10305,8 @@ export interface components {
             /** @description Names of the live custom roles of that login */
             customRoleNames: string[];
             designation: string | null;
+            /** @description The user number on the biometric device */
+            deviceUserId: string | null;
             fullName: string;
             hasCnic: boolean;
             id: string;
@@ -9710,6 +10381,8 @@ export interface components {
             /** @description The first writer’s staff name */
             markedByName: string | null;
             note: string | null;
+            /** @description device: a biometric punch made the mark (Phase 5 rule 40) */
+            source: components["schemas"]["StaffAttendanceSource"];
             staffId: string;
             status: components["schemas"]["StaffAttendanceStatus"];
         };
@@ -9750,6 +10423,8 @@ export interface components {
             markedByName: string | null;
             note: string | null;
             outcome: components["schemas"]["MarkOutcome"];
+            /** @description device: a biometric punch made the mark (Phase 5 rule 40) */
+            source: components["schemas"]["StaffAttendanceSource"];
             staffId: string;
             status: components["schemas"]["StaffAttendanceStatus"];
         };
@@ -9824,6 +10499,17 @@ export interface components {
             id: string;
             reason: string | null;
             toStatus: components["schemas"]["StudentStatus"];
+        };
+        StopInputDto: {
+            /** @description A live stop of the route, edited in place; absent adds one */
+            id?: string;
+            name: string;
+            /**
+             * @description HH:MM, school time
+             * @example 07:10
+             */
+            pickupTime?: string;
+            sortOrder: number;
         };
         StudentAttendanceDto: {
             absent: number;
@@ -9953,6 +10639,11 @@ export interface components {
         StudentSort: "fullName" | "-fullName" | "admissionNo" | "-admissionNo" | "admittedOn" | "-admittedOn" | "rollNo";
         /** @enum {string} */
         StudentStatus: "active" | "suspended" | "withdrawn" | "transferred" | "alumni";
+        StudentTransportDto: {
+            current: components["schemas"]["TransportAssignmentDto"] | null;
+            /** @description Earlier assignments, newest first (at most 20) */
+            history: components["schemas"]["TransportAssignmentDto"][];
+        };
         SubjectDto: {
             /** Format: date-time */
             archivedAt: string | null;
@@ -10278,6 +10969,143 @@ export interface components {
          * @enum {string}
          */
         TimetableVersionStatus: "live" | "future" | "past" | "voided";
+        TransportAssignmentCreatedDto: {
+            academicYearId: string;
+            admissionNo: string;
+            /** @description R331: over capacity warns, never blocks */
+            capacityWarning: components["schemas"]["CapacityWarningDto"] | null;
+            className: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            endReason: string | null;
+            endedByName: string | null;
+            /**
+             * Format: date
+             * @description The last day on the route
+             * @example 2026-11-01
+             */
+            endsOn: string | null;
+            id: string;
+            /**
+             * @description HH:MM, school time
+             * @example 07:10
+             */
+            pickupTime: string | null;
+            routeId: string;
+            routeName: string;
+            sectionName: string | null;
+            /**
+             * Format: date
+             * @example 2026-11-01
+             */
+            startsOn: string;
+            status: components["schemas"]["TransportAssignmentStatus"];
+            stopId: string | null;
+            stopName: string | null;
+            studentId: string;
+            studentName: string;
+        };
+        TransportAssignmentDto: {
+            academicYearId: string;
+            admissionNo: string;
+            className: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            endReason: string | null;
+            endedByName: string | null;
+            /**
+             * Format: date
+             * @description The last day on the route
+             * @example 2026-11-01
+             */
+            endsOn: string | null;
+            id: string;
+            /**
+             * @description HH:MM, school time
+             * @example 07:10
+             */
+            pickupTime: string | null;
+            routeId: string;
+            routeName: string;
+            sectionName: string | null;
+            /**
+             * Format: date
+             * @example 2026-11-01
+             */
+            startsOn: string;
+            status: components["schemas"]["TransportAssignmentStatus"];
+            stopId: string | null;
+            stopName: string | null;
+            studentId: string;
+            studentName: string;
+        };
+        /** @enum {string} */
+        TransportAssignmentStatus: "live" | "upcoming" | "ended";
+        TransportRouteAmountDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string | null;
+            /** @example 2026-11 */
+            effectivePeriod: string;
+            id: string;
+            routeId: string;
+            voidReason: string | null;
+            /** @description Live and its period not yet started */
+            voidable: boolean;
+            /** Format: date-time */
+            voidedAt: string | null;
+        };
+        TransportRouteDetailDto: {
+            /** @description Newest period first, voided included */
+            amounts: components["schemas"]["TransportRouteAmountDto"][];
+            archiveReason: string | null;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description The amount in force this period */
+            currentAmount: number | null;
+            id: string;
+            name: string;
+            /** @description A live amount from a later period */
+            nextAmount: components["schemas"]["NextRouteAmountDto"] | null;
+            /** @description Live assignments */
+            riders: number;
+            status: components["schemas"]["TransportRouteStatus"];
+            stopCount: number;
+            stops: components["schemas"]["TransportStopDto"][];
+            vehicle: components["schemas"]["RouteVehicleDto"] | null;
+        };
+        TransportRouteDto: {
+            archiveReason: string | null;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description The amount in force this period */
+            currentAmount: number | null;
+            id: string;
+            name: string;
+            /** @description A live amount from a later period */
+            nextAmount: components["schemas"]["NextRouteAmountDto"] | null;
+            /** @description Live assignments */
+            riders: number;
+            status: components["schemas"]["TransportRouteStatus"];
+            stopCount: number;
+            vehicle: components["schemas"]["RouteVehicleDto"] | null;
+        };
+        /** @enum {string} */
+        TransportRouteFilter: "active" | "archived" | "all";
+        /** @enum {string} */
+        TransportRouteStatus: "active" | "archived";
+        TransportStopDto: {
+            id: string;
+            name: string;
+            /**
+             * @description HH:MM, school time
+             * @example 07:10
+             */
+            pickupTime: string | null;
+            sortOrder: number;
+        };
         UndoCarryForwardDto: {
             reason: string;
             /** @description The carry-forward of this payment to undo */
@@ -10475,6 +11303,8 @@ export interface components {
             requiredDocumentTypes?: components["schemas"]["DocumentType"][];
             /** @description SMS-eligible types only (contracts/slice-9.md §7.2). */
             smsAllowedTypes?: components["schemas"]["MessageType"][];
+            /** @example 09:30 */
+            staffLateAfter?: string | null;
             studentLoginEnabled?: boolean;
             /** @description Weekly off days, 0 = Sunday ... 6 = Saturday; distinct, not all seven; ascending. */
             weeklyOffDays?: number[];
@@ -10523,6 +11353,21 @@ export interface components {
              */
             startsOn?: string;
             weight?: number;
+        };
+        UpdateTransportRouteDto: {
+            name?: string;
+            /** @description Required when a stop ends */
+            reason?: string;
+            /** @description The live stops as a whole: listed ones are kept or added, the rest end (needs reason) */
+            stops?: components["schemas"]["StopInputDto"][];
+            /** @description null removes the vehicle */
+            vehicleId?: string | null;
+        };
+        UpdateVehicleDto: {
+            capacity?: number;
+            /** @description null removes the driver */
+            driverStaffId?: string | null;
+            registration?: string;
         };
         UploadFileDto: {
             /**
@@ -10587,6 +11432,25 @@ export interface components {
         };
         /** @enum {string} */
         UserStatus: "active" | "disabled";
+        VehicleDto: {
+            capacity: number;
+            /** Format: date-time */
+            createdAt: string;
+            driverName: string | null;
+            driverStaffId: string | null;
+            id: string;
+            registration: string;
+            retireReason: string | null;
+            /** Format: date-time */
+            retiredAt: string | null;
+            /** @description The active routes it serves */
+            routeNames: string[];
+            status: components["schemas"]["VehicleStatus"];
+        };
+        /** @enum {string} */
+        VehicleFilter: "active" | "retired" | "all";
+        /** @enum {string} */
+        VehicleStatus: "active" | "retired";
         VerifiedClaimDto: {
             /** @description Whole rupees */
             claimedAmount: number;
@@ -13425,6 +14289,146 @@ export interface operations {
                 };
             };
             426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AuditController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description The acting school user */
+                actorUserId?: string;
+                /** @description With subjectId */
+                subjectType?: string;
+                /** @description With subjectType */
+                subjectId?: string;
+                /** @description With createdTo; inclusive */
+                createdFrom?: string;
+                /** @description With createdFrom; inclusive; at most 92 days on */
+                createdTo?: string;
+                /** @description A family (`payment`, meaning `payment.*`) or the start of an action (`payment.ref`) */
+                actionPrefix?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AuditEntryDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AuditController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17421,6 +18425,133 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DevicePunchesController_list: {
+        parameters: {
+            query: {
+                page?: number;
+                limit?: number;
+                /** @description The school day (school time), not in the future */
+                date: string;
+                staffId?: string;
+                /** @description Only punches no staff member held the id of */
+                unmapped?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DevicePunchDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DevicePunchesController_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevicePunchBatchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicePunchBatchResultDto"];
+                };
+            };
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25632,6 +26763,67 @@ export interface operations {
             };
         };
     };
+    MyTransportController_child: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTransportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MeSessionsController_registerDevice: {
         parameters: {
             query?: never;
@@ -26312,6 +27504,234 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyAttendanceDisputesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["DisputeStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AttendanceDisputeDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyAttendanceDisputesController_raise: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RaiseDisputeDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceDisputeDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceDisputeDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyAttendanceDisputesController_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceDisputeDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27312,6 +28732,57 @@ export interface operations {
             };
         };
     };
+    MyTransportController_driver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyDriverRouteDto"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyStudentResultsController_assessments: {
         parameters: {
             query?: {
@@ -27996,6 +29467,65 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyTransportController_own: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTransportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32552,6 +34082,108 @@ export interface operations {
             };
         };
     };
+    DeviceTokenController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceTokenRevokedDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DeviceTokenController_rotate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceTokenDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     SchoolSettingsController_get: {
         parameters: {
             query?: never;
@@ -33898,6 +35530,237 @@ export interface operations {
             };
         };
     };
+    AttendanceDisputesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["DisputeStatus"];
+                staffId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AttendanceDisputeDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AttendanceDisputesController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveDisputeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceDisputeDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AttendanceDisputesController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceDisputeDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     StaffAttendanceController_submit: {
         parameters: {
             query?: never;
@@ -34760,6 +36623,87 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffContractDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffDeviceUserController_setDeviceUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDeviceUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffDeviceUserDto"];
                 };
             };
             401: {
@@ -37249,6 +39193,67 @@ export interface operations {
             };
         };
     };
+    TransportController_forStudent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentTransportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     SubjectsController_list: {
         parameters: {
             query?: {
@@ -38453,6 +40458,799 @@ export interface operations {
             };
         };
     };
+    TransportController_endAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndTransportAssignmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportAssignmentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_voidAmount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteAmountDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_listRoutes: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Part of the route name */
+                name?: string;
+                status?: components["schemas"]["TransportRouteFilter"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TransportRouteDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_createRoute: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTransportRouteDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_getRoute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_updateRoute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTransportRouteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_setAmount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRouteAmountDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteAmountDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_archiveRoute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportRouteDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_listAssignments: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Ended assignments too */
+                includeEnded?: boolean;
+                /** @description Part of the student’s name */
+                studentName?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TransportAssignmentDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_createAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTransportAssignmentDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportAssignmentCreatedDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransportAssignmentCreatedDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     DocumentsController_upload: {
         parameters: {
             query?: never;
@@ -39343,6 +42141,321 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_listVehicles: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Part of the registration */
+                registration?: string;
+                status?: components["schemas"]["VehicleFilter"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["VehicleDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_createVehicle: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVehicleDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_updateVehicle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVehicleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    TransportController_retireVehicle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

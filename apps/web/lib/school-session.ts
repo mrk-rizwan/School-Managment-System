@@ -1,6 +1,6 @@
 'use client';
 
-import { ErrorCode, type Capability } from '@asms/shared';
+import { ErrorCode, type Capability, type DefaultPasswordInertAction } from '@asms/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -61,6 +61,25 @@ export function useCapabilities() {
   const scopeOf = useCallback((capability: Capability) => capabilityScope(me.data, capability), [me.data]);
   return { can, scopeOf };
 }
+
+/**
+ * Rule 24's reach (Phase 5 R355, contracts/slice-46.md §3): `blocked(action)` is true while the
+ * user signs in with the default password and the API would refuse that verb with
+ * DEFAULT_PASSWORD_BLOCKS_ACTION, so its button is greyed with DEFAULT_PASSWORD_HINT. A
+ * convenience only: the API refuses the verb itself.
+ */
+export function useBlockedActions() {
+  const me = useSchoolMe();
+  const blocked = useMemo(() => new Set<string>(me.data?.blockedActions ?? []), [me.data]);
+  return useCallback((action: DefaultPasswordInertAction) => blocked.has(action), [blocked]);
+}
+
+/** The title of a button greyed by rule 24 (useBlockedActions). */
+export const DEFAULT_PASSWORD_HINT = 'Change your password first: this is off while you use the default password.';
+
+/** The RowAction fields of a menu action rule 24 refuses (`blocked(action)`), or none. */
+export const inertRowAction = (isBlocked: boolean): { disabled?: boolean; hint?: string } =>
+  isBlocked ? { disabled: true, hint: DEFAULT_PASSWORD_HINT } : {};
 
 /**
  * Where a held capability reaches (contracts/slice-14.md §8, `MeDto.capabilityScopes`): `all`

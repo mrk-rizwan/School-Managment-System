@@ -31,7 +31,11 @@ const inTableOrder = (types: readonly MessageType[]): MessageType[] =>
 const inDocumentOrder = (types: readonly DocumentType[]): DocumentType[] =>
   DOCUMENT_TYPES.filter((type) => types.includes(type));
 
-const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettingsDto => ({
+const toDto = (
+  row: SchoolSettingsRecord,
+  smsMonthlyCap: number,
+  deviceTokenRotatedAt: Date | null = null,
+): SchoolSettingsDto => ({
   feeDueDay: row.feeDueDay,
   studentLoginEnabled: row.studentLoginEnabled,
   periodsPerDay: row.periodsPerDay,
@@ -60,6 +64,8 @@ const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettings
   certificateShowIdentityNo: row.certificateShowIdentityNo,
   requiredDocumentTypes: inDocumentOrder(row.requiredDocumentTypes),
   contractWarningDays: row.contractWarningDays,
+  staffLateAfter: row.staffLateAfter === null ? null : toLocalTime(row.staffLateAfter),
+  deviceTokenRotatedAt,
   updatedAt: row.updatedAt,
 });
 
@@ -101,6 +107,8 @@ const WRITABLE = [
   'requiredDocumentTypes',
   // Phase 5 rule 35 (contracts/slice-39.md).
   'contractWarningDays',
+  // Phase 5 rule 40 (contracts/slice-44.md).
+  'staffLateAfter',
 ] as const satisfies readonly (keyof UpdateSchoolSettingsDto & keyof SchoolSettingsDto)[];
 
 const lateFeeAmountRequired = () =>
@@ -137,7 +145,7 @@ export class SchoolSettingsService {
   async get(schoolId: SchoolId): Promise<SchoolSettingsDto> {
     const row = await this.settings.find(schoolId);
     if (!row) throw missing();
-    return toDto(row, await this.smsMonthlyCap(schoolId));
+    return this.withSchool(schoolId, row);
   }
 
   /**
@@ -177,7 +185,7 @@ export class SchoolSettingsService {
       if (diff[key] !== undefined) Object.assign(data, { [key]: this.column(key, diff[key]) });
     }
     if (Object.keys(changes).length === 0) {
-      return toDto(current, await this.smsMonthlyCap(schoolId));
+      return this.withSchool(schoolId, current);
     }
     if (lateFeeEnabled && !before.lateFeeEnabled) data.lateFeeEnabledAt = new Date();
     const updated = await this.settings.update(schoolId, data);
@@ -188,20 +196,26 @@ export class SchoolSettingsService {
       subjectId: updated.id,
       metadata: { changes },
     });
-    return toDto(updated, await this.smsMonthlyCap(schoolId));
+    return this.withSchool(schoolId, updated);
   }
 
   /** A DTO value as its column stores it: times become TIME values; the rest is as is. */
   private column(key: keyof SchoolSettingsDto, value: unknown): unknown {
-    if (key === 'registerDeadlineTime' || key === 'absenceAlertTime' || key === 'lateCutoffTime') {
+    if (
+      key === 'registerDeadlineTime' ||
+      key === 'absenceAlertTime' ||
+      key === 'lateCutoffTime' ||
+      key === 'staffLateAfter'
+    ) {
       return typeof value === 'string' ? fromLocalTime(value) : null;
     }
     return value;
   }
 
-  private async smsMonthlyCap(schoolId: SchoolId): Promise<number> {
+  /** The DTO with the two values kept on the school row: the SMS cap and the device token's rotation time. */
+  private async withSchool(schoolId: SchoolId, row: SchoolSettingsRecord): Promise<SchoolSettingsDto> {
     const school = await this.ownSchool.find(schoolId);
     if (!school) throw missing();
-    return school.smsMonthlyCap;
+    return toDto(row, school.smsMonthlyCap, school.deviceTokenRotatedAt);
   }
 }

@@ -176,6 +176,7 @@ const LINK = (id: string, guardianId: string, name: string, endedAt: string | nu
 });
 const STAFF_MEMBER: StaffDto = {
   id: 'st-x',
+  deviceUserId: null,
   fullName: 'Imran Ali',
   cnicMasked: null,
   hasCnic: false,

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CAPACITIES, ErrorCode, type Capacity } from '@asms/shared';
+import { CAPACITIES, DEFAULT_PASSWORD_INERT_ACTION_NAMES, ErrorCode, type Capacity } from '@asms/shared';
 import type { Request } from 'express';
 import { newSessionToken } from '../../common/auth/platform-session';
 import { sessionLifetime, type SessionChannelName } from '../../common/auth/school-session';
@@ -99,6 +99,8 @@ export class MeService {
         .map((line) => ({ capability: line.capability, scope: line.scope })),
       // Rule 24 (R225): held through a role or grant, inert until the password is changed.
       blockedCapabilities: [...access.blockedCapabilities],
+      // Rule 24's reach (R355): RouteAccessGuard refuses these on exactly this condition.
+      blockedActions: access.passwordIsDefault ? [...DEFAULT_PASSWORD_INERT_ACTION_NAMES] : [],
       sessionExpiresAt,
       capacities: CAPACITIES.filter((capacity: Capacity) => access.capacities[capacity]),
       assignments: await this.assignmentsOf(schoolId, access),

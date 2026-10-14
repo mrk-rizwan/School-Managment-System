@@ -51,6 +51,7 @@ import {
 } from './students.shared';
 import { fromDateString, toDateString } from '../../academics/academics.shared';
 import { DocumentVerificationService } from '../../documents/verification.service';
+import { TransportAssignmentsService } from '../../transport/transport-assignments.service';
 
 // contracts/slice-6.md §3.1-§3.6. B-Form digits live only in request bodies and in memory here:
 // stored encrypted with their lookup hash, returned masked to student.update holders only, never
@@ -93,6 +94,7 @@ export class StudentsService {
     private readonly encryption: FieldEncryption,
     private readonly clock: SchoolClock,
     private readonly documents: DocumentVerificationService,
+    private readonly transport: TransportAssignmentsService,
     @Inject(ENV) env: Env,
   ) {
     this.hashKey = env.IDENTITY_HASH_KEY;
@@ -328,6 +330,10 @@ export class StudentsService {
     let enrolmentClosed = false;
     if (CLOSES_ENROLMENT.includes(to) && active) {
       enrolmentClosed = (await this.enrolments.close(schoolId, active.id, effectiveOn)) === 1;
+    }
+    // Phase 5 A8 (contracts/slice-41.md §2.7): a student who leaves leaves the bus on that day.
+    if (CLOSES_ENROLMENT.includes(to)) {
+      await this.transport.endForStudents(schoolId, userId, [id], effectiveOn, `Student ${to}`, 'status_change');
     }
     const updated = await this.students.update(schoolId, id, { status: to });
     await this.statusChanges.record(schoolId, {

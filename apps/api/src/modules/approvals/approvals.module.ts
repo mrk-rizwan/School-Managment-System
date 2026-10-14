@@ -6,6 +6,7 @@ import { LeaveModule } from '../leave/leave.module';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
 import { PaymentsModule } from '../payments/payments.module';
 import { ResultsModule } from '../results/results.module';
+import { StaffAttendanceModule } from '../staff-attendance/staff-attendance.module';
 import { ApprovalsController } from './approvals.controller';
 import { ApprovalsService } from './approvals.service';
 
@@ -14,7 +15,7 @@ import { ApprovalsService } from './approvals.service';
  * the owning modules' services. PermissionsService comes from the global AccessModule.
  */
 @Module({
-  imports: [PaymentsModule, ExpensesModule, LeaveModule, ResultsModule, DocumentsModule],
+  imports: [PaymentsModule, ExpensesModule, LeaveModule, ResultsModule, DocumentsModule, StaffAttendanceModule],
   controllers: [ApprovalsController],
   providers: [ApprovalsService, SchoolContext, MeReadsThrottleGuard],
 })

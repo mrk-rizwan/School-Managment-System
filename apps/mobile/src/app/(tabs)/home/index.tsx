@@ -5,6 +5,7 @@ import { ExpensesCard } from '../../../expenses/ExpensesCard';
 import { MyAttendanceCard } from '../../../family/MyAttendance';
 import { MyLeaveCard } from '../../../leave/MyLeave';
 import { MyPayslipsCard } from '../../../payslips/MyPayslips';
+import { MyRoutesCard } from '../../../transport/TransportScreens';
 import { useOnline } from '../../../net/connectivity';
 import { Banner } from '../../../ui/Banner';
 import { Screen } from '../../../ui/Screen';
@@ -61,6 +62,8 @@ export default function HomeScreen() {
       {me.body.capacities.includes('staff') ? <MyAttendanceCard /> : null}
       {me.body.capacities.includes('staff') ? <MyLeaveCard /> : null}
       {me.body.capacities.includes('staff') ? <MyPayslipsCard /> : null}
+      {/* Phase 5 slice 41: only for a staff member some vehicle names as its driver. */}
+      {me.body.capacities.includes('staff') ? <MyRoutesCard /> : null}
       <ExpensesCard />
     </Screen>
   );

@@ -39,7 +39,12 @@ import {
   type EffectiveLine,
   type GrantInput,
 } from './effective-permissions';
-import { defaultPasswordActionBlocks, defaultPasswordBlocks, notAssignedOnDate } from './access.errors';
+import {
+  DeferredDefaultPasswordRefusal,
+  defaultPasswordActionBlocks,
+  defaultPasswordBlocks,
+  notAssignedOnDate,
+} from './access.errors';
 import type { SubstituteAdmission } from '../../repositories/timetable-reads.repository';
 
 /** The school roles a session can carry (contract slice-2 §4.1 `SchoolRole`). */
@@ -205,6 +210,27 @@ export class PermissionsService {
   }
 
   /**
+   * defaultPasswordRefusal for a check made inside a transaction (R356): nothing is written here,
+   * because the refusal rolls the transaction back; the caller outside it passes whatever was
+   * thrown to recordDeferredRefusal, which audits it under the same once-a-day rule.
+   */
+  deferredDefaultPasswordRefusal(
+    access: UserAccess,
+    required: readonly Capability[],
+  ): DeferredDefaultPasswordRefusal | null {
+    const blocked = required.filter((key) => access.blockedCapabilities.includes(key));
+    return blocked.length === 0 ? null : new DeferredDefaultPasswordRefusal(access.userId, blocked);
+  }
+
+  /** Audits a DeferredDefaultPasswordRefusal after its transaction rolled back; ignores anything else. */
+  async recordDeferredRefusal(schoolId: SchoolId, error: unknown): Promise<void> {
+    if (!(error instanceof DeferredDefaultPasswordRefusal)) return;
+    await this.auditDefaultPasswordRefusal(schoolId, error.userId, {
+      capabilities: error.capabilities.join(','),
+    });
+  }
+
+  /**
    * Rule 24's reach (Phase 5 R355): the refusal of a route marked @DefaultPasswordInert(action),
    * for a caller still on the default password. Audited like the capability refusal, at most once
    * per user per school day (the same action, `user.default_password_blocked`).
@@ -288,9 +314,9 @@ export class PermissionsService {
 
   /**
    * Rule 24 (R225): whether the user holds `capability` through a role or grant, whether or not
-   * it is inert on the default password (`access.lines`, not `access.capabilities`). Only the
-   * routes of the two blocked keys may refuse a default-password principal; an in-service
-   * override ("a role.manage holder may") reads this, so everything else keeps working.
+   * it is inert on the default password (`access.lines`, not `access.capabilities`). Read only by
+   * the R14 subset rule's actor side; since Phase 5 (R356) the in-service overrides ("a
+   * role.manage holder may": staff status, self-assignment) read `holds`.
    */
   holdsNominally(access: UserAccess, capability: Capability): boolean {
     return access.lines.some((line) => line.capability === capability);
