@@ -34,6 +34,8 @@ export interface ExpenseRecord {
   voidedAt: Date | null;
   voidedBy: bigint | null;
   voidReason: string | null;
+  /** Phase 5 slice 38: the event this expense is for, tagged once (R314). */
+  eventId: bigint | null;
   updatedAt: Date;
   /** The recorder's staff record and name (users.staff_id); null for a user with no staff row. */
   recordedByStaffId: bigint | null;
@@ -77,6 +79,8 @@ export interface ExpenseListQuery {
   status?: ExpenseStatus;
   recordedBy?: bigint;
   selfApproved?: boolean;
+  /** Phase 5 slice 38: tagged to this event. */
+  eventId?: bigint;
   sort: 'spentOn' | '-spentOn';
   skip: number;
   take: number;
@@ -105,6 +109,7 @@ const SELECT = {
   voidedAt: true,
   voidedBy: true,
   voidReason: true,
+  eventId: true,
   updatedAt: true,
   recordedByUser: { select: { staffId: true, staff: { select: { fullName: true } } } },
 } as const satisfies Prisma.ExpenseSelect;
@@ -140,6 +145,7 @@ export class ExpenseRepository {
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.recordedBy === undefined ? {} : { recordedBy: query.recordedBy }),
       ...(query.selfApproved === undefined ? {} : { selfApproved: query.selfApproved }),
+      ...(query.eventId === undefined ? {} : { eventId: query.eventId }),
     };
     const direction = query.sort === 'spentOn' ? 'asc' : 'desc';
     const rows = await this.txHost.tx.expense.findMany({
@@ -151,6 +157,24 @@ export class ExpenseRepository {
     });
     const total = await this.txHost.tx.expense.count({ where });
     return { rows: rows.map(toRecord), total };
+  }
+
+  /**
+   * Phase 5 R314: tags the expense to an event, once (expenses_event_frozen; the trigger
+   * expenses_event_tag refuses a voided expense or an event not published or completed).
+   */
+  async tagEvent(schoolId: SchoolId, id: bigint, eventId: bigint): Promise<number> {
+    const { count } = await this.txHost.tx.expense.updateMany({
+      where: { schoolId, id, eventId: null, status: { not: 'voided' } },
+      data: { eventId },
+    });
+    return count;
+  }
+
+  /** The event's status, for the tag (null: no such event in the school). */
+  async eventStatus(schoolId: SchoolId, eventId: bigint): Promise<string | null> {
+    const row = await this.txHost.tx.event.findFirst({ where: { schoolId, id: eventId }, select: { status: true } });
+    return row?.status ?? null;
   }
 
   async findById(schoolId: SchoolId, id: bigint): Promise<ExpenseRecord | null> {

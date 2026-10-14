@@ -108,6 +108,7 @@ const student = (id: string, fullName: string, extra: Partial<StudentDetailDto> 
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
   notes: null,
   photoDocumentId: null,
   ...extra,
@@ -253,6 +254,10 @@ async function mockApi(page: Page, state: MockState) {
       if (sub === 'enrolments') return json(200, page1([ENROLMENT]));
       if (sub === 'status-changes') return json(200, page1(state.statusChanges ?? []));
       if (sub === 'documents' && method === 'GET') return json(200, page1(documents));
+      // Phase 5 slice 40: the required-documents checklist.
+      if (sub === 'document-checklist') {
+        return json(200, { studentId: found.id, items: [{ type: 'b_form', status: 'missing', document: null }], complete: false });
+      }
       if (sub === 'documents' && method === 'POST') {
         const body = request.postDataJSON() as { type: StudentDocumentDto['type'] };
         const created: StudentDocumentDto = {
@@ -264,6 +269,10 @@ async function mockApi(page: Page, state: MockState) {
           uploadedBy: 'u-office',
           uploadedByName: 'Sana Office',
           createdAt: STAMP,
+          status: 'uploaded',
+          decidedAt: null,
+          decidedByName: null,
+          rejectReason: null,
         };
         documents.push(created);
         return json(201, created);
@@ -668,6 +677,10 @@ test('documents: upload then attach; download through the API; an unsupported fi
         uploadedBy: 'u-office',
         uploadedByName: 'Sana Office',
         createdAt: STAMP,
+        status: 'uploaded',
+        decidedAt: null,
+        decidedByName: null,
+        rejectReason: null,
       },
     ],
   });

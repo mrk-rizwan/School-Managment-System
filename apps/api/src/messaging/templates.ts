@@ -601,3 +601,44 @@ export function holidayCancellationText(
     (name) => `The holiday (${name}) is cancelled. School is open as normal.`,
   );
 }
+
+/**
+ * Phase 5 R310 (contracts/slice-38.md §2.4): the announcement that is an event's invitation —
+ * title the event's title (≤ 120), body `Parent-teacher meeting, Sat 14 Nov at 09:00, School
+ * hall. Fee Rs 500 due Fri 13 Nov. <details>`, the details cut so the whole fits one SMS segment.
+ */
+export function eventNoticeText(
+  schoolName: string,
+  event: {
+    typeLabel: string;
+    title: string;
+    startsAt: Date;
+    venue: string;
+    details: string | null;
+    timezone: string;
+    charge: { amount: number; dueOn: Date } | null;
+  },
+): { title: string; body: string } {
+  const title = cutWords(event.title, 120);
+  const when = `${formatDayInZone(event.startsAt, event.timezone)} at ${formatTime(event.startsAt, event.timezone)}`;
+  const fee = event.charge === null ? '' : ` Fee ${formatRupees(event.charge.amount)} due ${formatDay(event.charge.dueOn)}.`;
+  const head = `${event.typeLabel}, ${when}, ${cutWords(event.venue, 60)}.${fee}`;
+  if (event.details === null) return { title, body: head };
+  const fitted = fitOneSegment(event.details.replace(/\s+/g, ' '), (d) => composeAnnouncement(schoolName, title, `${head} ${d}`));
+  return { title, body: fitted.slice(composeAnnouncement(schoolName, title, '').length) };
+}
+
+/** Phase 5 R313: a published event's cancellation notice. */
+export function eventCancellationText(
+  schoolName: string,
+  event: { title: string; startsAt: Date; timezone: string; charged: boolean },
+): { title: string; body: string } {
+  const title = cutWords(`Cancelled: ${event.title}`, 120);
+  const money = event.charged ? ' Any fee paid for it is kept as credit on your account.' : '';
+  return fitHolidayText(
+    schoolName,
+    title,
+    event.title,
+    (name) => `${name} on ${formatDayInZone(event.startsAt, event.timezone)} is cancelled.${money}`,
+  );
+}

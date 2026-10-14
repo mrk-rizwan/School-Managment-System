@@ -89,6 +89,8 @@ export class DocumentsController {
     Capability.ANNOUNCEMENT_SEND_SCHOOL,
     // Phase 3 slice 23: an expense's receipt.
     Capability.EXPENSE_RECORD,
+    // Phase 5 slice 39: a staff contract's scan.
+    Capability.STAFF_CONTRACT_MANAGE,
   )
   @UseGuards(UploadThrottleGuard)
   @UseInterceptors(SingleFileInterceptor)

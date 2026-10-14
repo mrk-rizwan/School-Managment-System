@@ -266,6 +266,12 @@ export const ONLINE_ONLY_ACTIONS = [
   'approve_result_sheet',
   'return_result_sheet',
   'publish_result_sheet',
+  // Phase 5 slice 38 (§3.7): events are online only.
+  'record_event_participation',
+  'record_event_payment',
+  // Phase 5 slice 40 (§3.7): document verification is online only.
+  'verify_document',
+  'reject_document',
 ] as const;
 
 export type OnlineOnlyAction = (typeof ONLINE_ONLY_ACTIONS)[number];

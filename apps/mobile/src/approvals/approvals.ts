@@ -1,6 +1,6 @@
 import { ApiError, ErrorCode, formatDateTime, formatDay, formatRupees, PAYMENT_METHOD_LABELS } from '@asms/shared';
 import { api, isNetworkError, unwrap } from '../api/client';
-import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, ResultSheetDto } from '../api/contracts';
+import type { ApprovalsDto, ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, QueuedDocumentDto, ResultSheetDto } from '../api/contracts';
 
 // The Approvals tab (phase-3-financial.md slice 27, R226, R227): GET /me/approvals holds only the
 // sections whose key the user has, each its queue's first ten rows and total. Every decision is
@@ -63,3 +63,18 @@ export function confirmedMessage(expected: number, counted: number): string {
 /** A waiting result sheet (slice 31): who submitted it and when. */
 export const resultLine = (r: ResultSheetDto): string =>
   `${r.submittedByName ? `Submitted by ${r.submittedByName}` : 'Waiting'}${r.submittedAt ? `, ${formatDateTime(r.submittedAt)}` : ''}`;
+
+// Phase 5 slice 40 (contracts/slice-40.md §5): a document awaiting a check.
+const DOCUMENT_WORDS: Record<QueuedDocumentDto['type'], string> = {
+  b_form: 'B-Form',
+  photo: 'Photo',
+  previous_school_leaving: 'Previous school leaving certificate',
+  guardian_cnic: 'Guardian CNIC',
+  other: 'Other document',
+};
+export const documentWord = (type: QueuedDocumentDto['type']): string => DOCUMENT_WORDS[type];
+export const documentTitle = (d: QueuedDocumentDto): string => `${d.student.fullName} · ${DOCUMENT_WORDS[d.type]}`;
+export const documentLine = (d: QueuedDocumentDto): string =>
+  [d.student.className && d.student.sectionName ? `${d.student.className} ${d.student.sectionName}` : null, `uploaded by ${d.uploadedByName ?? 'staff'}, ${formatDateTime(d.createdAt)}`]
+    .filter((part): part is string => part !== null)
+    .join(' · ');

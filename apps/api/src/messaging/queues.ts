@@ -45,6 +45,9 @@ export const JOB = {
   // Phase 4 slice 31 (phase-4-academic.md §3.6): a published sheet's (or, slice 32, a corrected
   // result's) family messages, on the messaging queue.
   resultNotify: 'result-notify',
+  // Phase 5 slice 39 (phase-5-extended.md §3.5, R319): daily at 06:00 school time, the contract
+  // expiry warnings to the principals.
+  contractExpiryWarn: 'contract-expiry-warn',
 } as const;
 
 /*

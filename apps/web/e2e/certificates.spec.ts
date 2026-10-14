@@ -88,6 +88,7 @@ const STUDENT_ROW: StudentDto = {
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
 };
 
 const ENROLMENTS = page1([
@@ -246,6 +247,7 @@ const STUDENT: StudentDetailDto = {
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
   notes: null,
   photoDocumentId: null,
 };

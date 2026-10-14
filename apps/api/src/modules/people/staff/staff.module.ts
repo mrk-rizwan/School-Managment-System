@@ -13,6 +13,23 @@ import { SubjectRepository } from '../../../repositories/subject.repository';
 import { UserRoleRepository } from '../../../repositories/user-role.repository';
 import { UserTokenRepository } from '../../../repositories/user-token.repository';
 import { UserRepository } from '../../../repositories/user.repository';
+import { IdempotencyKeyGuard, IdempotentRequests } from '../../../common/idempotency';
+import { StorageModule } from '../../../common/storage/storage.module';
+import { IdempotencyKeyRepository } from '../../../repositories/idempotency-key.repository';
+import { MessageRecipientRepository } from '../../../repositories/message-recipient.repository';
+import { SalaryStructureRepository } from '../../../repositories/salary-structure.repository';
+import { StaffContractRepository } from '../../../repositories/staff-contract.repository';
+import { StagedUploadRepository } from '../../../repositories/staged-upload.repository';
+import { DocumentsModule } from '../../documents/documents.module';
+import { MeReadsThrottleGuard } from '../../me/me-throttles';
+import { ContractExpiryWarn } from './contract-expiry.job';
+import {
+  MyStaffContractController,
+  StaffContractFilesThrottleGuard,
+  StaffContractsController,
+  StaffContractWritesThrottleGuard,
+} from './staff-contracts.controller';
+import { StaffContractsService } from './staff-contracts.service';
 import { StaffLoginService } from './staff-login.service';
 import { StaffStatusService } from './staff-status.service';
 import { StaffController, TeacherAssignmentsController, UserRolesController } from './staff.controller';
@@ -26,9 +43,29 @@ import { UserRolesService } from './user-roles.service';
  * AccessModule; SessionRepository from the global TenancyModule.
  */
 @Module({
-  imports: [CryptoModule, MessagingModule],
-  controllers: [StaffController, TeacherAssignmentsController, UserRolesController],
+  // Phase 5 slice 39: DocumentsModule lends AttachmentFiles, so contract scans stream as receipts do.
+  imports: [CryptoModule, MessagingModule, DocumentsModule, StorageModule],
+  controllers: [
+    StaffController,
+    TeacherAssignmentsController,
+    UserRolesController,
+    StaffContractsController,
+    MyStaffContractController,
+  ],
   providers: [
+    // Phase 5 slice 39 (contracts/slice-39.md): staff contracts and the contract-expiry-warn body.
+    StaffContractsService,
+    ContractExpiryWarn,
+    StaffContractRepository,
+    SalaryStructureRepository,
+    StagedUploadRepository,
+    MessageRecipientRepository,
+    IdempotencyKeyRepository,
+    IdempotentRequests,
+    IdempotencyKeyGuard,
+    MeReadsThrottleGuard,
+    StaffContractWritesThrottleGuard,
+    StaffContractFilesThrottleGuard,
     SchoolContext,
     CnicProbeThrottleGuard,
     StaffService,
@@ -48,6 +85,6 @@ import { UserRolesService } from './user-roles.service';
     SubjectRepository,
   ],
   // Slice 24: leave approval creates and ends the slice-10 cover assignment through it.
-  exports: [TeacherAssignmentsService],
+  exports: [TeacherAssignmentsService, ContractExpiryWarn],
 })
 export class StaffModule {}

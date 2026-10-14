@@ -89,12 +89,12 @@ jest.mock('expo-image-manipulator', () => {
 jest.mock('expo-image', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const Image = (props: { source?: unknown; testID?: string }) =>
+  const Image = (props: { source?: unknown; cachePolicy?: string; testID?: string }) =>
     React.createElement(View, {
       testID: props.testID,
       accessibilityLabel: 'image',
-      // The source rides on a data prop so a test can read what was asked for.
-      ...({ source: props.source } as object),
+      // The source and the cache policy ride on data props so a test can read what was asked for.
+      ...({ source: props.source, cachePolicy: props.cachePolicy } as object),
     });
   Image.clearDiskCache = jest.fn(() => Promise.resolve(true));
   Image.clearMemoryCache = jest.fn(() => Promise.resolve(true));

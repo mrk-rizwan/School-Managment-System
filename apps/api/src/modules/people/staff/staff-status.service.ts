@@ -14,6 +14,7 @@ import type { SchoolId } from '../../../tenancy/school-id';
 import { PermissionsService } from '../../access/permissions.service';
 import { SchoolClock } from '../../../common/school-clock';
 import type { ChangeStaffStatusDto, StaffDto } from './staff.dto';
+import { StaffContractsService } from './staff-contracts.service';
 import { denied, lastPrincipal, selfForbidden } from './staff.errors';
 import { StaffService } from './staff.service';
 import { TeacherAssignmentsService } from './teacher-assignments.service';
@@ -46,6 +47,8 @@ export class StaffStatusService {
     private readonly audit: AuditLogRepository,
     private readonly permissions: PermissionsService,
     private readonly clock: SchoolClock,
+    // Phase 5 slice 39 (R318): end employment ends the live contract in the same transaction.
+    private readonly contracts: StaffContractsService,
   ) {}
 
   async changeStatus(
@@ -132,13 +135,24 @@ export class StaffStatusService {
     const leftOn =
       to === 'left' ? (staff.joinedOn !== null && staff.joinedOn > today ? staff.joinedOn : today) : null;
     await this.staff.setStatus(schoolId, id, to, leftOn);
+    // R318: the live contract ends with reason `left` (audited staff_contract.ended).
+    const contractEndedId =
+      leftOn === null ? null : await this.contracts.endForLeaving(schoolId, id, actor.userId, leftOn, now);
     await this.audit.record(schoolId, {
       actorUserId: actor.userId,
       action: 'staff.status_changed',
       subjectType: 'staff',
       subjectId: id,
       reason: dto.reason,
-      metadata: { from, to, rolesEnded, assignmentsEnded, sessionsRevoked, grantsEnded },
+      metadata: {
+        from,
+        to,
+        rolesEnded,
+        assignmentsEnded,
+        sessionsRevoked,
+        grantsEnded,
+        ...(contractEndedId === null ? {} : { contractEndedId: contractEndedId.toString() }),
+      },
     });
   }
 

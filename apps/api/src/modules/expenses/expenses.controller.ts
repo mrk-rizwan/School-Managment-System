@@ -32,9 +32,11 @@ import {
   ExpenseReceiptDto,
   ListExpensesQueryDto,
   RejectExpenseDto,
+  TagExpenseEventDto,
   UpdateExpenseDto,
 } from './expenses.dto';
 import { ExpensesService } from './expenses.service';
+import { EventWritesThrottleGuard } from '../events/events.throttle';
 
 // phase-3-financial.md slice 23; contracts/slice-23.md §1. Common to every route: 401, 403
 // PERMISSION_DENIED / ORIGIN_REJECTED, 426 (bearer), 429.
@@ -161,6 +163,18 @@ export class ExpensesController {
     @CurrentSchoolSession() session: SchoolSessionContext,
   ): Promise<ExpenseDto> {
     return this.expenses.void(session, id, body);
+  }
+
+  /** Phase 5 R314 (contracts/slice-38.md §3.4): tagged once to a published or completed event. */
+  @Post(':id/tag-event')
+  @HttpCode(200)
+  @RequireCapability(Capability.EXPENSE_RECORD)
+  @UseGuards(EventWritesThrottleGuard)
+  @ApiIdParam()
+  @ApiOkResponse({ type: ExpenseDto })
+  @ApiErrors(...COMMON, 404, 409, 422)
+  tagEvent(@IdParam() id: bigint, @Body() body: TagExpenseEventDto, @Query() _query: NoQueryDto): Promise<ExpenseDto> {
+    return this.expenses.tagEvent(id, body);
   }
 
   /** R208: streamed to expense readers, never a URL; `nosniff`, `CSP sandbox`, `no-store`. */

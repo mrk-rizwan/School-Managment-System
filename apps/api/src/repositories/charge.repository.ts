@@ -91,6 +91,8 @@ export interface ChargeListQuery {
   classId?: bigint;
   sectionId?: bigint;
   feeHeadId?: bigint;
+  /** Phase 5 slice 38: the charges of one campaign (an event's). */
+  campaignId?: bigint;
   period?: string;
   status?: ChargeStatus;
   kind?: ChargeKind;
@@ -144,6 +146,7 @@ export class ChargeRepository {
       ...(query.studentId === undefined ? {} : { studentId: query.studentId }),
       ...(query.academicYearId === undefined ? {} : { academicYearId: query.academicYearId }),
       ...(query.feeHeadId === undefined ? {} : { feeHeadId: query.feeHeadId }),
+      ...(query.campaignId === undefined ? {} : { campaignId: query.campaignId }),
       ...(query.period === undefined ? {} : { period: query.period }),
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.kind === undefined ? {} : { kind: query.kind }),
@@ -262,6 +265,37 @@ export class ChargeRepository {
   }
 
   /** The open late fees charged against `chargeId` (at most one live, charges_late_fee_key). */
+  /** Phase 5 R317: the child's live (not voided) charge of the campaign, if any. */
+  async campaignChargeId(schoolId: SchoolId, campaignId: bigint, studentId: bigint): Promise<bigint | null> {
+    const row = await this.txHost.tx.charge.findFirst({
+      where: { schoolId, campaignId, studentId, kind: 'campaign', status: { not: 'voided' } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return row?.id ?? null;
+  }
+
+  /** Phase 5 R313: the ids of a campaign's live (not voided) charges, by id. */
+  async liveIdsOfCampaign(schoolId: SchoolId, campaignId: bigint): Promise<bigint[]> {
+    const rows = await this.txHost.tx.charge.findMany({
+      where: { schoolId, campaignId, kind: 'campaign', status: { not: 'voided' } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => r.id);
+  }
+
+  /** The ids of these charges' late fees that are not voided (open, or settled with money on them). */
+  async liveLateFeeIdsFor(schoolId: SchoolId, chargeIds: readonly bigint[]): Promise<bigint[]> {
+    if (chargeIds.length === 0) return [];
+    const rows = await this.txHost.tx.charge.findMany({
+      where: { schoolId, lateFeeForChargeId: { in: [...chargeIds] }, kind: 'late_fee', status: { not: 'voided' } },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => r.id);
+  }
+
   async openLateFeesFor(schoolId: SchoolId, chargeId: bigint): Promise<ChargeRecord[]> {
     return this.named(schoolId, await this.txHost.tx.charge.findMany({
       where: { schoolId, lateFeeForChargeId: chargeId, kind: 'late_fee', status: 'open' },

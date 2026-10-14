@@ -13,6 +13,7 @@ import {
   UserCheckIcon,
   CalendarDaysIcon,
   CalendarClockIcon,
+  CalendarRangeIcon,
   CircleUserRoundIcon,
   SchoolIcon,
   SettingsIcon,
@@ -25,6 +26,7 @@ import {
   ReceiptIcon,
   WalletIcon,
   FileTextIcon,
+  FileCheckIcon,
   GraduationCapIcon,
   ChartColumnIcon,
   MegaphoneIcon,
@@ -59,9 +61,12 @@ export const schoolNav: NavItem[] = [
     href: '/approvals',
     label: 'Approvals',
     icon: ListChecksIcon,
-    capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve'],
+    // Phase 5 slice 40: the Documents section, for document.verify (office by default).
+    capability: ['payment.verify', 'collection.handover.confirm', 'expense.approve', 'staff.leave.approve', 'document.verify'],
   },
   { href: '/students', label: 'Students', icon: UserRoundIcon, capability: 'student.view' },
+  // Phase 5 slice 40: the verification queue and the incomplete-admissions report.
+  { href: '/documents', label: 'Documents', icon: FileCheckIcon, capability: 'document.verify' },
   // Phase 4 slice 34: the certificates register (contracts/slice-34.md §8).
   { href: '/certificates', label: 'Certificates', icon: AwardIcon, capability: 'certificate.issue' },
   { href: '/staff', label: 'Staff', icon: IdCardIcon, capability: 'staff.view' },
@@ -128,6 +133,9 @@ export const schoolNav: NavItem[] = [
   // Every staff member may read the published calendar (@RequireStaff); drafts and writes need
   // holiday.manage (contracts/slice-10.md §1).
   { href: '/calendar', label: 'Calendar', icon: CalendarDaysIcon, capability: null },
+  // Phase 5 slice 38: every staff member reads the published events (@RequireStaff); drafts and
+  // writes need holiday.manage (contracts/slice-38.md §6).
+  { href: '/events', label: 'Events', icon: CalendarRangeIcon, capability: null, capacity: 'staff' },
   // Fee heads and the fee structure are read with any finance key; writes need fee_head.manage
   // (phase-3-financial.md slice 18). Teachers hold none of these.
   {

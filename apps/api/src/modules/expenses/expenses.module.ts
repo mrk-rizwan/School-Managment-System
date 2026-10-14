@@ -10,6 +10,7 @@ import { SchoolSettingsRepository } from '../../repositories/school-settings.rep
 import { StagedUploadRepository } from '../../repositories/staged-upload.repository';
 import { UserRepository } from '../../repositories/user.repository';
 import { DocumentsModule } from '../documents/documents.module';
+import { EventWritesThrottleGuard } from '../events/events.throttle';
 import { ExpenseFilesThrottleGuard, ExpensesController } from './expenses.controller';
 import { ExpensesService } from './expenses.service';
 
@@ -26,6 +27,7 @@ import { ExpensesService } from './expenses.service';
     IdempotencyKeyGuard,
     IdempotentRequests,
     ExpenseFilesThrottleGuard,
+    EventWritesThrottleGuard,
     ExpensesService,
     ExpenseRepository,
     StagedUploadRepository,

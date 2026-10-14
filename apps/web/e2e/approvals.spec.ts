@@ -84,6 +84,7 @@ const expense: ExpenseDto = {
   expenseNo: 2,
   category: 'repairs',
   amount: 9000,
+  eventId: null,
   spentOn: TODAY,
   description: 'Generator repair',
   payee: null,

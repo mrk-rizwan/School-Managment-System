@@ -188,6 +188,8 @@ describe('a child’s diary (§5.3)', () => {
       uri: 'http://api.test/api/v1/me/children/501/diary-entries/300/thumbnail',
       headers: expect.objectContaining({ Authorization: expect.stringMatching(/^Bearer /) }),
     });
+    // A diary photo keeps the default disk cache (only identity scans opt out).
+    expect(within(sheet).getByTestId('attachment.thumbnail').props.cachePolicy).toBe('disk');
     fireEvent.press(within(sheet).getByTestId('attachment.showFull'));
     expect(within(sheet).getByTestId('attachment.full').props.source.uri).toBe(
       'http://api.test/api/v1/me/children/501/diary-entries/300/attachment',

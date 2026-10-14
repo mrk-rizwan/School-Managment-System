@@ -96,12 +96,16 @@ export function StudentList() {
       column.accessor('fullName', {
         header: () => <SortHeader field="fullName" label="Name" sort={sort} onSort={onSort} />,
         cell: (info) => (
-          <Link
-            href={`/students/${info.row.original.id}`}
-            className="font-medium underline-offset-4 hover:underline"
-          >
-            {info.getValue()}
-          </Link>
+          <span className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/students/${info.row.original.id}`}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {info.getValue()}
+            </Link>
+            {/* Phase 5 slice 40 (R323): a query on the student, never a gate. */}
+            {info.row.original.documentsIncomplete && <Badge variant="outline">Documents incomplete</Badge>}
+          </span>
         ),
       }),
       column.accessor('admissionNo', {

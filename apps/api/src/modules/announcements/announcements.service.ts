@@ -18,6 +18,8 @@ import { SchoolContext, type Actor } from '../../common/school-context';
 import { OutboxDispatcher } from '../../messaging/outbox-dispatcher';
 import {
   composeAnnouncement,
+  eventCancellationText,
+  eventNoticeText,
   holidayCancellationText,
   holidayNoticeText,
   smsSegments,
@@ -94,6 +96,22 @@ export interface HolidayNoticeInput {
   endsOn: Date;
   /** The notice only: the next teaching day, or null. */
   reopensOn: Date | null;
+  /** The publisher or the canceller. */
+  createdBy: bigint;
+}
+
+/** The event an invitation or its cancellation is about (Phase 5 contracts/slice-38.md §2.4, §2.5). */
+export interface EventNoticeInput {
+  kind: 'notice' | 'cancellation';
+  typeLabel: string;
+  title: string;
+  startsAt: Date;
+  endsAt: Date;
+  venue: string;
+  details: string | null;
+  charge: { amount: number; dueOn: Date } | null;
+  /** The event's sections: the audience (their parents and students). */
+  sectionIds: readonly bigint[];
   /** The publisher or the canceller. */
   createdBy: bigint;
 }
@@ -539,6 +557,40 @@ export class AnnouncementsService {
     this.outbox.announcementSendAfterCommit(schoolId, { id: row.id, scheduledAt: now });
     const { guardians, staff, students } = resolution.counts;
     return { announcementId: row.id, guardians, staff, students };
+  }
+
+  /**
+   * Phase 5 R310, R313: an event's invitation or cancellation as an announcement of category
+   * `event` to the event's sections (parents and students), committed `sending` inside the
+   * caller's (the event's) transaction, delivered by the `announcement-send` job after commit —
+   * the holiday notice's shape. `holiday.manage` is the authority, as for holidays; the event's
+   * own audit row names the announcement.
+   */
+  async sendEventNotice(schoolId: SchoolId, input: EventNoticeInput): Promise<{ announcementId: bigint }> {
+    const now = this.clock.now();
+    const { name } = await this.dispatch.settings(schoolId);
+    const timezone = await this.clock.timezone(schoolId);
+    const text =
+      input.kind === 'notice'
+        ? eventNoticeText(name, { ...input, timezone })
+        : eventCancellationText(name, { title: input.title, startsAt: input.startsAt, timezone, charged: input.charge !== null });
+    const items: AudienceItem[] = input.sectionIds.map((id) => ({ kind: 'section', targetId: id, roles: ['parents', 'students'] }));
+    const lastDay = fromDateString(new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(input.endsAt));
+    const row = await this.announcements.create(schoolId, {
+      title: text.title,
+      body: text.body,
+      category: 'event',
+      priority: 'normal',
+      status: 'sending',
+      scheduledAt: null,
+      expiresOn: input.kind === 'notice' ? lastDay : null,
+      attachment: null,
+      holidayId: null,
+      createdBy: input.createdBy,
+    });
+    await this.audiences.replace(schoolId, row.id, items);
+    this.outbox.announcementSendAfterCommit(schoolId, { id: row.id, scheduledAt: now });
+    return { announcementId: row.id };
   }
 
   /**

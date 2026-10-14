@@ -309,6 +309,102 @@ export class CampaignsService {
     return this.get(id);
   }
 
+  // ------------------------------------------------------------------- events (slice 38)
+
+  /**
+   * Phase 5 R310 (contracts/slice-38.md §2.4): an event's charge, created and queued in the
+   * caller's (the publish) transaction — the event head, the event's sections as the audience,
+   * `applyConcessions` false. The caller has checked both campaign keys, the head and the due
+   * date. A run in progress for the year refuses (CHARGE_RUN_IN_PROGRESS), as generate does. The
+   * run is enqueued after commit.
+   */
+  async createForEvent(
+    actor: Actor,
+    input: { name: string; academicYearId: bigint; feeHeadId: bigint; amount: number; dueOn: Date; description: string | null; sectionIds: readonly bigint[] },
+  ): Promise<bigint> {
+    const { schoolId, userId } = actor;
+    const busy = await this.runs.findInProgress(schoolId, input.academicYearId);
+    if (busy) throw runInProgress(busy.id);
+    const audiences: CampaignAudienceRow[] = input.sectionIds.map((id) => ({ kind: 'section', targetId: id }));
+    const id = await this.campaigns.create(
+      schoolId,
+      {
+        name: input.name,
+        academicYearId: input.academicYearId,
+        feeHeadId: input.feeHeadId,
+        amount: input.amount,
+        dueOn: input.dueOn,
+        description: input.description,
+        applyConcessions: false,
+      },
+      audiences,
+      userId,
+    );
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'charge_campaign.created',
+      subjectType: SUBJECT,
+      subjectId: id,
+      metadata: {
+        academicYearId: input.academicYearId.toString(),
+        feeHeadId: input.feeHeadId.toString(),
+        amount: input.amount,
+        dueOn: toDateString(input.dueOn),
+        source: 'event',
+      },
+    });
+    const targets = await this.campaigns.targetEnrolments(schoolId, input.academicYearId, audiences);
+    if ((await this.campaigns.move(schoolId, id, 'draft', 'generating')) !== 1) throw campaignNotDraft(id);
+    const run = await this.runs.createQueued(schoolId, {
+      academicYearId: input.academicYearId,
+      period: periodOf(await this.clock.today(schoolId)),
+      kind: 'campaign',
+      campaignId: id,
+      triggeredBy: userId,
+      regenerateVoided: false,
+      queuedAt: new Date(),
+    });
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'charge_campaign.generate_requested',
+      subjectType: SUBJECT,
+      subjectId: id,
+      metadata: { runId: run.id.toString(), targets: targets.length, amount: input.amount, source: 'event' },
+    });
+    this.outbox.chargeRunAfterCommit(schoolId, run.id);
+    return id;
+  }
+
+  /**
+   * Phase 5 R313: a cancelled event's campaign, cancelled in the caller's transaction (draft or
+   * generated → cancelled; its charges were settled by ChargesService.settleCancelledCampaign).
+   * A campaign still generating refuses (CHARGE_RUN_IN_PROGRESS); an already cancelled one is
+   * left alone.
+   */
+  async cancelForEvent(actor: Actor, id: bigint, reason: string): Promise<void> {
+    const { schoolId, userId } = actor;
+    const row = await this.lock(schoolId, id);
+    if (row.status === 'cancelled') return;
+    if (row.status === 'generating') {
+      const busy = await this.runs.findInProgress(schoolId, row.academicYearId);
+      throw runInProgress(busy?.id ?? 0n);
+    }
+    const moved = await this.campaigns.move(schoolId, id, row.status, 'cancelled', {
+      cancelledAt: new Date(),
+      cancelledBy: userId,
+      cancelReason: reason,
+    });
+    if (moved !== 1) throw campaignNotDraft(id);
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'charge_campaign.cancelled',
+      subjectType: SUBJECT,
+      subjectId: id,
+      reason,
+      metadata: { fromStatus: row.status, generatedCount: row.generatedCount, source: 'event' },
+    });
+  }
+
   // ------------------------------------------------------------------------------ helpers
 
   private async require(schoolId: SchoolId, id: bigint): Promise<CampaignRecord> {

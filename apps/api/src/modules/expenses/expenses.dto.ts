@@ -96,6 +96,10 @@ export class ExpenseDto {
   @ApiProperty(NULLABLE_TEXT)
   voidReason: string | null;
 
+  /** Phase 5 slice 38 (R314): the event this expense is for, tagged once. */
+  @ApiProperty({ ...ID, nullable: true })
+  eventId: string | null;
+
   /** The row's version: a decision sends it back as `expectedUpdatedAt` (compare-and-set). */
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
@@ -144,6 +148,11 @@ export class ListExpensesQueryDto extends PageQueryDto {
   /** The principal's own above-threshold expenses (R206): the dashboard's "self-approved this month" tile (slice 27). */
   @QueryBoolean({ description: "True lists only self-approved expenses, false only the others" })
   selfApproved?: boolean;
+
+  @ApiPropertyOptional({ ...ID, description: 'Tagged to this event (slice 38)' })
+  @IsOptional()
+  @IsIdString()
+  eventId?: string;
 
   @ApiPropertyOptional({ enum: EXPENSE_SORTS, enumName: 'ExpenseSort', default: '-spentOn' })
   @IsOptional()
@@ -267,4 +276,11 @@ export class RejectExpenseDto {
   @ApiProperty({ minLength: 3, maxLength: 500 })
   @Reason()
   reason: string;
+}
+
+/** Phase 5 slice 38 (contracts/slice-38.md §3.4): the event an expense is for. */
+export class TagExpenseEventDto {
+  @ApiProperty(ID)
+  @IsIdString()
+  eventId: string;
 }

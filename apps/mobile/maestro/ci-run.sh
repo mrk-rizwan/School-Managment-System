@@ -286,3 +286,34 @@ if [ "$sheet_status" != "published" ]; then echo "the sheet is '$sheet_status', 
 RESULT_ID="$(get "$guardian_token" "/me/children/$STUDENT_ID/results" | json "(b.terms.find(t=>t.termId==='$TERM_ID')||{}).id")"
 if [ -z "$RESULT_ID" ] || [ "$RESULT_ID" = "undefined" ]; then echo "the guardian sees no published result"; exit 1; fi
 flow parent-report-card parent-report-card.yaml "${ids[@]}" -e RESULT_ID="$RESULT_ID"
+
+# --- Phase 5 slice 38: the teacher's event duty ------------------------------------------------
+# Seeded over curl by the principal (holiday.manage and the campaign keys): a PTM today for 5 A
+# with a Rs 300 charge (the seeded Event head), the teacher on a collection duty, published. The
+# charge run is the worker's: wait until the child's charge is on the roster. The flow marks the
+# child attended and records Rs 100 cash; the checks below read both back.
+teacher_staff_id="$(echo "$teacher_me" | json 'b.staffId')"
+EVENT_ID="$(printf '{"academicYearId":"%s","type":"ptm","title":"Maestro PTM","startsAt":"%sT14:00:00+05:00","endsAt":"%sT15:00:00+05:00","venue":"Main hall","sectionIds":["%s"],"charge":{"amount":300}}' \
+  "$year_id" "$today" "$today" "$SECTION_A" | post_as "$principal_token" /events "$(key)" | json 'b.id')"
+printf '{"staffId":"%s","duty":"collection"}' "$teacher_staff_id" \
+  | post_as "$principal_token" "/events/$EVENT_ID/duties" '' >/dev/null
+# A charge run already in progress for the year refuses the publish (409 CHARGE_RUN_IN_PROGRESS).
+published=""
+for _ in $(seq 1 10); do
+  published="$(printf '{}' | post_as "$principal_token" "/events/$EVENT_ID/publish" '' | json 'b.status' || true)"
+  [ "$published" = "published" ] && break
+  sleep 3
+done
+if [ "$published" != "published" ]; then echo "the event is '$published', wanted published"; exit 1; fi
+owed=""
+for _ in $(seq 1 45); do
+  owed="$(get "$teacher_token" "/events/$EVENT_ID/participation" \
+    | json "((b.rows.find(r=>r.studentId==='$STUDENT_ID')||{}).charge||{}).outstanding")"
+  [ "$owed" = "300" ] && break
+  sleep 2
+done
+if [ "$owed" != "300" ]; then echo "the child's event charge never appeared (outstanding '$owed')"; exit 1; fi
+flow teacher-event-duty teacher-event-duty.yaml "${ids[@]}" -e EVENT_ID="$EVENT_ID"
+row="$(get "$teacher_token" "/events/$EVENT_ID/participation" \
+  | json "(r=>r?r.participation+' '+r.charge.outstanding:'none')(b.rows.find(r=>r.studentId==='$STUDENT_ID'))")"
+if [ "$row" != "attended 200" ]; then echo "the child's event row is '$row', wanted 'attended 200'"; exit 1; fi

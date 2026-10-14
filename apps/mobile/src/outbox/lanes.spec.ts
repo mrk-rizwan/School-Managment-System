@@ -51,6 +51,12 @@ test('the online-only list after Phase 3 (§3.9, R226)', () => {
       'approve_result_sheet',
       'return_result_sheet',
       'publish_result_sheet',
+      // Phase 5 slice 38: events.
+      'record_event_participation',
+      'record_event_payment',
+      // Phase 5 slice 40: document verification.
+      'verify_document',
+      'reject_document',
     ].sort(),
   );
 });

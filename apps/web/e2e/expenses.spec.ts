@@ -28,6 +28,7 @@ const expense = (id: string, extra: Partial<ExpenseDto> = {}): ExpenseDto => ({
   expenseNo: Number(id.replace(/\D/g, '')) || 1,
   category: 'stationery',
   amount: 450,
+  eventId: null,
   spentOn: TODAY,
   description: 'Chalk and dusters',
   payee: null,
@@ -111,12 +112,15 @@ test('the row menu follows role and ownership: no approving or voiding one’s o
   await mockSchoolApi(page, { me: PRINCIPAL_ME, handler: listHandler() });
   await open(page, '/expenses');
 
-  // The clerk's open expense: the principal may neither edit nor void it.
+  // The clerk's open expense: the principal may neither edit nor void it (tagging it to an event
+  // needs only expense.record, slice 38 §3.4).
   await expect(page.getByRole('row', { name: /Chalk and dusters/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Actions for expense 1' })).toHaveCount(0);
+  let menu = await menuOf(page, 1);
+  await expect(menu.getByRole('menuitem')).toHaveText(['Tag to event']);
+  await page.keyboard.press('Escape');
 
   // Pending, recorded by someone else: approve and reject.
-  let menu = await menuOf(page, 2);
+  menu = await menuOf(page, 2);
   await expect(menu.getByRole('menuitem', { name: 'Approve' })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: 'Reject' })).toBeVisible();
   await expect(menu.getByRole('menuitem', { name: 'Void' })).toHaveCount(0);
@@ -213,4 +217,44 @@ test('approve sends the version shown; an edit since then is refused and the lis
   await expect(page.getByText('The record changed while this request ran. Reload and try again.')).toBeVisible();
   expect(calls(requests, 'POST', '/expenses/e2/approve')[0].postDataJSON()).toEqual({ expectedUpdatedAt: STAMP });
   await expect.poll(lists).toBeGreaterThan(before);
+});
+
+test('the recorder tags an expense to a published event; a refusal is shown in words (slice 38)', async ({ page }) => {
+  const event = { id: 'ev2', title: 'Museum trip', startsAt: '2026-11-14T04:00:00.000Z' };
+  const { requests } = await mockSchoolApi(page, {
+    me: OFFICE_ME,
+    handler: (req) => {
+      if (req.method === 'GET' && req.path === '/events') {
+        const status = req.url.searchParams.get('status');
+        return { status: 200, body: page1(status === 'published' ? [event] : []) };
+      }
+      return listHandler([OFFICE_OPEN, expense('e4', { eventId: 'ev2', description: 'Bus hire' })])(req);
+    },
+    replies: {
+      'POST /expenses/e1/tag-event': [
+        { status: 409, body: errorBody('EXPENSE_EVENT_TAGGED', 'Tagged.', { eventId: 'ev9' }) },
+        { status: 200, body: expense('e1', { eventId: 'ev2' }) },
+      ],
+    },
+  });
+  await open(page, '/expenses');
+  // An expense already tagged is not offered the action.
+  const tagged = await menuOf(page, 4);
+  await expect(tagged.getByRole('menuitem', { name: 'Void' })).toBeVisible();
+  await expect(tagged.getByRole('menuitem', { name: 'Tag to event' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  const menu = await menuOf(page, 1);
+  await menu.getByRole('menuitem', { name: 'Tag to event' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: 'Tag expense 1 to an event' })).toBeVisible();
+  await dialog.getByLabel('Event').selectOption('ev2');
+  await dialog.getByRole('button', { name: 'Tag to event' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('already tagged to another event');
+  await dialog.getByRole('button', { name: 'Tag to event' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Expense 1 tagged to the event.')).toBeVisible();
+  const posts = calls(requests, 'POST', '/expenses/e1/tag-event');
+  expect(posts).toHaveLength(2);
+  expect(posts[1]!.postDataJSON()).toEqual({ eventId: 'ev2' });
 });

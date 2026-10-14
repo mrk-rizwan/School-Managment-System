@@ -3,7 +3,7 @@
 import { Capability, DOCUMENT_TYPES } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { DownloadIcon, UploadIcon } from 'lucide-react';
+import { CheckIcon, DownloadIcon, UploadIcon, XIcon } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
@@ -22,7 +22,10 @@ import {
   type StudentDocumentDto,
 } from '@/lib/api/school-students-contract';
 import { formatBytes, formatDate } from '@/lib/format';
-import { useCapabilities } from '@/lib/school-session';
+import { useCapabilities, useSchoolMe } from '@/lib/school-session';
+import { QueryStates } from '@/components/page-states';
+import { documentsApi } from '@/lib/api/school-documents-contract';
+import { DocumentStatusBadge, OWN_UPLOAD_HINT, useDocumentDecisions } from '../../documents/_lib/documents-ui';
 import { ACCEPT_ATTRIBUTE, downloadDocument, fileProblem, uploadFile } from '../_lib/documents';
 import { DOCUMENT_TYPE_LABELS, studentsKeys } from '../_lib/students-ui';
 
@@ -31,6 +34,9 @@ const LIMIT = 25;
 /** contracts/slice-6.md §6.1, §6.2. Files are downloaded through the API, never a public link. */
 export function DocumentsTab({ student }: { student: StudentDetailDto }) {
   const { can } = useCapabilities();
+  const me = useSchoolMe();
+  const canVerify = can(Capability.DOCUMENT_VERIFY);
+  const decisions = useDocumentDecisions();
   const [page, setPage] = useState(1);
   const [type, setType] = useState<DocumentType | ''>('');
   const typeId = useId();
@@ -60,6 +66,53 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
       }),
       column.accessor('uploadedByName', { header: 'Uploaded by', cell: (info) => info.getValue() ?? '—' }),
       column.accessor('createdAt', { header: 'Added', cell: (info) => formatDate(info.getValue()) }),
+      // Phase 5 slice 40: the decision; the reason is staff-only (R322).
+      column.accessor('status', {
+        header: 'Status',
+        cell: (info) => {
+          const doc = info.row.original;
+          return (
+            <span className="grid gap-1">
+              <DocumentStatusBadge status={doc.status} />
+              {doc.decidedByName && (
+                <span className="text-xs text-muted-foreground">
+                  {doc.decidedByName}
+                  {doc.decidedAt ? `, ${formatDate(doc.decidedAt)}` : ''}
+                </span>
+              )}
+              {doc.rejectReason && <span className="text-xs text-muted-foreground">{doc.rejectReason}</span>}
+            </span>
+          );
+        },
+      }),
+      column.display({
+        id: 'decide',
+        header: () => <span className="sr-only">Check</span>,
+        cell: (info) => {
+          const doc = info.row.original;
+          if (!canVerify || doc.status !== 'uploaded') return null;
+          if (doc.uploadedBy === me.data?.id) return <span className="text-xs text-muted-foreground">{OWN_UPLOAD_HINT}</span>;
+          const label = DOCUMENT_TYPE_LABELS[doc.type];
+          return (
+            <span className="flex gap-1">
+              <Button size="sm" aria-label={`Verify ${label}`} disabled={decisions.pendingId === doc.id} onClick={() => decisions.verify(doc)}>
+                <CheckIcon />
+                Verify
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label={`Reject ${label}`}
+                disabled={decisions.pendingId === doc.id}
+                onClick={() => decisions.startReject(doc)}
+              >
+                <XIcon />
+                Reject
+              </Button>
+            </span>
+          );
+        },
+      }),
       column.display({
         id: 'download',
         header: () => <span className="sr-only">Download</span>,
@@ -85,10 +138,11 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
         },
       }),
     ];
-  }, [downloading]);
+  }, [downloading, canVerify, decisions, me.data?.id]);
 
   return (
     <div className="grid gap-6">
+      <ChecklistCard studentId={student.id} />
       {can(Capability.DOCUMENT_UPLOAD) && <UploadCard studentId={student.id} />}
       <div className="grid gap-3">
         <div className="grid w-full gap-1.5 sm:w-64">
@@ -119,7 +173,50 @@ export function DocumentsTab({ student }: { student: StudentDetailDto }) {
           emptyTitle={type ? 'No documents of this type' : 'No documents yet'}
         />
       </div>
+      {decisions.rejectDialog}
     </div>
+  );
+}
+
+/**
+ * The required-documents checklist (Phase 5 slice 40, R323): per required type, the newest
+ * document's status. Never a gate: a missing or rejected document is a query on the student.
+ */
+function ChecklistCard({ studentId }: { studentId: string }) {
+  const checklist = useQuery({
+    queryKey: [...studentsKeys.documents(studentId), 'checklist'],
+    queryFn: () =>
+      unwrap(documentsApi.GET('/api/v1/students/{id}/document-checklist', { params: { path: { id: studentId } } })),
+  });
+  return (
+    <Card data-testid="documents.checklist">
+      <CardHeader>
+        <CardTitle>Required documents</CardTitle>
+        <CardDescription>
+          {checklist.data?.complete === false
+            ? 'Some required documents are missing, awaiting a check or rejected. This never stops the admission.'
+            : 'The documents the school asks for at admission.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <QueryStates query={checklist}>
+          {(data) =>
+            data.items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">The school requires no documents.</p>
+            ) : (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {data.items.map((item) => (
+                  <li key={item.type} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+                    <span className="font-medium">{DOCUMENT_TYPE_LABELS[item.type]}</span>
+                    <DocumentStatusBadge status={item.status} />
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        </QueryStates>
+      </CardContent>
+    </Card>
   );
 }
 

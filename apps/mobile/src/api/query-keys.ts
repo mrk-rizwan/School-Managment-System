@@ -89,6 +89,17 @@ export const queryKeys = {
       date,
     ] as const,
 
+  /**
+   * Phase 5 slice 38: the teacher's events (`mine`), one event, its roster and its payments, and
+   * a child's (`studentId`) or the student's own (null) events (online only, never cached).
+   */
+  staffEvents: ['events', 'mine'] as const,
+  event: (id: string) => ['events', 'one', id] as const,
+  eventRoster: (id: string) => ['events', 'one', id, 'participation'] as const,
+  eventPayments: (id: string) => ['events', 'one', id, 'payments'] as const,
+  familyEvents: (studentId: string | null) =>
+    [...(studentId === null ? ['me', 'student'] : ['me', 'children', studentId]), 'events'] as const,
+
   // Everyone (16b): the inbox
   inbox: (category: string, page: number) => ['me', 'inbox', category, page] as const,
   inboxItem: (id: string) => ['me', 'inbox', 'item', id] as const,

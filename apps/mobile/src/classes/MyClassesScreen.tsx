@@ -84,6 +84,12 @@ export function MyClassesScreen() {
           onPress={() => router.push('/classes/timetable')}
           testID="classes.timetable"
         />
+        <ListRow
+          title="Events"
+          detail="Your duties and your classes' events"
+          onPress={() => router.push('/classes/events')}
+          testID="classes.events"
+        />
       </Sheet>
       {rows.length === 0 ? (
         waiting ? (

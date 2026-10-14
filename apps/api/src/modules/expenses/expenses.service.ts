@@ -38,6 +38,7 @@ import type {
   ExpenseReceiptDto,
   ListExpensesQueryDto,
   RejectExpenseDto,
+  TagExpenseEventDto,
   UpdateExpenseDto,
 } from './expenses.dto';
 
@@ -113,6 +114,7 @@ export function toExpenseDto(row: ExpenseRecord): ExpenseDto {
     decisionReason: row.decisionReason,
     voidedAt: row.voidedAt,
     voidReason: row.voidReason,
+    eventId: row.eventId?.toString() ?? null,
     updatedAt: row.updatedAt,
   };
 }
@@ -162,6 +164,7 @@ export class ExpensesService {
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.recordedByUserId === undefined ? {} : { recordedBy: BigInt(query.recordedByUserId) }),
       ...(query.selfApproved === undefined ? {} : { selfApproved: query.selfApproved }),
+      ...(query.eventId === undefined ? {} : { eventId: BigInt(query.eventId) }),
       sort: query.sort ?? '-spentOn',
       skip: (query.page - 1) * query.limit,
       take: query.limit,
@@ -438,6 +441,51 @@ export class ExpensesService {
       subjectId: id,
       reason: dto.reason,
       metadata: { ...auditFacts(row), fromStatus: row.status, selfApproved: row.selfApproved },
+    });
+    return toExpenseDto(await this.require(schoolId, id));
+  }
+
+  // ----------------------------------------------------------------- event tag (slice 38)
+
+  /**
+   * Phase 5 R314 (contracts/slice-38.md §3.4): an expense is tagged to a published or completed
+   * event once, while not voided (a late bill may be tagged after the event is completed, and
+   * after the expense is approved). The same event again answers unchanged.
+   */
+  @Transactional()
+  async tagEvent(id: bigint, dto: TagExpenseEventDto): Promise<ExpenseDto> {
+    const { schoolId, userId } = this.context.actor();
+    const eventId = BigInt(dto.eventId);
+    const row = await readLocked(
+      () => this.expenses.findById(schoolId, id),
+      (r) => this.expenses.lockIfUnchanged(schoolId, r),
+    );
+    if (row.eventId === eventId) return toExpenseDto(row);
+    if (row.status === 'voided') {
+      throw new ApiException(409, ErrorCode.STALE_STATUS, 'A voided expense cannot be tagged to an event.', {
+        expenseId: id.toString(),
+      });
+    }
+    if (row.eventId !== null) {
+      throw new ApiException(409, ErrorCode.EXPENSE_EVENT_TAGGED, 'This expense is already tagged to an event.', {
+        expenseId: id.toString(),
+        eventId: row.eventId.toString(),
+      });
+    }
+    const status = await this.expenses.eventStatus(schoolId, eventId);
+    if (status === null) throw fieldRefused('eventId', ErrorCode.REFERENCE_NOT_FOUND, 'No such event');
+    if (status !== 'published' && status !== 'completed') {
+      throw new ApiException(409, ErrorCode.EVENT_NOT_PUBLISHED, 'Only a published or completed event takes expenses.', {
+        eventId: dto.eventId,
+      });
+    }
+    if ((await this.expenses.tagEvent(schoolId, id, eventId)) !== 1) throw concurrentUpdate();
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'expense.event_tagged',
+      subjectType: SUBJECT,
+      subjectId: id,
+      metadata: { ...auditFacts(row), eventId: dto.eventId, status: row.status },
     });
     return toExpenseDto(await this.require(schoolId, id));
   }

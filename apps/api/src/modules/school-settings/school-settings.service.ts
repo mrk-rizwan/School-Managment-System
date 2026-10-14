@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode, MESSAGE_TYPES, type MessageType } from '@asms/shared';
+import { DOCUMENT_TYPES, ErrorCode, MESSAGE_TYPES, type DocumentType, type MessageType } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { diffFields } from '../../common/diff';
 import { ApiException } from '../../common/errors/api-exception';
@@ -26,6 +26,10 @@ const ascending = (days: readonly number[]): number[] => [...days].sort((a, b) =
 /** In the order of the message-type table (contracts/slice-9.md §7.2). */
 const inTableOrder = (types: readonly MessageType[]): MessageType[] =>
   MESSAGE_TYPES.filter((type) => types.includes(type));
+
+/** In DOCUMENT_TYPES order (contracts/slice-40.md §3). */
+const inDocumentOrder = (types: readonly DocumentType[]): DocumentType[] =>
+  DOCUMENT_TYPES.filter((type) => types.includes(type));
 
 const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettingsDto => ({
   feeDueDay: row.feeDueDay,
@@ -54,6 +58,8 @@ const toDto = (row: SchoolSettingsRecord, smsMonthlyCap: number): SchoolSettings
   overdueReminderEveryDays: row.overdueReminderEveryDays,
   certificateSignatoryName: row.certificateSignatoryName,
   certificateShowIdentityNo: row.certificateShowIdentityNo,
+  requiredDocumentTypes: inDocumentOrder(row.requiredDocumentTypes),
+  contractWarningDays: row.contractWarningDays,
   updatedAt: row.updatedAt,
 });
 
@@ -91,6 +97,10 @@ const WRITABLE = [
   // Phase 4 (contracts/slice-34.md §6).
   'certificateSignatoryName',
   'certificateShowIdentityNo',
+  // Phase 5 rule 36 (contracts/slice-40.md §3).
+  'requiredDocumentTypes',
+  // Phase 5 rule 35 (contracts/slice-39.md).
+  'contractWarningDays',
 ] as const satisfies readonly (keyof UpdateSchoolSettingsDto & keyof SchoolSettingsDto)[];
 
 const lateFeeAmountRequired = () =>
@@ -148,6 +158,9 @@ export class SchoolSettingsService {
       ...(dto.smsAllowedTypes === undefined
         ? {}
         : { smsAllowedTypes: inTableOrder(dto.smsAllowedTypes) }),
+      ...(dto.requiredDocumentTypes === undefined
+        ? {}
+        : { requiredDocumentTypes: inDocumentOrder(dto.requiredDocumentTypes) }),
     };
     // contracts/slice-9.md §4: after the patch, absent_after_cutoff needs a cut-off time.
     const lateCountsAs = dto.lateCountsAs ?? before.lateCountsAs;

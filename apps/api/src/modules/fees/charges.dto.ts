@@ -88,6 +88,10 @@ export class ListChargesQueryDto extends PageQueryDto {
   @ApiPropertyOptional(ID) @IsOptional() @IsIdString() classId?: string;
   @ApiPropertyOptional(ID) @IsOptional() @IsIdString() sectionId?: string;
   @ApiPropertyOptional(ID) @IsOptional() @IsIdString() feeHeadId?: string;
+  @ApiPropertyOptional({ ...ID, description: "One campaign's charges (an event's, slice 38)" })
+  @IsOptional()
+  @IsIdString()
+  campaignId?: string;
   @ApiPropertyOptional(MONTH) @IsOptional() @IsYearMonth() period?: string;
 
   @ApiPropertyOptional({ enum: CHARGE_STATUSES, enumName: 'ChargeStatus' })

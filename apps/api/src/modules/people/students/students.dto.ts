@@ -128,6 +128,13 @@ export class StudentDto {
 
   @ApiProperty(DATE_TIME)
   updatedAt: Date;
+
+  /**
+   * Phase 5 slice 40 (R323): a required document type's newest row is missing, awaiting a
+   * decision or rejected. Null unless the caller holds document.view.
+   */
+  @ApiProperty({ type: Boolean, nullable: true })
+  documentsIncomplete: boolean | null;
 }
 
 export class StudentDetailDto extends StudentDto {

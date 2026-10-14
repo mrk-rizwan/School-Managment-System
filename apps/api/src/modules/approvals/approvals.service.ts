@@ -3,6 +3,8 @@ import { Capability } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import type { Page } from '../../common/pagination';
 import { PermissionsService } from '../access/permissions.service';
+import { ListDocumentQueueQueryDto } from '../documents/verification.dto';
+import { DocumentVerificationService } from '../documents/verification.service';
 import { ListExpensesQueryDto } from '../expenses/expenses.dto';
 import { ExpensesService } from '../expenses/expenses.service';
 import { ListLeaveRequestsQueryDto } from '../leave/leave.dto';
@@ -41,6 +43,7 @@ export class ApprovalsService {
     private readonly expenses: ExpensesService,
     private readonly leave: LeaveRequestsService,
     private readonly resultSheets: ResultSheetsService,
+    private readonly documents: DocumentVerificationService,
   ) {}
 
   async forCaller(session: SchoolSessionContext): Promise<ApprovalsDto> {
@@ -66,6 +69,10 @@ export class ApprovalsService {
       dto.results = section(
         await this.resultSheets.list(session, firstPage(ListResultSheetsQueryDto, { status: 'submitted' })),
       );
+    }
+    if (holds(Capability.DOCUMENT_VERIFY)) {
+      // Phase 5 slice 40: exactly GET /documents (its defaults: uploaded, oldest first).
+      dto.documents = section(await this.documents.queue(session, firstPage(ListDocumentQueueQueryDto, {})));
     }
     return dto;
   }

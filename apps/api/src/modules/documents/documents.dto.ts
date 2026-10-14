@@ -1,6 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional } from 'class-validator';
-import { DOCUMENT_TYPES, type DocumentType } from '@asms/shared';
+import {
+  DOCUMENT_STATUSES,
+  DOCUMENT_TYPES,
+  type DocumentStatus,
+  type DocumentType,
+} from '@asms/shared';
 import { IsIdString, ID_PATTERN } from '../../common/ids';
 import { PageQueryDto } from '../../common/pagination';
 
@@ -36,6 +41,20 @@ export class StudentDocumentDto {
 
   @ApiProperty(DATE_TIME)
   createdAt: Date;
+
+  /** Phase 5 rule 36 (contracts/slice-40.md §2): uploaded -> verified | rejected, both final. */
+  @ApiProperty({ enum: DOCUMENT_STATUSES, enumName: 'DocumentStatus' })
+  status: DocumentStatus;
+
+  @ApiProperty({ ...DATE_TIME, nullable: true })
+  decidedAt: Date | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  decidedByName: string | null;
+
+  /** Staff only; a family never sees it (R322). */
+  @ApiProperty({ type: String, nullable: true })
+  rejectReason: string | null;
 }
 
 /** POST /uploads. No read endpoint exists for staged content (R41). */

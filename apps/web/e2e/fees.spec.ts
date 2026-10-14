@@ -510,6 +510,25 @@ test.describe('fee settings', () => {
       payDay: 28,
     });
   });
+
+  test('the contract warning lead is 1-90 days and sent alone when changed', async ({ page }) => {
+    const { requests } = await mockSchoolApi(page, {
+      me: PRINCIPAL_ME,
+      handler: feesHandler(),
+      replies: { 'PATCH /school/settings': { status: 200, body: settings({ contractWarningDays: 45 }) } },
+    });
+    await open(page, '/settings');
+    const lead = page.getByLabel('Warn before a contract ends (days)');
+    await expect(lead).toHaveValue('30');
+    await lead.fill('91');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText('Enter a number of days from 1 to 90.')).toBeVisible();
+    expect(calls(requests, 'PATCH', '/school/settings')).toHaveLength(0);
+    await lead.fill('45');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect.poll(() => calls(requests, 'PATCH', '/school/settings').length).toBe(1);
+    expect(calls(requests, 'PATCH', '/school/settings')[0].postDataJSON()).toEqual({ contractWarningDays: 45 });
+  });
 });
 
 test.describe('rule 24 and the sidebar', () => {

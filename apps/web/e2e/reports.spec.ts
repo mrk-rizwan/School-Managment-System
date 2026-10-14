@@ -216,6 +216,7 @@ const STUDENT: StudentDetailDto = {
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
   notes: null,
   photoDocumentId: null,
 };

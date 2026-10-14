@@ -439,6 +439,7 @@ const STUDENT: StudentDto = {
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
 };
 
 const sectionDay = (sectionId: string, sectionName: string, extra: Partial<SectionDayDto> = {}): SectionDayDto => ({

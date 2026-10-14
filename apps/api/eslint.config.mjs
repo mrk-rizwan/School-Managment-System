@@ -162,6 +162,18 @@ const IMPORTS = {
     message:
       'TimetableReadsRepository is imported only from src/modules/timetable/**, src/modules/attendance/** and src/modules/leave/**.',
   },
+  // Phase 5 slice 39 (contracts/slice-39.md §5): the staff module owns the contract repository
+  // (contracts, end employment, the contract-expiry-warn body); the scans stream through it only.
+  staffContractRepository: {
+    regex: `(^|/)repositories/staff-contract\\.repository${EXT}$`,
+    message: 'StaffContractRepository is imported only from src/modules/people/staff/**.',
+  },
+  // Phase 5 slice 38 (contracts/slice-38.md, phase-5-extended.md §2): the events module owns its
+  // repository; money is written only through the fee and payment services.
+  eventRepository: {
+    regex: `(^|/)repositories/event\\.repository${EXT}$`,
+    message: 'EventRepository is imported only from src/modules/events/**.',
+  },
   // Wave R security review (MEDIUM-1): rowScopeWith widens a register's row scope by the section a
   // SubstituteAdmission proves; only the attendance access check may call it.
   rowScopeWith: {
@@ -395,6 +407,14 @@ const RAW_SQL_FILES = [
   // lockResults (the rows' results FOR SHARE), each filtering school_id on every table it reads
   // (test/promotion/isolation.spec.ts).
   'src/repositories/promotion.repository.ts',
+  // Phase 5 slice 38 (contracts/slice-38.md §2.4-§2.10): the event row FOR UPDATE / FOR SHARE and
+  // the family list (an EXISTS over event_sections and enrolments in school time), school_id
+  // filtered on every table read (test/events/isolation.e2e-spec.ts).
+  'src/repositories/event.repository.ts',
+  // Phase 5 slice 40 (contracts/slice-40.md §2.4, §2.6): the newest document per student and
+  // type (DISTINCT ON) and the incomplete-admissions report; read-only, school_id filtered on
+  // every table read (test/documents/verification-isolation.e2e-spec.ts).
+  'src/repositories/student-document.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -824,6 +844,26 @@ export default tseslint.config(
     // timetable through TimetableReadsRepository only, never the module's write repository.
     files: ['src/modules/attendance/**/*.ts', 'src/modules/leave/**/*.ts'],
     rules: restrictImports({ exempt: ['timetableReadsRepository'] }),
+  },
+  {
+    // Slice 39 (contracts/slice-39.md §5): the staff module owns the contract repository; its
+    // suites probe it.
+    files: ['src/modules/people/staff/**/*.ts', 'test/staff-contracts/**/*.ts'],
+    rules: restrictImports({ exempt: ['staffContractRepository'] }),
+  },
+  {
+    // Slice 38 (§2): the events module owns its repository and writes campaigns, charges and
+    // payments only through CampaignsService, ChargesService and PaymentsService.recordForEvent,
+    // so it imports no money repository. Its suites probe the repository.
+    files: ['src/modules/events/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['eventRepository'],
+      extra: [{ ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/events/** writes money only through the fee and payment services (§2).' }],
+    }),
+  },
+  {
+    files: ['test/events/**/*.ts'],
+    rules: restrictImports({ exempt: ['eventRepository'] }),
   },
   {
     // Wave R security review (MEDIUM-1): the one caller of rowScopeWith.

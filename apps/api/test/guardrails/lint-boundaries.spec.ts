@@ -327,6 +327,37 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs(fixture, virtualPath)).toEqual([]);
   });
 
+  // Slice 38 (contracts/slice-38.md, phase-5-extended.md §2): the event repository is the events
+  // module's alone, and the events module writes money only through the fee and payment services.
+  it.each([
+    ['event-repository-import.ts', 'src/modules/calendar/calendar.service.ts'],
+    ['event-repository-import.ts', 'src/modules/expenses/expenses.service.ts'],
+    ['event-repository-import.ts', 'src/modules/payments/payments.service.ts'],
+    ['money-repository-import.ts', 'src/modules/events/events.service.ts'],
+  ])('refuses %s at %s (slice 38)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['event-repository-import.ts', 'src/modules/events/events.service.ts'],
+    ['event-repository-import.ts', 'test/events/support.ts'],
+  ])('allows %s at %s (slice 38)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 39 (contracts/slice-39.md §5): the contract repository is the staff module's alone.
+  it.each([
+    ['staff-contract-repository-import.ts', 'src/modules/payroll/salary-structures.service.ts'],
+    ['staff-contract-repository-import.ts', 'src/jobs/job-runner.ts'],
+    ['staff-contract-repository-import.ts', 'src/modules/documents/documents.service.ts'],
+  ])('refuses %s at %s (slice 39)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it('allows the contract repository in the staff module (slice 39)', async () => {
+    expect(await lintAs('staff-contract-repository-import.ts', 'src/modules/people/staff/staff-contracts.service.ts')).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

@@ -156,6 +156,7 @@ const STUDENT: StudentDto = {
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
 };
 const LINK = (id: string, guardianId: string, name: string, endedAt: string | null = null): GuardianLinkDto => ({
   id,

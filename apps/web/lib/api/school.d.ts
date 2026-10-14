@@ -1188,6 +1188,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DocumentVerificationController_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/incomplete-admissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DocumentVerificationController_incompleteAdmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{id}/content": {
         parameters: {
             query?: never;
@@ -1198,6 +1230,38 @@ export interface paths {
         get: operations["DocumentsController_content"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DocumentVerificationController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DocumentVerificationController_verify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1246,6 +1310,182 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["EnrolmentsController_changeSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/event-duties/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventDutiesController_end"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_list"];
+        put?: never;
+        post: operations["EventsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["EventsController_update"];
+        trace?: never;
+    };
+    "/api/v1/events/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsController_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/duties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsController_addDuty"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/participation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_roster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_payments"];
+        put?: never;
+        post: operations["EventsController_recordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/record-participation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EventsController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventsController_report"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1342,6 +1582,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["ExpensesController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/expenses/{id}/tag-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExpensesController_tagEvent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2180,6 +2436,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/children/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyDocumentsController_child"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/children/{id}/dues": {
         parameters: {
             query?: never;
@@ -2188,6 +2460,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyChildFeesController_dues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/children/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyEventsController_child"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2516,6 +2804,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/staff/contract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStaffContractController_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/staff/contract/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyStaffContractController_document"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/staff/custody": {
         parameters: {
             query?: never;
@@ -2748,6 +3068,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["MyStudentDiaryController_thumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyDocumentsController_own"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/student/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MyEventsController_own"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3940,6 +4292,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff-contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffContractsController_listEnding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-contracts/{id}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffContractsController_document"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-contracts/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffContractsController_end"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-contracts/{id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffContractsController_renew"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/{id}": {
         parameters: {
             query?: never;
@@ -3982,6 +4398,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["StaffController_changeStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/{id}/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffContractsController_list"];
+        put?: never;
+        post: operations["StaffContractsController_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4158,6 +4590,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["StudentsController_changeStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{id}/document-checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DocumentVerificationController_checklist"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4798,6 +5246,11 @@ export interface components {
             stagedUploadId: string;
             type: components["schemas"]["DocumentType"];
         };
+        AddEventDutyDto: {
+            duty: components["schemas"]["DutyKind"];
+            note?: string;
+            staffId: string;
+        };
         AddPayslipDto: {
             reason: string;
             staffId: string;
@@ -4989,6 +5442,11 @@ export interface components {
             count: number;
             items: components["schemas"]["ClaimDto"][];
         };
+        ApprovalDocumentsDto: {
+            /** @description The queue's total: what its own list endpoint reports */
+            count: number;
+            items: components["schemas"]["QueuedDocumentDto"][];
+        };
         ApprovalExpensesDto: {
             /** @description The queue's total: what its own list endpoint reports */
             count: number;
@@ -5011,6 +5469,7 @@ export interface components {
         };
         ApprovalsDto: {
             claims?: components["schemas"]["ApprovalClaimsDto"];
+            documents?: components["schemas"]["ApprovalDocumentsDto"];
             expenses?: components["schemas"]["ApprovalExpensesDto"];
             handovers?: components["schemas"]["ApprovalHandoversDto"];
             leave?: components["schemas"]["ApprovalLeaveDto"];
@@ -5778,6 +6237,8 @@ export interface components {
         };
         /** @enum {string} */
         ContactCapability: "whatsapp" | "smartphone_data" | "keypad";
+        /** @enum {string} */
+        ContractType: "permanent" | "fixed_term" | "probation";
         CopyFeeStructuresDto: {
             /** @example 2026-04 */
             effectiveFrom: string;
@@ -5979,6 +6440,41 @@ export interface components {
             subjectId: string;
             topic: string;
         };
+        CreateEventDto: {
+            academicYearId: string;
+            /** @description Needs charge.create and charge.campaign.send */
+            charge?: components["schemas"]["EventChargeInputDto"];
+            /** @description Line breaks kept */
+            details?: string;
+            /**
+             * Format: date-time
+             * @description Not before startsAt
+             */
+            endsAt: string;
+            /** @description Sections of the year (none yet is allowed on a draft) */
+            sectionIds: string[];
+            /**
+             * Format: date-time
+             * @description Its date in school time lies inside the year
+             */
+            startsAt: string;
+            title: string;
+            type: components["schemas"]["EventType"];
+            venue: string;
+        };
+        CreateEventPaymentDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /**
+             * Format: date
+             * @description Today or earlier (school time)
+             * @example 2026-11-14
+             */
+            receivedOn: string;
+            /** @description A note of the receipt book or slip, if any */
+            reference?: string;
+            studentId: string;
+        };
         CreateExpenseDto: {
             /** @description Whole rupees */
             amount: number;
@@ -6146,6 +6642,22 @@ export interface components {
         CreateSectionDto: {
             capacity?: number | null;
             name: string;
+        };
+        CreateStaffContractDto: {
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            endsOn?: string;
+            note?: string;
+            salaryStructureId?: string;
+            stagedUploadId?: string;
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            startsOn: string;
+            type: components["schemas"]["ContractType"];
         };
         CreateStaffDto: {
             /** @description CNIC, 13 digits, dashes optional. Never returned. */
@@ -6397,8 +6909,30 @@ export interface components {
         DisableWhatsAppDto: {
             reason: string;
         };
+        DocumentChecklistDto: {
+            complete: boolean;
+            items: components["schemas"]["DocumentChecklistItemDto"][];
+            studentId: string;
+        };
+        DocumentChecklistItemDto: {
+            document: components["schemas"]["StudentDocumentDto"] | null;
+            status: components["schemas"]["DocumentChecklistStatus"];
+            type: components["schemas"]["DocumentType"];
+        };
+        /** @enum {string} */
+        DocumentChecklistStatus: "missing" | "uploaded" | "verified" | "rejected";
         /** @enum {string} */
         DocumentMime: "image/jpeg" | "image/png" | "application/pdf";
+        /** @enum {string} */
+        DocumentStatus: "uploaded" | "verified" | "rejected";
+        DocumentStudentDto: {
+            /** @description Digits */
+            admissionNo: string;
+            className: string | null;
+            fullName: string;
+            id: string;
+            sectionName: string | null;
+        };
         /** @enum {string} */
         DocumentType: "b_form" | "photo" | "previous_school_leaving" | "guardian_cnic" | "other";
         DuesClearanceDto: {
@@ -6413,6 +6947,8 @@ export interface components {
         };
         /** @enum {string} */
         DuesStatus: "not_required" | "cleared" | "override";
+        /** @enum {string} */
+        DutyKind: "registration" | "supervision" | "collection" | "transport" | "other";
         EffectiveCapabilityDto: {
             capability: components["schemas"]["Capability"];
             group: components["schemas"]["CapabilityGroup"];
@@ -6427,6 +6963,15 @@ export interface components {
             endedOn: string;
             reason: string;
         };
+        EndStaffContractDto: {
+            /**
+             * Format: date
+             * @description The contract's actual last day: from its start to its endsOn
+             * @example 2026-10-10
+             */
+            endedOn: string;
+            reason: string;
+        };
         EndTeacherAssignmentDto: {
             /**
              * Format: date
@@ -6435,6 +6980,8 @@ export interface components {
             endsOn?: string;
             reason?: string;
         };
+        /** @enum {string} */
+        EndingContractSort: "endsOn";
         EnrolmentDto: {
             academicYearId: string;
             academicYearName: string;
@@ -6455,6 +7002,141 @@ export interface components {
         EnrolmentStatus: "active" | "completed" | "left";
         /** @enum {string} */
         ErrorCode: "MALFORMED_REQUEST" | "AUTH_REQUIRED" | "AUTH_FAILED" | "PERMISSION_DENIED" | "SCHOOL_SUSPENDED" | "ORIGIN_REJECTED" | "NOT_FOUND" | "VALIDATION_FAILED" | "REFERENCE_NOT_FOUND" | "UNKNOWN_FIELD" | "INVALID_VALUE" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INTERNAL_ERROR" | "PASSWORD_CHANGE_REQUIRED" | "TOTP_REQUIRED" | "TOTP_NOT_ENROLLED" | "TOTP_ALREADY_ENROLLED" | "TOTP_INVALID" | "CURRENT_PASSWORD_INCORRECT" | "SCHOOL_SHORT_CODE_TAKEN" | "SCHOOL_SHORT_CODE_IMMUTABLE" | "SCHOOL_TERMINATED" | "ILLEGAL_STATUS_TRANSITION" | "CONCURRENT_UPDATE" | "TOKEN_INVALID" | "EMAIL_NOT_VERIFIED" | "SELF_ACTION_FORBIDDEN" | "LAST_PRINCIPAL" | "IDENTITY_NUMBER_MISSING" | "ACTIVE_PRINCIPAL_EXISTS" | "ALREADY_PRINCIPAL" | "STAFF_NOT_ACTIVE" | "USER_DISABLED" | "ACADEMIC_YEAR_NAME_TAKEN" | "ACADEMIC_YEAR_CLOSED" | "ACADEMIC_YEAR_HAS_ACTIVE_ENROLMENTS" | "CLASS_NAME_TAKEN" | "CLASS_YEAR_IMMUTABLE" | "CLASS_ARCHIVED" | "CLASS_HAS_ACTIVE_ENROLMENTS" | "SECTION_NAME_TAKEN" | "SECTION_ARCHIVED" | "SECTION_IN_USE" | "SUBJECT_NAME_TAKEN" | "SUBJECT_CODE_TAKEN" | "SUBJECT_ARCHIVED" | "GUARDIAN_CNIC_EXISTS" | "GUARDIAN_CNIC_LOCKED" | "GUARDIAN_MERGED" | "GUARDIAN_CNIC_MISSING" | "GUARDIAN_NO_LOGIN_LINK" | "GUARDIAN_IS_PRIMARY_CONTACT" | "LOGIN_ALREADY_EXISTS" | "LINK_EXISTING_LOGIN_UNCONFIRMED" | "STAFF_CNIC_EXISTS" | "STAFF_CNIC_LOCKED" | "USERNAME_IN_USE" | "CLASS_TEACHER_EXISTS" | "ASSIGNMENT_EXISTS" | "ROLE_ALREADY_ASSIGNED" | "STUDENT_BFORM_EXISTS" | "STUDENT_BFORM_LOCKED" | "STUDENT_NOT_ACTIVE" | "STUDENT_LOGIN_DISABLED" | "IDEMPOTENCY_KEY_REUSED" | "ADMISSION_POSSIBLE_DUPLICATE" | "GUARDIAN_LINK_EXISTS" | "GUARDIAN_LINK_ENDED" | "PRIMARY_CONTACT_REQUIRED" | "PRIMARY_CONTACT_NEEDS_PHONE" | "FEE_PAYER_REQUIRED" | "ENROLMENT_NOT_ACTIVE" | "ROLL_NO_TAKEN" | "CLASS_IN_OTHER_YEAR" | "CUSTOM_ROLE_KEY_TAKEN" | "CUSTOM_ROLE_ARCHIVED" | "CUSTOM_ROLE_IN_USE" | "GRANT_EXISTS" | "TARGET_IS_PRINCIPAL" | "UPGRADE_REQUIRED" | "WEBHOOK_SIGNATURE_INVALID" | "BEARER_SESSION_REQUIRED" | "CONTACT_PHONE_MISSING" | "SMS_CAP_EXCEEDED" | "SMS_TOO_LONG" | "WHATSAPP_ALREADY_CONNECTED" | "WHATSAPP_NUMBER_MISSING" | "WHATSAPP_PROVIDER_MISMATCH" | "WHATSAPP_VERIFICATION_FAILED" | "HOLIDAY_DATES_TAKEN" | "HOLIDAY_NOT_DRAFT" | "NOT_A_TEACHING_DAY" | "ATTENDANCE_LOCKED" | "AMENDMENT_REASON_REQUIRED" | "ROSTER_INCOMPLETE" | "STALE_STATUS" | "ARRIVAL_NOT_ABSENT" | "DIARY_ENTRY_EXISTS" | "DIARY_ENTRY_LOCKED" | "SUBJECT_NOT_ASSIGNED" | "REMARK_SUPERSEDED" | "ANNOUNCEMENT_SENT" | "ANNOUNCEMENT_CANCELLED" | "ANNOUNCEMENT_NO_RECIPIENTS" | "CAPABILITY_NOT_HELD" | "ATTENDANCE_RECORDED_AFTER" | "FEE_HEAD_NAME_TAKEN" | "FEE_HEAD_CATEGORY_TAKEN" | "FEE_HEAD_ARCHIVED" | "FEE_STRUCTURE_EXISTS" | "FEE_STRUCTURE_NOT_LATER" | "FEE_STRUCTURE_MISSING" | "CONCESSION_EXISTS" | "CONCESSION_NOT_PENDING" | "CONCESSION_HEAD_NOT_ELIGIBLE" | "CHARGE_NOT_OPEN" | "CHARGE_HAS_ALLOCATIONS" | "CHARGE_NOT_LATE_FEE" | "CHARGE_RUN_IN_PROGRESS" | "MONTH_NOT_GENERATABLE" | "CAMPAIGN_NOT_DRAFT" | "CAMPAIGN_NO_TARGETS" | "PAYMENT_SPANS_YEARS" | "PAYMENT_NOTHING_DUE" | "PAYMENT_VOIDED" | "PAYMENT_IN_CUSTODY" | "PAYMENT_HAS_REFUND" | "REFUND_EXCEEDS_UNALLOCATED" | "NOTHING_TO_CARRY_FORWARD" | "HANDOVER_OPEN" | "HANDOVER_NOTHING_TO_HAND_OVER" | "HANDOVER_NOT_OPEN" | "HANDOVER_NOT_CONFIRMED" | "HANDOVER_NO_SHORTFALL" | "CLAIMS_NOT_ACCEPTED" | "CLAIM_NOT_PENDING" | "CLAIM_LIMIT_REACHED" | "CLAIM_IMAGE_MISSING" | "CLAIM_IMAGE_EXISTS" | "EXPENSE_NOT_PENDING" | "EXPENSE_NOT_OPEN" | "EXPENSE_RECEIPT_EXISTS" | "LEAVE_OVERLAPS" | "LEAVE_BALANCE_EXCEEDED" | "LEAVE_NOT_PENDING" | "LEAVE_STARTED" | "LEAVE_TYPE_ARCHIVED" | "LEAVE_TYPE_NAME_TAKEN" | "SALARY_STRUCTURE_MISSING" | "SALARY_STRUCTURE_IN_USE" | "ADVANCE_NOT_OPEN" | "PAYROLL_RUN_EXISTS" | "PAYROLL_RUN_FINALISED" | "PAYROLL_RUN_NOT_DRAFT" | "PAYSLIP_PAID" | "PLAN_BAND_OVERLAPS" | "PLAN_ARCHIVED" | "PLAN_IN_USE" | "INVOICE_NOT_ISSUED" | "TERM_OVERLAPS" | "TERM_OUTSIDE_YEAR" | "TERM_IN_USE" | "TERM_NAME_TAKEN" | "RESULT_SETTINGS_LOCKED" | "CLASS_SUBJECT_IN_USE" | "CLASS_SUBJECTS_FROZEN" | "EXAM_NOT_SET_UP" | "ASSESSMENT_LOCKED" | "ASSESSMENT_OUTSIDE_TERM" | "ASSESSMENT_VOIDED" | "ASSESSMENT_HAS_MARKS" | "MARK_EXCEEDS_MAX" | "MARKS_INCOMPLETE" | "RESULT_SHEET_NOT_DRAFT" | "RESULT_SHEET_NOT_SUBMITTED" | "RESULT_SHEET_NOT_APPROVED" | "RESULT_SHEET_PUBLISHED" | "RESULT_SHEET_VERSION_OPEN" | "RESULT_SHEET_TERMS_UNPUBLISHED" | "MARK_CORRECTION_NOT_PENDING" | "MARK_CORRECTION_SHEET_NOT_PUBLISHED" | "CERTIFICATE_DUES_BLOCK" | "CERTIFICATE_STUDENT_NOT_LEFT" | "CERTIFICATE_VOIDED" | "CERTIFICATE_NO_RESULT" | "PROMOTION_FINAL_NOT_APPROVED" | "PROMOTION_SHEET_OPEN" | "PROMOTION_SHEET_NOT_OPEN" | "PROMOTION_INCOMPLETE" | "PROMOTION_RESULT_SUPERSEDED" | "PROMOTION_TARGET_INVALID" | "PROMOTION_ENROLMENT_AFTER_YEAR" | "DEFAULT_PASSWORD_BLOCKS_ACTION" | "TIMETABLE_SLOT_CLASH" | "TIMETABLE_TEACHER_NOT_ASSIGNED" | "TIMETABLE_OFF_DAY" | "TIMETABLE_VERSION_SUPERSEDED" | "TIMETABLE_VERSION_NOT_FUTURE" | "TIMETABLE_SUBSTITUTION_EXISTS" | "TIMETABLE_SUBSTITUTION_NOT_TIMETABLED" | "TIMETABLE_SUBSTITUTION_SAME_TEACHER" | "TIMETABLE_SUBSTITUTIONS_EXIST" | "EVENT_NOT_DRAFT" | "EVENT_NOT_PUBLISHED" | "EVENT_NO_SECTIONS" | "EVENT_DUTY_EXISTS" | "EVENT_PAYMENT_EXCEEDS_CHARGE" | "EVENT_NO_CHARGE" | "EXPENSE_EVENT_TAGGED" | "STAFF_CONTRACT_LIVE_EXISTS" | "STAFF_CONTRACT_ENDED" | "STAFF_CONTRACT_END_REQUIRED" | "DOCUMENT_ALREADY_DECIDED" | "VEHICLE_RETIRED" | "VEHICLE_IN_USE" | "TRANSPORT_ROUTE_ARCHIVED" | "TRANSPORT_ROUTE_HAS_ASSIGNMENTS" | "TRANSPORT_ASSIGNMENT_LIVE" | "TRANSPORT_AMOUNT_PERIOD_PAST" | "IMPORT_DUPLICATE_FILE" | "IMPORT_NOT_PREVIEWED" | "IMPORT_ROWS_INVALID" | "IMPORT_SHEET_EXISTS" | "IMPORT_MARKS_EXIST" | "IMPORT_YEAR_CLOSED" | "IMPORT_EXPIRED" | "DEVICE_TOKEN_INVALID" | "ATTENDANCE_DISPUTE_PENDING_EXISTS" | "ATTENDANCE_DISPUTE_NOT_PENDING" | "SUPPORT_SESSION_OPEN" | "SUPPORT_SESSION_ENDED" | "SUPPORT_WRITE_REFUSED" | "SUPPORT_SESSION_LIMIT" | "UNEXPECTED_RESPONSE";
+        EventChargeDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /**
+             * Format: date
+             * @description The stored due date, or the event date (school time) when none was given
+             * @example 2026-11-14
+             */
+            dueOn: string;
+        };
+        EventChargeInputDto: {
+            /** @description Whole rupees */
+            amount: number;
+            /**
+             * Format: date
+             * @description Today or later, inside the year; default the event date
+             * @example 2026-11-14
+             */
+            dueOn?: string;
+        };
+        EventCollectionsDto: {
+            chargeCount: number;
+            charged: number;
+            /** @description Σ live allocations to the campaign charges (R314) */
+            collected: number;
+            outstanding: number;
+        };
+        EventDto: {
+            academicYearId: string;
+            academicYearName: string;
+            announcementId: string | null;
+            campaignId: string | null;
+            /** @description The campaign status (draft, generating, generated, cancelled) */
+            campaignStatus: string | null;
+            cancelAnnouncementId: string | null;
+            cancelReason: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            charge: components["schemas"]["EventChargeDto"] | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            details: string | null;
+            /** @description Every duty for a holiday.manage holder; only the caller's own otherwise (rule 34) */
+            duties: components["schemas"]["EventDutyDto"][];
+            /** Format: date-time */
+            endsAt: string;
+            id: string;
+            /** @description The caller's live duties on this event */
+            myDuties: components["schemas"]["DutyKind"][];
+            sections: components["schemas"]["EventSectionDto"][];
+            /** Format: date-time */
+            startsAt: string;
+            status: components["schemas"]["EventStatus"];
+            title: string;
+            type: components["schemas"]["EventType"];
+            venue: string;
+        };
+        EventDutyDto: {
+            /** Format: date-time */
+            createdAt: string;
+            duty: components["schemas"]["DutyKind"];
+            endReason: string | null;
+            /** Format: date-time */
+            endedAt: string | null;
+            eventId: string;
+            id: string;
+            note: string | null;
+            staffId: string;
+            staffName: string;
+        };
+        EventExpensesDto: {
+            count: number;
+            /** @description Σ recorded and approved expenses tagged to the event */
+            total: number;
+        };
+        EventParticipantsDto: {
+            absent: number;
+            attended: number;
+            excused: number;
+            roster: number;
+            unrecorded: number;
+        };
+        EventReportDto: {
+            collections: components["schemas"]["EventCollectionsDto"];
+            eventId: string;
+            expenses: components["schemas"]["EventExpensesDto"];
+            /** @description collected − expenses */
+            net: number;
+            participants: components["schemas"]["EventParticipantsDto"];
+            status: components["schemas"]["EventStatus"];
+            title: string;
+        };
+        EventRosterChargeDto: {
+            /** @description Whole rupees */
+            amount: number;
+            chargeId: string;
+            outstanding: number;
+            status: string;
+        };
+        EventRosterDto: {
+            eventId: string;
+            /** @description Class, section, roll number and name order */
+            rows: components["schemas"]["EventRosterRowDto"][];
+            status: components["schemas"]["EventStatus"];
+        };
+        EventRosterRowDto: {
+            admissionNo: string;
+            /** @description Null without a charge, or unless the caller collects for this event, holds holiday.manage or payment.record */
+            charge: components["schemas"]["EventRosterChargeDto"] | null;
+            className: string;
+            enrolmentId: string;
+            fullName: string;
+            participation: components["schemas"]["ParticipationStatus"] | null;
+            /** Format: date-time */
+            recordedAt: string | null;
+            rollNo: number | null;
+            sectionId: string;
+            sectionName: string;
+            studentId: string;
+        };
+        EventSectionDto: {
+            classId: string;
+            className: string;
+            sectionId: string;
+            sectionName: string;
+        };
+        /** @enum {string} */
+        EventSort: "-startsAt" | "startsAt";
+        /** @enum {string} */
+        EventStatus: "draft" | "published" | "completed" | "cancelled";
+        /** @enum {string} */
+        EventType: "ptm" | "trip" | "sports_day" | "function" | "visit" | "meeting" | "other";
         ExamSetUpResultDto: {
             /** @description Exams created by this request */
             created: number;
@@ -6474,6 +7156,7 @@ export interface components {
             decidedByUserId: string | null;
             decisionReason: string | null;
             description: string;
+            eventId: string | null;
             expenseNo: number;
             hasReceipt: boolean;
             id: string;
@@ -6886,6 +7569,22 @@ export interface components {
         };
         /** @enum {string} */
         InboxItemKind: "announcement" | "notice";
+        IncompleteAdmissionDto: {
+            /** @description Digits */
+            admissionNo: string;
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            admittedOn: string;
+            awaiting: components["schemas"]["DocumentType"][];
+            className: string | null;
+            fullName: string;
+            missing: components["schemas"]["DocumentType"][];
+            rejected: components["schemas"]["DocumentType"][];
+            sectionName: string | null;
+            studentId: string;
+        };
         /** @enum {string} */
         InvoiceStatus: "issued" | "paid" | "void";
         IssueCertificateDto: {
@@ -7340,6 +8039,15 @@ export interface components {
              */
             updatedAt: string;
         };
+        MyDocumentChecklistDto: {
+            items: components["schemas"]["MyDocumentChecklistItemDto"][];
+            studentId: string;
+        };
+        MyDocumentChecklistItemDto: {
+            note: string | null;
+            status: components["schemas"]["DocumentChecklistStatus"];
+            type: components["schemas"]["DocumentType"];
+        };
         MyDuesDto: {
             academicYearId: string | null;
             /** @description Whole rupees */
@@ -7351,6 +8059,25 @@ export interface components {
             /** @description Whole rupees */
             outstanding: number;
             studentId: string;
+        };
+        MyEventChargeDto: {
+            /** @description Whole rupees */
+            amount: number;
+            outstanding: number;
+            status: string;
+        };
+        MyEventDto: {
+            charge: components["schemas"]["MyEventChargeDto"] | null;
+            details: string | null;
+            /** Format: date-time */
+            endsAt: string;
+            id: string;
+            /** Format: date-time */
+            startsAt: string;
+            status: components["schemas"]["EventStatus"];
+            title: string;
+            type: components["schemas"]["EventType"];
+            venue: string;
         };
         MyPaymentAccountDto: {
             accountNo: string;
@@ -7472,6 +8199,26 @@ export interface components {
             /** @description Staff working days in the range while employed */
             workingDays: number;
         };
+        MyStaffContractCurrentDto: {
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            endsOn: string | null;
+            hasDocument: boolean;
+            id: string;
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            startsOn: string;
+            status: components["schemas"]["StaffContractStatus"];
+            type: components["schemas"]["ContractType"];
+        };
+        MyStaffContractDto: {
+            /** @description The live contract, if any */
+            current: components["schemas"]["MyStaffContractCurrentDto"] | null;
+        };
         MyStaffTimetableDayDto: {
             /**
              * Format: date
@@ -7570,6 +8317,12 @@ export interface components {
         };
         /** @enum {string} */
         OwnChildRole: "mark_author" | "remark_author" | "submitter" | "approver";
+        ParticipationRowDto: {
+            status: components["schemas"]["ParticipationStatus"];
+            studentId: string;
+        };
+        /** @enum {string} */
+        ParticipationStatus: "attended" | "absent" | "excused";
         /** @enum {string} */
         PassRule: "all_subjects" | "overall";
         PaymentAccountDto: {
@@ -7920,6 +8673,24 @@ export interface components {
         PromotionSheetSort: "-openedAt" | "openedAt";
         /** @enum {string} */
         PromotionSheetStatus: "open" | "applied" | "cancelled";
+        QueuedDocumentDto: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            id: string;
+            mime: components["schemas"]["DocumentMime"];
+            ownUpload: boolean;
+            rejectReason: string | null;
+            sizeBytes: number;
+            status: components["schemas"]["DocumentStatus"];
+            student: components["schemas"]["DocumentStudentDto"];
+            studentId: string;
+            type: components["schemas"]["DocumentType"];
+            uploadedBy: string;
+            uploadedByName: string | null;
+        };
         ReadmissionResultDto: {
             /** @description Digits */
             admissionNo: string;
@@ -7933,6 +8704,7 @@ export interface components {
             current: components["schemas"]["StudentCurrentEnrolmentDto"] | null;
             /** Format: date */
             dateOfBirth: string;
+            documentsIncomplete: boolean | null;
             fullName: string;
             gender: components["schemas"]["Gender"];
             hasBForm: boolean;
@@ -8002,6 +8774,9 @@ export interface components {
              */
             date: string;
             studentId: string;
+        };
+        RecordEventParticipationDto: {
+            rows: components["schemas"]["ParticipationRowDto"][];
         };
         /** @enum {string} */
         RecordableExpenseCategory: "electricity" | "water" | "internet" | "cleaning" | "stationery" | "repairs" | "maintenance" | "fuel" | "transport" | "building" | "daily_purchases" | "other";
@@ -8524,6 +9299,7 @@ export interface components {
             attendanceAmendWindowDays: number;
             certificateShowIdentityNo: boolean;
             certificateSignatoryName: string | null;
+            contractWarningDays: number;
             /** @description Whole rupees */
             expenseApprovalThreshold: number;
             feeCutoffDay: number;
@@ -8547,6 +9323,7 @@ export interface components {
             registerDeadlineTime: string;
             remarkDefaultVisibility: components["schemas"]["RemarkVisibility"];
             remarkNotifyGuardians: boolean;
+            requiredDocumentTypes: components["schemas"]["DocumentType"][];
             smsAllowedTypes: components["schemas"]["MessageType"][];
             readonly smsMonthlyCap: number;
             studentLoginEnabled: boolean;
@@ -8781,6 +9558,49 @@ export interface components {
         };
         /** @enum {string} */
         StaffAttendanceStatus: "present" | "absent" | "late" | "on_leave";
+        StaffContractDto: {
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string | null;
+            /** @description Days from today to endsOn (negative once past); null without an end or once ended */
+            daysLeft: number | null;
+            documentMime: string | null;
+            /** @description `renewed`, `left` or the reason given */
+            endReason: string | null;
+            /** Format: date-time */
+            endedAt: string | null;
+            endedByName: string | null;
+            /**
+             * Format: date
+             * @description The contract's actual last day
+             * @example 2026-10-10
+             */
+            endedOn: string | null;
+            /**
+             * Format: date
+             * @description The last working day; null exactly for permanent
+             * @example 2026-10-10
+             */
+            endsOn: string | null;
+            hasDocument: boolean;
+            id: string;
+            note: string | null;
+            /** @description The salary structure in force at the start (informational; never an amount) */
+            salaryStructureId: string | null;
+            staffId: string;
+            staffName: string;
+            /**
+             * Format: date
+             * @example 2026-10-10
+             */
+            startsOn: string;
+            status: components["schemas"]["StaffContractStatus"];
+            type: components["schemas"]["ContractType"];
+        };
+        /** @enum {string} */
+        StaffContractSort: "-startsOn";
+        /** @enum {string} */
+        StaffContractStatus: "live" | "upcoming" | "expired" | "ended";
         StaffDayDto: {
             approvedLeave: components["schemas"]["StaffDayLeaveDto"] | null;
             designation: string | null;
@@ -9063,6 +9883,7 @@ export interface components {
             current: components["schemas"]["StudentCurrentEnrolmentDto"] | null;
             /** Format: date */
             dateOfBirth: string;
+            documentsIncomplete: boolean | null;
             fullName: string;
             gender: components["schemas"]["Gender"];
             hasBForm: boolean;
@@ -9079,9 +9900,14 @@ export interface components {
         StudentDocumentDto: {
             /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedByName: string | null;
             id: string;
             mime: components["schemas"]["DocumentMime"];
+            rejectReason: string | null;
             sizeBytes: number;
+            status: components["schemas"]["DocumentStatus"];
             studentId: string;
             type: components["schemas"]["DocumentType"];
             uploadedBy: string;
@@ -9099,6 +9925,7 @@ export interface components {
             current: components["schemas"]["StudentCurrentEnrolmentDto"] | null;
             /** Format: date */
             dateOfBirth: string;
+            documentsIncomplete: boolean | null;
             fullName: string;
             gender: components["schemas"]["Gender"];
             hasBForm: boolean;
@@ -9219,6 +10046,9 @@ export interface components {
         SuppressionReason: "not_allowed" | "cap_reached" | "no_channel" | "backdated" | "subject_cancelled" | "duplicate_phone";
         /** @enum {string} */
         SystemRole: "principal" | "office_staff" | "teacher";
+        TagExpenseEventDto: {
+            eventId: string;
+        };
         TeacherAssignmentDto: {
             academicYearId: string;
             academicYearName: string;
@@ -9536,6 +10366,21 @@ export interface components {
         UpdateEnrolmentDto: {
             rollNo: number | null;
         };
+        UpdateEventDto: {
+            /** @description null removes the charge */
+            charge?: components["schemas"]["EventChargeInputDto"] | null;
+            /** @description null clears */
+            details?: string | null;
+            /** Format: date-time */
+            endsAt?: string;
+            /** @description Replaces the whole set */
+            sectionIds?: string[];
+            /** Format: date-time */
+            startsAt?: string;
+            title?: string;
+            type?: components["schemas"]["EventType"];
+            venue?: string;
+        };
         UpdateExpenseDto: {
             /** @description Whole rupees */
             amount?: number;
@@ -9605,6 +10450,7 @@ export interface components {
             attendanceAmendWindowDays?: number;
             certificateShowIdentityNo?: boolean;
             certificateSignatoryName?: string | null;
+            contractWarningDays?: number;
             /** @description Whole rupees */
             expenseApprovalThreshold?: number;
             feeCutoffDay?: number;
@@ -9626,6 +10472,7 @@ export interface components {
             registerDeadlineTime?: string;
             remarkDefaultVisibility?: components["schemas"]["RemarkVisibility"];
             remarkNotifyGuardians?: boolean;
+            requiredDocumentTypes?: components["schemas"]["DocumentType"][];
             /** @description SMS-eligible types only (contracts/slice-9.md §7.2). */
             smsAllowedTypes?: components["schemas"]["MessageType"][];
             studentLoginEnabled?: boolean;
@@ -14374,6 +15221,8 @@ export interface operations {
                 classId?: string;
                 sectionId?: string;
                 feeHeadId?: string;
+                /** @description One campaign's charges (an event's, slice 38) */
+                campaignId?: string;
                 period?: string;
                 status?: components["schemas"]["ChargeStatus"];
                 kind?: components["schemas"]["ChargeKind"];
@@ -16879,6 +17728,150 @@ export interface operations {
             };
         };
     };
+    DocumentVerificationController_queue: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["DocumentStatus"];
+                type?: components["schemas"]["DocumentType"];
+                /** @description Students actively enrolled in this class */
+                classId?: string;
+                sort?: "createdAt" | "-createdAt";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QueuedDocumentDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DocumentVerificationController_incompleteAdmissions: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Default: admittedTo minus 90 days */
+                admittedFrom?: string;
+                /** @description Default: the school's today */
+                admittedTo?: string;
+                sort?: "admittedOn" | "-admittedOn";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["IncompleteAdmissionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     DocumentsController_content: {
         parameters: {
             query?: never;
@@ -16917,6 +17910,164 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DocumentVerificationController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentDocumentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DocumentVerificationController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentDocumentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17185,6 +18336,1097 @@ export interface operations {
             };
         };
     };
+    EventDutiesController_end: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDutyDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                academicYearId?: string;
+                type?: components["schemas"]["EventType"];
+                status?: components["schemas"]["EventStatus"];
+                /** @description Starting on or after this day (school time) */
+                startsFrom?: string;
+                /** @description Starting on or before this day (school time) */
+                startsTo?: string;
+                /** @description Only events of the caller's live duties or of the sections they are class teacher or cover of today */
+                mine?: boolean;
+                sort?: components["schemas"]["EventSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EventDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_addDuty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddEventDutyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDutyDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_roster: {
+        parameters: {
+            query?: {
+                /** @description One of the event sections */
+                sectionId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventRosterDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_payments: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PaymentDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_recordPayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventPaymentDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed payment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordEventParticipationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventRosterDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    EventsController_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     ExpensesController_list: {
         parameters: {
             query?: {
@@ -17201,6 +19443,8 @@ export interface operations {
                 recordedByUserId?: string;
                 /** @description True lists only self-approved expenses, false only the others */
                 selfApproved?: boolean;
+                /** @description Tagged to this event (slice 38) */
+                eventId?: string;
                 sort?: components["schemas"]["ExpenseSort"];
             };
             header?: never;
@@ -17795,6 +20039,87 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RejectExpenseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ExpensesController_tagEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagExpenseEventDto"];
             };
         };
         responses: {
@@ -22272,6 +24597,67 @@ export interface operations {
             };
         };
     };
+    MyDocumentsController_child: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyDocumentChecklistDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyChildFeesController_dues: {
         parameters: {
             query?: {
@@ -22291,6 +24677,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyDuesDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyEventsController_child: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyEventDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
                 };
             };
             401: {
@@ -24020,6 +26483,118 @@ export interface operations {
             };
         };
     };
+    MyStaffContractController_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyStaffContractDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyStaffContractController_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     MyCustodyController_custody: {
         parameters: {
             query?: never;
@@ -25054,6 +27629,124 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyDocumentsController_own: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyDocumentChecklistDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    MyEventsController_own: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MyEventDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26531,6 +29224,8 @@ export interface operations {
                 recordedByUserId?: string;
                 studentId?: string;
                 academicYearId?: string;
+                /** @description Payments towards one event's charge (slice 38) */
+                eventId?: string;
                 sort?: "-receivedOn";
             };
             header?: never;
@@ -31355,6 +34050,301 @@ export interface operations {
             };
         };
     };
+    StaffContractsController_listEnding: {
+        parameters: {
+            query: {
+                page?: number;
+                limit?: number;
+                /** @description Live contracts whose last day is on or before this date (expired ones included) */
+                endsBy: string;
+                sort?: components["schemas"]["EndingContractSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffContractDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffContractsController_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffContractsController_end: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndStaffContractDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffContractDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffContractsController_renew: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStaffContractDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffContractDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     StaffController_get: {
         parameters: {
             query?: never;
@@ -31599,6 +34589,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffContractsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                sort?: components["schemas"]["StaffContractSort"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffContractDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffContractsController_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStaffContractDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed create */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffContractDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffContractDto"];
                 };
             };
             401: {
@@ -32825,6 +35986,67 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    DocumentVerificationController_checklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentChecklistDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

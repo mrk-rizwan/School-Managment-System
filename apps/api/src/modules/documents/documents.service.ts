@@ -46,6 +46,10 @@ export function toDocumentDto(row: StudentDocumentRecord): StudentDocumentDto {
     uploadedBy: row.uploadedBy.toString(),
     uploadedByName: row.uploadedByName,
     createdAt: row.createdAt,
+    status: row.status,
+    decidedAt: row.decidedAt,
+    decidedByName: row.decidedByName,
+    rejectReason: row.rejectReason,
   };
 }
 

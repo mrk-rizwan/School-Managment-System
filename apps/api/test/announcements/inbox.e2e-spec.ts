@@ -180,7 +180,15 @@ describe('announcements: inbox and attachments (e2e)', () => {
     expect(after.find((i) => i.subjectType === 'diary_entry')?.viaStudents.map((v) => v.fullName)).toEqual(['Ali Khan']);
     expect((await h.read('/me/inbox', cookie)).body).toMatchObject({ total: 3 });
     const hidden = await db.message.findMany({
-      where: { schoolId: c.school.id, guardianId: c.parent.id, subjectId: { in: [alert.id, zaraRemark.id] } },
+      where: {
+        schoolId: c.school.id,
+        guardianId: c.parent.id,
+        // Typed: on a fresh database a diary entry can share the alert's or the remark's numeric id.
+        OR: [
+          { subjectType: 'attendance_alert', subjectId: alert.id },
+          { subjectType: 'remark', subjectId: zaraRemark.id },
+        ],
+      },
     });
     expect(hidden).toHaveLength(2);
     for (const m of hidden) {
@@ -193,7 +201,7 @@ describe('announcements: inbox and attachments (e2e)', () => {
     expect((await download(`/me/inbox/${kept?.id}/attachment`, cookie)).status).toBe(200);
     // The co-guardian still linked to Zara keeps every row about her.
     expect(subjects(await inbox(coCookie))).toEqual([...all, `announcement:${notice.id}`].sort());
-    const coAlert = await db.message.findFirstOrThrow({ where: { schoolId: c.school.id, guardianId: coGuardian.id, subjectId: alert.id } });
+    const coAlert = await db.message.findFirstOrThrow({ where: { schoolId: c.school.id, guardianId: coGuardian.id, subjectType: 'attendance_alert', subjectId: alert.id } });
     expect((await h.read(`/me/inbox/${coAlert.id}`, coCookie)).status).toBe(200);
 
     // Ending the last link to section A's children hides the diary entry as well.

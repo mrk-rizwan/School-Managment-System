@@ -5,6 +5,7 @@ import type { ApiErrorEnvelope } from '../lib/api/errors';
 import { BILLING_STATUS, INVOICES, PLANS, SCHOOL_BILLING } from './support/billing';
 import { FINANCE_SETTINGS } from './support/settings';
 import { TT_FUTURE_VERSION, TT_SUBSTITUTION, TT_VERSION, ttGrid, ttWeek } from './support/timetable';
+import { EV_DRAFT, EV_PAYMENT, EV_PUBLISHED, EV_REPORT, EV_ROSTER } from './support/events';
 import type {
   AcademicYearDto,
   ClassDto,
@@ -276,6 +277,7 @@ const student = (id: string, fullName: string, extra: Partial<StudentDetailDto> 
   userId: null,
   createdAt: STAMP,
   updatedAt: STAMP,
+  documentsIncomplete: null,
   notes: 'Allergic to peanuts; collected by his uncle on Fridays.',
   photoDocumentId: null,
   ...extra,
@@ -1083,6 +1085,9 @@ async function mockApi(page: Page, session: Session) {
       // Phase 5 slice 37: the timetable.
       '/timetable-versions': [TT_FUTURE_VERSION, TT_VERSION],
       '/timetable-substitutions': [TT_SUBSTITUTION],
+      // Phase 5 slice 38: events.
+      '/events': [EV_PUBLISHED, EV_DRAFT],
+      '/events/ev2/payments': [EV_PAYMENT],
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -1115,6 +1120,10 @@ async function mockApi(page: Page, session: Session) {
       '/me/student/results/r1': { withheld: false, outstanding: null, result: MY_CARD },
       '/sections/sec-a/timetable': ttWeek(),
       '/timetable-versions/tv1': TT_VERSION,
+      '/events/ev1': EV_DRAFT,
+      '/events/ev2': EV_PUBLISHED,
+      '/events/ev2/participation': EV_ROSTER,
+      '/events/ev2/report': EV_REPORT,
     };
     if (one[path]) return json(200, one[path]);
     unmocked.push(`${method} ${path}`);
@@ -1193,6 +1202,13 @@ const SCREENS: Screen[] = [
   { path: '/timetable/versions', heading: 'Timetable versions', session: 'school' },
   { path: '/timetable/substitutions', heading: 'Substitutions', session: 'school' },
   { path: '/timetable/grid', heading: 'Timetable grid', session: 'school' },
+  // Phase 5 slice 38: events and PTM.
+  { path: '/events', heading: 'Events', session: 'school' },
+  { path: '/events/new', heading: 'New event', session: 'school' },
+  { path: '/events/ev1', heading: EV_DRAFT.title, session: 'school' },
+  { path: '/events/ev1/edit', heading: 'Edit event', session: 'school' },
+  { path: '/events/ev2', heading: EV_PUBLISHED.title, session: 'school' },
+  { path: '/events/ev2/report', heading: `Report · ${EV_PUBLISHED.title}`, session: 'school' },
   // Platform console
   { path: '/platform/login', heading: 'Platform sign in', session: 'none' },
   { path: '/platform/enrol', heading: 'Set up your authenticator', session: 'platform-enrolment' },

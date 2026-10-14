@@ -27,6 +27,7 @@ interface Approvals {
   expenses?: Section;
   leave?: Section;
   results?: Section;
+  documents?: Section;
 }
 interface Page {
   data: { id: string }[];
@@ -125,9 +126,11 @@ describe('slice 27: the Approvals read (e2e)', () => {
   it('R227, R278: the principal sees all five sections; each count is its queue\'s total and each item list its first page', async () => {
     const { w, claimId, handoverId, expenseId, leaveId } = await busySchool();
     const mine = await approvals(w.principal);
-    // Phase 4 slice 31 adds `results` (result.approve); none is waiting here.
-    expect(Object.keys(mine).sort()).toEqual(['claims', 'expenses', 'handovers', 'leave', 'results']);
+    // Phase 4 slice 31 adds `results` (result.approve), Phase 5 slice 40 `documents`
+    // (document.verify); none is waiting here.
+    expect(Object.keys(mine).sort()).toEqual(['claims', 'documents', 'expenses', 'handovers', 'leave', 'results']);
     expect(mine.results).toEqual({ count: 0, items: [] });
+    expect(mine.documents).toEqual({ count: 0, items: [] });
     expect([ids(mine.claims), ids(mine.handovers), ids(mine.expenses), ids(mine.leave)]).toEqual([
       [claimId],
       [handoverId],
@@ -156,11 +159,12 @@ describe('slice 27: the Approvals read (e2e)', () => {
     const clerk = await h.signIn(w.school, 'office_staff');
     await h.grant(clerk.user, w.principal.user, Capability.PAYMENT_VERIFY);
     const clerks = await approvals(clerk);
-    expect(Object.keys(clerks)).toEqual(['claims']);
+    // Phase 5 slice 40: the office default holds document.verify (R325).
+    expect(Object.keys(clerks)).toEqual(['claims', 'documents']);
     expect([clerks.claims?.count, ids(clerks.claims)]).toEqual([(await page('/payment-claims', clerk)).total, [claimId]]);
 
-    // The office default holds none of the four keys.
-    expect(await approvals(w.office)).toEqual({});
+    // The office default holds none of the four money keys; since Phase 5 it verifies documents.
+    expect(await approvals(w.office)).toEqual({ documents: { count: 0, items: [] } });
     expect(await approvals(w.teacher)).toEqual({});
     // A guardian-only session holds no staff capacity (R78).
     expect((await get('/me/approvals', father)).status).toBe(403);

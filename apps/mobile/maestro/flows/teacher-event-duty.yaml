@@ -1,0 +1,77 @@
+# Phase 5 slice 38 (contracts/slice-38.md §6) — CI only. Same session as teacher-diary: the
+# teacher opens Classes → Events, opens the seeded PTM (5 A, Rs 300 a student, the teacher on a
+# collection duty; `ci-run.sh` seeds it over curl and waits for the charge run), marks the
+# guardian's child attended and saves, then records Rs 100 cash for the child. `ci-run.sh` checks
+# both over curl. Online only: no airplane mode.
+# Env: EVENT_ID, STUDENT_ID.
+appId: pk.asms.app.dev
+---
+- launchApp
+- tapOn:
+    id: 'tabs.classes'
+- extendedWaitUntil:
+    visible:
+      id: 'classes.events'
+    timeout: 20000
+- tapOn:
+    id: 'classes.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT_ID}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'event.duties'
+      text: 'Your duties: Collection'
+    timeout: 20000
+# Participation: the child attended.
+- scrollUntilVisible:
+    element:
+      id: 'event.row.${STUDENT_ID}.status.attended'
+    direction: DOWN
+- tapOn:
+    id: 'event.row.${STUDENT_ID}.status.attended'
+- scrollUntilVisible:
+    element:
+      id: 'event.save'
+    direction: DOWN
+- tapOn:
+    id: 'event.save'
+- scrollUntilVisible:
+    element:
+      id: 'event.message'
+      text: 'Participation saved.'
+    direction: UP
+    timeout: 20000
+# Collection: Rs 100 of the Rs 300 owed, in cash, today.
+- scrollUntilVisible:
+    element:
+      id: 'event.row.${STUDENT_ID}.collect'
+    direction: DOWN
+- tapOn:
+    id: 'event.row.${STUDENT_ID}.collect'
+- extendedWaitUntil:
+    visible:
+      id: 'event.collect.amount'
+    timeout: 20000
+- tapOn:
+    id: 'event.collect.amount'
+- eraseText: 8
+- inputText: '100'
+- hideKeyboard
+- tapOn:
+    id: 'event.collect.save'
+- scrollUntilVisible:
+    element:
+      id: 'event.message'
+      text: '.*Rs 100 from .* recorded\.'
+    direction: UP
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'event.payments'
+    direction: DOWN
+- back
+- back

@@ -1,6 +1,6 @@
 'use client';
 
-import { Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, resultTermLabel, yearMonthOf } from '@asms/shared';
+import { addDaysTo, Capability, EXPENSE_CATEGORY_LABELS, formatRupees, PAYMENT_METHOD_LABELS, resultTermLabel, yearMonthOf } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -10,11 +10,14 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
 import { approvalsApi, type ApprovalsDto } from '@/lib/api/school-approvals-contract';
+import { staffContractsApi } from '@/lib/api/school-staff-contracts-contract';
 import { formatDate, formatDateTime, todayInSchool } from '@/lib/format';
 import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { weekAgo } from '../fees/_lib/fees-ui';
 import { leavePeriod, workingDaysLabel } from '../leave/_lib/leave-ui';
 import { useDefaultYearId } from '../reports/_lib/reports-ui';
+import { DOCUMENT_TYPE_LABELS } from '../students/_lib/students-ui';
+import { ENDING_WITHIN_DAYS } from '../staff/contracts/ending-contracts';
 
 const approvalsKey = ['school', 'approvals'] as const;
 
@@ -74,6 +77,8 @@ function Tiles({ approvals }: { approvals: ApprovalsDto }) {
   const reports = principal && can(Capability.FINANCE_REPORT_VIEW);
   const charges = principal && (can(Capability.FEE_STATEMENT_VIEW) || can(Capability.CHARGE_CREATE));
   const expenses = principal && (can(Capability.EXPENSE_APPROVE) || can(Capability.FINANCE_REPORT_VIEW));
+  // Phase 5 slice 39 (R320): contracts ending within 30 days or expired, not ended.
+  const contracts = principal && can(Capability.STAFF_CONTRACT_MANAGE);
   const today = todayInSchool();
   const yearId = useDefaultYearId('');
   const monthStart = `${yearMonthOf(today)}-01`;
@@ -116,6 +121,19 @@ function Tiles({ approvals }: { approvals: ApprovalsDto }) {
     enabled: expenses,
   });
 
+  const contractsEnding = useQuery({
+    queryKey: ['school', 'approvals', 'tile', 'contracts', today],
+    queryFn: async () =>
+      (
+        await unwrap(
+          staffContractsApi.GET('/api/v1/staff-contracts', {
+            params: { query: { endsBy: addDaysTo(today, ENDING_WITHIN_DAYS), page: 1, limit: 1 } },
+          }),
+        )
+      ).total,
+    enabled: contracts,
+  });
+
   if (!principal) return null;
   return (
     <section aria-label="At a glance" className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="approvals.tiles">
@@ -129,6 +147,7 @@ function Tiles({ approvals }: { approvals: ApprovalsDto }) {
       {reports && <Tile label="Today's collections" value={figure(collections, formatRupees)} href="/reports/collections" testId="collections" />}
       {reports && <Tile label="Outstanding" value={figure(outstanding, formatRupees)} detail="This academic year" href="/reports/outstanding" testId="outstanding" />}
       {charges && <Tile label="Charges voided" value={figure(voided)} detail="Last 7 days" href="/fees/charges" testId="voided" />}
+      {contracts && <Tile label="Contracts ending" value={figure(contractsEnding)} detail={`In ${ENDING_WITHIN_DAYS} days or expired`} href="/staff/contracts" testId="contracts" />}
       {expenses && <Tile label="Self-approved expenses" value={figure(selfApproved)} detail="This month" href="/expenses" testId="selfApproved" />}
     </section>
   );
@@ -201,12 +220,12 @@ function Row({ title, detail, amount, badge }: { title: string; detail: string; 
 }
 
 function Queues({ approvals }: { approvals: ApprovalsDto }) {
-  const { claims, handovers, expenses, leave, results } = approvals;
-  if (!claims && !handovers && !expenses && !leave && !results) {
+  const { claims, handovers, expenses, leave, results, documents } = approvals;
+  if (!claims && !handovers && !expenses && !leave && !results && !documents) {
     return (
       <Card>
         <CardContent>
-          <EmptyState title="Nothing for you to approve" description="Deposit slips, cash handovers, expenses, leave and result sheets come here for those who decide them." />
+          <EmptyState title="Nothing for you to approve" description="Deposit slips, cash handovers, expenses, leave, result sheets and documents come here for those who decide them." />
         </CardContent>
       </Card>
     );
@@ -276,6 +295,19 @@ function Queues({ approvals }: { approvals: ApprovalsDto }) {
                 </span>
               </Link>
             </li>
+          ))}
+        </Queue>
+      )}
+      {/* Phase 5 slice 40: documents awaiting a check; decided on the queue page. */}
+      {documents && (
+        <Queue title="Documents" count={documents.count} href="/documents" testId="documents" empty="No documents are waiting to be checked.">
+          {documents.items.map((d) => (
+            <Row
+              key={d.id}
+              title={`${d.student.fullName} · ${DOCUMENT_TYPE_LABELS[d.type]}`}
+              detail={`${d.uploadedByName ?? 'Uploaded'}, ${formatDateTime(d.createdAt)}`}
+              badge={d.ownUpload ? 'your upload' : undefined}
+            />
           ))}
         </Queue>
       )}

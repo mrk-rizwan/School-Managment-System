@@ -38,11 +38,12 @@ import {
 import { accessKeys } from '../../custom-roles/_lib/custom-roles-ui';
 import { StaffAttendanceMonth } from '../../staff-attendance/_lib/staff-attendance-month';
 import { AssignmentsTab } from './assignments-tab';
+import { contractKeys, ContractsTab } from './contracts-tab';
 import { PermissionsTab } from './permissions-tab';
 import { LoginAndRolesTab } from './roles-tab';
 import { SalaryTab } from './salary-tab';
 
-const TABS = ['details', 'roles', 'assignments', 'attendance', 'salary', 'permissions'] as const;
+const TABS = ['details', 'roles', 'assignments', 'attendance', 'salary', 'contracts', 'permissions'] as const;
 type Tab = (typeof TABS)[number];
 
 /** contracts/slice-4.md §3.2, §3.4, §3.5 and §8. `initialTab` is `?tab=`; an unknown value is ignored. */
@@ -51,6 +52,8 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
   const me = useSchoolMe();
   const [tab, setTab] = useState<Tab>(TABS.find((t) => t === initialTab) ?? 'details');
   const [statusOpen, setStatusOpen] = useState(false);
+  // Slice 39: "End employment" on a contract opens the status dialog set to `left`.
+  const [statusPreset, setStatusPreset] = useState<StaffStatus | ''>('');
   const staff = useQuery({
     queryKey: staffKeys.detail(id),
     queryFn: () => unwrap(staffApi.GET('/api/v1/staff/{id}', { params: { path: { id } } })),
@@ -79,6 +82,8 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
             { id: 'attendance' as const, label: 'Attendance' },
             // Phase 3 slice 25: GET …/salary-structure needs staff.contract.manage or payroll.view.
             ...(can(Capability.STAFF_CONTRACT_MANAGE) || can(Capability.PAYROLL_VIEW) ? [{ id: 'salary' as const, label: 'Salary' }] : []),
+            // Phase 5 slice 39: every contract route needs staff.contract.manage.
+            ...(can(Capability.STAFF_CONTRACT_MANAGE) ? [{ id: 'contracts' as const, label: 'Contracts' }] : []),
             // GET …/permissions needs role.manage, never on one's own login (slice-7 §9, R47, R55).
             ...(can(Capability.ROLE_MANAGE) && data.userId && !isSelf
               ? [{ id: 'permissions' as const, label: 'Permissions' }]
@@ -96,7 +101,13 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
                   <>
                     <StaffStatusBadge status={data.status} />
                     {can(Capability.STAFF_STATUS_CHANGE) && !isSelf && (
-                      <Button variant="outline" onClick={() => setStatusOpen(true)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setStatusPreset('');
+                          setStatusOpen(true);
+                        }}
+                      >
                         Change status
                       </Button>
                     )}
@@ -140,9 +151,25 @@ export function StaffDetail({ id, initialTab }: { id: string; initialTab?: strin
                   <StaffAttendanceMonth source={{ kind: 'staff', staffId: data.id, name: data.fullName }} />
                 )}
                 {active === 'salary' && <SalaryTab staff={data} />}
+                {active === 'contracts' && (
+                  <ContractsTab
+                    staff={data}
+                    canEndEmployment={can(Capability.STAFF_STATUS_CHANGE) && !isSelf}
+                    onEndEmployment={() => {
+                      setStatusPreset('left');
+                      setStatusOpen(true);
+                    }}
+                  />
+                )}
                 {active === 'permissions' && data.userId && <PermissionsTab staff={data} userId={data.userId} />}
               </div>
-              <ChangeStatusDialog staff={data} open={statusOpen} onOpenChange={setStatusOpen} />
+              <ChangeStatusDialog
+                key={`${statusPreset}-${statusOpen}`}
+                staff={data}
+                preset={statusPreset}
+                open={statusOpen}
+                onOpenChange={setStatusOpen}
+              />
             </>
           );
         }}
@@ -318,17 +345,20 @@ function consequences(from: StaffStatus, to: StaffStatus, hasLogin: boolean): st
 
 function ChangeStatusDialog({
   staff,
+  preset = '',
   open,
   onOpenChange,
 }: {
   staff: StaffDto;
+  /** The status chosen on opening (slice 39's "End employment" opens it at `left`). */
+  preset?: StaffStatus | '';
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const selectId = useId();
   const options = NEXT_STATUSES[staff.status];
-  const [target, setTarget] = useState<StaffStatus | ''>('');
+  const [target, setTarget] = useState<StaffStatus | ''>(preset !== '' && options.includes(preset) ? preset : '');
   const change = useMutation({
     mutationFn: (reason: string) =>
       unwrap(
@@ -342,6 +372,8 @@ function ChangeStatusDialog({
       void queryClient.invalidateQueries({ queryKey: staffKeys.all });
       // Leaving ends grants and revokes, and status decides whether anything is in force.
       void queryClient.invalidateQueries({ queryKey: accessKeys.allPermissions });
+      // Leaving ends the live contract (slice 39, R318).
+      void queryClient.invalidateQueries({ queryKey: contractKeys.all });
       toast.success(`${updated.fullName}: status changed to ${STAFF_STATUS_LABELS[updated.status]}.`);
       close();
     },

@@ -87,6 +87,8 @@ export type ResultPreviewRowDto = Schemas['ResultPreviewRowDto'];
 export type TermDto = Schemas['TermDto'];
 export type ClaimDto = Schemas['ClaimDto'];
 export type HandoverDto = Schemas['HandoverDto'];
+// Phase 5 slice 40: the Documents section (document.verify).
+export type QueuedDocumentDto = Schemas['QueuedDocumentDto'];
 
 // Phase 4 slice 30: class tests and the marks grid (§3.8).
 export type AssessmentDto = Schemas['AssessmentDto'];
@@ -113,3 +115,11 @@ export type ResultDto = Schemas['ResultDto'];
 export type MyStaffTimetableDto = Schemas['MyStaffTimetableDto'];
 export type MyStaffTimetablePeriodDto = Schemas['MyStaffTimetablePeriodDto'];
 export type MyTimetableDto = Schemas['MyTimetableDto'];
+
+// Phase 5 slice 38: events — the teacher's list, roster and event payments; the families' list
+// (online only, never cached on the phone).
+export type EventDto = Schemas['EventDto'];
+export type EventRosterDto = Schemas['EventRosterDto'];
+export type EventRosterRowDto = Schemas['EventRosterRowDto'];
+export type MyEventDto = Schemas['MyEventDto'];
+export type PaymentDto = Schemas['PaymentDto'];

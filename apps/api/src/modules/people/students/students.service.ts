@@ -50,6 +50,7 @@ import {
   studentBFormExists,
 } from './students.shared';
 import { fromDateString, toDateString } from '../../academics/academics.shared';
+import { DocumentVerificationService } from '../../documents/verification.service';
 
 // contracts/slice-6.md §3.1-§3.6. B-Form digits live only in request bodies and in memory here:
 // stored encrypted with their lookup hash, returned masked to student.update holders only, never
@@ -91,6 +92,7 @@ export class StudentsService {
     private readonly audit: AuditLogRepository,
     private readonly encryption: FieldEncryption,
     private readonly clock: SchoolClock,
+    private readonly documents: DocumentVerificationService,
     @Inject(ENV) env: Env,
   ) {
     this.hashKey = env.IDENTITY_HASH_KEY;
@@ -408,16 +410,24 @@ export class StudentsService {
     rows: StudentRecord[],
   ): Promise<StudentDto[]> {
     const held = session.access.capabilities;
+    const scope = scopeOf(session);
     const current = new Map(
       (
         await this.enrolments.activeForStudents(
           schoolId,
-          scopeOf(session),
+          scope,
           rows.map((r) => r.id),
         )
       ).map((e) => [e.studentId, e]),
     );
-    return rows.map((row) => this.toDto(schoolId, held, row, current.get(row.id) ?? null));
+    // Phase 5 slice 40 (contracts/slice-40.md §2.6): the documents badge, for document.view holders.
+    const incomplete = held.has(Capability.DOCUMENT_VIEW)
+      ? await this.documents.incompleteAmong(schoolId, scope, rows.map((r) => r.id))
+      : null;
+    return rows.map((row) => ({
+      ...this.toDto(schoolId, held, row, current.get(row.id) ?? null),
+      documentsIncomplete: incomplete === null ? null : incomplete.has(row.id),
+    }));
   }
 
   async toDetailDto(
@@ -443,7 +453,7 @@ export class StudentsService {
     held: Held,
     row: StudentRecord,
     current: EnrolmentView | null,
-  ): StudentDto {
+  ): Omit<StudentDto, 'documentsIncomplete'> {
     return {
       id: row.id.toString(),
       admissionNo: row.admissionNo,

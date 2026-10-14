@@ -1,6 +1,6 @@
 'use client';
 
-import { LATE_COUNTS_AS, LEAVE_COUNTS_AS, MAX_RUPEES, REMARK_VISIBILITIES, type LateCountsAs } from '@asms/shared';
+import { DOCUMENT_TYPES, LATE_COUNTS_AS, LEAVE_COUNTS_AS, MAX_RUPEES, REMARK_VISIBILITIES, type LateCountsAs } from '@asms/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ import {
   WEEKDAY_ORDER,
   isTime,
 } from './_lib/settings-ui';
+import { DOCUMENT_TYPE_LABELS } from '../students/_lib/students-ui';
 import { BillingStatusCard } from './billing-status';
 import { PaymentAccountsCard } from './payment-accounts';
 
@@ -70,6 +71,8 @@ const schema = z
     lateFeeGraceDays: integerIn(0, 30, 'Enter a number of days from 0 to 30.'),
     expenseApprovalThreshold: integerIn(0, MAX_RUPEES, `Enter whole rupees, from 0 to ${RUPEES_MAX}.`),
     payDay: integerIn(1, 28, 'Pick a day from 1 to 28.'),
+    // Phase 5 slice 39 (rule 35): the contract-expiry warning's lead time.
+    contractWarningDays: integerIn(1, 90, 'Enter a number of days from 1 to 90.'),
     studentLoginEnabled: z.boolean(),
     periodsPerDay: integerIn(1, 12, 'Pick from 1 to 12 periods.'),
     weeklyOffDays: z.array(z.number()).max(6, 'At least one day of the week must be a school day.'),
@@ -89,6 +92,8 @@ const schema = z
       .max(100, 'Use at most 100 characters.')
       .regex(/^\P{Cc}*$/u, 'Remove line breaks and control characters.'),
     certificateShowIdentityNo: z.boolean(),
+    // Phase 5 slice 40: the documents asked for at admission (none is allowed).
+    requiredDocumentTypes: z.array(z.enum(DOCUMENT_TYPES)),
   })
   .superRefine((v, ctx) => {
     if (v.lateCountsAs === 'absent_after_cutoff' && !isTime(v.lateCutoffTime)) {
@@ -148,6 +153,7 @@ function valuesOf(settings: SchoolSettingsDto): SettingsValues {
     lateFeeGraceDays: String(settings.lateFeeGraceDays),
     expenseApprovalThreshold: String(settings.expenseApprovalThreshold),
     payDay: String(settings.payDay),
+    contractWarningDays: String(settings.contractWarningDays),
     studentLoginEnabled: settings.studentLoginEnabled,
     periodsPerDay: String(settings.periodsPerDay),
     weeklyOffDays: [...settings.weeklyOffDays],
@@ -162,12 +168,14 @@ function valuesOf(settings: SchoolSettingsDto): SettingsValues {
     remarkNotifyGuardians: settings.remarkNotifyGuardians,
     certificateSignatoryName: settings.certificateSignatoryName ?? '',
     certificateShowIdentityNo: settings.certificateShowIdentityNo,
+    requiredDocumentTypes: [...settings.requiredDocumentTypes],
   };
 }
 
 /** The PATCH body: only fields whose value differs from the saved settings. */
 function changesOf(v: SettingsValues, saved: SchoolSettingsDto): UpdateSchoolSettingsBody {
   const offDays = [...v.weeklyOffDays].sort((a, b) => a - b);
+  const required = DOCUMENT_TYPES.filter((t) => v.requiredDocumentTypes.includes(t));
   const cutoff = v.lateCountsAs === 'absent_after_cutoff' ? v.lateCutoffTime : saved.lateCutoffTime;
   // The amount is sent only while late fees are on; switching them off leaves it stored.
   const lateFeeAmount = v.lateFeeEnabled ? Number(v.lateFeeAmount) : saved.lateFeeAmount;
@@ -187,6 +195,9 @@ function changesOf(v: SettingsValues, saved: SchoolSettingsDto): UpdateSchoolSet
       expenseApprovalThreshold: Number(v.expenseApprovalThreshold),
     }),
     ...(Number(v.payDay) !== saved.payDay && { payDay: Number(v.payDay) }),
+    ...(Number(v.contractWarningDays) !== saved.contractWarningDays && {
+      contractWarningDays: Number(v.contractWarningDays),
+    }),
     ...(v.studentLoginEnabled !== saved.studentLoginEnabled && { studentLoginEnabled: v.studentLoginEnabled }),
     ...(Number(v.periodsPerDay) !== saved.periodsPerDay && { periodsPerDay: Number(v.periodsPerDay) }),
     ...(offDays.join() !== saved.weeklyOffDays.join() && { weeklyOffDays: offDays }),
@@ -209,6 +220,7 @@ function changesOf(v: SettingsValues, saved: SchoolSettingsDto): UpdateSchoolSet
     ...(v.certificateShowIdentityNo !== saved.certificateShowIdentityNo && {
       certificateShowIdentityNo: v.certificateShowIdentityNo,
     }),
+    ...(required.join() !== saved.requiredDocumentTypes.join() && { requiredDocumentTypes: required }),
   };
   return body;
 }
@@ -454,6 +466,23 @@ function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {
 
       <Card>
         <CardHeader>
+          <CardTitle>Staff contracts</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="contractWarningDays"
+            label="Warn before a contract ends (days)"
+            hint="The principal is told this many days before a fixed-term or probation contract ends, and again 7 days before."
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={2}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Certificates</CardTitle>
           <CardDescription>How leaving, character and other certificates are signed and printed.</CardDescription>
         </CardHeader>
@@ -471,6 +500,18 @@ function SettingsForm({ settings }: { settings: SchoolSettingsDto }) {
             label="Print the B-Form number on leaving certificates"
             hint="Only on the printed leaving certificate; every print is recorded."
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Required documents</CardTitle>
+          <CardDescription>
+            The documents each student’s checklist asks for. A missing or rejected one is shown as a query on the student; it never stops an admission.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RequiredDocumentsField control={form.control} />
         </CardContent>
       </Card>
 
@@ -526,6 +567,37 @@ function WeeklyOffDaysField({ control }: { control: Control<SettingsValues> }) {
             {fieldState.error?.message ??
               'No register is expected on these days, and they are left out of teaching days.'}
           </p>
+        </fieldset>
+      )}
+    />
+  );
+}
+
+/** Phase 5 slice 40: one checkbox per document type (contracts/slice-40.md §3). */
+function RequiredDocumentsField({ control }: { control: Control<SettingsValues> }) {
+  return (
+    <Controller
+      control={control}
+      name="requiredDocumentTypes"
+      render={({ field }) => (
+        <fieldset className="grid gap-2">
+          <legend className="sr-only">Required documents</legend>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {DOCUMENT_TYPES.map((type) => (
+              <label key={type} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-primary"
+                  checked={field.value.includes(type)}
+                  onChange={(event) =>
+                    field.onChange(event.target.checked ? [...field.value, type] : field.value.filter((t) => t !== type))
+                  }
+                  onBlur={field.onBlur}
+                />
+                {DOCUMENT_TYPE_LABELS[type]}
+              </label>
+            ))}
+          </div>
         </fieldset>
       )}
     />

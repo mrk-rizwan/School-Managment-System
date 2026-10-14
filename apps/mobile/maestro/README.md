@@ -21,6 +21,7 @@ emulator.
 | `flows/principal-approvals.yaml`    | API, worker, object storage     | (slice 27) `ci-run.sh` seeds a deposit slip (the guardian, over `curl`) and an open cash handover (the teacher, granted `payment.record`); the principal opens the Approvals tab, shows the slip on a tap and captures it (`takeScreenshot` to `out/`: black under FLAG_SECURE), verifies the claim (as the child's advance when nothing is owed) and confirms the handover; `ci-run.sh` checks both over `curl` |
 | `flows/principal-approve-result.yaml` | API and worker | (Phase 4 slice 31) `ci-run.sh` sets up the term's exams for Class 5, enters an absence for every gap the 5 A result sheet lists (the principal) and has the class teacher open and submit the sheet over `curl`; the principal opens it from Approvals → Result sheets and approves it (published, as they hold `result.publish`); `ci-run.sh` checks over `curl` that it is published |
 | `flows/parent-report-card.yaml` | API and worker | (Phase 4 slice 33) after `principal-approve-result`, `ci-run.sh` reads the child's published 5 A result as the guardian over `curl`; the parent opens the child's Results from the Children tab, sees the published term, scrolls to the class tests and back, and opens the report card |
+| `flows/teacher-event-duty.yaml` | API and worker | (Phase 5 slice 38) `ci-run.sh` has the principal create a PTM today for 5 A with a Rs 300 charge, give the teacher a collection duty and publish it, and waits for the child's charge; the teacher opens Classes → Events → the PTM, marks the child attended and saves, and records Rs 100 cash; `ci-run.sh` checks over `curl` that the row is attended with Rs 200 outstanding |
 
 They read `SCHOOL_CODE` and the identity digits `MAESTRO_PRINCIPAL_CNIC`, `MAESTRO_TEACHER_CNIC`
 and `MAESTRO_GUARDIAN_CNIC` — shell environment variables Maestro picks up by their prefix, so the
@@ -29,7 +30,7 @@ digits never appear on its command line (`ci-run.sh` sets them from `PRINCIPAL_C
 each default password is the same digits; `seed:dev-school` with `DEV_SCHOOL_CLASSROOM=1`), and the
 ids `ci-run.sh` reads over the API as those people: `SECTION_A`, `SECTION_B`, `ENROLMENT_1`,
 `ENROLMENT_2`, `STUDENT_ID`, `CLASS_ID`, the seeded `CLAIM_ID` and `HANDOVER_ID`, and (slice 30) `ASSESSMENT_ID`, `MARKS_E1`, `MARKS_E2`, (slice 31) `SHEET_ID`, (slice 33)
-`RESULT_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
+`RESULT_ID`, (slice 38) `EVENT_ID`. Elements are selected by `testID`, `screen.element[.id]` — for
 example `signIn.schoolCode`, `classes.section.<id>.register`, `register.chip.<enrolmentId>`,
 `children.card.<studentId>.today`.
 

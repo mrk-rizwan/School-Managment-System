@@ -52,6 +52,7 @@ import { useCapabilities, useSchoolMe } from '@/lib/school-session';
 import { useIsPrincipal } from '../fees/_lib/fees-ui';
 import { nameSchema } from '@/lib/validation';
 import { ACCEPT_ATTRIBUTE, ACCEPTED_TYPES, MAX_UPLOAD_BYTES, saveBlob, uploadFile } from '../students/_lib/documents';
+import { TagEventDialog } from './tag-event-dialog';
 
 // Expenses (phase-3-financial.md slice 23, R206-R208, R244). Recorders record and edit their own
 // open rows and void them; approvers decide pending rows and void approved ones, never their own
@@ -84,6 +85,8 @@ export function ExpenseList() {
   const [rejecting, setRejecting] = useState<ExpenseDto | null>(null);
   const [voiding, setVoiding] = useState<ExpenseDto | null>(null);
   const [attaching, setAttaching] = useState<ExpenseDto | null>(null);
+  // Slice 38 (contracts/slice-38.md §3.4): tag a live expense to a published event.
+  const [tagging, setTagging] = useState<ExpenseDto | null>(null);
   const [page, setPage] = useListPage([status, category]);
 
   const query: ExpenseListQuery = { page, limit: LIMIT, ...(status && { status }), ...(category && { category }) };
@@ -152,6 +155,9 @@ export function ExpenseList() {
       const voidable =
         (isOpen(e) && mine(e) && canRecord) ||
         (e.status === 'approved' && canApprove && (!mine(e) || (e.selfApproved && isPrincipal)));
+      if (canRecord && e.eventId === null && e.status !== 'rejected' && e.status !== 'voided') {
+        actions.push({ label: 'Tag to event', onSelect: () => setTagging(e) });
+      }
       if (voidable) actions.push({ label: 'Void', onSelect: () => setVoiding(e), destructive: true });
       return actions;
     };
@@ -277,6 +283,19 @@ export function ExpenseList() {
         pending={voidExpense.isPending}
         onConfirm={(reason) => voiding && voidExpense.mutate({ e: voiding, reason })}
       />
+      <Dialog open={tagging !== null} onOpenChange={(open) => !open && setTagging(null)}>
+        <DialogContent>
+          {tagging && (
+            <TagEventDialog
+              expense={tagging}
+              onDone={(message) => {
+                setTagging(null);
+                if (message) done(message);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={attaching !== null} onOpenChange={(open) => !open && setAttaching(null)}>
         <DialogContent>
           {attaching && (

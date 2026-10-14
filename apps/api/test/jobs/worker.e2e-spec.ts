@@ -60,6 +60,8 @@ describe('the worker (e2e)', () => {
       { job: 'fee-reminder', pattern: '0 0 9 * * *' },
       // Phase 3 slice 21 (§3.7, R200): image-less deposit claims expire.
       { job: 'claim-image-sweep', pattern: '0 15 2 * * *' },
+      // Phase 5 slice 39 (§3.5, R319): the contract expiry warnings.
+      { job: 'contract-expiry-warn', pattern: '0 0 6 * * *' },
     ]);
   });
 

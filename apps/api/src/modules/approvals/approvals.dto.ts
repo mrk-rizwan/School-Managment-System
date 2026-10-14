@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { QueuedDocumentDto } from '../documents/verification.dto';
 import { ExpenseDto } from '../expenses/expenses.dto';
 import { LeaveRequestDto } from '../leave/leave.dto';
 import { ClaimDto } from '../payments/claims.dto';
@@ -35,6 +36,11 @@ export class ApprovalResultsDto {
   @ApiProperty({ type: () => ResultSheetDto, isArray: true, maxItems: 10 }) items: ResultSheetDto[];
 }
 
+export class ApprovalDocumentsDto {
+  @ApiProperty(COUNT) count: number;
+  @ApiProperty({ type: () => QueuedDocumentDto, isArray: true, maxItems: 10 }) items: QueuedDocumentDto[];
+}
+
 /** Only the sections whose key the caller holds; none at all is `{}`. */
 export class ApprovalsDto {
   /** `payment.verify`: pending deposit claims with their slip (GET /payment-claims), oldest first. */
@@ -50,4 +56,9 @@ export class ApprovalsDto {
    * (GET /result-sheets?status=submitted), with their own-child and cover flags.
    */
   @ApiPropertyOptional({ type: () => ApprovalResultsDto }) results?: ApprovalResultsDto;
+  /**
+   * `document.verify` (Phase 5 slice 40): documents awaiting a decision (GET /documents), oldest
+   * first, each with `ownUpload` (the caller may not decide their own upload).
+   */
+  @ApiPropertyOptional({ type: () => ApprovalDocumentsDto }) documents?: ApprovalDocumentsDto;
 }

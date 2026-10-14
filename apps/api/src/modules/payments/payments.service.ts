@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { allocate, ErrorCode, outstanding, type ExistingAdvance, type PaymentMethod } from '@asms/shared';
-import { fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
+import { ApiException, fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { toPage, type Page } from '../../common/pagination';
 import { SchoolClock } from '../../common/school-clock';
@@ -42,6 +42,8 @@ const ENDPOINT = 'payments';
 const SUBJECT = 'payment';
 /** The counter's family is bounded (GuardianDuesDto): ten children, fifty charges each. */
 const FAMILY_CHILDREN = 10;
+/** Slice 38 (contracts/slice-38.md §7.5): the payer of an event collection for a child with no live guardian. */
+const EVENT_PAYER_NAME = 'Event collection';
 const CHILD_CHARGES = 50;
 
 export interface PaymentCreateOutcome {
@@ -234,6 +236,112 @@ export class PaymentsService {
       amount: input.amount,
     });
     return this.write(actor, intent, input);
+  }
+
+  /**
+   * Phase 5 R317 (contracts/slice-38.md §2.7): an event collection, in the caller's transaction
+   * (which holds the event FOR SHARE). Cash only, one child, settling only that child's live
+   * charge of the event's campaign: never the actor's own child (R232, no exception), received
+   * today or earlier, at most what the charge still owes (EVENT_PAYMENT_EXCEEDS_CHARGE), no
+   * advance spent. The payment is the collector's (custody, handover as Phase 3); payer the
+   * child's fee-paying guardian; one allocation, the receipt last, receipt_issued as the counter.
+   */
+  async recordForEvent(
+    actor: Actor,
+    input: { eventId: bigint; campaignId: bigint; studentId: bigint; amount: number; receivedOn: Date; reference: string | null },
+  ): Promise<PaymentRecord> {
+    const { schoolId, userId } = actor;
+    await this.changeContext.setChangeContext(userId, null);
+    if (await this.permissions.actorIsGuardianOf(schoolId, userId, input.studentId)) throw ownChild();
+    if (input.receivedOn > (await this.clock.today(schoolId))) {
+      throw fieldRefused('receivedOn', ErrorCode.INVALID_VALUE, 'receivedOn must be today or earlier');
+    }
+    const chargeId = await this.charges.campaignChargeId(schoolId, input.campaignId, input.studentId);
+    if (chargeId === null) {
+      throw fieldRefused('studentId', ErrorCode.REFERENCE_NOT_FOUND, 'This child has no charge for this event');
+    }
+    // R236: no advance is spent, so the one charge is the only lock before the counter.
+    await this.charges.lockForUpdate(schoolId, [chargeId]);
+    const charge = (await this.charges.findByIds(schoolId, [chargeId]))[0];
+    if (!charge) throw notFound();
+    const owed = charge.status === 'open' ? outstanding(charge) : 0;
+    if (input.amount > owed) {
+      throw new ApiException(409, ErrorCode.EVENT_PAYMENT_EXCEEDS_CHARGE, 'This is more than the event charge still owes.', {
+        eventId: input.eventId.toString(),
+        outstanding: owed,
+      });
+    }
+    const year = (await this.payments.yearsByIds(schoolId, [charge.academicYearId])).get(charge.academicYearId);
+    const [payerGuardianId] = await this.payments.receiptRecipients(schoolId, [input.studentId]);
+    const intent: Intent = {
+      academicYearId: charge.academicYearId,
+      yearName: year?.name ?? '',
+      studentIds: [input.studentId],
+      payerGuardianId: payerGuardianId ?? null,
+      payerName: payerGuardianId === undefined ? EVENT_PAYER_NAME : null,
+    };
+    const now = new Date();
+    const payment = await this.payments.create(
+      schoolId,
+      {
+        academicYearId: intent.academicYearId,
+        payerGuardianId: intent.payerGuardianId,
+        payerName: intent.payerName,
+        method: 'cash',
+        amount: input.amount,
+        receivedOn: input.receivedOn,
+        reference: input.reference,
+        carriedFromReversalId: null,
+        recordedBy: userId,
+        advanceForStudentId: null,
+        claimId: null,
+      },
+      now,
+    );
+    await this.advances.insertMerged(
+      schoolId,
+      [{ paymentId: payment.id, chargeId, studentId: input.studentId, academicYearId: intent.academicYearId, amount: input.amount }],
+      now,
+    );
+    const receiptNo = await this.receipts.nextNumber(schoolId, intent.academicYearId);
+    const receipt = await this.receipts.create(
+      schoolId,
+      {
+        paymentId: payment.id,
+        academicYearId: intent.academicYearId,
+        receiptNo,
+        amount: input.amount,
+        issuedBy: userId,
+        lines: [{ studentId: input.studentId, chargeId, feeHeadName: charge.feeHead.name, period: charge.period, amount: input.amount }],
+      },
+      now,
+    );
+    await this.audit.record(schoolId, {
+      actorUserId: userId,
+      action: 'payment.recorded',
+      subjectType: SUBJECT,
+      subjectId: payment.id,
+      metadata: {
+        amount: input.amount,
+        method: 'cash',
+        academicYearId: intent.academicYearId.toString(),
+        payerGuardianId: intent.payerGuardianId?.toString() ?? null,
+        studentIds: input.studentId.toString(),
+        allocated: input.amount,
+        advanceUsed: 0,
+        remainder: 0,
+        receiptNo,
+        eventId: input.eventId.toString(),
+      },
+    });
+    // The receipt's "Balance for <year>" is the child's whole year, as the ordinary path's: Σ
+    // outstanding over the child's open charges of the year, read after the allocation.
+    const balance = (await this.charges.openOfStudents(schoolId, [input.studentId], intent.academicYearId)).reduce(
+      (sum, c) => sum + outstanding(c),
+      0,
+    );
+    await this.tellFamily(schoolId, intent, receipt, new Set([input.studentId]), balance);
+    return payment;
   }
 
   /**
@@ -447,6 +555,7 @@ export class PaymentsService {
       ...(query.recordedByUserId === undefined ? {} : { recordedBy: BigInt(query.recordedByUserId) }),
       ...(query.studentId === undefined ? {} : { studentId: BigInt(query.studentId) }),
       ...(query.academicYearId === undefined ? {} : { academicYearId: BigInt(query.academicYearId) }),
+      ...(query.eventId === undefined ? {} : { eventId: BigInt(query.eventId) }),
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });

@@ -211,6 +211,11 @@ export class ListPaymentsQueryDto extends PageQueryDto {
   @ApiPropertyOptional(ID) @IsOptional() @IsIdString() studentId?: string;
   @ApiPropertyOptional(ID) @IsOptional() @IsIdString() academicYearId?: string;
 
+  @ApiPropertyOptional({ ...ID, description: "Payments towards one event's charge (slice 38)" })
+  @IsOptional()
+  @IsIdString()
+  eventId?: string;
+
   @ApiPropertyOptional({ enum: ['-receivedOn'], default: '-receivedOn' })
   @IsOptional()
   @IsIn(['-receivedOn'])

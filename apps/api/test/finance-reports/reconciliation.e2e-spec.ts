@@ -15,7 +15,7 @@ import { createTestApp } from '../core/app';
 import { closeTestDb } from '../support/schools';
 import { createAcademicYear, createClass, createGuardian, createSection, enrol, isoDay } from '../support/students';
 import { db, karachi, lateFees, runMonth, structure } from '../fees/charges-support';
-import { monthOf, reportsHttp } from './support';
+import { monthOf, reportsHttp, shiftMonth } from './support';
 
 interface Collections {
   total: number;
@@ -50,8 +50,10 @@ describe('R228: the §0.20 identities over a scripted year (e2e)', () => {
     const key = newIdempotencyKey;
 
     // ---- the year: two older months, an admission after the cut-off, the generated months ----
-    const m1 = monthOf(-105);
-    const m2 = monthOf(-75);
+    // Calendar months counted back from the world's past month (never day offsets, which can put
+    // two of them in one month and leave the concession two credits instead of three).
+    const m1 = shiftMonth(w.past, -2);
+    const m2 = shiftMonth(w.past, -1);
     const g3 = await createGuardian(db(), w.school, { fullName: 'Sana Ali', contactCapability: 'smartphone_data' });
     // The admission fee (the seeded once head) is priced for the class (R239).
     await structure(
@@ -156,15 +158,15 @@ describe('R228: the §0.20 identities over a scripted year (e2e)', () => {
 
     // ---- R189: a month generated now is paid at once by the advance left after the refunds and
     //      the carry-forward (2,500 - 300 - 1,500 = 700) ----
-    const m4 = monthOf(-15);
+    const m4 = shiftMonth(w.past, 1);
     await runMonth(app, w.school, w.year, m4, karachi(`${m4}-02`));
     const dM4 = await db().charge.findFirstOrThrow({ where: { schoolId, studentId: d.studentId, period: m4, kind: 'generated' } });
     expect([dM4.allocatedAmount, dM4.status]).toEqual([700, 'open']);
     expect((await db().payment.findFirstOrThrow({ where: { schoolId, id: dAdvance.id } })).unallocatedAmount).toBe(0);
 
     // ---- staff: salaries, an unpaid leave, a payroll run and its correction a month later ----
-    const p1 = monthOf(-65);
-    const p2 = monthOf(-35);
+    const p1 = shiftMonth(w.past, -1);
+    const p2 = w.past;
     for (const staff of [w.teacher, O]) {
       await post(
         `/staff/${staff.user.staffId}/salary-structure`,

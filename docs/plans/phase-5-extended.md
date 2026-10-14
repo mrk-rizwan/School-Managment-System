@@ -186,7 +186,7 @@ tenant data only through `SupportReadsRepository` (§3.1); `audit` reads `audit_
 |---|---|---|
 | `timetable.manage` | versions, slots, substitutions, grid | principal |
 | staff (any) | read any section timetable | all staff |
-| `holiday.manage` (+ campaign keys for a charge) | events: create, edit, publish, cancel, complete, duties | principal, office |
+| `holiday.manage` (+ campaign keys for a charge) | events: create, edit, publish, cancel, complete, duties | principal (corrected 2026-10-14: Phase 1 §7 gives office no Setup key and §0.36 adds only `document.verify`; a school grants it per user) |
 | duty scope | participation, event payments for the officer's event | the assigned staff |
 | `staff.contract.manage` | contracts, contract documents | principal |
 | `document.verify` | verify, reject, required list, pending queue, incomplete admissions | principal, **office (new default)** |

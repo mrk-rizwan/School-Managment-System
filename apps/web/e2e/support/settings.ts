@@ -17,4 +17,8 @@ export const FINANCE_SETTINGS = {
   // Phase 4 slice 34 (contracts/slice-34.md §6): the certificate settings at their defaults.
   certificateSignatoryName: null,
   certificateShowIdentityNo: true,
+  // Phase 5 slice 40 (contracts/slice-40.md §3): the required documents at their default.
+  requiredDocumentTypes: ['b_form', 'photo'] as SchoolSettingsDto['requiredDocumentTypes'],
+  // Phase 5 slice 39 (rule 35): the contract-expiry warning at its default.
+  contractWarningDays: 30,
 } as const satisfies Partial<SchoolSettingsDto>;

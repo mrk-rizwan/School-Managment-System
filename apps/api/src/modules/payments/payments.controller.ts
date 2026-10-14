@@ -359,9 +359,12 @@ export class MyCustodyController {
     return this.handovers.mine(query);
   }
 
-  /** The collector hands over their own custody (payment.record). */
+  /**
+   * The collector hands over their own custody: payment.record, or (slice 38 §3.3) any staff
+   * member holding cash in custody (an event collector); checked in the service.
+   */
   @Post('cash-handovers')
-  @RequireCapability(Capability.PAYMENT_RECORD)
+  @RequireStaff()
   @ApiCreatedResponse({ type: HandoverDto })
   @ApiErrors(...COMMON, 409, 422)
   open(

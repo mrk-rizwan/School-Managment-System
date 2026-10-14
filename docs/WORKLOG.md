@@ -22,8 +22,22 @@ writes the production code.** Do not start application code in a planning sessio
   and rewritten once (entry below). The owner said "proceed phase" (2026-10-09), accepting the
   estimate and the §1.2 defaults. **Wave R is done:** groundwork `82c5aeb` (CI green) and slice 37
   the period timetable (security PASS, correctness review fixed, committed with this entry).
-  Project = 149.5 / 181.5 days = 82 %. **Next: wave S** — slices 38 (events), 39 (contracts),
-  40 (document verification) in parallel.
+  **Wave S is done** (2026-10-14): schema `05167e2`, then slices 38 events, 39 staff contracts,
+  40 document verification (security PASS, correctness findings fixed, committed with this entry).
+  Project = 159.5 / 181.5 days = 88 %. **Next: wave T** — slices 41 (transport), 44 (biometric),
+  46 (audit screen and rule 24's reach): schema first, then the three in parallel.
+- **New machine since 2026-10-12** (owner moved to a new SSD): repo at `E:\Node Apps\School Managment System`,
+  user profile `C:\Users\mrkri`. **pnpm now works**: pnpm 12 is a native Rust binary that needs the
+  Microsoft Visual C++ runtime; its absence (`STATUS_DLL_NOT_FOUND`) was also why pnpm never ran on the
+  old laptop. Installed with `winget install Microsoft.VCRedist.2015+.x64`, then
+  `npm install -g --allow-scripts=pnpm pnpm@12.3.4`; the binary is
+  `%APPDATA%\npm\node_modules\pnpm\pnpm.exe`. Dependencies come from the owner's store
+  `E:\.pnpm-store` (`pnpm install --frozen-lockfile --store-dir E:\.pnpm-store`). Docker Desktop
+  (WSL 2 + Ubuntu) is at `%LOCALAPPDATA%\Programs\DockerDesktop\Docker Desktop.exe` and does not
+  start by itself after a restart; then `docker compose up -d postgres redis mailpit minio`, and
+  `node apps/api/scripts/migrate-test-db.js` if the test DB is behind. The dev DB has no seeded platform
+  admin or school yet (`seed:platform-admin`, `seed:dev-school` — the owner runs them; the first
+  prints a login). The GitHub CLI is not installed on this machine (CI cannot be read from here).
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -134,6 +148,49 @@ done before slice 0 are not counted.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-10/14 — Phase 5 wave S: events, staff contracts, document verification (Opus 5.5 builds, Fable 5.1 reviews)
+
+**Process.** The wave's schema went first (`05167e2`: events, event sections/duties/participation,
+staff contracts, `expenses.event_id`, a `students(school_id, admitted_on)` index; one fix-forward
+migration for a CHECK that refused every draft), then three agents built the slices in parallel
+with no migrations of their own; the main thread regenerated the clients once at the end. The move
+to a new machine and an owner pause interrupted the agents twice; they resumed from disk.
+
+**Slice 38, events and PTM** (contract `slice-38.md`, 13 deviations): events as rows with sections,
+duties (each officer sees only their own), participation per student, an optional charge raised as
+a campaign under the Event head, the invitation and cancellation as announcements, an event report,
+expenses tagged to an event. Event cash is collected through `POST /events/:id/payments`
+(`PaymentsService.recordForEvent`: cash only, one charge, remainder refused, own child refused,
+receipt and custody as Phase 3). `POST /me/staff/cash-handovers` now admits any staff member holding
+cash in custody (deviation 9), so a teacher's collection reaches the office. Cancel with money:
+unpaid charges voided, paid ones (and paid late fees) credited in full so the money becomes the
+child's advance; the principal is needed when any charge has money. Duty scope is enforced in
+`EventActivityService` (deviation 4, recorded against control 7). Rosters show each child's charge
+only to a collector, an events holder or a `payment.record` holder.
+
+**Slice 39, staff contracts:** add, renew (one transaction), end; end employment ends the live
+contract; scans streamed under `staff.contract.manage` with an audit row per read; the
+`contract-expiry-warn` job (30 and 7 days, once each, principals); `contractWarningDays` in settings;
+"Contracts ending" tile and list. A contract manager may record their own contract (no pay on it).
+
+**Slice 40, document verification:** queue, verify/reject (never the uploader), the per-school
+required list, the student checklist, the incomplete-admissions report, a "documents incomplete"
+badge, a Documents section in Approvals on web and phone (identity scans never disk-cached on the
+phone); families see status and fixed text only.
+
+**Reviews.** Security PASS (four Low, three fixed, the fourth — the event report readable under
+`holiday.manage` — kept as planned). Correctness: the event receipt told a family a wrong balance
+(fixed: the year's whole outstanding, as the counter does), paid late fees were skipped on cancel
+(fixed), the warning days were not writable (fixed), and a test id collision in the inbox suite on a
+fresh DB (fixed). **Plan corrected:** office staff do not hold `holiday.manage` by default (Phase 1
+§7 gives office no Setup key); only the principal runs events unless a school grants it per user.
+
+**R228 reconciliation test** failed at the previous commit too: its scripted year chose months by day
+offsets, and on 14 October two of them fell in the same month. Fixed in the test (calendar months);
+the assertion is unchanged. **Timing:** `generation-perf` passes alone at about 4.5-4.8 s against its
+5 s budget (the late-fee sweep's chunked insert); worth the performance review at the phase close.
+Timing suites fail spuriously when other agents load the database: run them alone.
 
 ## 2026-10-09/10 — Phase 5 wave R: groundwork and slice 37 (Opus 5.5 builds, Fable 5.1 reviews)
 

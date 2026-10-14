@@ -51,6 +51,8 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   { job: JOB.feeReminder, pattern: '0 0 9 * * *' },
   // Phase 3 slice 21 (§3.7, R200): image-less deposit claims older than 24 h expire, at 02:15.
   { job: JOB.claimImageSweep, pattern: '0 15 2 * * *' },
+  // Phase 5 slice 39 (§3.5, R319): contracts ending within the warning lead, at 06:00 school time.
+  { job: JOB.contractExpiryWarn, pattern: '0 0 6 * * *' },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */

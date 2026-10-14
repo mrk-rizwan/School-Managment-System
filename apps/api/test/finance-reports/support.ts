@@ -43,6 +43,16 @@ export interface ReportsWorld {
 /** `YYYY-MM` of a day `offset` days from today. */
 export const monthOf = (offset: number): string => isoDay(offset).slice(0, 7);
 
+/**
+ * `YYYY-MM` `n` calendar months from `month`. Day offsets 30 days apart can land in one month
+ * (2026-10-14: -105 and -75 are both July), so a script that needs distinct months counts them.
+ */
+export function shiftMonth(month: string, n: number): string {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const index = y * 12 + (m - 1) + n;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
 export function reportsHttp(app: () => NestExpressApplication) {
   const h = paymentsHttp(app);
 

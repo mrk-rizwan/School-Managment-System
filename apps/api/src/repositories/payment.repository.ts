@@ -84,6 +84,8 @@ export interface PaymentListQuery {
   studentId?: bigint;
   academicYearId?: bigint;
   handoverId?: bigint;
+  /** Phase 5 slice 38: an allocation (live or reversed) to a charge of the event's campaign. */
+  eventId?: bigint;
   skip: number;
   take: number;
 }
@@ -135,6 +137,16 @@ export class PaymentRepository {
       ...(query.recordedBy === undefined ? {} : { recordedBy: query.recordedBy }),
       ...(query.academicYearId === undefined ? {} : { academicYearId: query.academicYearId }),
       ...(query.handoverId === undefined ? {} : { handoverId: query.handoverId }),
+      ...(query.eventId === undefined
+        ? {}
+        : {
+            allocations: {
+              some: {
+                schoolId,
+                charge: { schoolId, campaign: { is: { schoolId, event: { is: { schoolId, id: query.eventId } } } } },
+              },
+            },
+          }),
       ...(query.studentId === undefined
         ? {}
         : {

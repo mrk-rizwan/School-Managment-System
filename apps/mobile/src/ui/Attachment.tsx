@@ -44,10 +44,27 @@ type Props = {
   label?: string;
   /** The original's path when it is not `<basePath>/attachment` (a deposit slip's `/image`, slice 27). */
   originalPath?: string;
+  /** The preview's path when it is not `<basePath>/thumbnail` (a student document has none, slice 40). */
+  thumbnailPath?: string;
+  /**
+   * expo-image's cache (default `disk`). An identity scan (a B-Form, a CNIC, slice 40) passes
+   * `none`, so it is never written to the phone's disk cache (security L3, wave S fix round).
+   */
+  cachePolicy?: 'disk' | 'memory' | 'none';
 };
 
-export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary photo', originalPath }: Props) {
+export function Attachment({
+  basePath,
+  mime,
+  sizeBytes,
+  online,
+  label = 'Diary photo',
+  originalPath,
+  thumbnailPath,
+  cachePolicy = 'disk',
+}: Props) {
   const original = originalPath ?? `${basePath}/attachment`;
+  const thumbnail = thumbnailPath ?? `${basePath}/thumbnail`;
   const [step, setStep] = useState<'none' | 'thumbnail' | 'full'>('none');
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -108,8 +125,8 @@ export function Attachment({ basePath, mime, sizeBytes, online, label = 'Diary p
       ) : (
         <>
           <Image
-            source={source(step === 'full' ? original : `${basePath}/thumbnail`)}
-            cachePolicy="disk"
+            source={source(step === 'full' ? original : thumbnail)}
+            cachePolicy={cachePolicy}
             contentFit="contain"
             style={step === 'full' ? styles.full : styles.thumbnail}
             onError={() => setFailed(true)}

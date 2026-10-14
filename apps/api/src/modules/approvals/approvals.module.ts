@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SchoolContext } from '../../common/school-context';
+import { DocumentsModule } from '../documents/documents.module';
 import { ExpensesModule } from '../expenses/expenses.module';
 import { LeaveModule } from '../leave/leave.module';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
@@ -13,7 +14,7 @@ import { ApprovalsService } from './approvals.service';
  * the owning modules' services. PermissionsService comes from the global AccessModule.
  */
 @Module({
-  imports: [PaymentsModule, ExpensesModule, LeaveModule, ResultsModule],
+  imports: [PaymentsModule, ExpensesModule, LeaveModule, ResultsModule, DocumentsModule],
   controllers: [ApprovalsController],
   providers: [ApprovalsService, SchoolContext, MeReadsThrottleGuard],
 })

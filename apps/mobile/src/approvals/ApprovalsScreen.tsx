@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { api, unwrap } from '../api/client';
-import type { ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, MeDto, StaffDto } from '../api/contracts';
+import type { ClaimDto, ExpenseDto, HandoverDto, LeaveRequestDto, MeDto, QueuedDocumentDto, StaffDto } from '../api/contracts';
 import { queryKeys } from '../api/query-keys';
 import { holds } from '../auth/capabilities';
 import { useSession } from '../auth/session';
@@ -26,6 +26,9 @@ import {
   confirmedMessage,
   decisionFailure,
   digitsOnly,
+  documentLine,
+  documentTitle,
+  documentWord,
   expenseLine,
   expenseTitle,
   fetchApprovals,
@@ -40,7 +43,7 @@ import {
 } from './approvals';
 import { sheetTitle } from '../results/results';
 
-// The Approvals tab (phase-3-financial.md slice 27, R226, R227): one screen, the four queues the
+// The Approvals tab (phase-3-financial.md slice 27, R226, R227; Phase 5 slice 40 adds Documents): one screen, the queues the
 // user may act on, each row opening its decision. Online only: offline the screen reads nothing
 // and says so; no decision ever enters the outbox. Secure: deposit slips name children and show
 // a family's bank slip.
@@ -49,7 +52,8 @@ type Open =
   | { kind: 'claim'; row: ClaimDto }
   | { kind: 'handover'; row: HandoverDto }
   | { kind: 'expense'; row: ExpenseDto }
-  | { kind: 'leave'; row: LeaveRequestDto };
+  | { kind: 'leave'; row: LeaveRequestDto }
+  | { kind: 'document'; row: QueuedDocumentDto };
 
 /** What every decision sheet is given: close with a message (done or stale), or just close. */
 type SheetProps = { me: MeDto; onSettled: (message: string) => void; onClose: () => void };
@@ -91,7 +95,7 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
         <LoadingState />
       ) : approvals.isError || !data ? (
         <ErrorState error={approvals.error} onRetry={() => void approvals.refetch()} />
-      ) : !data.claims && !data.handovers && !data.expenses && !data.leave && !data.results ? (
+      ) : !data.claims && !data.handovers && !data.expenses && !data.leave && !data.results && !data.documents ? (
         <EmptyState title="Nothing for you to approve" />
       ) : (
         <>
@@ -149,6 +153,20 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
               ))}
             </Section>
           ) : null}
+          {data.documents ? (
+            <Section title="Documents" count={data.documents.count} testID="approvals.documents" empty="No documents are waiting to be checked.">
+              {data.documents.items.map((d) => (
+                <ListRow
+                  key={d.id}
+                  title={documentTitle(d)}
+                  detail={documentLine(d)}
+                  value={d.ownUpload ? 'Your upload' : null}
+                  onPress={() => setOpen({ kind: 'document', row: d })}
+                  testID={`approvals.document.${d.id}`}
+                />
+              ))}
+            </Section>
+          ) : null}
           {data.leave ? (
             <Section title="Staff leave" count={data.leave.count} testID="approvals.leave" empty="No leave requests are waiting.">
               {data.leave.items.map((l) => (
@@ -168,6 +186,7 @@ export function ApprovalsScreen({ secure }: { secure: boolean }) {
       {open?.kind === 'handover' ? <HandoverSheet key={open.row.id} handover={open.row} {...sheet} /> : null}
       {open?.kind === 'expense' ? <ExpenseSheet key={open.row.id} expense={open.row} {...sheet} /> : null}
       {open?.kind === 'leave' ? <LeaveSheet key={open.row.id} request={open.row} {...sheet} /> : null}
+      {open?.kind === 'document' ? <DocumentSheet key={open.row.id} document={open.row} {...sheet} /> : null}
     </Screen>
   );
 }
@@ -509,6 +528,98 @@ function ExpenseSheet({ expense, me, onSettled, onClose }: SheetProps & { expens
           label="Expense receipt"
         />
       ) : null}
+    </ModalSheet>
+  );
+}
+
+// ----------------------------------------------------------------------------------- document
+
+/**
+ * Phase 5 slice 40 (R322): verify or reject a student's document. Never the uploader (the server
+ * refuses it too); the reason stays with the school, the family is only asked to upload again.
+ */
+function DocumentSheet({ document, onSettled, onClose }: SheetProps & { document: QueuedDocumentDto }) {
+  const online = useOnline();
+  const verifyGate = useOnlineOnly('verify_document');
+  const rejectGate = useOnlineOnly('reject_document');
+  const { busy, failure, run } = useDecision(onSettled);
+  const [rejecting, setRejecting] = useState(false);
+  const word = documentWord(document.type);
+  const content = `/api/v1/documents/${document.id}/content`;
+
+  if (rejecting) {
+    return (
+      <ReasonSheet
+        visible
+        title={`Reject the ${word}`}
+        changes={[`${documentTitle(document)}. The reason stays with the school; the family is asked to upload it again.`]}
+        confirmLabel="Reject"
+        busy={busy}
+        disabledReason={rejectGate.reason}
+        onConfirm={(reason) =>
+          void run(async () => {
+            await unwrap(api.POST('/api/v1/documents/{id}/reject', { params: { path: { id: document.id } }, body: { reason } }));
+            return `${word} rejected.`;
+          })
+        }
+        onClose={() => setRejecting(false)}
+      />
+    );
+  }
+
+  return (
+    <ModalSheet
+      visible
+      title="Document"
+      onClose={onClose}
+      testID="approvals.documentSheet"
+      footer={
+        <>
+          {failure !== null ? (
+            <Text style={styles.error} testID="approvals.document.failure">
+              {failure}
+            </Text>
+          ) : null}
+          {verifyGate.reason ? <Text style={styles.note}>{verifyGate.reason}</Text> : null}
+          <Button
+            label="Verify"
+            onPress={() =>
+              void run(async () => {
+                await unwrap(api.POST('/api/v1/documents/{id}/verify', { params: { path: { id: document.id } } }));
+                return `${word} verified.`;
+              })
+            }
+            disabled={!verifyGate.enabled || document.ownUpload}
+            busy={busy}
+            testID="approvals.document.verify"
+          />
+          <Button
+            label="Reject…"
+            variant="secondary"
+            onPress={() => setRejecting(true)}
+            disabled={!rejectGate.enabled || document.ownUpload}
+            testID="approvals.document.reject"
+          />
+        </>
+      }
+    >
+      <Text style={styles.heading}>{documentTitle(document)}</Text>
+      <Lines lines={[`Admission no. ${document.student.admissionNo}`, documentLine(document)]} />
+      {document.ownUpload ? (
+        <Text style={styles.note} testID="approvals.document.own">
+          {'You uploaded this: another member of staff checks it.'}
+        </Text>
+      ) : null}
+      <Attachment
+        basePath={content}
+        originalPath={content}
+        thumbnailPath={content}
+        mime={document.mime}
+        sizeBytes={document.sizeBytes}
+        online={online}
+        label={word}
+        cachePolicy="none"
+      />
     </ModalSheet>
   );
 }

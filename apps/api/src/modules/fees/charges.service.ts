@@ -96,6 +96,7 @@ export class ChargesService {
       ...(query.classId === undefined ? {} : { classId: BigInt(query.classId) }),
       ...(query.sectionId === undefined ? {} : { sectionId: BigInt(query.sectionId) }),
       ...(query.feeHeadId === undefined ? {} : { feeHeadId: BigInt(query.feeHeadId) }),
+      ...(query.campaignId === undefined ? {} : { campaignId: BigInt(query.campaignId) }),
       ...(query.period === undefined ? {} : { period: query.period }),
       ...(query.status === undefined ? {} : { status: query.status }),
       ...(query.kind === undefined ? {} : { kind: query.kind }),
@@ -386,6 +387,117 @@ export class ChargesService {
     });
     await recordSubject(created.id);
     return created;
+  }
+
+  // -------------------------------------------------------------- event cancel (slice 38)
+
+  /**
+   * Phase 5 R313 (contracts/slice-38.md §2.5), in the caller's (the cancel) transaction: every
+   * live charge of the campaign and every live late fee of one is voided when no money is on it,
+   * otherwise credited for what is left uncredited, which de-allocates the paid money into its
+   * payment as the child's advance (R186; no cash moves). Money on any of them (a paid late fee
+   * too) needs the principal, checked before anything is written. All the families' locks are
+   * taken first, in R236's order (lockForCredit over every charge and late fee); a sole
+   * principal's own child (R253) is credited before the change context is set, as adjust does;
+   * any other actor's own child refuses (own_child).
+   */
+  async settleCancelledCampaign(
+    session: SchoolSessionContext,
+    campaignId: bigint,
+    reason: string,
+  ): Promise<{ voided: number; credited: number; applied: number }> {
+    const { schoolId, userId } = this.context.actor();
+    const ids = await this.charges.liveIdsOfCampaign(schoolId, campaignId);
+    if (ids.length === 0) return { voided: 0, credited: 0, applied: 0 };
+    const lateIds = await this.charges.liveLateFeeIdsFor(schoolId, ids);
+    const rows = await this.advances.lockForCredit(schoolId, [...ids, ...lateIds]);
+    const live = rows.filter((r) => r.kind === 'campaign' && r.status !== 'voided');
+    const liveIds = new Set(live.map((r) => r.id));
+    const lateFees = rows.filter(
+      (r) => r.kind === 'late_fee' && r.status !== 'voided' && r.lateFeeForChargeId !== null && liveIds.has(r.lateFeeForChargeId),
+    );
+    const hasMoney = (r: ChargeRecord) => r.allocatedAmount > 0 || r.creditedAmount > 0;
+    const withMoney = [...live, ...lateFees].filter(hasMoney);
+    if (withMoney.length > 0) requirePrincipal(session);
+    const self = new Set<bigint>();
+    for (const row of withMoney) {
+      if (await ownChildCheck(this.permissions, session, schoolId, row.studentId)) self.add(row.id);
+    }
+    const now = new Date();
+    let voided = 0;
+    for (const row of live) {
+      // Each charge's open late fee with no money on it goes with it; one with money is credited below.
+      const unpaidLate: bigint[] = [];
+      for (const fee of lateFees) {
+        if (fee.lateFeeForChargeId !== row.id || fee.status !== 'open' || hasMoney(fee)) continue;
+        if ((await this.charges.void(schoolId, fee.id, userId, reason, now)) === 1) {
+          voided += 1;
+          unpaidLate.push(fee.id);
+        }
+      }
+      if (hasMoney(row)) continue;
+      if ((await this.charges.void(schoolId, row.id, userId, reason, now)) !== 1) throw chargeNotOpen(row.id);
+      voided += 1;
+      await this.audit.record(schoolId, {
+        actorUserId: userId,
+        action: 'charge.voided',
+        subjectType: SUBJECT,
+        subjectId: row.id,
+        reason,
+        metadata: {
+          kind: row.kind,
+          studentId: row.studentId.toString(),
+          feeHeadId: row.feeHeadId.toString(),
+          period: row.period,
+          amount: row.amount,
+          lateFeesVoided: unpaidLate.map((id) => id.toString()).join(','),
+          selfApproved: false,
+          source: 'event_cancelled',
+        },
+      });
+    }
+    // R253's own child first, with no acting user set; then everyone else under the actor (R232).
+    const ordered = [...withMoney.filter((r) => self.has(r.id)), ...withMoney.filter((r) => !self.has(r.id))];
+    let contextSet = false;
+    let credited = 0;
+    for (const row of ordered) {
+      if (!self.has(row.id) && !contextSet) {
+        await this.changeContext.setChangeContext(userId, null);
+        contextSet = true;
+      }
+      const amount = row.amount - row.creditedAmount;
+      if (amount <= 0) continue;
+      const owed = outstanding(row);
+      const beyond = amount - owed;
+      const freed = await this.advances.deallocate(schoolId, row, beyond, now);
+      if (freed < beyond) {
+        throw chargeNotOpen(row.id, { reason: 'exceeds_outstanding', outstanding: owed, creditable: owed + freed });
+      }
+      const created = await this.charges.create(schoolId, adjustmentOf(row, amount, null, userId), now);
+      credited += 1;
+      await this.audit.record(schoolId, {
+        actorUserId: userId,
+        action: 'charge.adjusted',
+        subjectType: SUBJECT,
+        subjectId: created.id,
+        reason,
+        metadata: {
+          adjustsChargeId: row.id.toString(),
+          studentId: row.studentId.toString(),
+          amount,
+          outstandingBefore: owed,
+          deallocated: freed,
+          selfApproved: self.has(row.id),
+          source: 'event_cancelled',
+        },
+      });
+    }
+    const first = live[0];
+    const applied =
+      withMoney.length === 0 || first === undefined
+        ? { amount: 0 }
+        : await this.advances.applyTo(schoolId, first.academicYearId, [...new Set(withMoney.map((r) => r.studentId))]);
+    return { voided, credited, applied: applied.amount };
   }
 
   // -------------------------------------------------------------------------- generation

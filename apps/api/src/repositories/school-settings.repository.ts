@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { readLocked } from '../common/locking';
 import type { SchoolId } from '../tenancy/school-id';
-import type { LateCountsAs, LeaveCountsAs, MessageType, RemarkVisibility } from '@asms/shared';
+import type { DocumentType, LateCountsAs, LeaveCountsAs, MessageType, RemarkVisibility } from '@asms/shared';
 import type { PrismaTxAdapter } from './prisma';
 
 export interface SchoolSettingsRecord {
@@ -35,6 +35,10 @@ export interface SchoolSettingsRecord {
   // Phase 4 (phase-4-academic.md §3.7, contracts/slice-34.md §6).
   certificateSignatoryName: string | null;
   certificateShowIdentityNo: boolean;
+  // Phase 5 rule 36 (contracts/slice-40.md §3): distinct, no nulls (CHECK).
+  requiredDocumentTypes: DocumentType[];
+  // Phase 5 rule 35 (contracts/slice-39.md): 1-90 (CHECK).
+  contractWarningDays: number;
   updatedAt: Date;
 }
 
@@ -70,6 +74,8 @@ const SELECT = {
   overdueReminderEveryDays: true,
   certificateSignatoryName: true,
   certificateShowIdentityNo: true,
+  requiredDocumentTypes: true,
+  contractWarningDays: true,
   updatedAt: true,
 } as const;
 

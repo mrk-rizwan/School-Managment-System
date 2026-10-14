@@ -72,6 +72,8 @@ import { FeeStructuresService } from './fee-structures.service';
     AuditLogRepository,
     ChangeContextRepository,
   ],
-  exports: [AdmissionFees, ChargeGeneration],
+  // Phase 5 slice 38: the events module writes an event's campaign and its cancellation through
+  // CampaignsService and ChargesService (phase-5-extended.md §2).
+  exports: [AdmissionFees, ChargeGeneration, CampaignsService, ChargesService],
 })
 export class FeesModule {}

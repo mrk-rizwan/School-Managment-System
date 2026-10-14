@@ -203,6 +203,15 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/classes/:id', 'staff'],
   ['GET', '/api/v1/classes/:id/sections', 'staff'],
   ['GET', '/api/v1/classes/:id/subjects', 'staff'],
+  // Phase 5 slice 38 (rule 32): events are read by any staff member (drafts by holiday.manage
+  // only); participation and payments admit staff and check the duty scope per request (404
+  // outside it).
+  ['GET', '/api/v1/events', 'staff'],
+  ['GET', '/api/v1/events/:id', 'staff'],
+  ['GET', '/api/v1/events/:id/participation', 'staff'],
+  ['GET', '/api/v1/events/:id/payments', 'staff'],
+  ['POST', '/api/v1/events/:id/payments', 'staff'],
+  ['POST', '/api/v1/events/:id/record-participation', 'staff'],
   ['GET', '/api/v1/health', 'public'],
   ['GET', '/api/v1/holidays', 'staff'],
   ['GET', '/api/v1/holidays/:id', 'staff'],
@@ -222,8 +231,12 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/children/:id/diary-entries', 'capacity'],
   ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/attachment', 'capacity'],
   ['GET', '/api/v1/me/children/:id/diary-entries/:entryId/thumbnail', 'capacity'],
+  // Phase 5 slice 40 (R322): the child's document checklist, status and fixed text only.
+  ['GET', '/api/v1/me/children/:id/documents', 'capacity'],
   // Phase 3 slice 21 (R198): a child's dues and deposit claims, by the capacity scope.
   ['GET', '/api/v1/me/children/:id/dues', 'capacity'],
+  // Phase 5 slice 38 (R315): published events of the child's sections, the child's own charge only.
+  ['GET', '/api/v1/me/children/:id/events', 'capacity'],
   ['GET', '/api/v1/me/children/:id/payment-claims', 'capacity'],
   ['POST', '/api/v1/me/children/:id/payment-claims', 'capacity'],
   ['GET', '/api/v1/me/children/:id/payment-claims/:claimId', 'capacity'],
@@ -254,6 +267,12 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   // Phase 3 slice 20: any active staff member's own cash in hand and handovers (the user from the
   // session only); opening one needs payment.record.
   ['GET', '/api/v1/me/staff/cash-handovers', 'staff'],
+  // Phase 5 slice 38 §3.3: an event collector hands over their own cash; without payment.record
+  // only while they hold some (checked in the service).
+  ['POST', '/api/v1/me/staff/cash-handovers', 'staff'],
+  // Phase 5 slice 39 (R321): the staff member's own live contract and its scan.
+  ['GET', '/api/v1/me/staff/contract', 'staff'],
+  ['GET', '/api/v1/me/staff/contract/document', 'staff'],
   ['GET', '/api/v1/me/staff/custody', 'staff'],
   // Phase 3 slice 24: any active staff member's own leave and the leave types.
   ['GET', '/api/v1/me/staff/leave-balance', 'staff'],
@@ -276,6 +295,8 @@ const NO_CAPABILITY_ROUTES: [string, string, Access][] = [
   ['GET', '/api/v1/me/student/diary-entries', 'capacity'],
   ['GET', '/api/v1/me/student/diary-entries/:entryId/attachment', 'capacity'],
   ['GET', '/api/v1/me/student/diary-entries/:entryId/thumbnail', 'capacity'],
+  ['GET', '/api/v1/me/student/documents', 'capacity'],
+  ['GET', '/api/v1/me/student/events', 'capacity'],
   ['GET', '/api/v1/me/student/remarks', 'capacity'],
   // Phase 4 slice 33: the student's own results and class tests (the student from the session).
   ['GET', '/api/v1/me/student/results', 'capacity'],
@@ -368,6 +389,9 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/custom-roles': ['custom_role.created'],
   'PATCH /api/v1/custom-roles/:id': ['custom_role.updated'],
   'POST /api/v1/custom-roles/:id/archive': ['custom_role.archived'],
+  // Phase 5 slice 40 (contracts/slice-40.md §2.2): a decision is final; a repeat is refused.
+  'POST /api/v1/documents/:id/verify': ['document.verified'],
+  'POST /api/v1/documents/:id/reject': ['document.rejected'],
   'PATCH /api/v1/enrolments/:id': ['enrolment.roll_no_set'],
   'POST /api/v1/enrolments/:id/change-class': ['enrolment.class_changed'],
   'POST /api/v1/enrolments/:id/change-section': ['enrolment.section_changed'],
@@ -475,6 +499,19 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/certificates/:id/void': ['certificate.voided'],
   // Phase 5 slice 37 (contracts/slice-37.md §5). A replayed create writes no row; a repeated void
   // answers 200 unchanged and writes none.
+  // Phase 5 slice 38 (contracts/slice-38.md §5). A replayed create or payment writes no row; a
+  // repeated duty end and an unchanged participation write none; publish writes the campaign's
+  // rows when charged, cancel the charges' and the campaign's.
+  'POST /api/v1/events': ['event.created'],
+  'PATCH /api/v1/events/:id': ['event.updated'],
+  'POST /api/v1/events/:id/duties': ['event_duty.added'],
+  'POST /api/v1/event-duties/:id/end': ['event_duty.ended'],
+  'POST /api/v1/events/:id/publish': ['event.published', 'charge_campaign.created', 'charge_campaign.generate_requested'],
+  'POST /api/v1/events/:id/cancel': ['event.cancelled', 'charge.voided', 'charge.adjusted', 'charge_campaign.cancelled'],
+  'POST /api/v1/events/:id/complete': ['event.completed'],
+  'POST /api/v1/events/:id/record-participation': ['event_participation.recorded'],
+  'POST /api/v1/events/:id/payments': ['event_payment.recorded', 'payment.recorded'],
+  'POST /api/v1/expenses/:id/tag-event': ['expense.event_tagged'],
   'POST /api/v1/sections/:id/timetable-versions': ['timetable_version.created'],
   'POST /api/v1/timetable-versions/:id/void': ['timetable_version.voided'],
   'POST /api/v1/sections/:id/timetable-substitutions': ['timetable_substitution.created'],
@@ -500,6 +537,10 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   // Phase 3 slice 25 (contracts/slice-25.md §8). A replayed create or adjustment writes no row; the
   // pay-day job audits as the system actor (payroll_run.auto_prepared, A19).
   'POST /api/v1/staff/:id/salary-structure': ['salary_structure.created'],
+  // Phase 5 slice 39 (contracts/slice-39.md §4). A replayed create and a repeated refusal write no row.
+  'POST /api/v1/staff/:id/contracts': ['staff_contract.created'],
+  'POST /api/v1/staff-contracts/:id/renew': ['staff_contract.renewed'],
+  'POST /api/v1/staff-contracts/:id/end': ['staff_contract.ended'],
   'POST /api/v1/salary-advances': ['salary_advance.granted', 'expense.recorded'],
   'POST /api/v1/salary-advances/:id/write-off': ['salary_advance.written_off'],
   'POST /api/v1/payroll-runs': ['payroll_run.prepared'],
@@ -512,7 +553,8 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/sections/:id/archive': ['section.archived'],
   'POST /api/v1/staff': ['staff.created'],
   'PATCH /api/v1/staff/:id': ['staff.updated'],
-  'POST /api/v1/staff/:id/change-status': ['staff.status_changed'],
+  // Slice 39 (R318): leaving also ends the live contract (staff_contract.ended, via end_employment).
+  'POST /api/v1/staff/:id/change-status': ['staff.status_changed', 'staff_contract.ended'],
   'POST /api/v1/staff/:id/issue-login': ['user.login_issued', 'user.reset_on_staff_link'],
   'POST /api/v1/staff/:id/teacher-assignments': ['teacher_assignment.created', 'teacher_assignment.ended'],
   // contracts/slice-12.md §6. An identical replay is a 200 with no row.

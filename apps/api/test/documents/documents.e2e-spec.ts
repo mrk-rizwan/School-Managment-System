@@ -342,6 +342,11 @@ describe('uploads and documents (e2e)', () => {
         uploadedBy: officeUser.userId.toString(),
         uploadedByName: expect.any(String),
         createdAt: expect.any(String),
+        // Phase 5 slice 40: born uploaded, undecided (R322).
+        status: 'uploaded',
+        decidedAt: null,
+        decidedByName: null,
+        rejectReason: null,
       });
       const row = await db.studentDocument.findFirst({
         where: { schoolId: school.id, id: BigInt(doc.id) },
@@ -537,6 +542,11 @@ describe('uploads and documents (e2e)', () => {
         uploadedBy: officeUser.userId,
         uploadedByName: null,
         createdAt: new Date(),
+        status: 'uploaded',
+        decidedBy: null,
+        decidedByName: null,
+        decidedAt: null,
+        rejectReason: null,
       });
       const res = await http().get(`/api/v1/documents/${pdfId}/content`).set('Cookie', office);
       spy.mockRestore();

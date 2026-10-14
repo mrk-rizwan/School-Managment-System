@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { Capability, ErrorCode } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { concurrentUpdate, fieldRefused, notFound } from '../../common/errors/api-exception';
+import { ApiException, concurrentUpdate, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { toPage, type Page, type PageQueryDto } from '../../common/pagination';
 import { SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
@@ -63,10 +63,20 @@ export class CashHandoversService {
     return this.payments.custody(schoolId, userId);
   }
 
-  /** POST /me/staff/cash-handovers: the collector hands over their own custody. */
+  /**
+   * POST /me/staff/cash-handovers: the collector hands over their own custody. A `payment.record`
+   * holder always may; anyone else only while they hold cash (an event collector, Phase 5
+   * contracts/slice-38.md §3.3), so a teacher's event cash has a way to the office.
+   */
   async openOwn(session: SchoolSessionContext, dto: OpenHandoverDto): Promise<HandoverDto> {
     const staffId = session.access.staffId;
     if (staffId === null) throw notFound();
+    if (!session.access.capabilities.has(Capability.PAYMENT_RECORD)) {
+      const { paymentCount } = await this.payments.custody(this.context.schoolId, session.access.userId);
+      if (paymentCount === 0) {
+        throw new ApiException(403, ErrorCode.PERMISSION_DENIED, 'You do not have permission to do this.');
+      }
+    }
     return this.open(session.access.userId, staffId, dto.note ?? null);
   }
 

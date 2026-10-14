@@ -91,6 +91,8 @@ const expense = (patch: Partial<ExpenseDto> = {}): ExpenseDto => ({
   voidedAt: null,
   voidReason: null,
   updatedAt: '2026-10-06T05:00:00.123Z',
+  // Phase 5 slice 38: an expense may be tagged to an event.
+  eventId: null,
   ...patch,
 });
 

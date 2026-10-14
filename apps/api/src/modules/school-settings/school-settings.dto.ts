@@ -12,6 +12,8 @@ import {
   Min,
 } from 'class-validator';
 import {
+  DOCUMENT_TYPES,
+  type DocumentType,
   LATE_COUNTS_AS,
   LEAVE_COUNTS_AS,
   MAX_FEE_DUE_DAY,
@@ -38,6 +40,8 @@ export const AMEND_WINDOW_DAYS = { min: 0, max: 30 } as const;
 export const FEE_CUTOFF_DAY = { min: 1, max: 28 } as const;
 export const LATE_FEE_GRACE_DAYS = { min: 0, max: 30 } as const;
 export const PAY_DAY = { min: 1, max: 28 } as const;
+/** Phase 5 rule 35: days before a contract's end that the expiry warning goes out (CHECK 1-90). */
+export const CONTRACT_WARNING_DAYS = { min: 1, max: 90 } as const;
 export const FEE_REMINDER_DAYS_BEFORE = { min: 0, max: 10 } as const;
 export const OVERDUE_REMINDER_EVERY_DAYS = { min: 7, max: 30 } as const;
 
@@ -49,6 +53,7 @@ const LATE = { enum: LATE_COUNTS_AS, enumName: 'LateCountsAs' } as const;
 const LEAVE = { enum: LEAVE_COUNTS_AS, enumName: 'LeaveCountsAs' } as const;
 const REMARK = { enum: REMARK_VISIBILITIES, enumName: 'RemarkVisibility' } as const;
 const SMS_TYPES = { enum: MESSAGE_TYPES, enumName: 'MessageType', isArray: true } as const;
+const REQUIRED_DOCUMENTS = { enum: DOCUMENT_TYPES, enumName: 'DocumentType', isArray: true } as const;
 const OFF_DAYS = {
   type: Number,
   isArray: true,
@@ -147,6 +152,14 @@ export class SchoolSettingsDto {
   /** Whether the leaving certificate's print view shows the student's B-Form number (item 33). */
   @ApiProperty()
   certificateShowIdentityNo: boolean;
+
+  /** Phase 5 rule 36 (contracts/slice-40.md §3): the checklist's types, in DOCUMENT_TYPES order. */
+  @ApiProperty(REQUIRED_DOCUMENTS)
+  requiredDocumentTypes: DocumentType[];
+
+  /** Phase 5 rule 35 (contracts/slice-39.md): days before a contract ends that it warns (*default* 30). */
+  @ApiProperty(range(CONTRACT_WARNING_DAYS))
+  contractWarningDays: number;
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt: Date;
@@ -309,4 +322,19 @@ export class UpdateSchoolSettingsDto {
   @IfPresent()
   @IsBoolean()
   certificateShowIdentityNo?: boolean;
+
+  /** Phase 5 rule 36: distinct document types; an empty list requires nothing. */
+  @ApiPropertyOptional(REQUIRED_DOCUMENTS)
+  @IfPresent()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(DOCUMENT_TYPES, { each: true })
+  requiredDocumentTypes?: DocumentType[];
+
+  @ApiPropertyOptional(range(CONTRACT_WARNING_DAYS))
+  @IfPresent()
+  @IsInt()
+  @Min(CONTRACT_WARNING_DAYS.min)
+  @Max(CONTRACT_WARNING_DAYS.max)
+  contractWarningDays?: number;
 }
