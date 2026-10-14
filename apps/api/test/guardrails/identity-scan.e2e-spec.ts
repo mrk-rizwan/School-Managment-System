@@ -824,9 +824,17 @@ const PHASE_5_FREE_TEXT: Record<string, string[]> = {
   events: ['title', 'venue', 'details', 'cancel_reason'],
   event_duties: ['note', 'end_reason'],
   staff_contracts: ['note', 'end_reason'],
+  // Wave T (slices 41, 44).
+  vehicles: ['registration', 'retire_reason'],
+  transport_routes: ['name', 'archive_reason'],
+  transport_route_amounts: ['void_reason'],
+  transport_stops: ['name', 'end_reason'],
+  transport_assignments: ['end_reason'],
+  device_punches: ['device_user_id'],
+  staff_attendance_disputes: ['reason', 'decision_reason'],
 };
 
-describe('R16 (Phase 5): document rejections, device user ids, timetable, event and contract text, whole tables', () => {
+describe('R16 (Phase 5): document rejections, device user ids, timetable, event, contract, transport and dispute text, whole tables', () => {
   let pg: Client;
 
   beforeAll(async () => {

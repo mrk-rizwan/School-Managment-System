@@ -90,6 +90,8 @@ import {
   SHEET_PROVENANCES,
   STAFF_ATTENDANCE_SOURCES,
   DISPUTE_STATUSES,
+  PUNCH_DIRECTIONS,
+  PUNCH_OUTCOMES,
   STATEMENT_BASES,
   DOCUMENT_TYPES,
 } from '@asms/shared';
@@ -190,6 +192,9 @@ const PAIRS: [string, readonly string[]][] = [
   ['sheet_provenance', SHEET_PROVENANCES],
   ['staff_attendance_source', STAFF_ATTENDANCE_SOURCES],
   ['dispute_status', DISPUTE_STATUSES],
+  // Phase 5 wave T (migration 20261014120100_wave_t_transport_biometric): the punch value sets.
+  ['punch_direction', PUNCH_DIRECTIONS],
+  ['punch_outcome', PUNCH_OUTCOMES],
   ['statement_basis', STATEMENT_BASES],
   // The document types `school_settings.required_document_types` holds (slice 6's enum).
   ['student_document_type', DOCUMENT_TYPES],

@@ -76,33 +76,33 @@ model SchoolGroup {
 
 /// Non-tenant: the tenant itself. School-owned settings live in tenant tables, not here.
 model School {
-  id               BigInt                 @id(map: "schools_pkey") @default(autoincrement())
-  name             String                 @db.VarChar(200)
+  id                   BigInt                 @id(map: "schools_pkey") @default(autoincrement())
+  name                 String                 @db.VarChar(200)
   /// 3-12 lower-case ASCII letters/digits (CHECK schools_short_code_format_check), immutable after
   /// creation (trigger raising constraint schools_short_code_immutable).
-  shortCode        String                 @map("short_code") @db.VarChar(12)
+  shortCode            String                 @map("short_code") @db.VarChar(12)
   /// New schools start as trial; nothing returns to trial (contract slice-1 §4.5).
-  status           SchoolStatus           @default(trial)
-  schoolGroupId    BigInt?                @map("school_group_id")
-  timezone         String                 @default("Asia/Karachi") @db.VarChar(64)
+  status               SchoolStatus           @default(trial)
+  schoolGroupId        BigInt?                @map("school_group_id")
+  timezone             String                 @default("Asia/Karachi") @db.VarChar(64)
   /// Set by the platform (owner, item 18); read-only to the school. CHECK 0-100000.
-  smsMonthlyCap    Int                    @default(500) @map("sms_monthly_cap")
-  whatsappProvider WhatsAppProviderChoice @default(platform_default) @map("whatsapp_provider")
-  smsProvider      SmsProviderChoice      @default(platform_default) @map("sms_provider")
+  smsMonthlyCap        Int                    @default(500) @map("sms_monthly_cap")
+  whatsappProvider     WhatsAppProviderChoice @default(platform_default) @map("whatsapp_provider")
+  smsProvider          SmsProviderChoice      @default(platform_default) @map("sms_provider")
   /// Set when the school is terminated, iff terminated (CHECK schools_terminated_at_check);
   /// retention ends 12 months later (rule 23).
-  terminatedAt     DateTime?              @map("terminated_at") @db.Timestamptz(3)
+  terminatedAt         DateTime?              @map("terminated_at") @db.Timestamptz(3)
   /// A manual cap patch sets it; while set the monthly billing run leaves sms_monthly_cap alone (A12).
-  smsCapOverridden Boolean                @default(false) @map("sms_cap_overridden")
+  smsCapOverridden     Boolean                @default(false) @map("sms_cap_overridden")
   /// Phase 5 rule 40 (named exception 4 widened): sha-256 hex of the school's biometric device
   /// token, shown once at rotation. Unique where set (partial index schools_device_token_hash_key);
   /// CHECK schools_device_token_hash_check. Read only through DeviceTokenRepository; written through
   /// OwnSchoolRepository. Never in a DTO.
-  deviceTokenHash      String?            @map("device_token_hash") @db.Char(64)
+  deviceTokenHash      String?                @map("device_token_hash") @db.Char(64)
   /// Set with every rotation (CHECK schools_device_token_rotated_check).
-  deviceTokenRotatedAt DateTime?          @map("device_token_rotated_at") @db.Timestamptz(3)
-  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deviceTokenRotatedAt DateTime?              @map("device_token_rotated_at") @db.Timestamptz(3)
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   schoolGroup                   SchoolGroup?                   @relation(fields: [schoolGroupId], references: [id], map: "schools_school_group_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   platformAuditLogs             PlatformAuditLog[]
@@ -202,6 +202,13 @@ model School {
   eventDuties                   EventDuty[]                    @ignore
   eventParticipation            EventParticipation[]           @ignore
   staffContracts                StaffContract[]                @ignore
+  vehicles                      Vehicle[]                      @ignore
+  transportRoutes               TransportRoute[]               @ignore
+  transportRouteAmounts         TransportRouteAmount[]         @ignore
+  transportStops                TransportStop[]                @ignore
+  transportAssignments          TransportAssignment[]          @ignore
+  devicePunches                 DevicePunch[]                  @ignore
+  staffAttendanceDisputes       StaffAttendanceDispute[]       @ignore
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -297,66 +304,66 @@ model PlatformAuditLog {
 
 /// Tenant: one row per school, written by the platform in the transaction that creates the school.
 model SchoolSettings {
-  id                        BigInt           @id(map: "school_settings_pkey") @default(autoincrement())
-  schoolId                  BigInt           @map("school_id")
+  id                        BigInt                @id(map: "school_settings_pkey") @default(autoincrement())
+  schoolId                  BigInt                @map("school_id")
   /// Day of the month fees fall due (rule 15). CHECK 1-28 in migration SQL: every month has it.
-  feeDueDay                 Int              @default(10) @map("fee_due_day") @db.SmallInt
-  studentLoginEnabled       Boolean          @default(false) @map("student_login_enabled")
+  feeDueDay                 Int                   @default(10) @map("fee_due_day") @db.SmallInt
+  studentLoginEnabled       Boolean               @default(false) @map("student_login_enabled")
   // Phase 2 (plan §4.5, contracts/slice-9.md §4). CHECKs school_settings_*_check in migration SQL.
-  periodsPerDay             Int              @default(8) @map("periods_per_day") @db.SmallInt
+  periodsPerDay             Int                   @default(8) @map("periods_per_day") @db.SmallInt
   /// 0 = Sunday ... 6 = Saturday; distinct, ascending, fewer than seven. Default `[0]`, written as
   /// Postgres prints it: Prisma's `@default([0])` on a smallint list diffs as drift every time.
-  weeklyOffDays             Int[]            @default(dbgenerated("ARRAY[(0)::smallint]")) @map("weekly_off_days") @db.SmallInt
-  attendanceAmendWindowDays Int              @default(3) @map("attendance_amend_window_days") @db.SmallInt
+  weeklyOffDays             Int[]                 @default(dbgenerated("ARRAY[(0)::smallint]")) @map("weekly_off_days") @db.SmallInt
+  attendanceAmendWindowDays Int                   @default(3) @map("attendance_amend_window_days") @db.SmallInt
   /// School-local times.
-  registerDeadlineTime      DateTime         @default(dbgenerated("'10:00:00'::time without time zone")) @map("register_deadline_time") @db.Time(0)
-  absenceAlertTime          DateTime         @default(dbgenerated("'09:30:00'::time without time zone")) @map("absence_alert_time") @db.Time(0)
-  lateAdviceEnabled         Boolean          @default(false) @map("late_advice_enabled")
-  lateCountsAs              LateCountsAs     @default(present) @map("late_counts_as")
+  registerDeadlineTime      DateTime              @default(dbgenerated("'10:00:00'::time without time zone")) @map("register_deadline_time") @db.Time(0)
+  absenceAlertTime          DateTime              @default(dbgenerated("'09:30:00'::time without time zone")) @map("absence_alert_time") @db.Time(0)
+  lateAdviceEnabled         Boolean               @default(false) @map("late_advice_enabled")
+  lateCountsAs              LateCountsAs          @default(present) @map("late_counts_as")
   /// Required while late_counts_as = absent_after_cutoff.
-  lateCutoffTime            DateTime?        @map("late_cutoff_time") @db.Time(0)
-  leaveCountsAs             LeaveCountsAs    @default(excused) @map("leave_counts_as")
+  lateCutoffTime            DateTime?             @map("late_cutoff_time") @db.Time(0)
+  leaveCountsAs             LeaveCountsAs         @default(excused) @map("leave_counts_as")
   /// SMS-eligible types only; the default is register item 22's list, with Phase 3's four fee
   /// types (phase-3-financial.md §1.1) and Phase 4's two result types (phase-4-academic.md §3.5),
   /// each backfilled into existing rows.
-  smsAllowedTypes           MessageType[]    @default([absence_alert, late_advice, attendance_corrected, announcement_urgent, holiday_notice, fee_due_reminder, fee_overdue, receipt_issued, payment_claim_rejected, result_published, result_revised]) @map("sms_allowed_types")
-  remarkDefaultVisibility   RemarkVisibility @default(guardian) @map("remark_default_visibility")
-  remarkNotifyGuardians     Boolean          @default(false) @map("remark_notify_guardians")
+  smsAllowedTypes           MessageType[]         @default([absence_alert, late_advice, attendance_corrected, announcement_urgent, holiday_notice, fee_due_reminder, fee_overdue, receipt_issued, payment_claim_rejected, result_published, result_revised]) @map("sms_allowed_types")
+  remarkDefaultVisibility   RemarkVisibility      @default(guardian) @map("remark_default_visibility")
+  remarkNotifyGuardians     Boolean               @default(false) @map("remark_notify_guardians")
   // Phase 3 (phase-3-financial.md §3.8). CHECKs school_settings_*_check in migration SQL.
   /// A student whose earliest enrolment start in the year is after this day is not charged that
   /// month's monthly heads (R180). 1-28.
-  feeCutoffDay              Int              @default(15) @map("fee_cutoff_day") @db.SmallInt
-  lateFeeEnabled            Boolean          @default(false) @map("late_fee_enabled")
+  feeCutoffDay              Int                   @default(15) @map("fee_cutoff_day") @db.SmallInt
+  lateFeeEnabled            Boolean               @default(false) @map("late_fee_enabled")
   /// Whole rupees; required while late fees are enabled (no default: it must be entered).
-  lateFeeAmount             Int?             @map("late_fee_amount")
+  lateFeeAmount             Int?                  @map("late_fee_amount")
   /// 0-30.
-  lateFeeGraceDays          Int              @default(7) @map("late_fee_grace_days") @db.SmallInt
+  lateFeeGraceDays          Int                   @default(7) @map("late_fee_grace_days") @db.SmallInt
   /// Stamped each time late fees are switched on; only charges due on or after it attract one.
-  lateFeeEnabledAt          DateTime?        @map("late_fee_enabled_at") @db.Timestamptz(3)
+  lateFeeEnabledAt          DateTime?             @map("late_fee_enabled_at") @db.Timestamptz(3)
   /// An expense above it needs the principal's approval (rule 22). Whole rupees, 0 or more.
-  expenseApprovalThreshold  Int              @default(5000) @map("expense_approval_threshold")
+  expenseApprovalThreshold  Int                   @default(5000) @map("expense_approval_threshold")
   /// The payroll job prepares the previous month on this day (rule 22). 1-28.
-  payDay                    Int              @default(1) @map("pay_day") @db.SmallInt
+  payDay                    Int                   @default(1) @map("pay_day") @db.SmallInt
   /// 0-10 days before fee_due_day.
-  feeReminderDaysBefore     Int              @default(3) @map("fee_reminder_days_before") @db.SmallInt
+  feeReminderDaysBefore     Int                   @default(3) @map("fee_reminder_days_before") @db.SmallInt
   /// 7-30.
-  overdueReminderEveryDays  Int              @default(14) @map("overdue_reminder_every_days") @db.SmallInt
+  overdueReminderEveryDays  Int                   @default(14) @map("overdue_reminder_every_days") @db.SmallInt
   // Phase 4 (phase-4-academic.md §3.7). The signatory printed on certificates (defaulted at first
   // issue to the active principal's name); whether the leaving certificate prints the B-Form.
-  certificateSignatoryName  String?          @map("certificate_signatory_name") @db.VarChar(100)
-  certificateShowIdentityNo Boolean          @default(true) @map("certificate_show_identity_no")
+  certificateSignatoryName  String?               @map("certificate_signatory_name") @db.VarChar(100)
+  certificateShowIdentityNo Boolean               @default(true) @map("certificate_show_identity_no")
   // Phase 5 (phase-5-extended.md §3.6). CHECKs school_settings_*_check in migration SQL.
   /// Rule 36: the document types every student should have (the checklist and the incomplete-
   /// admissions report). No nulls, no repeats.
   requiredDocumentTypes     StudentDocumentType[] @default([b_form, photo]) @map("required_document_types")
   /// Rule 35: days before a contract's end the first warning goes out. 1-90.
-  contractWarningDays       Int              @default(30) @map("contract_warning_days") @db.SmallInt
+  contractWarningDays       Int                   @default(30) @map("contract_warning_days") @db.SmallInt
   /// Rule 40: a device punch after this school-local time marks late; null = never late.
-  staffLateAfter            DateTime?        @map("staff_late_after") @db.Time(0)
+  staffLateAfter            DateTime?             @map("staff_late_after") @db.Time(0)
   /// Rule 38: the financial statement's default basis.
-  financialStatementBasis   StatementBasis   @default(received) @map("financial_statement_basis")
-  createdAt                 DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                 DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  financialStatementBasis   StatementBasis        @default(received) @map("financial_statement_basis")
+  createdAt                 DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   school School @relation(fields: [schoolId], references: [id], map: "school_settings_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
 
@@ -665,26 +672,26 @@ enum SystemRole {
 /// Guardian. cnic is nullable (R21: no CNIC, no login); a CNIC appears on at most one staff row in
 /// the school, any status (R20, partial index staff_school_id_cnic_hash_key).
 model Staff {
-  id          BigInt      @id(map: "staff_pkey") @default(autoincrement())
-  schoolId    BigInt      @map("school_id")
-  fullName    String      @map("full_name") @db.VarChar(200)
-  cnic        String?     @db.VarChar(255)
-  cnicHash    String?     @map("cnic_hash") @db.Char(64)
-  phone       String      @db.VarChar(16)
-  designation String?     @db.VarChar(100)
-  joinedOn    DateTime?   @map("joined_on") @db.Date
-  status      StaffStatus @default(active)
+  id           BigInt      @id(map: "staff_pkey") @default(autoincrement())
+  schoolId     BigInt      @map("school_id")
+  fullName     String      @map("full_name") @db.VarChar(200)
+  cnic         String?     @db.VarChar(255)
+  cnicHash     String?     @map("cnic_hash") @db.Char(64)
+  phone        String      @db.VarChar(16)
+  designation  String?     @db.VarChar(100)
+  joinedOn     DateTime?   @map("joined_on") @db.Date
+  status       StaffStatus @default(active)
   /// Last day of employment. Set only while status = left (CHECK staff_left_on_check), cleared on
   /// re-hire (R19); never before joined_on (CHECK staff_left_on_after_joined_check).
-  leftOn      DateTime?   @map("left_on") @db.Date
+  leftOn       DateTime?   @map("left_on") @db.Date
   /// Phase 5 rule 40: the person's user number on the school's biometric device; 1-40 printable
   /// ASCII, never an identity number (CHECKs). Unique per school; a left member keeps it until
   /// the office clears it to reuse it.
-  deviceUserId String?    @map("device_user_id") @db.VarChar(40)
-  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deviceUserId String?     @map("device_user_id") @db.VarChar(40)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school                 School                  @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  school                 School                   @relation(fields: [schoolId], references: [id], map: "staff_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   user                   User?
   messages               Message[]
   teacherAssignments     TeacherAssignment[]
@@ -701,6 +708,9 @@ model Staff {
   timetableSubstitutions TimetableSubstitution[]
   eventDuties            EventDuty[]
   contracts              StaffContract[]
+  vehiclesDriven         Vehicle[]
+  devicePunches          DevicePunch[]
+  attendanceDisputes     StaffAttendanceDispute[]
 
   @@unique([schoolId, id], map: "staff_school_id_id_key")
   @@unique([schoolId, deviceUserId], map: "staff_school_id_device_user_id_key")
@@ -811,111 +821,123 @@ model User {
   createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school                    School                  @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff                     Staff?                  @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  guardian                  Guardian?               @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  student                   Student?                @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school                    School                   @relation(fields: [schoolId], references: [id], map: "users_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff                     Staff?                   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "users_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  guardian                  Guardian?                @relation(fields: [schoolId, guardianId], references: [schoolId, id], map: "users_guardian_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  student                   Student?                 @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "users_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   sessions                  Session[]
   tokens                    UserToken[]
-  roles                     UserRole[]              @relation("UserRoleHolder")
-  rolesAssigned             UserRole[]              @relation("UserRoleAssignedBy")
-  rolesEnded                UserRole[]              @relation("UserRoleEndedBy")
+  roles                     UserRole[]               @relation("UserRoleHolder")
+  rolesAssigned             UserRole[]               @relation("UserRoleAssignedBy")
+  rolesEnded                UserRole[]               @relation("UserRoleEndedBy")
   auditLogs                 AuditLog[]
   studentStatusChanges      StudentStatusChange[]
   studentDocuments          StudentDocument[]
-  studentDocumentsDecided   StudentDocument[]       @relation("StudentDocumentDecidedBy")
+  studentDocumentsDecided   StudentDocument[]        @relation("StudentDocumentDecidedBy")
   stagedUploads             StagedUpload[]
   idempotencyKeys           IdempotencyKey[]
   teacherAssignmentsVoided  TeacherAssignment[]
-  capabilityGrants          UserCapabilityGrant[]   @relation("GrantHolder")
-  capabilityGrantsMade      UserCapabilityGrant[]   @relation("GrantGrantedBy")
-  capabilityGrantsEnded     UserCapabilityGrant[]   @relation("GrantRevokedBy")
-  customRoleKeysAdded       CustomRoleCapability[]  @relation("CustomRoleCapabilityAddedBy")
-  customRoleKeysRemoved     CustomRoleCapability[]  @relation("CustomRoleCapabilityRemovedBy")
+  capabilityGrants          UserCapabilityGrant[]    @relation("GrantHolder")
+  capabilityGrantsMade      UserCapabilityGrant[]    @relation("GrantGrantedBy")
+  capabilityGrantsEnded     UserCapabilityGrant[]    @relation("GrantRevokedBy")
+  customRoleKeysAdded       CustomRoleCapability[]   @relation("CustomRoleCapabilityAddedBy")
+  customRoleKeysRemoved     CustomRoleCapability[]   @relation("CustomRoleCapabilityRemovedBy")
   devices                   Device[]
-  whatsappNumbersPaired     WhatsAppNumber[]        @relation("WhatsAppNumberPairedBy")
-  whatsappNumbersDisabled   WhatsAppNumber[]        @relation("WhatsAppNumberDisabledBy")
-  holidaysPublished         Holiday[]               @relation("HolidayPublishedBy")
-  holidaysCancelled         Holiday[]               @relation("HolidayCancelledBy")
-  registersSubmitted        AttendanceRegister[]    @relation("RegisterSubmittedBy")
-  registersAmended          AttendanceRegister[]    @relation("RegisterLastAmendedBy")
+  whatsappNumbersPaired     WhatsAppNumber[]         @relation("WhatsAppNumberPairedBy")
+  whatsappNumbersDisabled   WhatsAppNumber[]         @relation("WhatsAppNumberDisabledBy")
+  holidaysPublished         Holiday[]                @relation("HolidayPublishedBy")
+  holidaysCancelled         Holiday[]                @relation("HolidayCancelledBy")
+  registersSubmitted        AttendanceRegister[]     @relation("RegisterSubmittedBy")
+  registersAmended          AttendanceRegister[]     @relation("RegisterLastAmendedBy")
   attendanceMarkChanges     AttendanceMarkChange[]
   attendanceArrivals        AttendanceArrival[]
   staffAttendanceMarked     StaffAttendance[]
   staffAttendanceChanges    StaffAttendanceChange[]
   diaryEntryChanges         DiaryEntryChange[]
-  announcementsCreated      Announcement[]          @relation("AnnouncementCreatedBy")
-  announcementsCancelled    Announcement[]          @relation("AnnouncementCancelledBy")
-  feeHeadsCreated           FeeHead[]               @relation("FeeHeadCreatedBy")
-  feeHeadsArchived          FeeHead[]               @relation("FeeHeadArchivedBy")
+  announcementsCreated      Announcement[]           @relation("AnnouncementCreatedBy")
+  announcementsCancelled    Announcement[]           @relation("AnnouncementCancelledBy")
+  feeHeadsCreated           FeeHead[]                @relation("FeeHeadCreatedBy")
+  feeHeadsArchived          FeeHead[]                @relation("FeeHeadArchivedBy")
   feeStructuresCreated      FeeStructure[]
-  paymentAccountsCreated    SchoolPaymentAccount[]  @relation("PaymentAccountCreatedBy")
-  paymentAccountsDisabled   SchoolPaymentAccount[]  @relation("PaymentAccountDisabledBy")
-  concessionsRequested      Concession[]            @relation("ConcessionRequestedBy")
-  concessionsDecided        Concession[]            @relation("ConcessionDecidedBy")
-  concessionsEnded          Concession[]            @relation("ConcessionEndedBy")
+  paymentAccountsCreated    SchoolPaymentAccount[]   @relation("PaymentAccountCreatedBy")
+  paymentAccountsDisabled   SchoolPaymentAccount[]   @relation("PaymentAccountDisabledBy")
+  concessionsRequested      Concession[]             @relation("ConcessionRequestedBy")
+  concessionsDecided        Concession[]             @relation("ConcessionDecidedBy")
+  concessionsEnded          Concession[]             @relation("ConcessionEndedBy")
   chargeRunsTriggered       ChargeRun[]
-  chargeCampaignsCreated    ChargeCampaign[]        @relation("ChargeCampaignCreatedBy")
-  chargeCampaignsCancelled  ChargeCampaign[]        @relation("ChargeCampaignCancelledBy")
-  chargesCreated            Charge[]                @relation("ChargeCreatedBy")
-  chargesVoided             Charge[]                @relation("ChargeVoidedBy")
-  chargesWaived             Charge[]                @relation("ChargeWaivedBy")
-  expensesRecorded          Expense[]               @relation("ExpenseRecordedBy")
-  expensesDecided           Expense[]               @relation("ExpenseDecidedBy")
-  expensesVoided            Expense[]               @relation("ExpenseVoidedBy")
-  leaveTypesCreated         LeaveType[]             @relation("LeaveTypeCreatedBy")
-  leaveTypesArchived        LeaveType[]             @relation("LeaveTypeArchivedBy")
-  leaveRequested            LeaveRequest[]          @relation("LeaveRequestRequestedBy")
-  leaveDecided              LeaveRequest[]          @relation("LeaveRequestDecidedBy")
-  leaveCancelled            LeaveRequest[]          @relation("LeaveRequestCancelledBy")
-  paymentsRecorded          Payment[]               @relation("PaymentRecordedBy")
-  paymentsVerified          Payment[]               @relation("PaymentVerifiedBy")
+  chargeCampaignsCreated    ChargeCampaign[]         @relation("ChargeCampaignCreatedBy")
+  chargeCampaignsCancelled  ChargeCampaign[]         @relation("ChargeCampaignCancelledBy")
+  chargesCreated            Charge[]                 @relation("ChargeCreatedBy")
+  chargesVoided             Charge[]                 @relation("ChargeVoidedBy")
+  chargesWaived             Charge[]                 @relation("ChargeWaivedBy")
+  expensesRecorded          Expense[]                @relation("ExpenseRecordedBy")
+  expensesDecided           Expense[]                @relation("ExpenseDecidedBy")
+  expensesVoided            Expense[]                @relation("ExpenseVoidedBy")
+  leaveTypesCreated         LeaveType[]              @relation("LeaveTypeCreatedBy")
+  leaveTypesArchived        LeaveType[]              @relation("LeaveTypeArchivedBy")
+  leaveRequested            LeaveRequest[]           @relation("LeaveRequestRequestedBy")
+  leaveDecided              LeaveRequest[]           @relation("LeaveRequestDecidedBy")
+  leaveCancelled            LeaveRequest[]           @relation("LeaveRequestCancelledBy")
+  paymentsRecorded          Payment[]                @relation("PaymentRecordedBy")
+  paymentsVerified          Payment[]                @relation("PaymentVerifiedBy")
   receiptsIssued            Receipt[]
-  paymentReversalsRequested PaymentReversal[]       @relation("PaymentReversalRequestedBy")
-  paymentReversalsApproved  PaymentReversal[]       @relation("PaymentReversalApprovedBy")
-  cashHandoversCollected    CashHandover[]          @relation("CashHandoverCollector")
-  cashHandoversOpened       CashHandover[]          @relation("CashHandoverOpenedBy")
-  cashHandoversConfirmed    CashHandover[]          @relation("CashHandoverConfirmedBy")
-  cashHandoversResolved     CashHandover[]          @relation("CashHandoverResolvedBy")
+  paymentReversalsRequested PaymentReversal[]        @relation("PaymentReversalRequestedBy")
+  paymentReversalsApproved  PaymentReversal[]        @relation("PaymentReversalApprovedBy")
+  cashHandoversCollected    CashHandover[]           @relation("CashHandoverCollector")
+  cashHandoversOpened       CashHandover[]           @relation("CashHandoverOpenedBy")
+  cashHandoversConfirmed    CashHandover[]           @relation("CashHandoverConfirmedBy")
+  cashHandoversResolved     CashHandover[]           @relation("CashHandoverResolvedBy")
   salaryStructuresCreated   SalaryStructure[]
-  salaryAdvancesApproved    SalaryAdvance[]         @relation("SalaryAdvanceApprovedBy")
-  salaryAdvancesWrittenOff  SalaryAdvance[]         @relation("SalaryAdvanceWrittenOffBy")
-  payrollRunsPrepared       PayrollRun[]            @relation("PayrollRunPreparedBy")
-  payrollRunsFinalised      PayrollRun[]            @relation("PayrollRunFinalisedBy")
+  salaryAdvancesApproved    SalaryAdvance[]          @relation("SalaryAdvanceApprovedBy")
+  salaryAdvancesWrittenOff  SalaryAdvance[]          @relation("SalaryAdvanceWrittenOffBy")
+  payrollRunsPrepared       PayrollRun[]             @relation("PayrollRunPreparedBy")
+  payrollRunsFinalised      PayrollRun[]             @relation("PayrollRunFinalisedBy")
   payslipsPaid              Payslip[]
   payslipLinesCreated       PayslipLine[]
-  paymentClaimsDecided      PaymentClaim[]          @relation("PaymentClaimDecidedBy")
+  paymentClaimsDecided      PaymentClaim[]           @relation("PaymentClaimDecidedBy")
   academicTermsCreated      AcademicTerm[]
-  termSkipsCreated          TermSkip[]              @relation("TermSkipCreatedBy")
-  termSkipsEnded            TermSkip[]              @relation("TermSkipEndedBy")
+  termSkipsCreated          TermSkip[]               @relation("TermSkipCreatedBy")
+  termSkipsEnded            TermSkip[]               @relation("TermSkipEndedBy")
   resultSettingsUpdated     ResultSettings[]
   classSubjectsArchived     ClassSubject[]
-  assessmentsCreated        Assessment[]            @relation("AssessmentCreatedBy")
-  assessmentsVoided         Assessment[]            @relation("AssessmentVoidedBy")
-  marksEntered              Mark[]                  @relation("MarkEnteredBy")
-  marksDecided              Mark[]                  @relation("MarkDecidedBy")
-  certificatesIssued        Certificate[]           @relation("CertificateIssuedBy")
-  certificatesVoided        Certificate[]           @relation("CertificateVoidedBy")
-  resultSheetsCreated       ResultSheet[]           @relation("ResultSheetCreatedBy")
-  resultSheetsSubmitted     ResultSheet[]           @relation("ResultSheetSubmittedBy")
-  resultSheetsDecided       ResultSheet[]           @relation("ResultSheetDecidedBy")
-  resultSheetsPublished     ResultSheet[]           @relation("ResultSheetPublishedBy")
-  resultSheetRemarksWritten ResultSheetRemark[]     @relation("ResultSheetRemarkWrittenBy")
-  resultSubjectsOwnChildOf  ResultSubject[]         @relation("ResultSubjectOwnChildOf")
-  promotionSheetsOpened     PromotionSheet[]        @relation("PromotionSheetOpenedBy")
-  promotionSheetsApplied    PromotionSheet[]        @relation("PromotionSheetAppliedBy")
-  promotionDecisionsDecided PromotionDecision[]     @relation("PromotionDecisionDecidedBy")
-  timetableVersionsCreated  TimetableVersion[]      @relation("TimetableVersionCreatedBy")
-  timetableVersionsVoided   TimetableVersion[]      @relation("TimetableVersionVoidedBy")
-  timetableSubsCreated      TimetableSubstitution[] @relation("TimetableSubstitutionCreatedBy")
-  timetableSubsVoided       TimetableSubstitution[] @relation("TimetableSubstitutionVoidedBy")
-  eventsCreated             Event[]                 @relation("EventCreatedBy")
-  eventsCancelled           Event[]                 @relation("EventCancelledBy")
-  eventDutiesCreated        EventDuty[]             @relation("EventDutyCreatedBy")
-  eventDutiesEnded          EventDuty[]             @relation("EventDutyEndedBy")
-  eventParticipations       EventParticipation[]    @relation("EventParticipationRecordedBy")
-  staffContractsCreated     StaffContract[]         @relation("StaffContractCreatedBy")
-  staffContractsEnded       StaffContract[]         @relation("StaffContractEndedBy")
+  assessmentsCreated        Assessment[]             @relation("AssessmentCreatedBy")
+  assessmentsVoided         Assessment[]             @relation("AssessmentVoidedBy")
+  marksEntered              Mark[]                   @relation("MarkEnteredBy")
+  marksDecided              Mark[]                   @relation("MarkDecidedBy")
+  certificatesIssued        Certificate[]            @relation("CertificateIssuedBy")
+  certificatesVoided        Certificate[]            @relation("CertificateVoidedBy")
+  resultSheetsCreated       ResultSheet[]            @relation("ResultSheetCreatedBy")
+  resultSheetsSubmitted     ResultSheet[]            @relation("ResultSheetSubmittedBy")
+  resultSheetsDecided       ResultSheet[]            @relation("ResultSheetDecidedBy")
+  resultSheetsPublished     ResultSheet[]            @relation("ResultSheetPublishedBy")
+  resultSheetRemarksWritten ResultSheetRemark[]      @relation("ResultSheetRemarkWrittenBy")
+  resultSubjectsOwnChildOf  ResultSubject[]          @relation("ResultSubjectOwnChildOf")
+  promotionSheetsOpened     PromotionSheet[]         @relation("PromotionSheetOpenedBy")
+  promotionSheetsApplied    PromotionSheet[]         @relation("PromotionSheetAppliedBy")
+  promotionDecisionsDecided PromotionDecision[]      @relation("PromotionDecisionDecidedBy")
+  timetableVersionsCreated  TimetableVersion[]       @relation("TimetableVersionCreatedBy")
+  timetableVersionsVoided   TimetableVersion[]       @relation("TimetableVersionVoidedBy")
+  timetableSubsCreated      TimetableSubstitution[]  @relation("TimetableSubstitutionCreatedBy")
+  timetableSubsVoided       TimetableSubstitution[]  @relation("TimetableSubstitutionVoidedBy")
+  eventsCreated             Event[]                  @relation("EventCreatedBy")
+  eventsCancelled           Event[]                  @relation("EventCancelledBy")
+  eventDutiesCreated        EventDuty[]              @relation("EventDutyCreatedBy")
+  eventDutiesEnded          EventDuty[]              @relation("EventDutyEndedBy")
+  eventParticipations       EventParticipation[]     @relation("EventParticipationRecordedBy")
+  staffContractsCreated     StaffContract[]          @relation("StaffContractCreatedBy")
+  staffContractsEnded       StaffContract[]          @relation("StaffContractEndedBy")
+  vehiclesCreated           Vehicle[]                @relation("VehicleCreatedBy")
+  vehiclesRetired           Vehicle[]                @relation("VehicleRetiredBy")
+  transportRoutesCreated    TransportRoute[]         @relation("TransportRouteCreatedBy")
+  transportRoutesArchived   TransportRoute[]         @relation("TransportRouteArchivedBy")
+  transportAmountsCreated   TransportRouteAmount[]   @relation("TransportRouteAmountCreatedBy")
+  transportAmountsVoided    TransportRouteAmount[]   @relation("TransportRouteAmountVoidedBy")
+  transportStopsEnded       TransportStop[]          @relation("TransportStopEndedBy")
+  transportAssignsCreated   TransportAssignment[]    @relation("TransportAssignmentCreatedBy")
+  transportAssignsEnded     TransportAssignment[]    @relation("TransportAssignmentEndedBy")
+  disputesRaised            StaffAttendanceDispute[] @relation("StaffAttendanceDisputeRaisedBy")
+  disputesDecided           StaffAttendanceDispute[] @relation("StaffAttendanceDisputeDecidedBy")
+  disputesWithdrawn         StaffAttendanceDispute[] @relation("StaffAttendanceDisputeWithdrawnBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1257,6 +1279,7 @@ model Enrolment {
   promotionDecisions    PromotionDecision[]   @relation("PromotionDecisionEnrolment")
   promotedInto          PromotionDecision[]   @relation("PromotionDecisionNewEnrolment")
   eventParticipation    EventParticipation[]
+  transportAssignments  TransportAssignment[]
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -1279,25 +1302,25 @@ model Enrolment {
 /// moved, so no failure strands a committed document). A student's photo is their latest `photo`
 /// row. Rows are never edited; no verification columns until that workflow is specified.
 model StudentDocument {
-  id         BigInt              @id(map: "student_documents_pkey") @default(autoincrement())
-  schoolId   BigInt              @map("school_id")
-  studentId  BigInt              @map("student_id")
-  type       StudentDocumentType
+  id           BigInt              @id(map: "student_documents_pkey") @default(autoincrement())
+  schoolId     BigInt              @map("school_id")
+  studentId    BigInt              @map("student_id")
+  type         StudentDocumentType
   /// `{school_id}/{ULID}.{jpg|png|pdf}`; CHECK student_documents_object_key_check binds the prefix
   /// to this row's school_id. Unique per school (student_documents_school_id_object_key_key).
-  objectKey  String              @map("object_key") @db.VarChar(64)
+  objectKey    String              @map("object_key") @db.VarChar(64)
   /// image/jpeg, image/png or application/pdf; a photo is an image (CHECKs).
-  mime       String              @db.VarChar(32)
-  sizeBytes  Int                 @map("size_bytes")
-  uploadedBy BigInt              @map("uploaded_by")
+  mime         String              @db.VarChar(32)
+  sizeBytes    Int                 @map("size_bytes")
+  uploadedBy   BigInt              @map("uploaded_by")
   /// Phase 5 rule 36: uploaded -> verified | rejected (trigger), both final; decided_by never the
   /// uploader (trigger student_documents_not_self). A re-upload is a new row.
-  status       DocumentStatus    @default(uploaded)
-  decidedBy    BigInt?           @map("decided_by")
-  decidedAt    DateTime?         @map("decided_at") @db.Timestamptz(3)
+  status       DocumentStatus      @default(uploaded)
+  decidedBy    BigInt?             @map("decided_by")
+  decidedAt    DateTime?           @map("decided_at") @db.Timestamptz(3)
   /// Required exactly when rejected; never an identity number (CHECKs). Never shown to a family.
-  rejectReason String?           @map("reject_reason") @db.VarChar(500)
-  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  rejectReason String?             @map("reject_reason") @db.VarChar(500)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
 
   school         School  @relation(fields: [schoolId], references: [id], map: "student_documents_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
   student        Student @relation(fields: [schoolId, studentId], references: [schoolId, id], map: "student_documents_student_id_fkey", onDelete: Restrict, onUpdate: Restrict)
@@ -2311,29 +2334,37 @@ model AttendanceDailySummary {
 /// row (trigger staff_attendance_not_self, R134). A status or note change writes
 /// staff_attendance_changes through the §4.6 trigger (staff_attendance_history).
 model StaffAttendance {
-  id       BigInt                @id(map: "staff_attendance_pkey") @default(autoincrement())
-  schoolId BigInt                @map("school_id")
-  staffId  BigInt                @map("staff_id")
-  date     DateTime              @db.Date
-  status   StaffAttendanceStatus
+  id            BigInt                @id(map: "staff_attendance_pkey") @default(autoincrement())
+  schoolId      BigInt                @map("school_id")
+  staffId       BigInt                @map("staff_id")
+  date          DateTime              @db.Date
+  status        StaffAttendanceStatus
   /// Phase 5 rule 40: null exactly for a device mark, which no user made (CHECK
   /// staff_attendance_source_check).
-  markedBy BigInt?               @map("marked_by")
-  markedAt DateTime              @default(now()) @map("marked_at") @db.Timestamptz(3)
+  markedBy      BigInt?               @map("marked_by")
+  markedAt      DateTime              @default(now()) @map("marked_at") @db.Timestamptz(3)
   /// Never an identity number (CHECK staff_attendance_note_no_id_check).
-  note     String?               @db.VarChar(200)
+  note          String?               @db.VarChar(200)
   /// Phase 5 rule 40: device when a biometric punch made the mark. Frozen.
-  source   StaffAttendanceSource @default(manual)
+  source        StaffAttendanceSource @default(manual)
+  /// Wave T (slice 44): the punch that made a device mark, of the same staff member (the FK
+  /// carries staff_id) and with outcome `marked`; set exactly when source = device and marked_by
+  /// is null (CHECK staff_attendance_source_check). Frozen; one mark per punch.
+  devicePunchId BigInt?               @map("device_punch_id")
 
-  school       School                  @relation(fields: [schoolId], references: [id], map: "staff_attendance_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  staff        Staff                   @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "staff_attendance_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  markedByUser User?                   @relation(fields: [schoolId, markedBy], references: [schoolId, id], map: "staff_attendance_marked_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school       School                   @relation(fields: [schoolId], references: [id], map: "staff_attendance_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff        Staff                    @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "staff_attendance_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  markedByUser User?                    @relation(fields: [schoolId, markedBy], references: [schoolId, id], map: "staff_attendance_marked_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  devicePunch  DevicePunch?             @relation(fields: [schoolId, devicePunchId, staffId], references: [schoolId, id, staffId], map: "staff_attendance_device_punch_id_fkey", onDelete: Restrict, onUpdate: Restrict)
   changes      StaffAttendanceChange[]
+  disputes     StaffAttendanceDispute[]
 
   @@unique([schoolId, id], map: "staff_attendance_school_id_id_key")
   // Phase 5: the target of a dispute's (school_id, attendance_id, staff_id) foreign key (slice 44).
   @@unique([schoolId, id, staffId], map: "staff_attendance_school_id_id_staff_id_key")
   @@unique([schoolId, staffId, date], map: "staff_attendance_natural_key")
+  /// One mark per punch; also the index of the device punch FK.
+  @@unique([schoolId, devicePunchId, staffId], map: "staff_attendance_device_punch_id_key")
   @@index([schoolId, markedBy], map: "staff_attendance_school_id_marked_by_idx")
   @@map("staff_attendance")
 }
@@ -2572,15 +2603,15 @@ model Announcement {
   createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school          School                  @relation(fields: [schoolId], references: [id], map: "announcements_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  holiday         Holiday?                @relation("AnnouncementHoliday", fields: [schoolId, holidayId], references: [schoolId, id], map: "announcements_holiday_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  createdByUser   User                    @relation("AnnouncementCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "announcements_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  cancelledByUser User?                   @relation("AnnouncementCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "announcements_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
-  noticeOf        Holiday[]               @relation("HolidayAnnouncement")
-  audiences       AnnouncementAudience[]
-  recipients      AnnouncementRecipient[]
-  eventInvitation Event?                  @relation("EventAnnouncement")
-  eventCancellation Event?                @relation("EventCancelAnnouncement")
+  school            School                  @relation(fields: [schoolId], references: [id], map: "announcements_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  holiday           Holiday?                @relation("AnnouncementHoliday", fields: [schoolId, holidayId], references: [schoolId, id], map: "announcements_holiday_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser     User                    @relation("AnnouncementCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "announcements_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  cancelledByUser   User?                   @relation("AnnouncementCancelledBy", fields: [schoolId, cancelledBy], references: [schoolId, id], map: "announcements_cancelled_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  noticeOf          Holiday[]               @relation("HolidayAnnouncement")
+  audiences         AnnouncementAudience[]
+  recipients        AnnouncementRecipient[]
+  eventInvitation   Event?                  @relation("EventAnnouncement")
+  eventCancellation Event?                  @relation("EventCancelAnnouncement")
 
   @@unique([schoolId, id], map: "announcements_school_id_id_key")
   /// The scheduled-send sweep source (§5.6).
@@ -5145,8 +5176,31 @@ enum DisputeStatus {
   pending
   approved
   rejected
+  /// Wave T (migration 20261014120000_wave_t_enums): the staff member took the dispute back.
+  withdrawn
 
   @@map("dispute_status")
+}
+
+/// Wave T (slice 44): the direction a biometric device reports, when it reports one.
+enum PunchDirection {
+  in
+  out
+
+  @@map("punch_direction")
+}
+
+/// Wave T (slice 44, R345): what receiving a punch did. marked = it made the day's mark;
+/// stored = kept and shown, never marked (a later punch, a non-teaching day, a day already
+/// marked); unmapped = no staff member holds the device user id; inactive = the staff member
+/// holding it is not active. A replay (duplicate) is never stored: the unique refuses it.
+enum PunchOutcome {
+  marked
+  stored
+  unmapped
+  inactive
+
+  @@map("punch_outcome")
 }
 
 enum StatementBasis {
@@ -5494,4 +5548,280 @@ model StaffContract {
   @@index([schoolId, createdBy], map: "staff_contracts_school_id_created_by_idx")
   @@index([schoolId, endedBy], map: "staff_contracts_school_id_ended_by_idx")
   @@map("staff_contracts")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5 wave T (phase-5-extended.md §3.2 "Transport", "Biometric", rules 37 and 40,
+// R326-R331, R344-R348; migrations 20261014120000_wave_t_enums and
+// 20261014120100_wave_t_transport_biometric): the tables of slices 41 (transport) and 44
+// (biometric staff attendance). The slices write no migration of their own.
+// ---------------------------------------------------------------------------------------------
+
+/// Tenant: a school vehicle (rule 37). Registration unique among active vehicles, case- and
+/// space-insensitively (partial unique vehicles_live_registration_key). Edited while active;
+/// retired once (the retire trio, set together); never retired while an active route names it
+/// (trigger vehicles_guard, VEHICLE_IN_USE). Capacity is a warning, never a block (R331).
+model Vehicle {
+  id            BigInt        @id(map: "vehicles_pkey") @default(autoincrement())
+  schoolId      BigInt        @map("school_id")
+  /// 1-20, trimmed, never an identity number.
+  registration  String        @db.VarChar(20)
+  /// 1-120 seats (CHECK vehicles_capacity_check).
+  capacity      Int           @db.SmallInt
+  /// The driver, a staff member; R330: the driver reads the routes whose vehicle names them.
+  driverStaffId BigInt?       @map("driver_staff_id")
+  status        VehicleStatus @default(active)
+  createdBy     BigInt        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together exactly when retired (CHECK vehicles_retired_check); once set, frozen.
+  retiredAt     DateTime?     @map("retired_at") @db.Timestamptz(3)
+  retiredBy     BigInt?       @map("retired_by")
+  retireReason  String?       @map("retire_reason") @db.VarChar(500)
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School           @relation(fields: [schoolId], references: [id], map: "vehicles_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  driver        Staff?           @relation(fields: [schoolId, driverStaffId], references: [schoolId, id], map: "vehicles_driver_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User             @relation("VehicleCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "vehicles_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  retiredByUser User?            @relation("VehicleRetiredBy", fields: [schoolId, retiredBy], references: [schoolId, id], map: "vehicles_retired_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  routes        TransportRoute[]
+
+  @@unique([schoolId, id], map: "vehicles_school_id_id_key")
+  /// GET /me/staff/transport-routes: the vehicles naming the caller as driver.
+  @@index([schoolId, driverStaffId], map: "vehicles_school_id_driver_staff_id_idx")
+  @@index([schoolId, createdBy], map: "vehicles_school_id_created_by_idx")
+  @@index([schoolId, retiredBy], map: "vehicles_school_id_retired_by_idx")
+  @@map("vehicles")
+}
+
+/// Tenant: a transport route (rule 37). Name unique among active routes, case-insensitively
+/// (partial unique transport_routes_live_name_key). At most one vehicle, an active one (trigger
+/// transport_routes_guard, VEHICLE_RETIRED). Edited while active; archived once, never with a
+/// live assignment (TRANSPORT_ROUTE_HAS_ASSIGNMENTS). The monthly amount is in
+/// transport_route_amounts, never on the route.
+model TransportRoute {
+  id            BigInt               @id(map: "transport_routes_pkey") @default(autoincrement())
+  schoolId      BigInt               @map("school_id")
+  /// 1-80, trimmed, never an identity number.
+  name          String               @db.VarChar(80)
+  vehicleId     BigInt?              @map("vehicle_id")
+  status        TransportRouteStatus @default(active)
+  createdBy     BigInt               @map("created_by")
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together exactly when archived (CHECK transport_routes_archived_check); once set, frozen.
+  archivedAt    DateTime?            @map("archived_at") @db.Timestamptz(3)
+  archivedBy    BigInt?              @map("archived_by")
+  archiveReason String?              @map("archive_reason") @db.VarChar(500)
+  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school         School                 @relation(fields: [schoolId], references: [id], map: "transport_routes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  vehicle        Vehicle?               @relation(fields: [schoolId, vehicleId], references: [schoolId, id], map: "transport_routes_vehicle_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser  User                   @relation("TransportRouteCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "transport_routes_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  archivedByUser User?                  @relation("TransportRouteArchivedBy", fields: [schoolId, archivedBy], references: [schoolId, id], map: "transport_routes_archived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  amounts        TransportRouteAmount[]
+  stops          TransportStop[]
+  assignments    TransportAssignment[]
+
+  @@unique([schoolId, id], map: "transport_routes_school_id_id_key")
+  @@index([schoolId, vehicleId], map: "transport_routes_school_id_vehicle_id_idx")
+  @@index([schoolId, createdBy], map: "transport_routes_school_id_created_by_idx")
+  @@index([schoolId, archivedBy], map: "transport_routes_school_id_archived_by_idx")
+  @@map("transport_routes")
+}
+
+/// Tenant: a route's monthly amount from a period on (rule 37, R327). Never edited or removed;
+/// only the void trio changes, once, and only before the period starts in school time (trigger
+/// transport_route_amounts_guard), so a mistaken future amount is corrected by voiding it and
+/// inserting a replacement. One live row per route and period (hand-written partial unique
+/// transport_route_amounts_route_period_key WHERE voided_at IS NULL); the amount in force for a
+/// period is the non-voided row with the greatest effective_period not after it. A period's
+/// catch-up run charges what its first run charged. Inserted only while the route is active.
+model TransportRouteAmount {
+  id              BigInt    @id(map: "transport_route_amounts_pkey") @default(autoincrement())
+  schoolId        BigInt    @map("school_id")
+  routeId         BigInt    @map("route_id")
+  /// `YYYY-MM` (CHECK transport_route_amounts_period_check), the charges.period shape.
+  effectivePeriod String    @map("effective_period") @db.Char(7)
+  /// Whole rupees, >= 0 (rule 15).
+  amount          Int
+  createdBy       BigInt    @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together and once (CHECK transport_route_amounts_voided_check); only for a period not
+  /// yet started. Reason 1-500, trimmed, never an identity number.
+  voidedAt        DateTime? @map("voided_at") @db.Timestamptz(3)
+  voidedBy        BigInt?   @map("voided_by")
+  voidReason      String?   @map("void_reason") @db.VarChar(500)
+
+  school        School         @relation(fields: [schoolId], references: [id], map: "transport_route_amounts_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  route         TransportRoute @relation(fields: [schoolId, routeId], references: [schoolId, id], map: "transport_route_amounts_route_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User           @relation("TransportRouteAmountCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "transport_route_amounts_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  voidedByUser  User?          @relation("TransportRouteAmountVoidedBy", fields: [schoolId, voidedBy], references: [schoolId, id], map: "transport_route_amounts_voided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "transport_route_amounts_school_id_id_key")
+  /// The route FK and the "amount in force" lookup (route, period desc); one live row per route
+  /// and period is the hand-written partial unique transport_route_amounts_route_period_key.
+  @@index([schoolId, routeId, effectivePeriod], map: "transport_route_amounts_school_id_route_id_idx")
+  @@index([schoolId, createdBy], map: "transport_route_amounts_school_id_created_by_idx")
+  @@index([schoolId, voidedBy], map: "transport_route_amounts_school_id_voided_by_idx")
+  @@map("transport_route_amounts")
+}
+
+/// Tenant: a stop on a route, in order (rule 37). Live stops of a route have distinct sort orders
+/// (deferrable exclusion transport_stops_live_order_excl, so a reorder swaps within a
+/// transaction). Edited while live; ended once (the end trio) and never while a live assignment
+/// names it (trigger transport_stops_guard, TRANSPORT_STOP_IN_USE). Unique (school_id, id,
+/// route_id) is the target of the assignment's stop FK, which binds the stop to its route.
+model TransportStop {
+  id         BigInt    @id(map: "transport_stops_pkey") @default(autoincrement())
+  schoolId   BigInt    @map("school_id")
+  routeId    BigInt    @map("route_id")
+  /// 1-100 (CHECK transport_stops_sort_order_check).
+  sortOrder  Int       @map("sort_order") @db.SmallInt
+  /// 1-80, trimmed, never an identity number.
+  name       String    @db.VarChar(80)
+  pickupTime DateTime? @map("pickup_time") @db.Time(0)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together (CHECK transport_stops_ended_check); once set, frozen.
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(3)
+  endedBy    BigInt?   @map("ended_by")
+  endReason  String?   @map("end_reason") @db.VarChar(500)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school      School                @relation(fields: [schoolId], references: [id], map: "transport_stops_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  route       TransportRoute        @relation(fields: [schoolId, routeId], references: [schoolId, id], map: "transport_stops_route_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser User?                 @relation("TransportStopEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "transport_stops_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  assignments TransportAssignment[]
+
+  @@unique([schoolId, id], map: "transport_stops_school_id_id_key")
+  @@unique([schoolId, id, routeId], map: "transport_stops_school_id_id_route_id_key")
+  @@index([schoolId, routeId, sortOrder], map: "transport_stops_school_id_route_id_idx")
+  @@index([schoolId, endedBy], map: "transport_stops_school_id_ended_by_idx")
+  @@map("transport_stops")
+}
+
+/// Tenant: a student on a route for an academic year (rule 37, A8, R326). Keyed per student per
+/// year: one live row (partial unique transport_assignments_live_key), a change is close-old /
+/// open-new, so a section change (a new enrolment) leaves it alone. enrolment_id is the enrolment
+/// at assignment, a snapshot: the FK carries student and year, so it can never name another child
+/// or year; the charge run charges the student's enrolment live in the period. The stop FK
+/// carries route_id, so a stop is always one of the route's. Frozen except the end group
+/// (ended_at, ended_by, end_reason, ends_on; set together and once). Born live, on an active
+/// route and a live stop, starting inside the year (trigger transport_assignments_guard).
+model TransportAssignment {
+  id             BigInt    @id(map: "transport_assignments_pkey") @default(autoincrement())
+  schoolId       BigInt    @map("school_id")
+  studentId      BigInt    @map("student_id")
+  academicYearId BigInt    @map("academic_year_id")
+  enrolmentId    BigInt    @map("enrolment_id")
+  routeId        BigInt    @map("route_id")
+  stopId         BigInt?   @map("stop_id")
+  startsOn       DateTime  @map("starts_on") @db.Date
+  /// The last day on the route (R327: a mid-month end is charged in full). starts_on - 1 records
+  /// an assignment ended before it began (never in force). CHECK transport_assignments_ended_check.
+  endsOn         DateTime? @map("ends_on") @db.Date
+  createdBy      BigInt    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(3)
+  endedBy        BigInt?   @map("ended_by")
+  /// 1-500, trimmed, never an identity number (R326: ending needs a reason).
+  endReason      String?   @map("end_reason") @db.VarChar(500)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school        School         @relation(fields: [schoolId], references: [id], map: "transport_assignments_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  enrolment     Enrolment      @relation(fields: [schoolId, enrolmentId, studentId, academicYearId], references: [schoolId, id, studentId, academicYearId], map: "transport_assignments_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  route         TransportRoute @relation(fields: [schoolId, routeId], references: [schoolId, id], map: "transport_assignments_route_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  stop          TransportStop? @relation(fields: [schoolId, stopId, routeId], references: [schoolId, id, routeId], map: "transport_assignments_stop_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User           @relation("TransportAssignmentCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "transport_assignments_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  endedByUser   User?          @relation("TransportAssignmentEndedBy", fields: [schoolId, endedBy], references: [schoolId, id], map: "transport_assignments_ended_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "transport_assignments_school_id_id_key")
+  /// GET /transport-routes/:id/assignments?includeEnded (live ones by the partial index).
+  @@index([schoolId, routeId, startsOn], map: "transport_assignments_school_id_route_id_idx")
+  @@index([schoolId, stopId, routeId], map: "transport_assignments_school_id_stop_id_idx")
+  @@index([schoolId, enrolmentId, studentId, academicYearId], map: "transport_assignments_school_id_enrolment_id_idx")
+  /// GET /students/:id/transport and the family reads.
+  @@index([schoolId, studentId, academicYearId], map: "transport_assignments_school_id_student_id_idx")
+  /// The daily charge run (R327): a year's assignments started by the period's cut-off.
+  @@index([schoolId, academicYearId, startsOn], map: "transport_assignments_school_id_academic_year_id_starts_on_idx")
+  @@index([schoolId, createdBy], map: "transport_assignments_school_id_created_by_idx")
+  @@index([schoolId, endedBy], map: "transport_assignments_school_id_ended_by_idx")
+  @@map("transport_assignments")
+}
+
+/// Tenant, append-only (like audit_log): a punch received from the school's biometric device
+/// (rule 40, R345). A replay is refused by the unique (school_id, device_user_id, punched_at)
+/// and answered `duplicate`. staff_id is the mapping at receipt (A11): the staff member whose
+/// device_user_id it was (trigger device_punches_guard), null exactly when unmapped; a later
+/// mapping does not repair old rows. A punch never carries a name.
+model DevicePunch {
+  id           BigInt          @id(map: "device_punches_pkey") @default(autoincrement())
+  schoolId     BigInt          @map("school_id")
+  staffId      BigInt?         @map("staff_id")
+  /// 1-40 printable ASCII without spaces, never an identity number (the staff.device_user_id
+  /// shape, CHECKs).
+  deviceUserId String          @map("device_user_id") @db.VarChar(40)
+  punchedAt    DateTime        @map("punched_at") @db.Timestamptz(3)
+  direction    PunchDirection?
+  outcome      PunchOutcome
+  receivedAt   DateTime        @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  school          School           @relation(fields: [schoolId], references: [id], map: "device_punches_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  staff           Staff?           @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "device_punches_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staffAttendance StaffAttendance?
+
+  @@unique([schoolId, id], map: "device_punches_school_id_id_key")
+  /// Target of staff_attendance's (school_id, device_punch_id, staff_id) FK: a punch marks only
+  /// its own staff member.
+  @@unique([schoolId, id, staffId], map: "device_punches_school_id_id_staff_id_key")
+  /// R345: a replayed punch is a duplicate.
+  @@unique([schoolId, deviceUserId, punchedAt], map: "device_punches_replay_key")
+  /// GET /device-punches?date (the day view).
+  @@index([schoolId, punchedAt], map: "device_punches_school_id_punched_at_idx")
+  @@index([schoolId, staffId, punchedAt], map: "device_punches_school_id_staff_id_punched_at_idx")
+  @@map("device_punches")
+}
+
+/// Tenant: a staff member's dispute of their own attendance mark (rule 40, R346, R347), the
+/// leave-request shape. Raised from the staff member's own login (trigger: raised_by is a login
+/// of staff_id), decided by an attendance.staff.manage holder who is not the staff member (no
+/// sole-principal exception), withdrawn only by the staff member. One pending dispute per mark
+/// (partial unique staff_attendance_disputes_pending_key). pending -> approved | rejected |
+/// withdrawn, all final; the decision and withdrawal groups are set once.
+model StaffAttendanceDispute {
+  id              BigInt                @id(map: "staff_attendance_disputes_pkey") @default(autoincrement())
+  schoolId        BigInt                @map("school_id")
+  attendanceId    BigInt                @map("attendance_id")
+  staffId         BigInt                @map("staff_id")
+  raisedBy        BigInt                @map("raised_by")
+  requestedStatus StaffAttendanceStatus @map("requested_status")
+  /// 1-500, trimmed, never an identity number.
+  reason          String                @db.VarChar(500)
+  status          DisputeStatus         @default(pending)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// Set together exactly when approved or rejected (CHECK staff_attendance_disputes_decided_check);
+  /// decision_reason is required on a rejection, optional on an approval.
+  decidedBy       BigInt?               @map("decided_by")
+  decidedAt       DateTime?             @map("decided_at") @db.Timestamptz(3)
+  decisionReason  String?               @map("decision_reason") @db.VarChar(500)
+  /// Set together exactly when withdrawn (CHECK staff_attendance_disputes_withdrawn_check).
+  withdrawnBy     BigInt?               @map("withdrawn_by")
+  withdrawnAt     DateTime?             @map("withdrawn_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School          @relation(fields: [schoolId], references: [id], map: "staff_attendance_disputes_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  attendance      StaffAttendance @relation(fields: [schoolId, attendanceId, staffId], references: [schoolId, id, staffId], map: "staff_attendance_disputes_attendance_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  staff           Staff           @relation(fields: [schoolId, staffId], references: [schoolId, id], map: "staff_attendance_disputes_staff_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  raisedByUser    User            @relation("StaffAttendanceDisputeRaisedBy", fields: [schoolId, raisedBy], references: [schoolId, id], map: "staff_attendance_disputes_raised_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  decidedByUser   User?           @relation("StaffAttendanceDisputeDecidedBy", fields: [schoolId, decidedBy], references: [schoolId, id], map: "staff_attendance_disputes_decided_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  withdrawnByUser User?           @relation("StaffAttendanceDisputeWithdrawnBy", fields: [schoolId, withdrawnBy], references: [schoolId, id], map: "staff_attendance_disputes_withdrawn_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "staff_attendance_disputes_school_id_id_key")
+  @@index([schoolId, attendanceId, staffId], map: "staff_attendance_disputes_school_id_attendance_id_idx")
+  /// GET /me/staff/attendance-disputes and ?staffId=, newest first.
+  @@index([schoolId, staffId, createdAt], map: "staff_attendance_disputes_school_id_staff_id_idx")
+  /// GET /staff-attendance-disputes?status=, newest first (the pending queue has its partial index).
+  @@index([schoolId, status, createdAt], map: "staff_attendance_disputes_school_id_status_idx")
+  @@index([schoolId, raisedBy], map: "staff_attendance_disputes_school_id_raised_by_idx")
+  @@index([schoolId, decidedBy], map: "staff_attendance_disputes_school_id_decided_by_idx")
+  @@index([schoolId, withdrawnBy], map: "staff_attendance_disputes_school_id_withdrawn_by_idx")
+  @@map("staff_attendance_disputes")
 }

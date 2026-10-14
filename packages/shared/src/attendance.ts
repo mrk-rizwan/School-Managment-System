@@ -35,9 +35,27 @@ export type StaffAttendanceStatus = (typeof STAFF_ATTENDANCE_STATUSES)[number];
 export const STAFF_ATTENDANCE_SOURCES = ['manual', 'device'] as const;
 export type StaffAttendanceSource = (typeof STAFF_ATTENDANCE_SOURCES)[number];
 
-/** `staff_attendance_disputes.status`: pending -> approved | rejected, both final (rule 40). */
-export const DISPUTE_STATUSES = ['pending', 'approved', 'rejected'] as const;
+/**
+ * `staff_attendance_disputes.status`: pending -> approved | rejected | withdrawn, all final
+ * (rule 40; `withdrawn` added by wave T for `POST /me/staff/attendance-disputes/:id/withdraw`).
+ */
+export const DISPUTE_STATUSES = ['pending', 'approved', 'rejected', 'withdrawn'] as const;
 export type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
+
+/** `device_punches.direction`: what the device reports, when it reports it (slice 44). */
+export const PUNCH_DIRECTIONS = ['in', 'out'] as const;
+export type PunchDirection = (typeof PUNCH_DIRECTIONS)[number];
+
+/**
+ * `device_punches.outcome` (R345): what receiving a punch did. A replay is answered `duplicate`
+ * but never stored, so it is in PUNCH_RESULT_OUTCOMES (the batch response) and not here.
+ */
+export const PUNCH_OUTCOMES = ['marked', 'stored', 'unmapped', 'inactive'] as const;
+export type PunchOutcome = (typeof PUNCH_OUTCOMES)[number];
+
+/** The per-punch outcome `POST /device-punches` answers (slice 44): a stored outcome or a replay. */
+export const PUNCH_RESULT_OUTCOMES = [...PUNCH_OUTCOMES, 'duplicate'] as const;
+export type PunchResultOutcome = (typeof PUNCH_RESULT_OUTCOMES)[number];
 
 /** `attendance_registers.source`, derived from the session channel: bearer = app, cookie = web. */
 export const REGISTER_SOURCES = ['app', 'web'] as const;

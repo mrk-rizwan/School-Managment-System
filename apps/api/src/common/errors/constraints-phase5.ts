@@ -154,3 +154,105 @@ export const WAVE_S_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = 
   staff_contracts_end_reason_check: fieldInvalid('reason', 'reason must not be blank'),
   staff_contracts_end_reason_no_id_check: noIdentity('reason'),
 };
+
+// ---- wave T: transport (slice 41) and biometric staff attendance (slice 44), migrations
+// 20261014120000_wave_t_enums and 20261014120100_wave_t_transport_biometric. The services check
+// first; these answer a race loser and any write that reaches the database's line. The CHECKs and
+// guards only a bug can break (a row born in a later state, the end and decision groups travelling
+// together, a punch's mapping or outcome against the staff row, a device mark's punch) are
+// deliberately unmapped: a 500 says "bug" (the prisma-errors.ts rule).
+
+const routeArchived = (): ApiException =>
+  new ApiException(409, ErrorCode.TRANSPORT_ROUTE_ARCHIVED, 'The route is archived.');
+
+export const WAVE_T_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = {
+  // §3.2 vehicles (R329).
+  vehicles_live_registration_key: () =>
+    new ApiException(409, ErrorCode.VEHICLE_REGISTRATION_TAKEN, 'An active vehicle already has that registration.', {
+      field: 'registration',
+    }),
+  vehicles_in_use: () =>
+    new ApiException(409, ErrorCode.VEHICLE_IN_USE, 'An active route still uses this vehicle.'),
+  vehicles_status_transition: () =>
+    new ApiException(409, ErrorCode.VEHICLE_RETIRED, 'The vehicle is already retired.'),
+  vehicles_registration_frozen: () => new ApiException(409, ErrorCode.VEHICLE_RETIRED, 'The vehicle is retired.'),
+  vehicles_capacity_frozen: () => new ApiException(409, ErrorCode.VEHICLE_RETIRED, 'The vehicle is retired.'),
+  vehicles_driver_staff_id_frozen: () => new ApiException(409, ErrorCode.VEHICLE_RETIRED, 'The vehicle is retired.'),
+  vehicles_retired_at_frozen: concurrentUpdate,
+  vehicles_registration_check: fieldInvalid('registration', 'registration must not be blank'),
+  vehicles_registration_no_id_check: noIdentity('registration'),
+  vehicles_capacity_check: fieldInvalid('capacity', 'capacity is 1-120'),
+  vehicles_retire_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  vehicles_retire_reason_no_id_check: noIdentity('reason'),
+  // §3.2 routes (R329).
+  transport_routes_live_name_key: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_ROUTE_NAME_TAKEN, 'An active route already has that name.', { field: 'name' }),
+  transport_routes_vehicle_active: () =>
+    new ApiException(409, ErrorCode.VEHICLE_RETIRED, 'A retired vehicle cannot serve a route.'),
+  transport_routes_has_assignments: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_ROUTE_HAS_ASSIGNMENTS, 'Students are still assigned to this route.'),
+  transport_routes_status_transition: routeArchived,
+  transport_routes_name_frozen: routeArchived,
+  transport_routes_vehicle_id_frozen: routeArchived,
+  transport_routes_archived_at_frozen: concurrentUpdate,
+  transport_routes_name_check: fieldInvalid('name', 'name must not be blank'),
+  transport_routes_name_no_id_check: noIdentity('name'),
+  transport_routes_archive_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  transport_routes_archive_reason_no_id_check: noIdentity('reason'),
+  // R327: one live amount per route and period; an amount is voided once, before its period.
+  transport_route_amounts_route_period_key: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_AMOUNT_PERIOD_TAKEN, 'The route already has an amount from that period.'),
+  transport_route_amounts_route_active: routeArchived,
+  transport_route_amounts_void_period_started: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_AMOUNT_PERIOD_PAST, 'An amount whose period has started cannot be voided.'),
+  transport_route_amounts_voided_at_frozen: () =>
+    new ApiException(409, ErrorCode.STALE_STATUS, 'This amount is already voided.'),
+  transport_route_amounts_void_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  transport_route_amounts_void_reason_no_id_check: noIdentity('reason'),
+  transport_route_amounts_period_check: fieldInvalid('effectivePeriod', 'effectivePeriod is YYYY-MM'),
+  transport_route_amounts_amount_check: fieldInvalid('amount', 'amount must not be negative'),
+  // Stops (replaced as a whole by PATCH /transport-routes/:id).
+  transport_stops_live_order_excl: fieldInvalid('stops', 'two stops share a sort order'),
+  transport_stops_in_use: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_STOP_IN_USE, 'A student is still assigned to that stop.'),
+  transport_stops_route_active: routeArchived,
+  transport_stops_ended_at_frozen: concurrentUpdate,
+  transport_stops_sort_order_check: fieldInvalid('stops', 'sortOrder is 1-100'),
+  transport_stops_name_check: fieldInvalid('stops', 'a stop name must not be blank'),
+  transport_stops_name_no_id_check: noIdentity('stops'),
+  transport_stops_end_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  transport_stops_end_reason_no_id_check: noIdentity('reason'),
+  // A8, R326.
+  transport_assignments_live_key: () =>
+    new ApiException(409, ErrorCode.TRANSPORT_ASSIGNMENT_LIVE, 'The student already has a live route this year.'),
+  transport_assignments_route_active: routeArchived,
+  transport_assignments_stop_live: fieldInvalid('stopId', 'stopId must be a live stop of the route'),
+  transport_assignments_stop_id_fkey: fieldInvalid('stopId', 'stopId must be a stop of the route'),
+  transport_assignments_in_year: fieldInvalid('startsOn', 'startsOn must be inside the academic year'),
+  transport_assignments_ended_check: fieldInvalid('endedOn', 'endedOn must not be before the assignment starts'),
+  transport_assignments_ended_at_frozen: concurrentUpdate,
+  transport_assignments_end_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  transport_assignments_end_reason_no_id_check: noIdentity('reason'),
+  // R345: a replay is answered `duplicate` by the service (ON CONFLICT); a race loser lands here.
+  device_punches_replay_key: concurrentUpdate,
+  device_punches_device_user_id_check: fieldInvalid('deviceUserId', 'deviceUserId is 1-40 printable ASCII characters without spaces'),
+  device_punches_device_user_id_no_id_check: noIdentity('deviceUserId'),
+  // A punch makes at most one mark (a race loser; the day itself is staff_attendance_natural_key).
+  staff_attendance_device_punch_id_key: concurrentUpdate,
+  // R346.
+  staff_attendance_disputes_pending_key: () =>
+    new ApiException(409, ErrorCode.ATTENDANCE_DISPUTE_PENDING_EXISTS, 'This mark already has a pending dispute.'),
+  staff_attendance_disputes_status_transition: () =>
+    new ApiException(409, ErrorCode.ATTENDANCE_DISPUTE_NOT_PENDING, 'The dispute is no longer pending.'),
+  staff_attendance_disputes_decided_at_frozen: concurrentUpdate,
+  staff_attendance_disputes_withdrawn_at_frozen: concurrentUpdate,
+  staff_attendance_disputes_not_self: () =>
+    new ApiException(409, ErrorCode.SELF_ACTION_FORBIDDEN, 'Nobody decides a dispute of their own attendance.', {
+      reason: 'own_attendance',
+    }),
+  staff_attendance_disputes_decided_check: fieldInvalid('reason', 'reason is required to reject a dispute'),
+  staff_attendance_disputes_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  staff_attendance_disputes_reason_no_id_check: noIdentity('reason'),
+  staff_attendance_disputes_decision_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  staff_attendance_disputes_decision_reason_no_id_check: noIdentity('reason'),
+};

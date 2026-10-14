@@ -92,6 +92,8 @@ export const NON_SCHOOL_LEADING_INDEXES = new Set([
  * - whatsapp_numbers.cloud_phone_number_id: Meta's identifier for the number, not a row id.
  * - staff.device_user_id: the person's user number on the school's biometric device (Phase 5
  *   rule 40), not a row id.
+ * - device_punches.device_user_id: the same device user number, as the punch carried it (wave T,
+ *   A11: kept even when it maps to nobody).
  *
  * holidays.announcement_id was listed until slice 14 added its foreign key
  * (contracts/slice-14.md §11 item 7).
@@ -103,6 +105,7 @@ export const NON_FK_ID_COLUMNS = new Set([
   'messages.subject_id',
   'whatsapp_numbers.cloud_phone_number_id',
   'staff.device_user_id',
+  'device_punches.device_user_id',
 ]);
 
 export type ExpectedObject =
@@ -1051,6 +1054,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...WAVE_R_OBJECTS(),
   ...SLICE_37_OBJECTS(),
   ...WAVE_S_OBJECTS(),
+  ...WAVE_T_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -1791,8 +1795,9 @@ function WAVE_E_GROUNDWORK_OBJECTS(): ExpectedObject[] {
       table: 'staff_attendance',
       name: 'staff_attendance_columns_immutable',
       definition:
-        // Phase 5 (20261009120100_phase5_groundwork) added source.
-        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date', 'marked_by', 'marked_at', 'source')",
+        // Phase 5 (20261009120100_phase5_groundwork) added source; wave T
+        // (20261014120100_wave_t_transport_biometric) device_punch_id.
+        "BEFORE UPDATE ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('staff_id', 'date', 'marked_by', 'marked_at', 'source', 'device_punch_id')",
     },
     {
       kind: 'trigger',
@@ -3226,7 +3231,8 @@ function WAVE_R_OBJECTS(): ExpectedObject[] {
     // ---- staff, staff_attendance
     { kind: 'constraint', table: 'staff', name: 'staff_device_user_id_check', definition: "CHECK (((device_user_id)::text ~ '^[!-~]{1,40}$'::text))" },
     { kind: 'constraint', table: 'staff', name: 'staff_device_user_id_no_id_check', definition: noIdCheck('device_user_id') },
-    { kind: 'constraint', table: 'staff_attendance', name: 'staff_attendance_source_check', definition: "CHECK (((source = 'device'::staff_attendance_source) = (marked_by IS NULL)))" },
+    // Widened to the three-way rule by wave T (WAVE_T_OBJECTS checks the current definition).
+    { kind: 'constraint', table: 'staff_attendance', name: 'staff_attendance_source_check' },
     // ---- student_documents
     { kind: 'constraint', table: 'student_documents', name: 'student_documents_decided_check', definition: "CHECK ((((status = 'uploaded'::document_status) = (decided_at IS NULL)) AND ((decided_at IS NULL) = (decided_by IS NULL)) AND ((status = 'rejected'::document_status) = (reject_reason IS NOT NULL))))" },
     { kind: 'constraint', table: 'student_documents', name: 'student_documents_reject_reason_check', definition: "CHECK (((reject_reason IS NULL) OR (((reject_reason)::text = btrim((reject_reason)::text)) AND ((reject_reason)::text <> ''::text))))" },
@@ -3398,5 +3404,136 @@ function WAVE_S_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_warned_30_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('warned_30_at')" },
     { kind: 'trigger', table: 'staff_contracts', name: 'staff_contracts_warned_7_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('warned_7_at')" },
     ...noDeleteTriggers('staff_contracts'),
+  ];
+}
+
+/**
+ * Phase 5 wave T (migrations 20261014120000_wave_t_enums and
+ * 20261014120100_wave_t_transport_biometric): the tables of slices 41 (vehicles,
+ * transport_routes, transport_route_amounts, transport_stops, transport_assignments) and 44
+ * (device_punches, staff_attendance_disputes), staff_attendance.device_punch_id with the
+ * three-way source rule, and their guards. device_punches is append-only (the audit_log trio);
+ * transport_route_amounts became voidable before its period by the fix-forward
+ * 20261014120200_wave_t_amount_void (the no-delete trio, a partial live unique).
+ */
+function WAVE_T_OBJECTS(): ExpectedObject[] {
+  const trimmed = (column: string) =>
+    `CHECK ((((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text)))`;
+  const trimmedOrNull = (column: string) =>
+    `CHECK (((${column} IS NULL) OR (((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text))))`;
+  const refusal = (fn: string, ...names: string[]): ExpectedObject[] =>
+    names.map((name) => ({ kind: 'function', name: fn, definition: `v_refusal := '${name}'` }));
+  return [
+    // ---- functions
+    ...refusal('asms_vehicle_guard', 'vehicles_born_active', 'vehicles_in_use'),
+    ...refusal('asms_transport_route_guard', 'transport_routes_born_active', 'transport_routes_vehicle_active', 'transport_routes_has_assignments'),
+    { kind: 'function', name: 'asms_transport_route_guard', definition: 'FOR SHARE' },
+    ...refusal(
+      'asms_transport_route_amount_guard',
+      'transport_route_amounts_born_live',
+      'transport_route_amounts_route_active',
+      'transport_route_amounts_void_period_started',
+    ),
+    { kind: 'function', name: 'asms_transport_route_amount_guard', definition: "to_char(now() AT TIME ZONE s.timezone, 'YYYY-MM')" },
+    ...refusal('asms_transport_stop_guard', 'transport_stops_born_live', 'transport_stops_route_active', 'transport_stops_in_use'),
+    ...refusal(
+      'asms_transport_assignment_guard',
+      'transport_assignments_born_live',
+      'transport_assignments_route_active',
+      'transport_assignments_stop_live',
+      'transport_assignments_in_year',
+    ),
+    ...refusal('asms_device_punch_guard', 'device_punches_staff_mapping', 'device_punches_staff_status'),
+    ...refusal('asms_staff_attendance_device_punch', 'staff_attendance_device_punch_marked', 'staff_attendance_device_punch_date'),
+    ...refusal(
+      'asms_staff_attendance_dispute_guard',
+      'staff_attendance_disputes_born_pending',
+      'staff_attendance_disputes_raised_by_self',
+      'staff_attendance_disputes_not_self',
+      'staff_attendance_disputes_withdrawn_by_self',
+    ),
+    // ---- vehicles (R329, R331)
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_registration_check', definition: trimmed('registration') },
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_registration_no_id_check', definition: noIdCheck('registration') },
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_capacity_check', definition: 'CHECK (((capacity >= 1) AND (capacity <= 120)))' },
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_retired_check', definition: "CHECK ((((status = 'retired'::vehicle_status) = (retired_at IS NOT NULL)) AND ((retired_at IS NULL) = (retired_by IS NULL)) AND ((retired_at IS NULL) = (retire_reason IS NULL))))" },
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_retire_reason_check', definition: trimmedOrNull('retire_reason') },
+    { kind: 'constraint', table: 'vehicles', name: 'vehicles_retire_reason_no_id_check', definition: noIdCheck('retire_reason') },
+    { kind: 'index', table: 'vehicles', name: 'vehicles_live_registration_key', definition: "UNIQUE INDEX vehicles_live_registration_key ON public.vehicles USING btree (school_id, upper(btrim((registration)::text))) WHERE (status = 'active'::vehicle_status)" },
+    { kind: 'trigger', table: 'vehicles', name: 'vehicles_status_transition', definition: "EXECUTE FUNCTION asms_status_transition('active:retired')" },
+    { kind: 'trigger', table: 'vehicles', name: 'vehicles_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('created_by', 'created_at')" },
+    { kind: 'trigger', table: 'vehicles', name: 'vehicles_content_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_unless_status('active', 'registration', 'capacity', 'driver_staff_id')" },
+    { kind: 'trigger', table: 'vehicles', name: 'vehicles_retired_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('retired_at', 'retired_by', 'retire_reason')" },
+    { kind: 'trigger', table: 'vehicles', name: 'vehicles_guard', definition: 'BEFORE INSERT OR UPDATE ON public.vehicles FOR EACH ROW EXECUTE FUNCTION asms_vehicle_guard()' },
+    ...noDeleteTriggers('vehicles'),
+    // ---- transport_routes (R329)
+    { kind: 'constraint', table: 'transport_routes', name: 'transport_routes_name_check', definition: trimmed('name') },
+    { kind: 'constraint', table: 'transport_routes', name: 'transport_routes_name_no_id_check', definition: noIdCheck('name') },
+    { kind: 'constraint', table: 'transport_routes', name: 'transport_routes_archived_check', definition: "CHECK ((((status = 'archived'::transport_route_status) = (archived_at IS NOT NULL)) AND ((archived_at IS NULL) = (archived_by IS NULL)) AND ((archived_at IS NULL) = (archive_reason IS NULL))))" },
+    { kind: 'constraint', table: 'transport_routes', name: 'transport_routes_archive_reason_check', definition: trimmedOrNull('archive_reason') },
+    { kind: 'constraint', table: 'transport_routes', name: 'transport_routes_archive_reason_no_id_check', definition: noIdCheck('archive_reason') },
+    { kind: 'index', table: 'transport_routes', name: 'transport_routes_live_name_key', definition: "UNIQUE INDEX transport_routes_live_name_key ON public.transport_routes USING btree (school_id, lower((name)::text)) WHERE (status = 'active'::transport_route_status)" },
+    { kind: 'trigger', table: 'transport_routes', name: 'transport_routes_status_transition', definition: "EXECUTE FUNCTION asms_status_transition('active:archived')" },
+    { kind: 'trigger', table: 'transport_routes', name: 'transport_routes_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('created_by', 'created_at')" },
+    { kind: 'trigger', table: 'transport_routes', name: 'transport_routes_content_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_unless_status('active', 'name', 'vehicle_id')" },
+    { kind: 'trigger', table: 'transport_routes', name: 'transport_routes_archived_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('archived_at', 'archived_by', 'archive_reason')" },
+    { kind: 'trigger', table: 'transport_routes', name: 'transport_routes_guard', definition: 'BEFORE INSERT OR UPDATE ON public.transport_routes FOR EACH ROW EXECUTE FUNCTION asms_transport_route_guard()' },
+    ...noDeleteTriggers('transport_routes'),
+    // ---- transport_route_amounts (R327; voidable once, before its period)
+    { kind: 'constraint', table: 'transport_route_amounts', name: 'transport_route_amounts_period_check', definition: "CHECK ((effective_period ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text))" },
+    { kind: 'constraint', table: 'transport_route_amounts', name: 'transport_route_amounts_amount_check', definition: 'CHECK ((amount >= 0))' },
+    { kind: 'constraint', table: 'transport_route_amounts', name: 'transport_route_amounts_voided_check', definition: 'CHECK ((((voided_at IS NULL) = (voided_by IS NULL)) AND ((voided_at IS NULL) = (void_reason IS NULL))))' },
+    { kind: 'constraint', table: 'transport_route_amounts', name: 'transport_route_amounts_void_reason_check', definition: trimmedOrNull('void_reason') },
+    { kind: 'constraint', table: 'transport_route_amounts', name: 'transport_route_amounts_void_reason_no_id_check', definition: noIdCheck('void_reason') },
+    { kind: 'index', table: 'transport_route_amounts', name: 'transport_route_amounts_route_period_key', definition: 'UNIQUE INDEX transport_route_amounts_route_period_key ON public.transport_route_amounts USING btree (school_id, route_id, effective_period) WHERE (voided_at IS NULL)' },
+    { kind: 'trigger', table: 'transport_route_amounts', name: 'transport_route_amounts_guard', definition: 'BEFORE INSERT OR UPDATE ON public.transport_route_amounts FOR EACH ROW EXECUTE FUNCTION asms_transport_route_amount_guard()' },
+    { kind: 'trigger', table: 'transport_route_amounts', name: 'transport_route_amounts_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('route_id', 'effective_period', 'amount', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'transport_route_amounts', name: 'transport_route_amounts_voided_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
+    ...noDeleteTriggers('transport_route_amounts'),
+    // ---- transport_stops
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_sort_order_check', definition: 'CHECK (((sort_order >= 1) AND (sort_order <= 100)))' },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_name_check', definition: trimmed('name') },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_name_no_id_check', definition: noIdCheck('name') },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_ended_check', definition: 'CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (end_reason IS NULL))))' },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_end_reason_check', definition: trimmedOrNull('end_reason') },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_end_reason_no_id_check', definition: noIdCheck('end_reason') },
+    { kind: 'constraint', table: 'transport_stops', name: 'transport_stops_live_order_excl', definition: 'EXCLUDE USING btree (school_id WITH =, route_id WITH =, sort_order WITH =) WHERE ((ended_at IS NULL)) DEFERRABLE INITIALLY DEFERRED' },
+    { kind: 'trigger', table: 'transport_stops', name: 'transport_stops_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('route_id', 'created_at')" },
+    { kind: 'trigger', table: 'transport_stops', name: 'transport_stops_ended_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by', 'end_reason', 'sort_order', 'name', 'pickup_time')" },
+    { kind: 'trigger', table: 'transport_stops', name: 'transport_stops_guard', definition: 'BEFORE INSERT OR UPDATE ON public.transport_stops FOR EACH ROW EXECUTE FUNCTION asms_transport_stop_guard()' },
+    ...noDeleteTriggers('transport_stops'),
+    // ---- transport_assignments (A8, R326, R327)
+    { kind: 'constraint', table: 'transport_assignments', name: 'transport_assignments_ended_check', definition: 'CHECK ((((ended_at IS NULL) = (ended_by IS NULL)) AND ((ended_at IS NULL) = (end_reason IS NULL)) AND ((ended_at IS NULL) = (ends_on IS NULL)) AND ((ends_on IS NULL) OR (ends_on >= (starts_on - 1)))))' },
+    { kind: 'constraint', table: 'transport_assignments', name: 'transport_assignments_end_reason_check', definition: trimmedOrNull('end_reason') },
+    { kind: 'constraint', table: 'transport_assignments', name: 'transport_assignments_end_reason_no_id_check', definition: noIdCheck('end_reason') },
+    { kind: 'index', table: 'transport_assignments', name: 'transport_assignments_live_key', definition: 'UNIQUE INDEX transport_assignments_live_key ON public.transport_assignments USING btree (school_id, student_id, academic_year_id) WHERE (ended_at IS NULL)' },
+    { kind: 'index', table: 'transport_assignments', name: 'transport_assignments_live_route_idx', definition: 'ON public.transport_assignments USING btree (school_id, route_id) WHERE (ended_at IS NULL)' },
+    { kind: 'trigger', table: 'transport_assignments', name: 'transport_assignments_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('student_id', 'academic_year_id', 'enrolment_id', 'route_id', 'stop_id', 'starts_on', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'transport_assignments', name: 'transport_assignments_ended_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('ended_at', 'ended_by', 'end_reason', 'ends_on')" },
+    { kind: 'trigger', table: 'transport_assignments', name: 'transport_assignments_guard', definition: 'BEFORE INSERT ON public.transport_assignments FOR EACH ROW EXECUTE FUNCTION asms_transport_assignment_guard()' },
+    ...noDeleteTriggers('transport_assignments'),
+    // ---- device_punches (R345, R348; append-only)
+    { kind: 'constraint', table: 'device_punches', name: 'device_punches_device_user_id_check', definition: "CHECK (((device_user_id)::text ~ '^[!-~]{1,40}$'::text))" },
+    { kind: 'constraint', table: 'device_punches', name: 'device_punches_device_user_id_no_id_check', definition: noIdCheck('device_user_id') },
+    { kind: 'constraint', table: 'device_punches', name: 'device_punches_outcome_check', definition: "CHECK (((outcome = 'unmapped'::punch_outcome) = (staff_id IS NULL)))" },
+    { kind: 'trigger', table: 'device_punches', name: 'device_punches_guard', definition: 'BEFORE INSERT ON public.device_punches FOR EACH ROW EXECUTE FUNCTION asms_device_punch_guard()' },
+    ...appendOnlyTriggers('device_punches'),
+    // ---- staff_attendance (R345): NOT VALID, so existing rows are not re-checked (the migration says why)
+    { kind: 'constraint', table: 'staff_attendance', name: 'staff_attendance_source_check', definition: "CHECK ((((source = 'device'::staff_attendance_source) = (marked_by IS NULL)) AND ((marked_by IS NULL) = (device_punch_id IS NOT NULL))))" },
+    { kind: 'trigger', table: 'staff_attendance', name: 'staff_attendance_device_punch', definition: 'BEFORE INSERT ON public.staff_attendance FOR EACH ROW EXECUTE FUNCTION asms_staff_attendance_device_punch()' },
+    // ---- staff_attendance_disputes (R346, R347)
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_reason_check', definition: trimmed('reason') },
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_reason_no_id_check', definition: noIdCheck('reason') },
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_decision_reason_check', definition: trimmedOrNull('decision_reason') },
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_decision_reason_no_id_check', definition: noIdCheck('decision_reason') },
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_decided_check', definition: "CHECK ((((status = ANY (ARRAY['approved'::dispute_status, 'rejected'::dispute_status])) = (decided_at IS NOT NULL)) AND ((decided_at IS NULL) = (decided_by IS NULL)) AND ((decided_at IS NOT NULL) OR (decision_reason IS NULL)) AND ((status <> 'rejected'::dispute_status) OR (decision_reason IS NOT NULL))))" },
+    { kind: 'constraint', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_withdrawn_check', definition: "CHECK ((((status = 'withdrawn'::dispute_status) = (withdrawn_at IS NOT NULL)) AND ((withdrawn_at IS NULL) = (withdrawn_by IS NULL))))" },
+    { kind: 'index', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_pending_key', definition: "UNIQUE INDEX staff_attendance_disputes_pending_key ON public.staff_attendance_disputes USING btree (school_id, attendance_id) WHERE (status = 'pending'::dispute_status)" },
+    { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_status_transition', definition: "EXECUTE FUNCTION asms_status_transition('pending:approved', 'pending:rejected', 'pending:withdrawn')" },
+    { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('attendance_id', 'staff_id', 'raised_by', 'requested_status', 'reason', 'created_at')" },
+    { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_decided_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('decided_at', 'decided_by', 'decision_reason')" },
+    { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_withdrawn_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('withdrawn_at', 'withdrawn_by')" },
+    { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_guard', definition: 'BEFORE INSERT OR UPDATE ON public.staff_attendance_disputes FOR EACH ROW EXECUTE FUNCTION asms_staff_attendance_dispute_guard()' },
+    ...noDeleteTriggers('staff_attendance_disputes'),
   ];
 }

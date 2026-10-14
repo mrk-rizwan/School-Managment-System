@@ -31,6 +31,8 @@ const EXEMPT = new Set([
   join(apiRoot, 'test', 'timetable', 'timetable-guards.e2e-spec.ts'),
   // Phase 5 wave S: the guards of the event and contract tables and the expense event tag (R310-R321).
   join(apiRoot, 'test', 'phase5', 'wave-s-schema.e2e-spec.ts'),
+  // Phase 5 wave T: the guards of the transport, punch and dispute tables (R326-R331, R344-R348).
+  join(apiRoot, 'test', 'phase5', 'wave-t-schema.e2e-spec.ts'),
   // Phase 4 wave N: the guards of the assessment, mark and certificate tables.
   join(apiRoot, 'test', 'academics', 'marks-guards.e2e-spec.ts'),
   join(apiRoot, 'test', 'academics', 'certificate-guards.e2e-spec.ts'),

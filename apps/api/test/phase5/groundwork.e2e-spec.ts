@@ -123,8 +123,15 @@ describe('Phase 5 groundwork: database rules (wave R)', () => {
       const mark = (date: string, data: object) =>
         db().staffAttendance.create({ data: { schoolId: school.id, staffId: teacher.staffId, date: day(date), status: 'present', ...data } });
 
-      // asms_staff_attendance_not_self passes a NULL marker: no user made a device mark.
-      const device = await mark('2026-09-01', { source: 'device', markedBy: null });
+      // asms_staff_attendance_not_self passes a NULL marker: no user made a device mark. Since wave T
+      // a device mark also names the punch that made it (wave-t-schema.e2e-spec.ts holds the rest).
+      expect(await refusal(mark('2026-09-01', { source: 'device', markedBy: null }))).toMatch(/staff_attendance_source_check/);
+      const deviceUserId = `T${school.id}`;
+      await db().staff.updateMany({ where: { schoolId: school.id, id: teacher.staffId }, data: { deviceUserId } });
+      const punch = await db().devicePunch.create({
+        data: { schoolId: school.id, staffId: teacher.staffId, deviceUserId, punchedAt: new Date('2026-09-01T03:00:00Z'), outcome: 'marked' },
+      });
+      const device = await mark('2026-09-01', { source: 'device', markedBy: null, devicePunchId: punch.id });
       expect([device.source, device.markedBy]).toEqual(['device', null]);
       expect(await refusal(mark('2026-09-02', { source: 'device', markedBy: office.userId }))).toMatch(/staff_attendance_source_check/);
       expect(await refusal(mark('2026-09-03', { markedBy: null }))).toMatch(/staff_attendance_source_check/);

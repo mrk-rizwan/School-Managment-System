@@ -246,6 +246,12 @@ export const ErrorCode = {
   TRANSPORT_ROUTE_HAS_ASSIGNMENTS: 'TRANSPORT_ROUTE_HAS_ASSIGNMENTS', // details.routeId
   TRANSPORT_ASSIGNMENT_LIVE: 'TRANSPORT_ASSIGNMENT_LIVE', // details { studentId, assignmentId }
   TRANSPORT_AMOUNT_PERIOD_PAST: 'TRANSPORT_AMOUNT_PERIOD_PAST', // details { routeId, effectivePeriod }
+  // Wave T schema (migration 20261014120100_wave_t_transport_biometric): the live uniques and the
+  // stop-in-use refusal the database holds.
+  VEHICLE_REGISTRATION_TAKEN: 'VEHICLE_REGISTRATION_TAKEN', // details.field = registration (an active vehicle has it)
+  TRANSPORT_ROUTE_NAME_TAKEN: 'TRANSPORT_ROUTE_NAME_TAKEN', // details.field = name (an active route has it)
+  TRANSPORT_AMOUNT_PERIOD_TAKEN: 'TRANSPORT_AMOUNT_PERIOD_TAKEN', // details { routeId, effectivePeriod } (one live amount per route and period; void it first)
+  TRANSPORT_STOP_IN_USE: 'TRANSPORT_STOP_IN_USE', // details { stopId } (a live assignment names it; move the student first)
   IMPORT_DUPLICATE_FILE: 'IMPORT_DUPLICATE_FILE', // details.importId (the committed one)
   IMPORT_NOT_PREVIEWED: 'IMPORT_NOT_PREVIEWED', // details.importId
   IMPORT_ROWS_INVALID: 'IMPORT_ROWS_INVALID', // 422, details { importId, rows: [{ row, field, code }] (<= 100), errorCount }
