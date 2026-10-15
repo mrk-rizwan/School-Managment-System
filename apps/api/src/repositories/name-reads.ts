@@ -94,3 +94,22 @@ export async function liveGuardiansOf(
   });
   return rows.map((row) => row.id);
 }
+
+/**
+ * The staff ids of the school's active principals: active users with an active staff row and a
+ * live principal role, ascending user ids. Shared by the principal notices (MessageRecipient) and
+ * the support-session notice (exception 7), so the predicate is written once.
+ */
+export async function activePrincipalStaffIds(tx: Tx, schoolId: SchoolId): Promise<bigint[]> {
+  const rows = await tx.user.findMany({
+    where: {
+      schoolId,
+      status: 'active',
+      staff: { schoolId, status: 'active' },
+      roles: { some: { schoolId, systemRole: 'principal', endedAt: null } },
+    },
+    select: { staffId: true },
+    orderBy: { id: 'asc' },
+  });
+  return rows.flatMap((row) => (row.staffId === null ? [] : [row.staffId]));
+}

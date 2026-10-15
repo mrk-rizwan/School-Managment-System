@@ -39,6 +39,7 @@ import { TransportService } from './transport.service';
     IdempotencyKeyRepository,
     AuditLogRepository,
   ],
-  exports: [TransportAssignmentsService],
+  // B8: TransportService clears a leaving member from their vehicles (StaffModule imports this).
+  exports: [TransportAssignmentsService, TransportService],
 })
 export class TransportModule {}

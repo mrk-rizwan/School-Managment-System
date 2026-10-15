@@ -19,7 +19,12 @@ rules and the open-decision register; `WORKLOG.md` says what is done, in progres
   corepack prepare pnpm@12.3.4 --activate
   ```
   The version is also pinned in the root `package.json` (`packageManager`).
-- **Docker Desktop** — runs Postgres, Redis, Mailpit and MinIO. Node runs on the host.
+  **On Windows**, pnpm 12 is a native binary that needs the Microsoft Visual C++ runtime; without
+  it pnpm fails to start (`STATUS_DLL_NOT_FOUND`). Install it once with
+  `winget install Microsoft.VCRedist.2015+.x64`. If Corepack's pnpm still does not start, install
+  it through npm instead: `npm install -g --allow-scripts=pnpm pnpm@12.3.4`.
+- **Docker Desktop** — runs Postgres, Redis, Mailpit and MinIO. Node runs on the host. Docker
+  Desktop does not start by itself after a reboot: start it before `docker compose up`.
 - **Git**. On Windows use Git Bash for the commands below.
   Password hashing uses `@node-rs/argon2` (prebuilt binaries), so no C++ build tools are needed.
 
@@ -37,7 +42,7 @@ directory, say) pushes paths inside `node_modules` past Windows' 260-character l
 
 The last line is **required once per clone**. It enables the pre-commit guard in `.githooks/`,
 which refuses commits containing `.env` files, credentials, private keys, build output, logs,
-uploaded student documents or files over 1 MB (5 MB for the generated OpenAPI document and the
+uploaded student documents or files over 1 MB (5 MB for the two generated OpenAPI documents and the
 generated web and mobile clients, which CI requires to be committed). Git does not enable repository hooks on its own.
 
 ### Environment
@@ -109,8 +114,8 @@ pnpm --filter @asms/api worker
 ```
 
 The API only enqueues. Absence alerts, announcement sends, WhatsApp, SMS and push delivery, the
-staged-upload sweep, result notifications after a sheet is published and every scheduled job
-run in the worker. Production runs exactly one worker
+staged-upload sweep, result notifications after a sheet is published, the staff contract-expiry
+warnings, the support-session expiry and every other scheduled job run in the worker. Production runs exactly one worker
 (`node dist/worker.js`; see [`docs/deployment.md`](docs/deployment.md)).
 
 | What | Where |
@@ -165,11 +170,12 @@ Stop `pnpm dev` before `test:e2e`: Playwright reuses a running server, and the d
 the dev database, so the real-API specs would fail at their first sign-in.
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request: install, Prisma generate,
-lint, typecheck, migrations, API tests, a check that the committed OpenAPI document and web
+lint, typecheck, migrations, API tests, a check that the two committed OpenAPI documents
+(`apps/api/openapi/school.json` and `platform.json`) and the web
 and mobile clients are not stale, the web build and Playwright. A second job, `mobile`, builds the Android
 app and runs the Maestro flows on an emulator. A red build blocks the slice.
 
-After changing an API contract, regenerate and commit both generated files:
+After changing an API contract, regenerate and commit the OpenAPI documents and the clients:
 
 ```sh
 pnpm --filter @asms/api openapi
@@ -238,7 +244,7 @@ recorded from it with `ASMS_SCHOOL=<code> ASMS_TEACHER_USERNAME=<teacher digits>
 | `apps/web` | Next.js web admin |
 | `apps/mobile` | Expo / React Native Android app |
 | `packages/shared` | Code shared by the API, web and mobile (build it before the apps) |
-| `docs/plans` | Build plans per phase; Phases 1-4 complete (`phase-4-academic.md` the latest), contracts in `contracts/` |
+| `docs/plans` | Build plans per phase; Phases 1-4 complete, Phase 5 built (`phase-5-extended.md`, slices 37-46; slice 47 the close), contracts in `contracts/` |
 | `docs/WORKLOG.md` | Session handover log — what is done, in progress and next |
 | `CLAUDE.md` | Settled architecture rules, open decisions, working rules |
 | `.githooks` | The pre-commit guard |

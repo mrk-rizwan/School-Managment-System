@@ -21,6 +21,8 @@ import { SalaryStructureRepository } from '../../../repositories/salary-structur
 import { StaffContractRepository } from '../../../repositories/staff-contract.repository';
 import { StagedUploadRepository } from '../../../repositories/staged-upload.repository';
 import { DocumentsModule } from '../../documents/documents.module';
+import { EventsModule } from '../../events/events.module';
+import { TransportModule } from '../../transport/transport.module';
 import { MeReadsThrottleGuard } from '../../me/me-throttles';
 import { ContractExpiryWarn } from './contract-expiry.job';
 import {
@@ -47,7 +49,8 @@ import { StaffReportRepository } from '../../../repositories/staff-report.reposi
  */
 @Module({
   // Phase 5 slice 39: DocumentsModule lends AttachmentFiles, so contract scans stream as receipts do.
-  imports: [CryptoModule, MessagingModule, DocumentsModule, StorageModule],
+  // Phase 5 close (B8): leaving clears vehicles (TransportService) and event duties (EventsService).
+  imports: [CryptoModule, MessagingModule, DocumentsModule, StorageModule, TransportModule, EventsModule],
   controllers: [
     StaffController,
     TeacherAssignmentsController,

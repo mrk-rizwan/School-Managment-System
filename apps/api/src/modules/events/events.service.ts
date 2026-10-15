@@ -43,6 +43,8 @@ import type {
 const ENDPOINT = 'events';
 const SUBJECT = 'event';
 const DUTY_SUBJECT = 'event_duty';
+/** The end reason of a leaving member's duties (B8). */
+const DUTY_LEFT = 'left';
 const ALL_STATUSES: readonly EventStatus[] = ['draft', 'published', 'completed', 'cancelled'];
 const NOT_DRAFT: readonly EventStatus[] = ['published', 'completed', 'cancelled'];
 const MINE: readonly EventStatus[] = ['published', 'completed'];
@@ -67,7 +69,7 @@ const illegalTransition = (eventId: bigint, from: EventStatus): ApiException =>
 /** The event's date in school time (A4: the date that lies inside the year). */
 export const eventDay = (startsAt: Date, timezone: string): Date => todayIn(timezone, startsAt);
 
-export const toDutyDto = (d: EventDutyRecord): EventDutyDto => ({
+const toDutyDto = (d: EventDutyRecord): EventDutyDto => ({
   id: d.id.toString(),
   eventId: d.eventId.toString(),
   staffId: d.staffId.toString(),
@@ -317,7 +319,7 @@ export class EventsService {
     const locked = await this.events.lockForShare(schoolId, duty.eventId);
     if (!locked) throw notFound();
     if (locked.status !== 'draft' && locked.status !== 'published') throw illegalTransition(duty.eventId, locked.status);
-    if ((await this.events.endDuty(schoolId, id, { by: userId, reason: dto.reason, at: new Date() })) !== 1) {
+    if ((await this.events.endDuty(schoolId, id, { by: userId, reason: dto.reason, at: this.clock.now() })) !== 1) {
       return toDutyDto(await this.requireDuty(schoolId, id));
     }
     await this.audit.record(schoolId, {
@@ -329,6 +331,28 @@ export class EventsService {
       metadata: { eventId: duty.eventId.toString(), staffId: duty.staffId.toString(), duty: duty.duty },
     });
     return toDutyDto(await this.requireDuty(schoolId, id));
+  }
+
+  /**
+   * B8 (Phase 5 close): a member who leaves loses their live duties on draft or published events,
+   * inside the staff status change's transaction (no own @Transactional), each ended with the
+   * reason `left` and audited `event_duty.ended`. Returns how many were ended.
+   */
+  async endDutiesForLeaving(schoolId: SchoolId, staffId: bigint, actorUserId: bigint, at: Date): Promise<number> {
+    let ended = 0;
+    for (const duty of await this.events.liveDutiesOfStaff(schoolId, staffId)) {
+      if ((await this.events.endDuty(schoolId, duty.id, { by: actorUserId, reason: DUTY_LEFT, at })) !== 1) continue;
+      await this.audit.record(schoolId, {
+        actorUserId,
+        action: 'event_duty.ended',
+        subjectType: DUTY_SUBJECT,
+        subjectId: duty.id,
+        reason: DUTY_LEFT,
+        metadata: { eventId: duty.eventId.toString(), staffId: staffId.toString(), duty: duty.duty, via: 'staff_left' },
+      });
+      ended++;
+    }
+    return ended;
   }
 
   // ------------------------------------------------------------------------ status changes
@@ -446,7 +470,7 @@ export class EventsService {
     const moved = await this.events.cancel(schoolId, id, locked.status, {
       by: userId,
       reason: dto.reason,
-      at: new Date(),
+      at: this.clock.now(),
       cancelAnnouncementId,
     });
     if (moved !== 1) throw concurrentUpdate();
@@ -473,7 +497,7 @@ export class EventsService {
     const { schoolId, userId } = this.context.actor();
     const locked = await this.lock(schoolId, id);
     if (locked.status !== 'published') throw illegalTransition(id, locked.status);
-    if ((await this.events.complete(schoolId, id, new Date())) !== 1) throw concurrentUpdate();
+    if ((await this.events.complete(schoolId, id, this.clock.now())) !== 1) throw concurrentUpdate();
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'event.completed',

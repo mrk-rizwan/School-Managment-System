@@ -1,6 +1,6 @@
 # Deploying ASMS
 
-Production requirements created by Phases 1-4 (Phase 4 added none). Each one is something the code assumes and
+Production requirements created by Phases 1-5 (Phase 4 added none). Each one is something the code assumes and
 cannot enforce on its own. Sources: `docs/plans/phase-2-daily-operations.md` §3 and §9,
 `docs/plans/contracts/slice-9.md`, `apps/api/src/config/env.ts`, `apps/api/src/bootstrap.ts`,
 `apps/api/src/jobs/worker-host.ts`.
@@ -31,7 +31,9 @@ starting the new one**, never overlap them:
 - The `scheduled` queue runs with concurrency 1 on the assumption that it is the only consumer. The
   jobs (every entry of `SCHEDULES` in `src/jobs/worker-host.ts`: since Phase 3 also charge
   generation, the late-fee sweep, payroll preparation, fee reminders, the claim-image sweep,
-  platform billing, billing notices and the school-metrics rollup) are written to run one at a time; a second worker would run two of them at once over the same rows.
+  platform billing, billing notices and the school-metrics rollup; since Phase 5 also
+  `contract-expiry-warn`, daily at 06:00 Asia/Karachi, and `support-session-expire`, every 5
+  minutes) are written to run one at a time; a second worker would run two of them at once over the same rows.
 - Every worker boot upserts the repeatable-job list (`SCHEDULES`). Two versions running side by
   side would keep rewriting each other's schedule.
 - The claim model (R105: a processor's first statement is a scoped conditional
@@ -57,6 +59,15 @@ that the API logs the real address. The edge also terminates HTTPS and redirects
 Topology the code fixes: the API listens on `127.0.0.1:API_PORT` only (`bootstrap.ts`), and Next
 rewrites `/api/*` to `http://127.0.0.1:API_PORT`. So Next and the API share one network namespace:
 the same host, or the same container network namespace. Only the edge is public.
+
+### Biometric device endpoint
+
+Phase 5 (slice 44): a school's biometric device posts punches to `POST /api/v1/device-punches`
+with the school's device token as a bearer token, through the edge over HTTPS like every other
+request. The edge must pass the `Authorization` header through unchanged. The route is exempt
+from the app-version floor (`MOBILE_MIN_APP_VERSION`; a device sends no `X-App-Version`). Its
+per-IP failed-token lockout depends on the edge overwriting `X-Forwarded-For` as above: without
+that, a forged header defeats it.
 
 ## Webhooks and the R172 edge allow-list
 
@@ -153,6 +164,10 @@ production (`NODE_ENV=production`), in addition to the always-required keys in `
 Every value: `FCM_SERVICE_ACCOUNT_JSON`, `SMS_API_KEY`, `SMS_SENDER_ID`, `PLATFORM_ALERT_EMAIL`,
 and **`MOBILE_MIN_APP_VERSION`** (for example `1.0.0`; requests from older apps get
 `426 UPGRADE_REQUIRED`). There is no log-driver fallback in production (R112).
+
+Phase 5 added no environment variable. The support-session length is the platform setting
+`support_session_hours`, a column of the one-row `platform_settings` table (default 4, between
+1 and 24), not an environment variable.
 
 Secrets live only in the deployment environment: not in the repository, not in an image, not on a
 laptop. Development, staging and production have separate databases, Redis, buckets and

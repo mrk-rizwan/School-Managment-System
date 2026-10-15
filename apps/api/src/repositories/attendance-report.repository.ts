@@ -381,7 +381,7 @@ export class AttendanceReportRepository {
    * §10.5: §5.2-§5.3 in one statement per page. Students `active` or `suspended` now with an
    * active enrolment (filtered by class or section); teaching days are the range minus weekly-off
    * days and published holidays; a day counts when the student had an enrolment in force on it.
-   * The values follow dayValue() exactly (test/attendance/percentage.e2e-spec.ts compares them).
+   * The values follow dayValue() exactly (test/attendance/reads.e2e-spec.ts compares them).
    */
   async percentage(schoolId: SchoolId, query: PercentageQuery): Promise<Page<PercentageRow>> {
     const { settings } = query;

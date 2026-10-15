@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { addMonths, ErrorCode } from '@asms/shared';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { readLocked } from '../../common/locking';
@@ -31,7 +31,8 @@ import type {
   UpdateVehicleDto,
   VehicleDto,
 } from './transport.dto';
-import { amountsAround, nextPeriod, periodOfDay, timeColumn, toAmountDto, toStopDto } from './transport.shared';
+import { periodOf } from '../fees/charges.shared';
+import { amountsAround, timeColumn, toAmountDto, toStopDto } from './transport.shared';
 
 // Phase 5 slice 41 (phase-5-extended.md rule 37, §3.2 "Transport", R327, R329, R331;
 // contracts/slice-41.md §2.1-§2.3): vehicles, routes with their stops replaced as a whole, and the
@@ -44,6 +45,9 @@ const vehicleRetired = (vehicleId: bigint): ApiException =>
 
 const routeArchived = (routeId: bigint): ApiException =>
   new ApiException(409, ErrorCode.TRANSPORT_ROUTE_ARCHIVED, 'The route is archived.', { routeId: routeId.toString() });
+
+/** The audit reason when a leaving member's vehicles lose their driver (B8). */
+const STAFF_LEFT_REASON = 'left';
 
 /** `POST /vehicles` and `POST /transport-routes` are keyed with no path id (as `POST /expenses`). */
 const NO_PATH_ID = 0n;
@@ -157,6 +161,28 @@ export class TransportService {
     return toVehicleDto(await this.requireVehicle(schoolId, id));
   }
 
+  /**
+   * B8 (Phase 5 close): a member who leaves stops being any active vehicle's driver, inside the
+   * staff status change's transaction (no own @Transactional: it runs in the caller's), each
+   * vehicle audited `vehicle.updated` with the reason `left`. Returns the vehicles cleared.
+   */
+  async clearDriverForLeaving(schoolId: SchoolId, staffId: bigint, actorUserId: bigint): Promise<bigint[]> {
+    const cleared: bigint[] = [];
+    for (const id of await this.transport.activeVehiclesDrivenBy(schoolId, staffId)) {
+      if ((await this.transport.updateVehicle(schoolId, id, { driverStaffId: null })) !== 1) continue;
+      await this.audit.record(schoolId, {
+        actorUserId,
+        action: 'vehicle.updated',
+        subjectType: 'vehicle',
+        subjectId: id,
+        reason: STAFF_LEFT_REASON,
+        metadata: { fields: 'driverStaffId', driverStaffId: null, via: 'staff_left' },
+      });
+      cleared.push(id);
+    }
+    return cleared;
+  }
+
   /** R329: refused while an active route names the vehicle (VEHICLE_IN_USE). */
   @Transactional()
   async retireVehicle(id: bigint, reason: string): Promise<VehicleDto> {
@@ -170,7 +196,7 @@ export class TransportService {
         routeId: route.id.toString(),
       });
     }
-    if ((await this.transport.retireVehicle(schoolId, id, { by: userId, reason, now: new Date() })) !== 1) throw vehicleRetired(id);
+    if ((await this.transport.retireVehicle(schoolId, id, { by: userId, reason, now: this.clock.now() })) !== 1) throw vehicleRetired(id);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'vehicle.retired',
@@ -296,7 +322,7 @@ export class TransportService {
             stopId: inUse.toString(),
           });
         }
-        stopsEnded = await this.transport.endStops(schoolId, id, ended, { by: userId, reason: dto.reason, now: new Date() });
+        stopsEnded = await this.transport.endStops(schoolId, id, ended, { by: userId, reason: dto.reason, now: this.clock.now() });
       }
       for (const item of dto.stops) {
         if (item.id === undefined) continue;
@@ -340,7 +366,7 @@ export class TransportService {
         routeId: id.toString(),
       });
     }
-    if ((await this.transport.archiveRoute(schoolId, id, { by: userId, reason, now: new Date() })) !== 1) throw routeArchived(id);
+    if ((await this.transport.archiveRoute(schoolId, id, { by: userId, reason, now: this.clock.now() })) !== 1) throw routeArchived(id);
     await this.audit.record(schoolId, {
       actorUserId: userId,
       action: 'transport_route.archived',
@@ -366,7 +392,7 @@ export class TransportService {
     const period = await this.currentPeriod(schoolId);
     const live = (await this.transport.amountsOf(schoolId, [routeId])).filter((a) => a.voidedAt === null);
     const inForce = live.find((a) => a.effectivePeriod <= period);
-    const earliest = inForce === undefined ? period : nextPeriod(period);
+    const earliest = inForce === undefined ? period : addMonths(period, 1);
     if (dto.effectivePeriod < earliest) {
       throw fieldRefused(
         'effectivePeriod',
@@ -415,7 +441,7 @@ export class TransportService {
         effectivePeriod: amount.effectivePeriod,
       });
     }
-    if ((await this.transport.voidAmount(schoolId, id, { by: userId, reason, now: new Date() })) !== 1) {
+    if ((await this.transport.voidAmount(schoolId, id, { by: userId, reason, now: this.clock.now() })) !== 1) {
       throw new ApiException(409, ErrorCode.STALE_STATUS, 'This amount is already voided.');
     }
     await this.audit.record(schoolId, {
@@ -485,7 +511,7 @@ export class TransportService {
   }
 
   private async currentPeriod(schoolId: SchoolId): Promise<string> {
-    return periodOfDay(await this.clock.today(schoolId));
+    return periodOf(await this.clock.today(schoolId));
   }
 }
 

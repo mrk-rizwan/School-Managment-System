@@ -355,6 +355,15 @@ export class EventRepository {
     return count;
   }
 
+  /** The member's live duties on draft or published events (a leaving member's, B8). */
+  async liveDutiesOfStaff(schoolId: SchoolId, staffId: bigint): Promise<{ id: bigint; eventId: bigint; duty: DutyKind }[]> {
+    return this.txHost.tx.eventDuty.findMany({
+      where: { schoolId, staffId, endedAt: null, event: { is: { schoolId, status: { in: ['draft', 'published'] } } } },
+      select: { id: true, eventId: true, duty: true },
+      orderBy: { id: 'asc' },
+    });
+  }
+
   /** Every duty (live and ended) of these events, oldest first; `staffId` narrows to one member's. */
   dutiesOf(schoolId: SchoolId, eventIds: readonly bigint[], staffId?: bigint): Promise<EventDutyRecord[]> {
     if (eventIds.length === 0) return Promise.resolve([]);
@@ -649,8 +658,10 @@ export class EventRepository {
 
   /**
    * R315, §2.10: published and completed events whose sections include the section of one of
-   * the child's enrolments live on the event's date (school time), newest first. The child must be
-   * in the capacity scope; outside it nothing is read.
+   * the child's enrolments live on the event's date (school time), or whose campaign holds a
+   * non-voided charge of the child (the roster's own union, so a child moved out of a
+   * participating section after publish still sees the event and its charge), newest first. The
+   * child must be in the capacity scope; outside it nothing is read.
    */
   async familyEvents(
     schoolId: SchoolId,
@@ -664,13 +675,18 @@ export class EventRepository {
       FROM events e
      WHERE e.school_id = ${schoolId}
        AND e.status IN ('published', 'completed')
-       AND EXISTS (
+       AND (EXISTS (
          SELECT 1 FROM event_sections es
            JOIN enrolments en ON en.school_id = es.school_id AND en.section_id = es.section_id
           WHERE es.school_id = ${schoolId} AND es.event_id = e.id
             AND en.student_id = ${studentId}
             AND en.started_on <= (e.starts_at AT TIME ZONE ${timezone})::date
-            AND (en.ended_on IS NULL OR en.ended_on >= (e.starts_at AT TIME ZONE ${timezone})::date))`;
+            AND (en.ended_on IS NULL OR en.ended_on >= (e.starts_at AT TIME ZONE ${timezone})::date))
+        OR (e.campaign_id IS NOT NULL AND EXISTS (
+         SELECT 1 FROM charges c
+          WHERE c.school_id = ${schoolId} AND c.campaign_id = e.campaign_id
+            AND c.student_id = ${studentId} AND c.kind = 'campaign' AND c.status <> 'voided'))
+       )`;
     const rows = await this.txHost.tx.$queryRaw<FamilyEventRow[]>`
       SELECT e.id, e.type::text AS type, e.title, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.venue,
              e.details, e.status::text AS status, e.campaign_id AS "campaignId"

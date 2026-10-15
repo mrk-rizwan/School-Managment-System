@@ -599,13 +599,14 @@ describe('slice 45: platform support access (R349-R353)', () => {
       const p = await principalOf(school);
       const session = await openOk(a, school);
       // The revoke lands between the close's read and its conditional update. (The repository is
-      // provided per module, so the prototype is spied on, not one instance.)
-      const realClose = SupportSessionRepository.prototype.close;
+      // provided per module, so the prototype is spied on, not one instance; the spy restores the
+      // real method before calling it.)
       const spy = jest
         .spyOn(SupportSessionRepository.prototype, 'close')
         .mockImplementationOnce(async function (this: SupportSessionRepository, ...args) {
           await sPost(`/school/support-sessions/${session.id}/revoke`, p.session, { reason: 'Not agreed with us' }).expect(200);
-          return realClose.apply(this, args);
+          spy.mockRestore();
+          return this.close(...args);
         });
       try {
         const res = await pPost(`/support-sessions/${session.id}/close`, a, { reason: 'Ticket resolved' });

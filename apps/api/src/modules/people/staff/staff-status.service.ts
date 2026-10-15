@@ -12,6 +12,8 @@ import { UserRoleRepository } from '../../../repositories/user-role.repository';
 import { UserRepository, type UserCredentialRow } from '../../../repositories/user.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
 import { PermissionsService } from '../../access/permissions.service';
+import { EventsService } from '../../events/events.service';
+import { TransportService } from '../../transport/transport.service';
 import { SchoolClock } from '../../../common/school-clock';
 import type { ChangeStaffStatusDto, StaffDto } from './staff.dto';
 import { StaffContractsService } from './staff-contracts.service';
@@ -49,6 +51,9 @@ export class StaffStatusService {
     private readonly clock: SchoolClock,
     // Phase 5 slice 39 (R318): end employment ends the live contract in the same transaction.
     private readonly contracts: StaffContractsService,
+    // Phase 5 close (B8): leaving clears the member from vehicles and ends their live event duties.
+    private readonly transport: TransportService,
+    private readonly events: EventsService,
   ) {}
 
   async changeStatus(
@@ -140,6 +145,9 @@ export class StaffStatusService {
     // R318: the live contract ends with reason `left` (audited staff_contract.ended).
     const contractEndedId =
       leftOn === null ? null : await this.contracts.endForLeaving(schoolId, id, actor.userId, leftOn, now);
+    // B8: no active vehicle keeps a departed driver, and no live event duty outlives the member.
+    const vehiclesCleared = to === 'left' ? await this.transport.clearDriverForLeaving(schoolId, id, actor.userId) : [];
+    const dutiesEnded = to === 'left' ? await this.events.endDutiesForLeaving(schoolId, id, actor.userId, now) : 0;
     await this.audit.record(schoolId, {
       actorUserId: actor.userId,
       action: 'staff.status_changed',
@@ -154,6 +162,8 @@ export class StaffStatusService {
         sessionsRevoked,
         grantsEnded,
         ...(contractEndedId === null ? {} : { contractEndedId: contractEndedId.toString() }),
+        ...(vehiclesCleared.length === 0 ? {} : { vehiclesCleared: vehiclesCleared.join(",") }),
+        ...(dutiesEnded === 0 ? {} : { dutiesEnded }),
       },
     });
   }

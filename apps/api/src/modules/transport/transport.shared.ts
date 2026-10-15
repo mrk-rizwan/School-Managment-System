@@ -1,19 +1,8 @@
-import { toDateString } from '../academics/academics.shared';
 import { timeOfDay } from '../../common/school-settings-reader';
 import type { RouteAmountRecord, StopRecord } from '../../repositories/transport.repository';
 import type { TransportRouteAmountDto, TransportStopDto } from './transport.dto';
 
 // Phase 5 slice 41 (contracts/slice-41.md): the small pure helpers both transport services share.
-
-/** `YYYY-MM` of a calendar date. */
-export const periodOfDay = (day: Date): string => toDateString(day).slice(0, 7);
-
-/** The `YYYY-MM` after `period`. */
-export function nextPeriod(period: string): string {
-  const y = Number(period.slice(0, 4));
-  const m = Number(period.slice(5, 7));
-  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-}
 
 /** `HH:MM` as a TIME column value (1970-01-01 UTC). */
 export const timeColumn = (hhmm: string): Date => new Date(`1970-01-01T${hhmm}:00.000Z`);

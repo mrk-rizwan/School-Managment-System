@@ -8,7 +8,10 @@ then this file top to bottom. **Author:** Fable 5.1, 2026-10-09. **Builds on** P
 2026-10-09** by `business-rules`, `data-architect`, `security-reviewer` (FAIL as drafted → PASS
 with the four High items reshaped, all folded in) and `api-designer`; every finding is folded
 into this revision, and the per-slice contracts (`contracts/slice-37.md` …) are written from it.
-**Status:** awaiting the owner's approval of the revised estimate and the §1.2 items.
+**Status:** Approved 2026-10-09; slices 37-46 built (waves R-U); 47 the close.
+**As built:** the per-slice contracts' Deviations sections (`contracts/slice-37.md` …
+`slice-46.md`) supersede the shapes below where they differ. Factual errors in this plan were
+corrected in place at the close (2026-10-15).
 
 Phase 5 is the last phase and delivers what was stated to the client and not yet built: the period
 timetable that finally lets the system say which period a teacher should be in and which registers
@@ -106,7 +109,7 @@ slice, not the schema.
 | 40 | Dispute | Any staff mark (manual or device) may be disputed with a reason; an `attendance.staff.manage` holder who is not the staff member approves (the mark is amended through the Phase 2 path with the dispute as reason) or rejects; mirrors the leave-request shape | 44 |
 | 40 | Support session | 4 h *default* (`support_session_hours`, ≤ 24); one open per school, at most 3 per platform user; opened with a reason, a ticket reference and a fresh second factor; the principal's inbox and email say who, why, until when and link to the audit screen filtered by the session; every staff user's `/me` carries the banner | 45 |
 | 40 | Support views | School settings; a student by admission number (name, class, section, status, guardian names and phones); a student's charges and payments; the school's own audit log. **No messages** (R114 stands), no documents, slips, payroll or staff identity data, no list over 50 rows | 45 |
-| 40 | Audit screen | `audit.view`, inert on a default password; filters: actor, action prefix, subject, date range ≤ 92 days (one required); the access-management family (`user.*`, `role.*`, `grant.*`, `default_password.*`) is excluded — it would list who still signs in with a CNIC; metadata rendered as text with identity, phone and email shapes masked; a platform actor shows as "Platform support" | 46 |
+| 40 | Audit screen | `audit.view`, inert on a default password; filters: actor, action prefix, subject, date range ≤ 92 days (one required); the access-management family (`user.*`, `user_role.*`, `custom_role.*`, `capability_grant.*`, the action names in the code) is excluded — it would list who still signs in with a CNIC; metadata rendered as text with identity, phone and email shapes masked; a platform actor shows as "Platform support" | 46 |
 | 40 | Rule 24 reach | A route-level marker `@DefaultPasswordInert()` on the exact verbs (R355 lists them), refused with `DEFAULT_PASSWORD_BLOCKS_ACTION`; `/me` gains `blockedActions` (stable action names from `packages/shared`) so the web greys the buttons | 46 |
 
 ### 1.2 Open to the owner (the plan does not guess)
@@ -180,7 +183,7 @@ tenant data only through `SupportReadsRepository` (§3.1); `audit` reads `audit_
 
 ## 3. Cross-cutting conventions new in Phase 5
 
-### 3.1 Keys, scopes, and the two new constructors
+### 3.1 Keys, scopes, and the three new constructors
 
 | Capability | Routes | Default holders |
 |---|---|---|
@@ -224,7 +227,8 @@ open sessions.
 and `schoolIdFromDeviceToken` establish the tenant from a credential hash, as the session token
 does. Rotation writes through `OwnSchoolRepository`.
 
-CLAUDE.md records both constructors, the repository and the lint sites at the close.
+CLAUDE.md records the three constructors (`schoolIdFromDeviceToken`, `schoolIdFromSupportSession`, and
+`schoolIdFromExpiredSupportSession` for the expiry job), the repositories and the lint sites at the close.
 
 ### 3.2 Invariants, in the database
 
@@ -320,9 +324,9 @@ may be deleted while the event is draft (the campaign-audience precedent). Weekd
   `(source = 'device') = (marked_by IS NULL) = (device_punch_id IS NOT NULL)`; the frozen list
   gains both; `staff_attendance_not_self` passes a NULL actor; new unique `(school_id, id,
   staff_id)`. `staff_attendance_disputes (attendance_id, staff_id, raised_by, requested_status,
-  reason, status pending|approved|rejected, decided_by/at, decision_reason)`: FK `(school_id,
+  reason, status pending|approved|rejected|withdrawn, decided_by/at, decision_reason)`: FK `(school_id,
   attendance_id, staff_id)`; one pending per attendance row; edges `pending:approved`,
-  `pending:rejected`; decider ≠ staff member and raiser = staff member (triggers, no
+  `pending:rejected`, `pending:withdrawn` (the staff member's own login); decider ≠ staff member and raiser = staff member (triggers, no
   sole-principal exception); indexes for Approvals, staff, decider.
 - **Support.** `platform_support_sessions` (in `NON_TENANT_MODELS`, like `platform_audit_log`):
   `platform_user_id, school_id, reason ≤ 500, ticket_ref ≤ 40, opened_at, expires_at, closed_at?,
@@ -361,8 +365,9 @@ platform log only; the session still opens.
 ### 3.5 Jobs
 
 `contract-expiry-warn` (daily 06:00 school time, `listLiveForFanOut`): live contracts ending in
-≤ 30 or ≤ 7 days not yet warned. `support-session-expire` (every 5 min, platform): closes sessions
-past `expires_at`, notifies through `runAsSchool`. `register-unrecorded` (Phase 2) gains the
+within the lead (`contract_warning_days`, default 30) or within min(7, lead) days, not yet
+warned. `support-session-expire` (every 5 min, platform): closes sessions
+past `expires_at`, notifies through `runAsSchool`. `register-deadline-sweep` (Phase 2) gains the
 timetable (R305). `charge-generate` (Phase 3) gains the transport rule in its daily catch-up
 (R327). Import expiry folds into the staged-upload sweep.
 
@@ -425,7 +430,7 @@ commit adds to `packages/shared` the enums, error codes, message types, the two 
 `document.verify` to the office defaults; the `capabilities.ts` header rewritten), the §3.3
 functions, `IDEMPOTENT_ENDPOINTS` entries (`timetable_versions`, `timetable_substitutions`,
 `events`, `event_payments`, `staff_contracts`, `transport_assignments`, `imports`,
-`attendance_disputes`), migrations (1) and (2), the lint boundaries, the two mints and the
+`attendance_disputes`), migrations (1) and (2), the lint boundaries, the three mints and the
 `@DeviceToken()` and `@DefaultPasswordInert()` access markers. Agents own disjoint files;
 migrations, `app.module.ts`, `eslint.config.mjs`, `packages/shared`, `school-id.mint.ts`,
 `route-access.ts` and `lanes.ts` are edited by the main thread. Phase 3/4 conventions
@@ -457,7 +462,8 @@ Error codes (`409` unless stated; `details.<id>`):
 Throttles (per user, `perUserThrottle`): reuse `me-reads`, `print`, `upload`,
 `attendance-writes`, `finance-reports`, `result-reports`, `claim-writes`; new `timetable-writes`
 30/300, `event-writes` 30/300, `import-writes` 5/30, `dispute-writes` 20/120, `staff-reports`
-30/300, `audit-reads` 60/600, `support-reads` 120/2000 per platform user; `device-punches` 600/h
+30/300, `audit-reads` 60/600, `transport-writes` 30/300, `attendance-reports` 30/300,
+`document-reports` 30/300, `support-reads` 120/2000 per platform user; `device-punches` 600/h
 **per school** after token resolution plus a per-IP bad-token bucket 10/min with lockout; CSV
 costs 5 in its family bucket.
 
@@ -489,7 +495,7 @@ import in the support module and a tenant-repository import in the device servic
 `date`, a subject teacher's register write for `(section, date, period)` needs that version's
 slot or a substitution naming them for that weekday and period; without a live version, Phase 2
 R120 stands; class teacher, cover and `all` scope unchanged; daily mode unchanged. R305 — the
-`register-unrecorded` job lists, per section with a live version, the timetabled periods without
+`register-deadline-sweep` job lists, per section with a live version, the timetabled periods without
 a register; a slot whose teacher's assignment has ended shows "no assigned teacher" in the push.
 **Screens:** web Timetable (week-grid editor with clash highlighting from the shared function,
 versions list, substitutions, the principal's grid); mobile teacher week and family view.
@@ -574,7 +580,8 @@ with the Phase 3 reports over the scripted year.
 
 ### Slice 43 — Commencement imports (≈ 3.5 days)
 
-Files go through `POST /uploads` (CSV branch: `text/csv` ≤ 2 MB, capability widened). `POST
+As built, the CSV (≤ 2 MB) is posted to the preview route as multipart `file` and is never staged or
+written to object storage (slice-43 deviation 1; the `stagedUploadId` fields below do not exist). `POST
 /imports/past-results { stagedUploadId, sectionId, termId }` (`result.publish` +
 `assessment.define`) and `POST /imports/opening-balances { stagedUploadId, academicYearId, dueOn }`
 (`charge.create` + principal, rule-24 inert) → `201 ImportDto` (status `previewed`, rows ≤ 5,000,
@@ -583,7 +590,9 @@ errors ≤ 100 + `errorCount`), keyed; `POST /imports/:id/commit` + key → `200
 exams if missing (held on the term's last day), marks, the sheet born `published` with provenance
 `imported`, results by the shared functions with exam weight 100 %, the class ranking if the class
 is complete, no message; opening balances one manual charge per row under the seeded head (an
-existing advance applies, shown in the preview). Web Imports page with the preview table and row
+existing advance applies, shown in the preview). As built, the past-results commit runs in
+`ResultImportService` (results module) and the opening balances in
+`ChargesService.createOpeningBalances` (one statement, one `import.committed` audit row). Web Imports page with the preview table and row
 errors. **Tests:** R339–R343.
 
 ### Slice 44 — Biometric staff attendance (≈ 2.5 days)
@@ -591,9 +600,9 @@ errors. **Tests:** R339–R343.
 `POST /school/device-token/rotate` (`school.settings.manage`, rule-24 inert; → `DeviceTokenDto {
 token, rotatedAt }` once); `POST /device-punches` (`@DeviceToken()`, in OpenAPI under tag
 `device`; `DevicePunchBatchDto { punches ≤ 500 }` → always `200 DevicePunchBatchResultDto {
-results: [{ deviceUserId, punchedAt, outcome: marked | stored | unmapped | duplicate | inactive,
-staffAttendanceId }] }`; `punchedAt` within −7 days … +5 min); `PATCH /staff/:id { deviceUserId }`
-(`attendance.staff.manage`, not own); `GET /device-punches?date&staffId&unmapped` (page,
+results: [{ deviceUserId, punchedAt, outcome: marked | stored | unmapped | duplicate | inactive | rejected,
+staffAttendanceId }] }`; `punchedAt` within −7 days … +5 min); `POST /school/device-token/revoke` (rule-24 inert, "Turn off device");
+`PATCH /staff/:id/device-user { deviceUserId | null }` (`attendance.staff.manage`, not own); `GET /device-punches?date&staffId&unmapped` (page,
 `punchedAt`); `POST /me/staff/attendance-disputes` + key, `GET /me/staff/attendance-disputes`,
 `POST …/:id/withdraw`; `GET /staff-attendance-disputes?status=pending&staffId` (page,
 `-createdAt`), `POST …/:id/approve { reason? }`, `POST …/:id/reject { reason }`;
@@ -625,7 +634,7 @@ filters and subject links. Rule 24: `@DefaultPasswordInert()` on the R355 routes
 ### Slice 47 — Phase close (≈ 1.5 days)
 
 Whole-phase `security-reviewer` (§7.1), `performance-engineer` (§7.2), `business-rules` on the
-scripted term (R357), `code-quality`, `docs-maintainer`; CLAUDE.md gains exception 7, the widened
+scripted term (R357), `code-quality`, `docs-maintainer`; CLAUDE.md gains exception 7 (the three constructors), the widened
 exception 4, the 53-key count and the lint sites; `phase-gate`; WORKLOG with what go-live needs.
 
 ---
@@ -665,15 +674,15 @@ exception 4, the 53-key count and the lint sites; `phase-gate`; WORKLOG with wha
   same-site guard; the R16 scan runs over every CSV fixture.
 - **Audit screen**: the access family excluded; inert on a default password; phone and email
   shapes masked besides identity; `GET /audit-log/:id` 404 outside the school.
-- **Contracts and documents**: contract scans streamed under `staff.contract.manage` only;
+- **Contracts and documents**: contract scans streamed under `staff.contract.manage`, or to their owner (R321);
   verifier ≠ uploader; reject reason internal.
 - **R57** audit actions: `timetable_version.created|voided`, `timetable_substitution.created|voided`,
   `event.created|updated|published|cancelled|completed`, `event_duty.added|ended`,
   `event_participation.recorded`, `event_payment.recorded`, `expense.event_tagged`,
   `staff_contract.created|renewed|ended|document_viewed`, `document.verified|rejected`,
-  `vehicle.*`, `transport_route.*`, `transport_amount.set`, `transport_assignment.started|ended`,
+  `vehicle.*`, `transport_route.*`, `transport_amount.set|voided`, `transport_assignment.started|ended`,
   `transport.capacity_exceeded`, `class_ranking.computed`, `<family>.exported`, `import.previewed|
-  committed|failed`, `device_token.rotated`, `staff.device_user_set`, `device_punch.rejected`
+  committed|failed`, `device_token.rotated|revoked`, `staff.device_user_set`, `device_punch.rejected`
   (count), `attendance_dispute.*`, `support_session.opened|closed|revoked|expired` (both logs),
   `support.read` (both logs, with subject ids), `audit.viewed` (once per actor per day).
 
@@ -711,7 +720,7 @@ exception 4, the 53-key count and the lint sites; `phase-gate`; WORKLOG with wha
   needs that version's slot or a substitution naming them for the weekday and period
   (`PERMISSION_DENIED not_timetabled_period`); without a live version R120 stands; class teacher,
   cover and `all` scope unchanged; daily mode unchanged.
-- R305 `register-unrecorded` lists timetabled periods without a register for sections with a
+- R305 `register-deadline-sweep` lists timetabled periods without a register for sections with a
   live version; others fall back to Phase 2.
 - R306 A substitution is one date and period, not the slot's own teacher, on a teaching day; the
   substitute may mark that register without an assignment; a void restores the regular teacher;
@@ -744,7 +753,8 @@ exception 4, the 53-key count and the lint sites; `phase-gate`; WORKLOG with wha
 **Contracts, documents**
 - R318 One live contract per staff member; permanent has no end; ending needs a reason; renew
   ends and opens in one transaction; end employment ends the contract.
-- R319 The job warns at ≤ 30 and ≤ 7 days, once each, to every principal, in school time.
+- R319 The job warns at ≤ lead (default 30) and ≤ min(7, lead) days, once each, to every principal, in
+  school time.
 - R320 Expiry changes nothing by itself (rule 35); a contract past `ends_on` and not ended is
   flagged on the staff report.
 - R321 A contract references the structure at its start and carries no pay; its scan is streamed
@@ -825,14 +835,16 @@ exception 4, the 53-key count and the lint sites; `phase-gate`; WORKLOG with wha
   lookup is by admission number; lists are ≤ 50.
 - R352 An expired, revoked or closed session answers 403 on the next request; another admin's
   session is 404.
-- R353 The two new constructors are importable only from their sites.
+- R353 The three new constructors are importable only from their sites.
 - R354 `audit.view` is grantable, principal by default, inert on a default password; the screen
   filters as §1.1, excludes the access family, never shows an identity, phone or email.
 - R355 A default-password user is refused, with `DEFAULT_PASSWORD_BLOCKS_ACTION`, on: payment
   refund, void and reverse-refund; payment-account create, update and archive; payroll finalise
   and mark-paid (run and slip); salary-advance grant and approve; expense approve and payee change;
   cash-handover confirm and resolve-shortfall; charge void and waive; the dues-clearance override;
-  opening-balance imports; device-token rotate; the audit screen. The list is data and the test
+  opening-balance imports (preview and commit); device-token rotate and revoke; the audit screen
+(list and `audit_log.view_entry`). The expense payee-change marker refuses the whole
+`PATCH /expenses/:id`. The list is data and the test
   snapshots the decorated routes.
 - R356 The staff-status and assignment overrides read effective holdings; a default-password
   principal cannot suspend another principal.

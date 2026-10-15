@@ -15,7 +15,7 @@ import type { PrismaTxAdapter } from './prisma';
 // in SQL, so a 3,000-student month stays one statement per class (§7.2); generation.spec checks
 // the two agree on every rounding case.
 
-/** Late fees per INSERT: 12 bound parameters a row, well under Postgres's 65,535. */
+/** Late fees per INSERT (six array parameters a statement); sized by test/fees/generation-perf. */
 const LATE_FEE_CHUNK = 2000;
 
 /** Transport riders per INSERT (rule 37): two bound values a rider. */
@@ -487,8 +487,9 @@ export class ChargeGenerationRepository {
     labels: ReadonlyMap<string, string>,
   ): Promise<(InsertedCharge & { period: string })[]> {
     const rows: (InsertedCharge & { period: string })[] = [];
-    // Postgres binds at most 65,535 parameters a statement (12 a row here): a large school's first
-    // sweep over several overdue months writes thousands of rows (phase close, 2026-10-07).
+    // A large school's first sweep over several overdue months writes thousands of rows (phase
+    // close, 2026-10-07). Chunks of 1,000 to 9,000 measured the same in total (about 3.4 s for
+    // 9,000, 2026-10-15); 2,000 keeps each statement under a second.
     for (let i = 0; i < fees.length; i += LATE_FEE_CHUNK) {
       rows.push(...(await this.insertLateFeeChunk(schoolId, fees.slice(i, i + LATE_FEE_CHUNK), head, amount, today, labels)));
     }
@@ -503,17 +504,22 @@ export class ChargeGenerationRepository {
     today: string,
     labels: ReadonlyMap<string, string>,
   ): Promise<(InsertedCharge & { period: string })[]> {
-    const values = fees.map(
-      (f) => Prisma.sql`(${schoolId}, ${f.enrolmentId}, ${f.studentId}, ${f.academicYearId}, ${head.id},
-        ${head.frequency}::fee_frequency, 'late_fee'::charge_kind, ${f.period}, ${f.targetId},
-        ${amount}::int, 0, ${amount}::int, ${`Late fee ${labels.get(f.period) ?? f.period}`}::text,
-        ${today}::date, 'open'::charge_status, NULL::bigint)`,
-    );
+    // One array parameter per varying column (six a statement, whatever the chunk), unnested in
+    // order: a 2,000-row VALUES list bound 24,000 parameters, and parsing and binding them cost
+    // about as much as the insert itself (performance review, 2026-10-15).
     return this.txHost.tx.$queryRaw<(InsertedCharge & { period: string })[]>`
       INSERT INTO charges (school_id, enrolment_id, student_id, academic_year_id, fee_head_id,
                            head_frequency, kind, period, late_fee_for_charge_id, gross_amount,
                            concession_amount, amount, description, due_on, status, created_by)
-      VALUES ${Prisma.join(values)}
+      SELECT ${schoolId}, f.enrolment_id, f.student_id, f.academic_year_id, ${head.id},
+             ${head.frequency}::fee_frequency, 'late_fee'::charge_kind, f.period, f.target_id,
+             ${amount}::int, 0, ${amount}::int, f.description, ${today}::date, 'open'::charge_status,
+             NULL::bigint
+        FROM unnest(${fees.map((f) => f.enrolmentId)}::bigint[], ${fees.map((f) => f.studentId)}::bigint[],
+                    ${fees.map((f) => f.academicYearId)}::bigint[], ${fees.map((f) => f.period)}::text[],
+                    ${fees.map((f) => f.targetId)}::bigint[],
+                    ${fees.map((f) => `Late fee ${labels.get(f.period) ?? f.period}`)}::text[])
+          AS f(enrolment_id, student_id, academic_year_id, period, target_id, description)
       ON CONFLICT (school_id, student_id, period) WHERE kind = 'late_fee' AND status <> 'voided'
         DO NOTHING
       RETURNING id, student_id AS "studentId", amount, period::text AS period`;

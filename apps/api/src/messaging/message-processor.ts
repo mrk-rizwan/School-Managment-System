@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { buffer } from 'node:stream/consumers';
 import { Transactional } from '@nestjs-cls/transactional';
-import type { DeliveryErrorCode, MessageChannel, MessageType, SuppressionReason } from '@asms/shared';
+import type { DeliveryErrorCode, MessageType, SuppressionReason } from '@asms/shared';
 import { FieldEncryption } from '../common/crypto/field-encryption';
 import { failureLog } from '../common/errors/failure-log';
 import { recoverConstraint } from '../common/errors/prisma-errors';
@@ -479,5 +479,3 @@ export function rollUp(rows: readonly DeliveryRecord[]): {
   return { status: 'suppressed', reason: first?.suppressedReason ?? 'no_channel' };
 }
 
-/** Channels a plan's legs may take (exported for the rollup). */
-export type PlanChannel = MessageChannel;

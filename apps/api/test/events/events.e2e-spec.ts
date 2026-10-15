@@ -662,4 +662,40 @@ describe('slice 38: events and PTM (e2e)', () => {
     const own = (await get('/me/student/events', student).expect(200)).body as Mine;
     expect(own.data.map((e) => [e.id, e.charge?.outstanding])).toEqual([[event.id, 500]]);
   });
+  it('R315 (fix round, B5): a child moved out of a participating section after publish still sees the event and its charge', async () => {
+    const w = await world();
+    const event = await chargedEvent(w);
+    // Ayesha moves from A (participating) to C (not) today, after the charge was raised.
+    await post(
+      `/enrolments/${w.pa.enrolmentId}/change-section`,
+      { sectionId: w.c.id.toString(), effectiveOn: isoDay(), reason: 'Moved to section C' },
+      w.principal,
+    ).expect(200);
+    await db().studentGuardian.updateMany({ where: { schoolId: w.school.id }, data: { canLogin: true } });
+    const parentA = await guardianLogin(db(), w.school, { id: w.pa.guardianId, cnic: null });
+    type Mine = { total: number; data: { id: string; charge: { amount: number; outstanding: number } | null }[] };
+    const a = (await get(`/me/children/${w.pa.studentId}/events`, parentA).expect(200)).body as Mine;
+    expect([a.total, a.data.map((e) => [e.id, e.charge])]).toEqual([1, [[event.id, { amount: 500, outstanding: 500, status: 'open' }]]]);
+    // C's original pupil (no charge, never in a participating section) still sees nothing.
+    const parentC = await guardianLogin(db(), w.school, { id: w.pc.guardianId, cnic: null });
+    expect(((await get(`/me/children/${w.pc.studentId}/events`, parentC).expect(200)).body as Mine).total).toBe(0);
+  });
+  it('B8 (Phase 5 close): a member who leaves loses their live duties on draft and published events, reason `left`', async () => {
+    const w = await world();
+    const published = await chargedEvent(w);
+    const draft = await create(w);
+    await post(`/events/${draft.id}/duties`, { staffId: w.collector.staffId.toString(), duty: 'supervision' }, w.principal).expect(201);
+    await post(`/staff/${w.collector.staffId}/change-status`, { status: 'left', reason: 'Resigned' }, w.principal).expect(200);
+    for (const id of [published.id, draft.id]) {
+      const body = (await get(`/events/${id}`, w.principal).expect(200)).body as EventBody;
+      expect(body.duties.map((d) => [d.staffId, d.endedAt !== null])).toEqual([[w.collector.staffId.toString(), true]]);
+    }
+    const ended = await audit(w.school, 'event_duty.ended');
+    expect(ended.map((r) => [r.reason, (r.metadata as { via: string }).via])).toEqual([
+      ['left', 'staff_left'],
+      ['left', 'staff_left'],
+    ]);
+    const rows = await db().eventDuty.findMany({ where: { schoolId: w.school.id, staffId: w.collector.staffId } });
+    expect(rows.map((r) => r.endReason)).toEqual(['left', 'left']);
+  });
 });

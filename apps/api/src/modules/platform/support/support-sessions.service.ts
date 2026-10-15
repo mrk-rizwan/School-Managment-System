@@ -31,7 +31,7 @@ import type {
 // principal-login precedent) and, where the session's state changes, a notice to the principals.
 
 /** The job name in the expiry's audit metadata (audit_log_actor_check reads the platform actor). */
-export const SUPPORT_EXPIRE_JOB = 'support-session-expire';
+const SUPPORT_EXPIRE_JOB = 'support-session-expire';
 
 const NOTICE_STAGE = { opened: 1n, closed: 2n } as const;
 
@@ -48,7 +48,7 @@ export const sessionEnded = (reason: SupportSessionEnd): ApiException =>
   new ApiException(403, ErrorCode.SUPPORT_SESSION_ENDED, 'The support session has ended.', { reason });
 
 /** How a row ended, or null while it is open at `now`. A row past its time is `expired`. */
-export function endOf(row: SupportSessionRow, now: Date): SupportSessionEnd | null {
+function endOf(row: SupportSessionRow, now: Date): SupportSessionEnd | null {
   if (row.endKind !== null) return row.endKind;
   return row.expiresAt.getTime() <= now.getTime() ? 'expired' : null;
 }
@@ -345,11 +345,7 @@ export class SupportSessionsService {
     if (principals.length === 0) return 0;
     const subject = { type: 'support_session' as const, id: supportNoticeSubjectId(sessionId, stage) };
     const recipients = principals.map((staffId) => ({ staffId }));
-    if (message.type === 'support_session_opened') {
-      await this.notifications.send(schoolId, { type: message.type, subject, recipients, vars: message.vars });
-    } else {
-      await this.notifications.send(schoolId, { type: message.type, subject, recipients, vars: message.vars });
-    }
+    await this.notifications.send(schoolId, { ...message, subject, recipients });
     return principals.length;
   }
 }

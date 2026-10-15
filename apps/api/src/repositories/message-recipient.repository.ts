@@ -3,6 +3,7 @@ import { TransactionHost } from '@nestjs-cls/transactional';
 import type { ContactCapability } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import type { PrismaTxAdapter } from './prisma';
+import { activePrincipalStaffIds } from './name-reads';
 
 // What routing needs to know about the people a message is addressed to (contracts/slice-9.md
 // §7.1, §7.3): read set-based at write time, and again per person at attempt time (the processor
@@ -128,16 +129,6 @@ export class MessageRecipientRepository {
 
   /** Every active principal's staff id (the sms_cap_reached audience, §7.7). */
   async activePrincipalStaffIds(schoolId: SchoolId): Promise<bigint[]> {
-    const rows = await this.txHost.tx.user.findMany({
-      where: {
-        schoolId,
-        status: 'active',
-        staff: { schoolId, status: 'active' },
-        roles: { some: { schoolId, systemRole: 'principal', endedAt: null } },
-      },
-      select: { staffId: true },
-      orderBy: { id: 'asc' },
-    });
-    return rows.flatMap((row) => (row.staffId === null ? [] : [row.staffId]));
+    return activePrincipalStaffIds(this.txHost.tx, schoolId);
   }
 }

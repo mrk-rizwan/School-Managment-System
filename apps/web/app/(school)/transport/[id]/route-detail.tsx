@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDay, formatRupees, monthLabel, newIdempotencyKey, todayInSchool } from '@asms/shared';
+import { addMonths, formatDay, formatRupees, monthLabel, newIdempotencyKey, todayInSchool } from '@asms/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import Link from 'next/link';
@@ -38,13 +38,6 @@ import { VehicleSelect } from '../_lib/vehicle-select';
 // from a section list with a stop and a start date, ended with a reason. transport.manage only.
 
 const RIDERS_LIMIT = 25;
-
-/** `YYYY-MM` after `period`. */
-const nextMonth = (period: string) => {
-  const y = Number(period.slice(0, 4));
-  const m = Number(period.slice(5, 7));
-  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-};
 
 export function RouteDetail({ id }: { id: string }) {
   const queryClient = useQueryClient();
@@ -394,7 +387,7 @@ function AmountDialog({ route, onClose, onDone }: { route: TransportRouteDetailD
   const ids = { amount: useId(), month: useId() };
   const thisMonth = todayInSchool().slice(0, 7);
   // A route's first price may start this month; any later change from next month (rule 37).
-  const earliest = route.currentAmount === null ? thisMonth : nextMonth(thisMonth);
+  const earliest = route.currentAmount === null ? thisMonth : addMonths(thisMonth, 1);
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState(earliest);
   const rupees = Number(amount);

@@ -14,6 +14,12 @@ export const addDaysTo = (day: string, days: number): string => fromTime(toTime(
 /** The `YYYY-MM` a day falls in. */
 export const yearMonthOf = (day: string): string => day.slice(0, 7);
 
+/** The `YYYY-MM` `n` months after `yearMonth` (`n` may be negative): `2026-12` + 1 → `2027-01`. */
+export const addMonths = (yearMonth: string, n: number): string => {
+  const index = Number(yearMonth.slice(0, 4)) * 12 + Number(yearMonth.slice(5, 7)) - 1 + n;
+  return `${String(Math.floor(index / 12)).padStart(4, '0')}-${String((index % 12) + 1).padStart(2, '0')}`;
+};
+
 /** `YYYY-MM-DD` of `day` (1-31) in the `YYYY-MM` period, zero-padded. */
 export const dayOfPeriod = (period: string, day: number): string =>
   `${period}-${String(day).padStart(2, '0')}`;

@@ -30,17 +30,6 @@ const DEVICE_TOKEN = 'access:device-token';
 // Not an access rule: an extra refusal on a school route (rule 24's reach, R355).
 const DEFAULT_PASSWORD_INERT = 'access:default-password-inert';
 
-export const ROUTE_ACCESS_KEYS = {
-  PUBLIC,
-  AUTHENTICATED_ONLY,
-  CAPABILITY,
-  PLATFORM_SESSION,
-  STAFF,
-  CAPACITY,
-  WEBHOOK,
-  DEVICE_TOKEN,
-} as const;
-
 /** No session needed (health, login, password reset). Listed in the R68 route snapshot. */
 export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(PUBLIC, true);
 

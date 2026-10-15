@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
 import { notFound } from '../../../common/errors/api-exception';
-import { toPage, type Page } from '../../../common/pagination';
+import { toPage, type Page, type PageQueryDto } from '../../../common/pagination';
 import {
   SupportReadsRepository,
   type SupportRead,
+  type SupportStudentSummaryRow,
 } from '../../../repositories/platform/support-reads.repository';
 import { SupportSessionRepository } from '../../../repositories/platform/support-session.repository';
 import type { SchoolId } from '../../../tenancy/school-id';
 import { schoolIdFromSupportSession } from '../../../tenancy/school-id.mint';
 import { SupportReadContext } from '../../../tenancy/support-read-context';
 import { toDateString } from '../../academics/academics.shared';
-import type { ListAuditLogQueryDto } from '../../audit/audit.dto';
 import { auditFilterOf, toAuditEntryDto } from '../../audit/audit.service';
-import type { AuditEntryDto } from '../../audit/audit.dto';
+import type { AuditEntryDto, ListAuditLogQueryDto } from '../../audit/audit.dto';
 import { SupportSessionsService } from './support-sessions.service';
 import type {
   SupportChargeDto,
@@ -23,8 +23,6 @@ import type {
   SupportStudentsQueryDto,
   SupportStudentSummaryDto,
 } from './support.dto';
-import type { PageQueryDto } from '../../../common/pagination';
-import type { SupportEnrolmentRow, SupportStudentSummaryRow } from '../../../repositories/platform/support-reads.repository';
 
 // Phase 5 slice 45, the six support views (contracts/slice-45.md §2.2; rule 35, R350, R351). Each
 // read runs in SupportReadContext (READ ONLY + the guard's `support` flag), re-reads the session
@@ -43,10 +41,8 @@ const summaryDto = (row: SupportStudentSummaryRow): SupportStudentSummaryDto => 
   admissionNo: row.admissionNo,
   fullName: row.fullName,
   status: row.status,
-  current: row.current === null ? null : enrolmentDto(row.current),
+  current: row.current,
 });
-
-const enrolmentDto = (row: SupportEnrolmentRow) => ({ ...row });
 
 /** Subject ids as audit metadata: comma-separated strings (the logs' metadata holds no arrays). */
 const subjectsMetadata = (subjects: Record<string, readonly bigint[]>): Record<string, string> =>

@@ -2507,7 +2507,8 @@ function WAVE_I_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'charges', name: 'charges_columns_immutable' },
     { kind: 'trigger', table: 'charges', name: 'charges_no_delete', definition: "BEFORE DELETE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_delete()" },
     { kind: 'trigger', table: 'charges', name: 'charges_no_truncate', definition: "BEFORE TRUNCATE ON public.charges FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()" },
-    { kind: 'trigger', table: 'charges', name: 'charges_own_child', definition: "BEFORE INSERT OR UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_charge_own_child()" },
+    // Split by event in 20261016140000 (WAVE_U_OBJECTS checks the current definitions).
+    { kind: 'trigger', table: 'charges', name: 'charges_own_child' },
     { kind: 'trigger', table: 'charges', name: 'charges_school_id_immutable', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
     { kind: 'trigger', table: 'charges', name: 'charges_status_transition', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_status_transition('open:settled', 'open:voided', 'open:waived', 'settled:open:asms.reversing_payment')" },
     { kind: 'trigger', table: 'charges', name: 'charges_voided_frozen', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_change_once_set('voided_at', 'voided_by', 'void_reason')" },
@@ -3622,6 +3623,10 @@ function WAVE_U_OBJECTS(): ExpectedObject[] {
     // the late-fee sweep selects only charges with one.
     { kind: 'trigger', table: 'charges', name: 'charges_import_guard', definition: 'BEFORE INSERT ON public.charges FOR EACH ROW WHEN ((new.import_id IS NOT NULL)) EXECUTE FUNCTION asms_charge_import_guard()' },
     { kind: 'constraint', table: 'charges', name: 'charges_import_period_check', definition: 'CHECK (((import_id IS NULL) OR (period IS NULL)))' },
+    // Split by event (20261016140000): the INSERT arm fires only for an adjustment, the only kind
+    // asms_charge_own_child checks on insert, so a late fee or generated charge pays no call.
+    { kind: 'trigger', table: 'charges', name: 'charges_own_child', definition: 'BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_charge_own_child()' },
+    { kind: 'trigger', table: 'charges', name: 'charges_own_child_insert', definition: "BEFORE INSERT ON public.charges FOR EACH ROW WHEN ((new.kind = 'adjustment'::charge_kind)) EXECUTE FUNCTION asms_charge_own_child()" },
     // ---- platform_support_sessions (R349, R352; non-tenant)
     { kind: 'constraint', table: S, name: `${S}_reason_check`, definition: trimmed('reason') },
     { kind: 'constraint', table: S, name: `${S}_reason_no_id_check`, definition: noIdCheck('reason') },

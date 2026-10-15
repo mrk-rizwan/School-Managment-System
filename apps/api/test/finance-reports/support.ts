@@ -2,7 +2,7 @@
 // three days" and the cash day are real dates), two families with past-due tuition, the signed-in
 // roles, and the job bodies driven as the worker drives them.
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { newIdempotencyKey } from '@asms/shared';
+import { addMonths, newIdempotencyKey } from '@asms/shared';
 import { FeeReminders } from '../../src/modules/finance-reports/fee-reminders';
 import { asSchool } from '../messaging/support';
 import type { TestSchool } from '../support/schools';
@@ -44,14 +44,11 @@ export interface ReportsWorld {
 export const monthOf = (offset: number): string => isoDay(offset).slice(0, 7);
 
 /**
- * `YYYY-MM` `n` calendar months from `month`. Day offsets 30 days apart can land in one month
+ * `YYYY-MM` `n` calendar months from `month` (the shared `addMonths`, kept under this name for the
+ * suites that import it). Day offsets 30 days apart can land in one month
  * (2026-10-14: -105 and -75 are both July), so a script that needs distinct months counts them.
  */
-export function shiftMonth(month: string, n: number): string {
-  const [y, m] = month.split('-').map(Number) as [number, number];
-  const index = y * 12 + (m - 1) + n;
-  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
-}
+export const shiftMonth = addMonths;
 
 export function reportsHttp(app: () => NestExpressApplication) {
   const h = paymentsHttp(app);

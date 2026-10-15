@@ -80,6 +80,26 @@ describe('slice 41: transport (e2e)', () => {
     expect((await h.audits(w, 'vehicle.retired')).map((r) => r.reason)).toEqual(['Engine failed']);
   });
 
+  it('B8 (Phase 5 close): a driver who leaves is cleared from every active vehicle, audited with the reason', async () => {
+    const w = await h.world();
+    const driverId = w.driver.user.staffId.toString();
+    const second = (await post('/vehicles', { registration: 'LEB-88', capacity: 20, driverStaffId: driverId }, w.office, newIdempotencyKey()).expect(201))
+      .body as Vehicle;
+    await post(`/staff/${driverId}/change-status`, { status: 'left', reason: 'Resigned' }, w.principal).expect(200);
+    const vehicles = (await get('/vehicles', w.office).expect(200)).body as PageOf<Vehicle>;
+    // Ordered by registration: LEB-88, then LES-1234.
+    expect(vehicles.data.map((v) => [v.id, v.driverStaffId])).toEqual([
+      [second.id, null],
+      [w.vehicleId, null],
+    ]);
+    const updated = await h.audits(w, 'vehicle.updated');
+    expect(updated.map((r) => [String(r.subjectId), r.reason, r.metadata]).sort()).toEqual(
+      [w.vehicleId, second.id].sort().map((id) => [id, 'left', { fields: 'driverStaffId', driverStaffId: null, via: 'staff_left' }]),
+    );
+    const [changed] = await h.audits(w, 'staff.status_changed');
+    expect((changed!.metadata as { vehiclesCleared: string }).vehiclesCleared.split(',').sort()).toEqual([w.vehicleId, second.id].sort());
+  });
+
   it('stops are replaced as a whole: edited in place, added, reordered, ended with a reason; a stop in use stays', async () => {
     const w = await h.world();
     const [link, main] = w.route.stops;

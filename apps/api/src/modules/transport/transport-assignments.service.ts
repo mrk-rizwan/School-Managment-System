@@ -50,7 +50,7 @@ export interface TransportAssignmentCreateOutcome {
   assignment: TransportAssignmentCreatedDto;
 }
 
-export function assignmentStatus(row: Pick<AssignmentRecord, 'startsOn' | 'endedAt'>, today: Date): TransportAssignmentStatus {
+function assignmentStatus(row: Pick<AssignmentRecord, 'startsOn' | 'endedAt'>, today: Date): TransportAssignmentStatus {
   if (row.endedAt !== null) return 'ended';
   return row.startsOn > today ? 'upcoming' : 'live';
 }
@@ -322,7 +322,7 @@ export class TransportAssignmentsService {
     if (year && endsOn > year.endsOn) {
       throw fieldRefused('endedOn', ErrorCode.INVALID_VALUE, `endedOn must be inside the academic year (ends ${toDateString(year.endsOn)})`);
     }
-    if ((await this.transport.endAssignment(schoolId, id, endsOn, { by: userId, reason: dto.reason, now: new Date() })) !== 1) {
+    if ((await this.transport.endAssignment(schoolId, id, endsOn, { by: userId, reason: dto.reason, now: this.clock.now() })) !== 1) {
       throw new ApiException(409, ErrorCode.STALE_STATUS, 'This assignment has already ended.');
     }
     await this.audit.record(schoolId, {
@@ -353,7 +353,7 @@ export class TransportAssignmentsService {
     academicYearId?: bigint,
   ): Promise<number> {
     const live = await this.transport.liveOf(schoolId, studentIds, academicYearId);
-    const now = new Date();
+    const now = this.clock.now();
     let ended = 0;
     for (const row of live) {
       const endsOn = on < row.startsOn ? addDays(row.startsOn, -1) : on;

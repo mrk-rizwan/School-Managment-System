@@ -9,6 +9,7 @@ import {
 import {
   ATTACHMENT_SMS_LINE,
   composeAnnouncement,
+  eventCancellationText,
   holidayCancellationText,
   holidayNoticeText,
   smsSegments,
@@ -94,5 +95,15 @@ describe('announcement text (templates.ts)', () => {
     expect(cancelled.title).toBe('Holiday cancelled: Mon 5 Oct to Fri 9 Oct');
     expect(cancelled.body).toMatch(/^The holiday \(.+\) is cancelled\. School is open as normal\.$/);
     expect(smsSegments(toGsm7(composeAnnouncement(LONG_SCHOOL, cancelled.title, cancelled.body)))).toBe(1);
+  });
+  it('R313 (B3, Phase 5 close): the event cancellation says a paid fee was credited against outstanding fees or held as credit', () => {
+    const event = { title: 'Annual trip', startsAt: new Date('2026-11-04T04:00:00.000Z'), timezone: 'Asia/Karachi' };
+    const charged = eventCancellationText('Iqra', { ...event, charged: true });
+    expect(charged).toEqual({
+      title: 'Cancelled: Annual trip',
+      body: 'Annual trip on Wed 4 Nov is cancelled. Any fee paid has been credited against fees owed, or held as credit.',
+    });
+    expect(smsSegments(toGsm7(composeAnnouncement('Iqra', charged.title, charged.body)))).toBe(1);
+    expect(eventCancellationText('Iqra', { ...event, charged: false }).body).toBe('Annual trip on Wed 4 Nov is cancelled.');
   });
 });

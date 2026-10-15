@@ -21,7 +21,6 @@ import {
   StagedUploadRepository,
   type StagedUploadRecord,
 } from '../../repositories/staged-upload.repository';
-import { UserRepository } from '../../repositories/user.repository';
 import { AfterCommit } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
@@ -134,7 +133,6 @@ export class ExpensesService {
     private readonly expenses: ExpenseRepository,
     private readonly staged: StagedUploadRepository,
     private readonly settings: SchoolSettingsRepository,
-    private readonly users: UserRepository,
     private readonly permissions: PermissionsService,
     private readonly idempotency: IdempotentRequests,
     private readonly notifications: NotificationService,
@@ -537,14 +535,9 @@ export class ExpensesService {
    * permission service (revokes honoured).
    */
   private async requestApproval(schoolId: SchoolId, row: ExpenseRecord): Promise<void> {
-    const staffIds: bigint[] = [];
-    for (const candidate of await this.users.watcherCandidates(schoolId, Capability.EXPENSE_APPROVE)) {
-      if (candidate.userId === row.recordedBy) continue;
-      const access = await this.permissions.load(schoolId, candidate.userId);
-      if (access?.capacities.staff && access.capabilities.has(Capability.EXPENSE_APPROVE)) {
-        staffIds.push(candidate.staffId);
-      }
-    }
+    const staffIds = (await this.permissions.staffHolding(schoolId, Capability.EXPENSE_APPROVE))
+      .filter((h) => h.userId !== row.recordedBy)
+      .map((h) => h.staffId);
     if (staffIds.length === 0) return;
     await this.notifications.send(schoolId, {
       type: 'expense_approval_requested',

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode, yearMonthOf } from '@asms/shared';
+import { addMonths, ErrorCode, yearMonthOf } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
@@ -48,13 +48,6 @@ const advanceNotOpen = (advanceId: bigint): ApiException =>
   new ApiException(409, ErrorCode.ADVANCE_NOT_OPEN, 'This advance is already recovered or written off.', {
     advanceId: advanceId.toString(),
   });
-
-/** The month after `yearMonth`. */
-export const nextMonth = (yearMonth: string): string => {
-  const year = Number(yearMonth.slice(0, 4));
-  const month = Number(yearMonth.slice(5, 7));
-  return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
-};
 
 @Injectable()
 export class SalaryAdvancesService {
@@ -115,7 +108,7 @@ export class SalaryAdvancesService {
       throw fieldRefused('instalmentAmount', ErrorCode.INVALID_VALUE, 'instalmentAmount must be at most the amount');
     }
     const grantedMonth = yearMonthOf(dto.grantedOn);
-    const recoverFrom = dto.recoverFrom ?? nextMonth(grantedMonth);
+    const recoverFrom = dto.recoverFrom ?? addMonths(grantedMonth, 1);
     if (recoverFrom < grantedMonth) {
       throw fieldRefused('recoverFrom', ErrorCode.INVALID_VALUE, 'recoverFrom must not be before the month it is granted');
     }

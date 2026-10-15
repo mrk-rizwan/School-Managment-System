@@ -293,6 +293,16 @@ export class TransportRepository {
     return count;
   }
 
+  /** The active vehicles that name the member as their driver (a leaving member's, B8). */
+  async activeVehiclesDrivenBy(schoolId: SchoolId, staffId: bigint): Promise<bigint[]> {
+    const rows = await this.txHost.tx.vehicle.findMany({
+      where: { schoolId, driverStaffId: staffId, status: 'active' },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => r.id);
+  }
+
   async retireVehicle(schoolId: SchoolId, id: bigint, end: Ending): Promise<number> {
     const { count } = await this.txHost.tx.vehicle.updateMany({
       where: { schoolId, id, status: 'active' },

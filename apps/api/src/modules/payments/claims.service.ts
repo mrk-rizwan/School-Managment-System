@@ -17,7 +17,6 @@ import { PaymentRepository } from '../../repositories/payment.repository';
 import { ReceiptRepository } from '../../repositories/receipt.repository';
 import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { StagedUploadRepository, type StagedUploadRecord } from '../../repositories/staged-upload.repository';
-import { UserRepository } from '../../repositories/user.repository';
 import { AfterCommit } from '../../tenancy/after-commit';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
@@ -108,7 +107,6 @@ export class ClaimsService {
     private readonly staged: StagedUploadRepository,
     private readonly attachments: AttachmentFiles,
     private readonly afterCommit: AfterCommit,
-    private readonly users: UserRepository,
     private readonly settings: SchoolSettingsRepository,
     private readonly permissions: PermissionsService,
     private readonly notifications: NotificationService,
@@ -608,11 +606,9 @@ export class ClaimsService {
    */
   private async tellVerifiers(schoolId: SchoolId, claim: ClaimRecord): Promise<void> {
     const staffIds: bigint[] = [];
-    for (const candidate of await this.users.watcherCandidates(schoolId, Capability.PAYMENT_VERIFY)) {
-      const access = await this.permissions.load(schoolId, candidate.userId);
-      if (!access?.capacities.staff || !access.capabilities.has(Capability.PAYMENT_VERIFY)) continue;
-      if (await this.permissions.actorIsGuardianOf(schoolId, candidate.userId, claim.studentId)) continue;
-      staffIds.push(candidate.staffId);
+    for (const holder of await this.permissions.staffHolding(schoolId, Capability.PAYMENT_VERIFY)) {
+      if (await this.permissions.actorIsGuardianOf(schoolId, holder.userId, claim.studentId)) continue;
+      staffIds.push(holder.staffId);
     }
     if (staffIds.length === 0) return;
     const names = await this.payments.students(schoolId, [claim.studentId]);

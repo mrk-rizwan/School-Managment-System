@@ -2,9 +2,8 @@
 
 import { Capability, ErrorCode } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useId } from 'react';
+import { AreaTabs } from '@/components/area-tabs';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { OPTIONS_LIMIT, unwrap } from '@/lib/api/client';
@@ -83,31 +82,9 @@ const TABS = [
 
 /** The timetable area's tabs, for `timetable.manage` holders; everyone else sees only the week. */
 export function TimetableTabs() {
-  const pathname = usePathname();
   const { can } = useCapabilities();
   if (!can(Capability.TIMETABLE_MANAGE)) return null;
-  return (
-    <nav aria-label="Timetable" className="mb-6 flex gap-1 overflow-x-auto border-b">
-      {TABS.map(({ href, label }) => {
-        const active = href === '/timetable' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              '-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors',
-              active
-                ? 'border-primary font-medium text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <AreaTabs label="Timetable" tabs={TABS} />;
 }
 
 /** A year's sections as one select, grouped by class; `allLabel` adds an "any section" option. */

@@ -7,6 +7,7 @@ import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempote
 import { readLocked } from '../../common/locking';
 import type { ReasonDto } from '../../common/reason.dto';
 import { toPage, type Page } from '../../common/pagination';
+import { SchoolClock } from '../../common/school-clock';
 import { SchoolContext, type Actor } from '../../common/school-context';
 import { NotificationService } from '../../messaging/notification.service';
 import {
@@ -15,7 +16,6 @@ import {
 } from '../../repositories/attendance-dispute.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { StaffAttendanceRepository } from '../../repositories/staff-attendance.repository';
-import { UserRepository } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { toDateString } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
@@ -76,11 +76,11 @@ export class AttendanceDisputesService {
     private readonly disputes: AttendanceDisputeRepository,
     private readonly marks: StaffAttendanceRepository,
     private readonly attendance: StaffAttendanceService,
-    private readonly users: UserRepository,
     private readonly permissions: PermissionsService,
     private readonly audit: AuditLogRepository,
     private readonly notifications: NotificationService,
     private readonly idempotency: IdempotentRequests,
+    private readonly clock: SchoolClock,
   ) {}
 
   /** The caller's own staff id (@RequireStaff admits only an active staff capacity). */
@@ -187,7 +187,7 @@ export class AttendanceDisputesService {
     const staffId = this.ownStaffId(session);
     const row = await this.lock(schoolId, id);
     if (row.staffId !== staffId) throw notFound();
-    if (row.status !== 'pending' || (await this.disputes.withdraw(schoolId, id, userId)) === 0) {
+    if (row.status !== 'pending' || (await this.disputes.withdraw(schoolId, id, userId, this.clock.now())) === 0) {
       throw notPending(id, row.status);
     }
     await this.audit.record(schoolId, {
@@ -222,7 +222,7 @@ export class AttendanceDisputesService {
         row.id,
       );
     }
-    if ((await this.disputes.decide(schoolId, id, { status: 'approved', decidedBy: userId, decisionReason: dto.reason ?? null })) === 0) {
+    if ((await this.disputes.decide(schoolId, id, { status: 'approved', decidedBy: userId, decisionReason: dto.reason ?? null, decidedAt: this.clock.now() })) === 0) {
       throw notPending(id, row.status);
     }
     await this.audit.record(schoolId, {
@@ -241,7 +241,7 @@ export class AttendanceDisputesService {
   async reject(session: SchoolSessionContext, id: bigint, dto: ReasonDto): Promise<AttendanceDisputeDto> {
     const { schoolId, userId } = this.context.actor();
     const row = await this.decidable(session, schoolId, id);
-    if ((await this.disputes.decide(schoolId, id, { status: 'rejected', decidedBy: userId, decisionReason: dto.reason })) === 0) {
+    if ((await this.disputes.decide(schoolId, id, { status: 'rejected', decidedBy: userId, decisionReason: dto.reason, decidedAt: this.clock.now() })) === 0) {
       throw notPending(id, row.status);
     }
     await this.audit.record(schoolId, {
@@ -281,14 +281,7 @@ export class AttendanceDisputesService {
 
   /** Active staff logins holding attendance.staff.manage now (effective holdings). */
   private async deciderStaffIds(schoolId: SchoolId): Promise<bigint[]> {
-    const ids: bigint[] = [];
-    for (const candidate of await this.users.watcherCandidates(schoolId, Capability.ATTENDANCE_STAFF_MANAGE)) {
-      const access = await this.permissions.load(schoolId, candidate.userId);
-      if (access?.capacities.staff && this.permissions.holds(access, Capability.ATTENDANCE_STAFF_MANAGE)) {
-        ids.push(candidate.staffId);
-      }
-    }
-    return ids;
+    return (await this.permissions.staffHolding(schoolId, Capability.ATTENDANCE_STAFF_MANAGE)).map((h) => h.staffId);
   }
 
   private async notifyDecided(schoolId: SchoolId, row: DisputeRecord, decision: 'approved' | 'rejected'): Promise<void> {

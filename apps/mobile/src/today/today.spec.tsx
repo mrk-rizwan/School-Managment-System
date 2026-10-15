@@ -16,7 +16,8 @@ import { eventually, renderSignedIn, setOnline } from '../test/screen';
 import { coverOutcome, summaryLine } from './today-model';
 import { TodayScreen } from './TodayScreen';
 
-// slice-16 §7.1 (today/today.spec.tsx, today/cover.spec.tsx): the unrecorded rows and their
+// slice-16 §7.1 (the contract's planned today and cover specs, folded into this file): the
+// unrecorded rows and their
 // actions by capability, Record now's route, the summary lines, and the cover sheet — online
 // only, coversAssignmentId resolved from the class teacher's live row, every error's words.
 

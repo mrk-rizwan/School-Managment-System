@@ -628,13 +628,19 @@ export function eventNoticeText(
   return { title, body: fitted.slice(composeAnnouncement(schoolName, title, '').length) };
 }
 
-/** Phase 5 R313: a published event's cancellation notice. */
+/**
+ * Phase 5 R313: a published event's cancellation notice. Cancel credits any money paid on the
+ * event's charge, and the credit is applied to the family's oldest outstanding charges (rule 18)
+ * or held as an advance when nothing is owed; the sentence says exactly that (B3, Phase 5 close).
+ */
 export function eventCancellationText(
   schoolName: string,
   event: { title: string; startsAt: Date; timezone: string; charged: boolean },
 ): { title: string; body: string } {
   const title = cutWords(`Cancelled: ${event.title}`, 120);
-  const money = event.charged ? ' Any fee paid for it is kept as credit on your account.' : '';
+  const money = event.charged
+    ? ' Any fee paid has been credited against fees owed, or held as credit.'
+    : '';
   return fitHolidayText(
     schoolName,
     title,

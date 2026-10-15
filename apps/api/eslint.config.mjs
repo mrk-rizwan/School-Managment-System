@@ -82,7 +82,8 @@ const IMPORTS = {
     message:
       'bullmq is used only in src/jobs/** and src/messaging/outbox-dispatcher.ts. Enqueue through OutboxDispatcher.',
   },
-  // The fifth SchoolId constructor and runAsSchool (src/tenancy/queue.mint.ts): job bodies only.
+  // Job-payload resolution and runAsSchool (src/tenancy/queue.mint.ts, which mints through
+  // schoolIdFromQueuePayload, one of the nine SchoolId constructors): job bodies only.
   queueMint: {
     regex: `(^|/)queue\\.mint${EXT}$`,
     message: 'queue.mint is imported only by src/jobs/**: a job payload becomes a SchoolId nowhere else.',
@@ -98,7 +99,7 @@ const IMPORTS = {
   // sessions and the closed set of support read views. Importable only from
   // src/modules/platform/support/**, the platform module included.
   supportRepositories: {
-    regex: `(^|/)repositories/platform/support-(session|reads)\.repository${EXT}$`,
+    regex: `(^|/)repositories/platform/support-(session|reads)\\.repository${EXT}$`,
     message: 'The support repositories are imported only from src/modules/platform/support/** (exception 7).',
   },
   // Job-payload resolution's one read of schools (named exception 3, widened).
@@ -150,7 +151,7 @@ const IMPORTS = {
   resultRepositories: {
     // Slice 33 adds result-reads (the family, student-page and report reads, read-only); Phase 5
     // slice 42 adds class-ranking (the class ranking and the merit list).
-    regex: `(^|/)repositories/(result-sheet|result|mark-reads|result-reads|class-ranking)\.repository${EXT}$`,
+    regex: `(^|/)repositories/(result-sheet|result|mark-reads|result-reads|class-ranking)\\.repository${EXT}$`,
     message:
       'The result-sheet, result, mark-reads, result-reads and class-ranking repositories are imported only from src/modules/results/**.',
   },
@@ -337,7 +338,7 @@ const BILLING_REPOSITORY_FILES = [
 // only through schoolIdFromSupportSession.
 const SUPPORT_SITE = 'src/modules/platform/support/**/*.ts';
 const SUPPORT_SITE_TENANT_REPOSITORY_IMPORT = {
-  regex: `(^|/)repositories/(?!platform/).+\.repository${EXT}$`,
+  regex: `(^|/)repositories/(?!platform/).+\\.repository${EXT}$`,
   message: 'src/modules/platform/support/** imports no tenant repository: it reads through SupportReadsRepository only (exception 7).',
 };
 
@@ -354,8 +355,8 @@ const NAMED_EXCEPTION_SITES = {
   // (any status) and then works per school with ordinary scoped repositories.
   // Slice 43 (§3.5): the same sweep expires the commencement imports' previews.
   'src/modules/documents/staged-upload.sweep.ts': { repository: 'school-fan-out.repository', exempt: ['importRepository'] },
-  // Exception 3 widened to job-payload resolution (Phase 2 plan §4.1): the fifth SchoolId
-  // constructor reads the school a queue payload names. The only importer of
+  // Exception 3 widened to job-payload resolution (Phase 2 plan §4.1): schoolIdFromQueuePayload
+  // (one of the nine SchoolId constructors) reads the school a queue payload names. The only importer of
   // school-by-id.repository; it lives in src/tenancy and keeps that folder's exemptions.
   'src/tenancy/queue.mint.ts': {
     repository: 'school-by-id.repository',
@@ -531,7 +532,7 @@ const SYNTAX = {
     {
       selector: `${ASSERTION} ${brandRef('"SchoolId"')}`,
       message:
-        'Never assert a SchoolId. It is minted only in src/tenancy/school-id.mint.ts: the session, the school lookup, the scheduler fan-out, a queue payload or a delivery report (named exceptions 2-5), or the platform module.',
+        'Never assert a SchoolId. It is minted only in src/tenancy/school-id.mint.ts by its nine constructors: fromPlatformSchool (the platform module), schoolIdFromLookup (the school lookup), schoolIdsForFanOut and schoolIdFromQueuePayload (the scheduler fan-out and a queue payload), schoolIdFromSession (the session), schoolIdFromDeviceToken (the device-punch service), schoolIdFromDeliveryReport (a delivery report), schoolIdFromSupportSession and schoolIdFromExpiredSupportSession (the support module).',
     },
   ],
   scopeCast: [

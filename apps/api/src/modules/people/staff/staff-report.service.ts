@@ -17,7 +17,7 @@ import {
 export const STAFF_REPORT_MAX_DAYS = 366;
 
 /** One decimal, half-up: (present + late) ÷ (present + late + absent); null when nothing counts. */
-export function staffAttendancePercent(counts: { present: number; late: number; absent: number }): number | null {
+function staffAttendancePercent(counts: { present: number; late: number; absent: number }): number | null {
   const attended = counts.present + counts.late;
   const counted = attended + counts.absent;
   if (counted === 0) return null;
@@ -25,7 +25,7 @@ export function staffAttendancePercent(counts: { present: number; late: number; 
 }
 
 /** The newest contract's standing on `today` (R337: "expired, not ended" is its own state). */
-export function contractStanding(contract: LatestContract | undefined, today: Date): StaffContractStanding {
+function contractStanding(contract: LatestContract | undefined, today: Date): StaffContractStanding {
   if (contract === undefined) return 'none';
   if (contract.endedAt !== null) return 'ended';
   if (contract.endsOn !== null && contract.endsOn < today) return 'expired_not_ended';

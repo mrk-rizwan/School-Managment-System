@@ -38,5 +38,7 @@ import { FinanceReportsThrottleGuard } from '../finance-reports/finance-reports.
     IdempotencyKeyRepository,
     AuditLogRepository,
   ],
+  // B8: StaffStatusService ends a leaving member's live duties (StaffModule imports this module).
+  exports: [EventsService],
 })
 export class EventsModule {}

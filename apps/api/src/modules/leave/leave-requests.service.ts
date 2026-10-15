@@ -30,7 +30,6 @@ import { LeaveTypeRepository, type LeaveTypeRecord } from '../../repositories/le
 import { StaffRepository, type StaffRecord } from '../../repositories/staff.repository';
 import { TeacherAssignmentRepository } from '../../repositories/teacher-assignment.repository';
 import { spanHolds, TimetableReadsRepository } from '../../repositories/timetable-reads.repository';
-import { UserRepository } from '../../repositories/user.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
@@ -139,7 +138,6 @@ export class LeaveRequestsService {
     private readonly requests: LeaveRequestRepository,
     private readonly types: LeaveTypeRepository,
     private readonly staff: StaffRepository,
-    private readonly users: UserRepository,
     private readonly assignments: TeacherAssignmentRepository,
     private readonly teacherAssignments: TeacherAssignmentsService,
     private readonly calendar: CalendarService,
@@ -768,14 +766,7 @@ export class LeaveRequestsService {
 
   /** Staff ids of the logins holding staff.leave.approve (role, custom role or grant). */
   private async approverStaffIds(schoolId: SchoolId): Promise<bigint[]> {
-    const ids: bigint[] = [];
-    for (const candidate of await this.users.watcherCandidates(schoolId, Capability.STAFF_LEAVE_APPROVE)) {
-      const access = await this.permissions.load(schoolId, candidate.userId);
-      if (access?.capacities.staff && this.permissions.holds(access, Capability.STAFF_LEAVE_APPROVE)) {
-        ids.push(candidate.staffId);
-      }
-    }
-    return ids;
+    return (await this.permissions.staffHolding(schoolId, Capability.STAFF_LEAVE_APPROVE)).map((h) => h.staffId);
   }
 
   private async notifyDecided(

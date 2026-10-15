@@ -21,7 +21,7 @@ const field = (value: unknown, key: string): unknown =>
   typeof value === 'object' && value !== null ? Reflect.get(value, key) : undefined;
 
 /** A write refused by the READ ONLY transaction, in any of the shapes Prisma 7 + adapter-pg raise. */
-export function isReadOnlyViolation(error: unknown): boolean {
+function isReadOnlyViolation(error: unknown): boolean {
   const cause = field(field(field(error, 'meta'), 'driverAdapterError'), 'cause');
   return (
     field(cause, 'originalCode') === READ_ONLY_SQLSTATE ||
@@ -30,7 +30,7 @@ export function isReadOnlyViolation(error: unknown): boolean {
   );
 }
 
-export const supportWriteRefused = (): ApiException =>
+const supportWriteRefused = (): ApiException =>
   new ApiException(403, ErrorCode.SUPPORT_WRITE_REFUSED, 'Support access is read-only.');
 
 @Injectable()

@@ -46,13 +46,13 @@ const FAMILY_NAMES: Readonly<Record<DocumentType, string>> = {
   other: 'document',
 };
 
-export function familyNote(type: DocumentType, status: ChecklistStatus): string | null {
+function familyNote(type: DocumentType, status: ChecklistStatus): string | null {
   if (status === 'rejected') return `Please re-upload the ${FAMILY_NAMES[type]}.`;
   if (status === 'missing') return `Please send the ${FAMILY_NAMES[type]} to the school office.`;
   return null;
 }
 
-export const documentAlreadyDecided = (row: StudentDocumentRecord): ApiException =>
+const documentAlreadyDecided = (row: StudentDocumentRecord): ApiException =>
   new ApiException(409, ErrorCode.DOCUMENT_ALREADY_DECIDED, 'This document has already been decided.', {
     documentId: row.id.toString(),
     status: row.status,
@@ -226,7 +226,7 @@ export class DocumentVerificationService {
     if (!row) throw notFound();
     if (row.status !== 'uploaded') throw documentAlreadyDecided(row);
     if (row.uploadedBy === userId) throw ownUpload();
-    if ((await this.documents.decide(schoolId, id, { status, by: userId, at: new Date(), reason })) === 0) {
+    if ((await this.documents.decide(schoolId, id, { status, by: userId, at: this.clock.now(), reason })) === 0) {
       const now = await this.documents.findById(schoolId, scope, id);
       throw now ? documentAlreadyDecided(now) : notFound();
     }

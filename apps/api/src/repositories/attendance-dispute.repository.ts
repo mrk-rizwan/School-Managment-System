@@ -138,20 +138,20 @@ export class AttendanceDisputeRepository {
   async decide(
     schoolId: SchoolId,
     id: bigint,
-    data: { status: 'approved' | 'rejected'; decidedBy: bigint; decisionReason: string | null },
+    data: { status: 'approved' | 'rejected'; decidedBy: bigint; decisionReason: string | null; decidedAt: Date },
   ): Promise<number> {
     const { count } = await this.txHost.tx.staffAttendanceDispute.updateMany({
       where: { schoolId, id, status: 'pending' },
-      data: { ...data, decidedAt: new Date() },
+      data,
     });
     return count;
   }
 
   /** pending -> withdrawn by the staff member's own login. 0: no longer pending. */
-  async withdraw(schoolId: SchoolId, id: bigint, withdrawnBy: bigint): Promise<number> {
+  async withdraw(schoolId: SchoolId, id: bigint, withdrawnBy: bigint, withdrawnAt: Date): Promise<number> {
     const { count } = await this.txHost.tx.staffAttendanceDispute.updateMany({
       where: { schoolId, id, status: 'pending' },
-      data: { status: 'withdrawn', withdrawnBy, withdrawnAt: new Date() },
+      data: { status: 'withdrawn', withdrawnBy, withdrawnAt },
     });
     return count;
   }

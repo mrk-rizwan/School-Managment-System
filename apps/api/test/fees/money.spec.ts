@@ -2,6 +2,7 @@
 // definition of its rule; the services that land in slices 19-26 call these.
 import {
   absenceDeduction,
+  addMonths,
   allocate,
   concessionAmount,
   dueOn,
@@ -297,5 +298,18 @@ describe('money helpers (§3.3)', () => {
     expect(tierFor(201, tiers)?.id).toBe(2n);
     expect(tierFor(5000, tiers)?.id).toBe(3n);
     expect(tierFor(10, tiers.slice(3))).toBeNull();
+  });
+});
+
+describe('addMonths (dates.ts, Phase 5 close)', () => {
+  it.each([
+    ['2026-10', 1, '2026-11'],
+    ['2026-12', 1, '2027-01'],
+    ['2026-01', -1, '2025-12'],
+    ['2026-04', 0, '2026-04'],
+    ['2026-04', 13, '2027-05'],
+    ['2026-03', -27, '2023-12'],
+  ])('%s + %i = %s', (from, n, to) => {
+    expect(addMonths(from, n)).toBe(to);
   });
 });

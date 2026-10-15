@@ -240,7 +240,7 @@ export class StaffContractsService {
         `A renewal starts the day after the current contract ends: ${toDateString(nextStart)}`,
       );
     }
-    const now = new Date();
+    const now = this.clock.now();
     const ended = await this.contracts.end(schoolId, current.id, {
       endedBy: userId,
       reason: CONTRACT_RENEWED,
@@ -273,7 +273,7 @@ export class StaffContractsService {
     if (current.endsOn !== null && endedOn > current.endsOn) {
       throw fieldRefused('endedOn', ErrorCode.INVALID_VALUE, `endedOn must not be after the contract's last day (${toDateString(current.endsOn)}); renew it instead`);
     }
-    if ((await this.contracts.end(schoolId, id, { endedBy: userId, reason: dto.reason, endedOn, now: new Date() })) === 0) {
+    if ((await this.contracts.end(schoolId, id, { endedBy: userId, reason: dto.reason, endedOn, now: this.clock.now() })) === 0) {
       throw contractEnded(current.staffId);
     }
     await this.audit.record(schoolId, {
@@ -371,7 +371,7 @@ export class StaffContractsService {
   /** The caller's staged upload, consumed in one conditional update; else 422 (R91). */
   private async consume(actor: Actor, stagedUploadId: bigint): Promise<StaffContractDocument> {
     const [staged] = await this.staged.findOwned(actor.schoolId, actor.userId, [stagedUploadId]);
-    if (staged === undefined || !(await this.staged.consume(actor.schoolId, actor.userId, staged.id, new Date()))) {
+    if (staged === undefined || !(await this.staged.consume(actor.schoolId, actor.userId, staged.id, this.clock.now()))) {
       throw stagedUploadUnusable('stagedUploadId');
     }
     return { objectKey: staged.objectKey, mime: staged.mime, sizeBytes: staged.sizeBytes };

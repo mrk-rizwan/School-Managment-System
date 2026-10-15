@@ -15,8 +15,8 @@ import { ChildrenScreen } from './ChildrenScreen';
 import { AttendanceMonthScreen, FamilyDiaryScreen, FamilyRemarksScreen } from './FamilyScreens';
 import { StudentIndexScreen } from './StudentIndexScreen';
 
-// slice-16 §5.1–5.5 (children/children.spec.tsx, children/diary.spec.tsx,
-// children/remarks.spec.tsx, student/student.spec.tsx): the parent's and the student's screens.
+// slice-16 §5.1–5.5 (the contract's planned children, diary, remarks and student specs, folded
+// into this file): the parent's and the student's screens.
 
 const CHILD_ATTENDANCE = 'GET /api/v1/me/children/501/attendance';
 

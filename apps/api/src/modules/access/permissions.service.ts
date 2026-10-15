@@ -313,6 +313,26 @@ export class PermissionsService {
   }
 
   /**
+   * The active staff logins that hold `capability` now: the repository's candidates (a live
+   * principal or office_staff role, a grant, or a custom role holding it; ascending user ids),
+   * each confirmed through `load` (revokes honoured) as a staff capacity that `accept`s it —
+   * by default, holds it effectively. The recipient loop of the approval and watcher notices;
+   * each caller applies its own further filter.
+   */
+  async staffHolding(
+    schoolId: SchoolId,
+    capability: Capability,
+    accept: (access: UserAccess) => boolean = (access) => this.holds(access, capability),
+  ): Promise<{ userId: bigint; staffId: bigint }[]> {
+    const out: { userId: bigint; staffId: bigint }[] = [];
+    for (const candidate of await this.users.watcherCandidates(schoolId, capability)) {
+      const access = await this.load(schoolId, candidate.userId);
+      if (access?.capacities.staff && accept(access)) out.push(candidate);
+    }
+    return out;
+  }
+
+  /**
    * Rule 24 (R225): whether the user holds `capability` through a role or grant, whether or not
    * it is inert on the default password (`access.lines`, not `access.capabilities`). Read only by
    * the R14 subset rule's actor side; since Phase 5 (R356) the in-service overrides ("a

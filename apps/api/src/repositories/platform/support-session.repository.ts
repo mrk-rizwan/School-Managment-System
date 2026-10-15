@@ -11,6 +11,7 @@ import {
 import type { AuditMetadataValue } from '../audit-metadata';
 import type { Prisma, SchoolStatus } from '../generated/prisma/client';
 import type { PrismaTxAdapter } from '../prisma';
+import { activePrincipalStaffIds } from '../name-reads';
 
 // Exception 7 (phase-5-extended.md §3.1, contracts/slice-45.md): the platform_support_sessions rows
 // (non-tenant, like platform_audit_log) and the support module's two writes into a school: the
@@ -315,21 +316,12 @@ export class SupportSessionRepository {
 
   /**
    * The school's active principals' staff ids, the recipients of the two support notices: the
-   * predicate of MessageRecipientRepository.activePrincipalStaffIds, which the support module may
-   * not import (contracts/slice-45.md §4).
+   * shared predicate `activePrincipalStaffIds` (name-reads.ts) that MessageRecipientRepository also
+   * calls; the support module may not import that repository
+   * (contracts/slice-45.md §4).
    */
   async principalStaffIds(schoolId: SchoolId): Promise<bigint[]> {
-    const rows = await this.txHost.tx.user.findMany({
-      where: {
-        schoolId,
-        status: 'active',
-        staff: { schoolId, status: 'active' },
-        roles: { some: { schoolId, systemRole: 'principal', endedAt: null } },
-      },
-      select: { staffId: true },
-      orderBy: { id: 'asc' },
-    });
-    return rows.flatMap((row) => (row.staffId === null ? [] : [row.staffId]));
+    return activePrincipalStaffIds(this.txHost.tx, schoolId);
   }
 
   /**

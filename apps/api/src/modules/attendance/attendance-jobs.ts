@@ -6,7 +6,6 @@ import { NotificationService } from '../../messaging/notification.service';
 import { OutboxDispatcher } from '../../messaging/outbox-dispatcher';
 import { AttendanceAlertRepository } from '../../repositories/attendance-alert.repository';
 import { AttendanceRegisterRepository } from '../../repositories/attendance-register.repository';
-import { UserRepository } from '../../repositories/user.repository';
 import {
   AttendanceSummaryRepository,
   type DayStatusWrite,
@@ -171,7 +170,6 @@ export class AttendanceSweeps {
 export class RegisterDeadlineSweep {
   constructor(
     private readonly registers: AttendanceRegisterRepository,
-    private readonly users: UserRepository,
     private readonly messages: MessageRepository,
     private readonly calendar: CalendarService,
     private readonly settings: SchoolSettingsReader,
@@ -182,17 +180,11 @@ export class RegisterDeadlineSweep {
 
   /** The register watchers: confirmed holders of attendance.student.mark with all scope. */
   async watchers(schoolId: SchoolId): Promise<bigint[]> {
-    const staffIds: bigint[] = [];
-    for (const candidate of await this.users.watcherCandidates(
-      schoolId,
-      Capability.ATTENDANCE_STUDENT_MARK,
-    )) {
-      const access = await this.permissions.load(schoolId, candidate.userId);
-      if (!access?.capacities.staff) continue;
+    const holders = await this.permissions.staffHolding(schoolId, Capability.ATTENDANCE_STUDENT_MARK, (access) => {
       const line = access.lines.find((l) => l.capability === Capability.ATTENDANCE_STUDENT_MARK);
-      if (line && line.scope !== 'assigned_sections') staffIds.push(candidate.staffId);
-    }
-    return staffIds;
+      return line !== undefined && line.scope !== 'assigned_sections';
+    });
+    return holders.map((h) => h.staffId);
   }
 
   /** 'sent', or why nothing was sent. Idempotent by R107's subject `register_deadline / YYYYMMDD`. */
