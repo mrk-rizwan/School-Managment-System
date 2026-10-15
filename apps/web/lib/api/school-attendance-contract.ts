@@ -85,3 +85,9 @@ export type RosterIncompleteDetails = { missing: string[] };
 export type StaleStatusDetails = { currentStatus: AttendanceStatus };
 /** 409 ARRIVAL_NOT_ABSENT from marks.service.ts `arrivalNotAbsent`. */
 export type ArrivalNotAbsentDetails = { status: AttendanceStatus | null };
+
+// ---- Phase 5 slice 42: attendance discrepancies (contracts/slice-42.md §2.5) ----
+
+export type DiscrepancyKind = Schemas['DiscrepancyKind'];
+export type DiscrepancyDto = Schemas['DiscrepancyDto'];
+export type DiscrepanciesQuery = NonNullable<operations['AttendanceDiscrepanciesController_discrepancies']['parameters']['query']>;

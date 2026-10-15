@@ -30,4 +30,14 @@ export class ChangeContextRepository {
       SELECT set_config('asms.actor_user_id', ${actorUserId.toString()}, true),
              set_config('asms.change_reason', ${reason ?? ''}, true)`;
   }
+
+  /**
+   * Exception 7 (contracts/slice-45.md §3): makes the current transaction READ ONLY, so Postgres
+   * refuses any write in it (SQLSTATE 25006). Like the settings above it lives and dies with the
+   * transaction and touches no table. Called only by SupportReadContext.run, first in its
+   * transaction.
+   */
+  async readOnly(): Promise<void> {
+    await this.txHost.tx.$executeRaw`SET TRANSACTION READ ONLY`;
+  }
 }

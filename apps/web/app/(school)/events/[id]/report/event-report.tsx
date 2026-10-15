@@ -3,6 +3,7 @@
 import { Capability, formatRupees } from '@asms/shared';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/app-shell';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { BackLink, EmptyState, NoPermissionState, QueryStates, StateCard } from '@/components/page-states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unwrap } from '@/lib/api/client';
@@ -55,7 +56,11 @@ export function EventReport({ id }: { id: string }) {
       <QueryStates query={report} notFound={{ title: 'Event not found', description: 'It may have been removed.' }}>
         {(r) => (
           <>
-            <PageHeader title={`Report · ${r.title}`} description="Live figures: they change as payments, participation and expenses are recorded." />
+            <PageHeader
+              title={`Report · ${r.title}`}
+              description="Live figures: they change as payments, participation and expenses are recorded."
+              actions={<DownloadCsvButton path={`/api/v1/events/${encodeURIComponent(id)}/report`} disabled={report.isFetching} />}
+            />
             <div className="mb-4">
               <EventStatusBadge status={r.status} />
             </div>

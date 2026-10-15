@@ -4,6 +4,9 @@ import { ObjectStorage } from '../../common/storage/object-storage';
 // NAMED_EXCEPTION_SITES (eslint.config.mjs) and is the only importer of the fan-out repository.
 import { SchoolFanOutRepository } from '../../repositories/platform/school-fan-out.repository';
 import { StagedUploadRepository } from '../../repositories/staged-upload.repository';
+import { AuditLogRepository } from '../../repositories/audit-log.repository';
+// Slice 43: the commencement imports' preview expiry is folded into this sweep (§3.5).
+import { IMPORT_PREVIEW_TTL_MS, ImportRepository } from '../../repositories/import.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 
 /** Rows read per batch. */
@@ -35,6 +38,8 @@ export class StagedUploadSweep {
     private readonly fanOut: SchoolFanOutRepository,
     private readonly staged: StagedUploadRepository,
     private readonly storage: ObjectStorage,
+    private readonly imports: ImportRepository,
+    private readonly audit: AuditLogRepository,
   ) {}
 
   /** Run daily at 02:30 Asia/Karachi by the worker's repeatable job (src/jobs/worker-host.ts). */
@@ -56,8 +61,26 @@ export class StagedUploadSweep {
       const result = await this.sweepSchool(schoolId, now);
       total.deleted += result.deleted;
       total.failed += result.failed;
+      await this.expireImports(schoolId, now);
     }
     return total;
+  }
+
+  /**
+   * Phase 5 slice 43 (§3.5, R339): a commencement import's preview not committed within 24 hours
+   * fails "expired", with one system audit row each. Returns how many expired.
+   */
+  async expireImports(schoolId: SchoolId, now: Date): Promise<number> {
+    const ids = await this.imports.expire(schoolId, new Date(now.getTime() - IMPORT_PREVIEW_TTL_MS), now);
+    for (const id of ids) {
+      await this.audit.recordSystem(schoolId, {
+        action: 'import.failed',
+        subjectType: 'import',
+        subjectId: id,
+        metadata: { job: 'staged-upload-sweep', reason: 'expired' },
+      });
+    }
+    return ids.length;
   }
 
   async sweepSchool(schoolId: SchoolId, now: Date): Promise<SweepResult> {
@@ -98,4 +121,4 @@ export class StagedUploadSweep {
 }
 
 /** The sweep with the fan-out repository it needs, so only this file imports it. */
-export const STAGED_UPLOAD_SWEEP_PROVIDERS = [StagedUploadSweep, SchoolFanOutRepository];
+export const STAGED_UPLOAD_SWEEP_PROVIDERS = [StagedUploadSweep, SchoolFanOutRepository, ImportRepository];

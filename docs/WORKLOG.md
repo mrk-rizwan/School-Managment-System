@@ -26,9 +26,11 @@ writes the production code.** Do not start application code in a planning sessio
   40 document verification (security PASS, correctness findings fixed, committed with this entry).
   **Wave T is done** (2026-10-15): schema `a8dad20`, then slices 41 transport, 44 biometric staff
   attendance and disputes, 46 audit screen and rule 24's reach (security PASS, correctness findings
-  fixed, committed with this entry). Project = 168.5 / 181.5 days = 93 %. **Next: wave U** — slices
-  42 (reporting, class rankings, CSV), 43 (commencement imports), 45 (platform support access):
-  schema first, then the three in parallel; then slice 47, the phase close and gate.
+  fixed, committed). **Wave U is done** (2026-10-16): schema `a659e76`, then slices 42 reporting,
+  class rankings and CSV, 43 commencement imports, 45 platform support access (security PASS,
+  correctness findings fixed, committed with this entry). Project = 180 / 181.5 days = 99 %.
+  **Next: slice 47, the Phase 5 close** — whole-phase reviews, CLAUDE.md records (exceptions 4 and 7,
+  the 53-key count), the phase gate.
 - **New machine since 2026-10-12** (owner moved to a new SSD): repo at `E:\Node Apps\School Managment System`,
   user profile `C:\Users\mrkri`. **pnpm now works**: pnpm 12 is a native Rust binary that needs the
   Microsoft Visual C++ runtime; its absence (`STATUS_DLL_NOT_FOUND`) was also why pnpm never ran on the
@@ -151,6 +153,50 @@ done before slice 0 are not counted.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-15/16 — Phase 5 wave U: reporting, imports, support access (Opus 5.5 builds, Fable 5.1 reviews)
+
+**Schema `a659e76`:** `class_rankings` / `class_ranking_rows` (versioned per class-term; `results`
+untouched), `imports` (preview rows bounded, no identity numbers, committed-file hash unique),
+`result_sheets.import_id` and `charges.import_id`, `platform_support_sessions` (non-tenant, one open per
+school, three per platform user, 24-hour cap). A session restart interrupted the schema agent; the
+migration had been applied unchanged to both databases. Fix-forward `20261016130000_wave_u_import_guard_narrow`:
+the import guard on `charges` fires only for imported rows (it fired on every late fee and pushed the
+late-fee sweep over budget), and `charges_import_period_check` makes an imported charge period-less in
+the database (so the sweep can never target one).
+
+**Slice 42, reporting:** financial statement (`GET /finance-reports/financial-statement`, both bases,
+reconciled with the Phase 3 reports over the R228 scripted year; a salary advance counts once, as an
+advance), merit list from the live class ranking (computed when the last section of a class-term
+publishes and after a correction, serialised by an advisory lock), student profile (print page), staff
+report, attendance discrepancies (amendments counted as events), CSV on every report tab (formula-
+injection prefix, same-site guard, ≤ 10,000 rows, audited, cost 5). Web only. Not done: CSV on the
+Phase 2 attendance reports (owner question: it would add a throttle to teachers' screens) and a
+settings control for `financialStatementBasis` (API accepts it).
+
+**Slice 43, commencement imports:** past results (one CSV per section and term → exams created on the
+term's last day, marks, a sheet born published with provenance `imported`, exam weight 100 %, no
+message, class ranking) and opening balances (manual charges under the seeded head, due on the file's
+date, capped at the manual-charge maximum, rule-24 inert). **Deviation:** the CSV goes straight to the
+preview route as multipart (≤ 2 MB), is parsed in memory and never stored — `staged_uploads` admits only
+images and PDFs; accepted by the main thread (no file of marks or balances is retained).
+
+**Slice 45, platform support access (named exception 7):** sessions opened with a reason, a ticket and
+a fresh TOTP step; one per school, three per admin; the principal notified and able to revoke; a banner
+for every staff user; six closed read views (settings, a student by admission number, their charges and
+payments, the school's audit log) that never select an identity column, message, document or payroll
+row; read-only in three layers (`SET TRANSACTION READ ONLY`, the query guard refusing every non-model-
+read under the `support` flag, lint); both audit logs on every read; expiry every 5 minutes; logout
+closes sessions first. Two constructors: `schoolIdFromSupportSession` (open owned rows) and
+`schoolIdFromExpiredSupportSession` (only for the expiry's audit rows and notice). The mint now has nine
+constructors. CLAUDE.md is updated at slice 47.
+
+**Reviews.** Security PASS (five Low, all fixed: the expired-session brand, no raw query under the
+flag, logout order, cross-school probes for three raw report queries, the opening-balance cap).
+Correctness: no severe defect; a lost close race answered 200 (fixed, 403), discrepancies counted
+change rows (fixed), the expiry stamp, a verified-basis expense proof. Full API suite before the fix
+round 3,097/3,100 (the one failure the late-fee timing, fixed). **Timing margin:** the fees late-fee
+sweep runs 4.83-4.90 s alone against its 5 s budget — the phase-close performance review should look.
 
 ## 2026-10-14/15 — Phase 5 wave T: transport, biometric attendance, audit screen and rule 24 (Opus 5.5 builds, Fable 5.1 reviews)
 

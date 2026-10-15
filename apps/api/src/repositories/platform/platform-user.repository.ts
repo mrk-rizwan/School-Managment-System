@@ -67,6 +67,18 @@ export class PlatformUserRepository {
     return count === 1;
   }
 
+  /**
+   * A step-up code's step (contracts/slice-45.md §2.1): stored only if it is later than the last
+   * accepted one, so two requests with one code cannot both pass. False when it was not.
+   */
+  async recordTotpStep(id: bigint, step: bigint): Promise<boolean> {
+    const { count } = await this.txHost.tx.platformUser.updateMany({
+      where: { id, status: 'active', OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }] },
+      data: { totpLastStep: step },
+    });
+    return count === 1;
+  }
+
   async confirmTotp(id: bigint, step: bigint, now: Date): Promise<void> {
     await this.txHost.tx.platformUser.update({
       where: { id },

@@ -3,7 +3,7 @@
 import { Capability, SYSTEM_ROLES } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { PlusIcon } from 'lucide-react';
+import { ChartColumnIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
@@ -135,12 +135,19 @@ export function StaffList() {
         title="Staff"
         description="Everyone the school employs: teachers, office staff and the principal."
         actions={
-          can(Capability.STAFF_CREATE) && (
-            <Link href="/staff/new" className={buttonVariants()}>
-              <PlusIcon />
-              New staff member
+          <div className="flex flex-wrap gap-2">
+            {/* Phase 5 slice 42: the staff report, read with staff.view like this list. */}
+            <Link href="/staff/report" className={buttonVariants({ variant: 'outline' })}>
+              <ChartColumnIcon />
+              Staff report
             </Link>
-          )
+            {can(Capability.STAFF_CREATE) && (
+              <Link href="/staff/new" className={buttonVariants()}>
+                <PlusIcon />
+                New staff member
+              </Link>
+            )}
+          </div>
         }
       />
       <div className="mb-4 flex flex-wrap items-start gap-3">

@@ -4,6 +4,7 @@ import { Capability, DEFAULT_REQUIRED_DOCUMENT_TYPES, DOCUMENT_TYPES, ErrorCode,
 import { scopeOf, type SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiException, notFound } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
+import { pageWindow } from '../../common/report-export';
 import { SchoolContext } from '../../common/school-context';
 import { addDays, assertRange, SchoolClock } from '../../common/school-clock';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
@@ -169,8 +170,8 @@ export class DocumentVerificationService {
       to,
       types,
       sort: query.sort ?? 'admittedOn',
-      skip: (query.page - 1) * query.limit,
-      take: query.limit,
+      // A CSV export reads every row up to one past the cap (slice 42, R336).
+      ...pageWindow(query),
     });
     return toPage(
       rows.map((r) => ({

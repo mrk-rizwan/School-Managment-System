@@ -11,6 +11,7 @@ const CARD: ResultDto = {
   id: 'r1',
   sheetId: 'rs1',
   sheetVersion: 1,
+  imported: false,
   schoolName: 'Green Valley School',
   academicYearId: 'y1',
   academicYearName: '2026-27',

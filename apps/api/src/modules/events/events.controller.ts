@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Capability } from '@asms/shared';
+import { Capability, type CsvColumn } from '@asms/shared';
 import type { Request, Response } from 'express';
 import { RequireCapability, RequireCapacity, RequireStaff } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
@@ -10,6 +10,8 @@ import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
 import { ReasonDto } from '../../common/reason.dto';
 import { NoQueryDto } from '../../common/validation';
+import { CsvExport, CsvQueryDto } from '../../common/report-export';
+import { FinanceReportsThrottleGuard } from '../finance-reports/finance-reports.controller';
 import { IDEMPOTENCY_HEADER_DOC } from '../diary/diary.controller';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
 import { PaymentDto } from '../payments/payments.dto';
@@ -34,6 +36,26 @@ import { EventWritesThrottleGuard } from './events.throttle';
 // Phase 5 slice 38 (phase-5-extended.md §5 slice 38; contracts/slice-38.md §1). Common to every
 // route: 401, 403 PERMISSION_DENIED / ORIGIN_REJECTED, 426 (bearer), 429.
 const COMMON = [401, 403, 429];
+
+/** R336: the event report as its lines (the tab's figures), Line and Value. */
+const eventReportRows = (r: EventReportDto): { line: string; value: number }[] => [
+  { line: 'Students invited', value: r.participants.roster },
+  { line: 'Attended', value: r.participants.attended },
+  { line: 'Absent', value: r.participants.absent },
+  { line: 'Excused', value: r.participants.excused },
+  { line: 'Not recorded', value: r.participants.unrecorded },
+  { line: 'Charges', value: r.collections.chargeCount },
+  { line: 'Charged', value: r.collections.charged },
+  { line: 'Collected', value: r.collections.collected },
+  { line: 'Outstanding', value: r.collections.outstanding },
+  { line: 'Expenses', value: r.expenses.total },
+  { line: 'Net (collected - expenses)', value: r.net },
+];
+
+const EVENT_REPORT_COLUMNS: readonly CsvColumn<{ line: string; value: number }>[] = [
+  { header: 'Line', value: (r) => r.line },
+  { header: 'Value', value: (r) => r.value },
+];
 
 /** A keyed create: 201, or 200 with Idempotency-Replayed on a replay. */
 function created<T>(res: Response, outcome: { replayed: boolean }, value: T): T {
@@ -231,10 +253,13 @@ export class EventsController {
   /** §2.8 (R314): live totals. */
   @Get(':id/report')
   @RequireCapability(Capability.FINANCE_REPORT_VIEW, Capability.HOLIDAY_MANAGE)
+  // Slice 42 (R336): a finance report (§3.1), so the finance-reports bucket; its CSV costs 5.
+  @UseGuards(FinanceReportsThrottleGuard)
   @ApiIdParam()
   @ApiOkResponse({ type: EventReportDto })
+  @CsvExport({ family: 'finance_report', report: 'event-report', rows: eventReportRows, columns: EVENT_REPORT_COLUMNS })
   @ApiErrors(...COMMON, 404, 409)
-  report(@IdParam() id: bigint, @Query() _query: NoQueryDto): Promise<EventReportDto> {
+  report(@IdParam() id: bigint, @Query() _query: CsvQueryDto): Promise<EventReportDto> {
     return this.activity.report(id);
   }
 }

@@ -21,6 +21,28 @@ import type { PrismaTxAdapter } from './prisma';
 // every statement filters school_id on every table it reads (test/attendance/repositories.e2e-spec.ts).
 // Listed in RAW_SQL_FILES.
 
+// Phase 5 slice 42 (R335): the discrepancy report's two kinds.
+export const DISCREPANCY_KINDS = ['mixed_day', 'amended_register'] as const;
+export type DiscrepancyKind = (typeof DISCREPANCY_KINDS)[number];
+
+export interface DiscrepancyRow {
+  kind: DiscrepancyKind;
+  date: Date;
+  /** mixed_day only. */
+  studentId: bigint | null;
+  studentName: string | null;
+  classId: bigint;
+  className: string;
+  sectionId: bigint;
+  sectionName: string;
+  /** amended_register only. */
+  period: number | null;
+  presentPeriods: number[];
+  absentPeriods: number[];
+  /** amended_register only: the amendments of the register's marks. */
+  amendments: number | null;
+}
+
 export type DailySummarySort = '-date' | 'date' | 'className';
 
 export interface DailySummaryRow {
@@ -483,5 +505,102 @@ export class AttendanceReportRepository {
         FROM valued
        GROUP BY student_id`;
     return new Map(rows.map((r) => [r.student_id, r.percentage === null ? null : Number(r.percentage)]));
+  }
+
+  /**
+   * Phase 5 slice 42 (R335; contracts/slice-42.md §2.5): the attendance discrepancies of a window,
+   * newest day first — a student present (or late) in one period and absent in another on the same
+   * day with no arrival recorded on any of that day's marks (`mixed_day`), and a register whose
+   * marks were amended more than once (`amended_register`). A page and the total. Read-only.
+   *
+   * An amendment is an event, not a change row: one correction of several students writes one
+   * attendance_mark_changes row per mark, all in one transaction, so they share `changed_by` and
+   * `changed_at` (the column defaults to now(), the transaction's start). The register's
+   * amendments are the distinct (changed_by, changed_at) pairs of its marks' change rows.
+   */
+  async discrepancies(
+    schoolId: SchoolId,
+    query: { from: Date; to: Date; kind?: DiscrepancyKind; skip: number; take: number },
+  ): Promise<{ rows: DiscrepancyRow[]; total: number }> {
+    const from = sqlDate(query.from);
+    const to = sqlDate(query.to);
+    const mixed = Prisma.sql`
+      SELECT 'mixed_day'::text AS kind, m.date, e.student_id, e.class_id, e.section_id, NULL::smallint AS period,
+             array_agg(DISTINCT m.period ORDER BY m.period) FILTER (WHERE m.status IN ('present', 'late')) AS present_periods,
+             array_agg(DISTINCT m.period ORDER BY m.period) FILTER (WHERE m.status = 'absent') AS absent_periods,
+             NULL::int AS amendments
+        FROM attendance_marks m
+        JOIN enrolments e ON e.school_id = m.school_id AND e.id = m.enrolment_id
+       WHERE m.school_id = ${schoolId} AND m.date BETWEEN ${from} AND ${to}
+       GROUP BY m.date, e.student_id, e.class_id, e.section_id
+      HAVING bool_or(m.status IN ('present', 'late')) AND bool_or(m.status = 'absent')
+         AND NOT EXISTS (
+           SELECT 1
+             FROM attendance_arrivals a
+             JOIN attendance_marks am ON am.school_id = a.school_id AND am.id = a.mark_id
+             JOIN enrolments ae ON ae.school_id = am.school_id AND ae.id = am.enrolment_id
+            WHERE a.school_id = ${schoolId} AND am.date = m.date AND ae.student_id = e.student_id)`;
+    const amended = Prisma.sql`
+      SELECT 'amended_register'::text AS kind, r.date, NULL::bigint AS student_id, r.class_id, r.section_id, r.period,
+             NULL::smallint[] AS present_periods, NULL::smallint[] AS absent_periods,
+             COUNT(DISTINCT (c.changed_by, c.changed_at))::int AS amendments
+        FROM attendance_registers r
+        JOIN attendance_marks m ON m.school_id = r.school_id AND m.register_id = r.id
+        JOIN attendance_mark_changes c ON c.school_id = m.school_id AND c.mark_id = m.id
+       WHERE r.school_id = ${schoolId} AND r.date BETWEEN ${from} AND ${to}
+       GROUP BY r.id, r.date, r.class_id, r.section_id, r.period
+      HAVING COUNT(DISTINCT (c.changed_by, c.changed_at)) > 1`;
+    const parts =
+      query.kind === 'mixed_day' ? mixed : query.kind === 'amended_register' ? amended : Prisma.sql`${mixed} UNION ALL ${amended}`;
+    const rows = await this.txHost.tx.$queryRaw<
+      {
+        kind: DiscrepancyKind;
+        date: Date;
+        student_id: bigint | null;
+        student_name: string | null;
+        class_id: bigint;
+        class_name: string;
+        section_id: bigint;
+        section_name: string;
+        period: number | null;
+        present_periods: number[] | null;
+        absent_periods: number[] | null;
+        amendments: number | null;
+        total: number;
+      }[]
+    >`
+      SELECT d.kind, d.date, d.student_id, s.full_name AS student_name, d.class_id, cl.name AS class_name,
+             d.section_id, sec.name AS section_name, d.period, d.present_periods, d.absent_periods, d.amendments,
+             (COUNT(*) OVER ())::int AS total
+        FROM (${parts}) d
+        JOIN classes cl ON cl.school_id = ${schoolId} AND cl.id = d.class_id
+        JOIN sections sec ON sec.school_id = ${schoolId} AND sec.id = d.section_id
+        LEFT JOIN students s ON s.school_id = ${schoolId} AND s.id = d.student_id
+       ORDER BY d.date DESC, d.kind DESC, cl.sort_order, cl.name, sec.name, s.full_name NULLS FIRST, d.period NULLS FIRST, d.student_id
+       LIMIT ${query.take} OFFSET ${query.skip}`;
+    const total =
+      rows[0]?.total ??
+      (query.skip === 0
+        ? 0
+        : ((
+            await this.txHost.tx.$queryRaw<{ total: number }[]>`SELECT COUNT(*)::int AS total FROM (${parts}) d`
+          )[0]?.total ?? 0));
+    return {
+      rows: rows.map((r) => ({
+        kind: r.kind,
+        date: r.date,
+        studentId: r.student_id,
+        studentName: r.student_name,
+        classId: r.class_id,
+        className: r.class_name,
+        sectionId: r.section_id,
+        sectionName: r.section_name,
+        period: r.period,
+        presentPeriods: r.present_periods ?? [],
+        absentPeriods: r.absent_periods ?? [],
+        amendments: r.amendments,
+      })),
+      total,
+    };
   }
 }

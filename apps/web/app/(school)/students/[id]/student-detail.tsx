@@ -12,6 +12,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
+import { PrinterIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -127,7 +128,16 @@ export function StudentDetail({ id }: { id: string }) {
                   <PageHeader
                     title={data.fullName}
                     description={[`Admission no. ${data.admissionNo}`, place].filter(Boolean).join(' · ')}
-                    actions={<StudentStatusBadge status={data.status} />}
+                    actions={
+                      <div className="flex flex-wrap items-center gap-3">
+                        <StudentStatusBadge status={data.status} />
+                        {/* Phase 5 slice 42: the one-page profile, read with student.view like this page. */}
+                        <Link href={`/students/${id}/profile`} className={buttonVariants({ variant: 'outline' })}>
+                          <PrinterIcon />
+                          Print profile
+                        </Link>
+                      </div>
+                    }
                   />
                 </div>
               </div>

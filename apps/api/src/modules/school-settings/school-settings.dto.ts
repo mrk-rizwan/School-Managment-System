@@ -22,10 +22,12 @@ import {
   MIN_FEE_DUE_DAY,
   REMARK_VISIBILITIES,
   SMS_ELIGIBLE_TYPES,
+  STATEMENT_BASES,
   type LateCountsAs,
   type LeaveCountsAs,
   type MessageType,
   type RemarkVisibility,
+  type StatementBasis,
 } from '@asms/shared';
 import { IfPresent, IfPresentNotNull, NameField, Rupees } from '../../common/fields';
 
@@ -167,6 +169,10 @@ export class SchoolSettingsDto {
    */
   @ApiProperty({ ...TIME, nullable: true })
   staffLateAfter: string | null;
+
+  /** Phase 5 R332 (contracts/slice-42.md): the financial statement's default basis (*default* received). */
+  @ApiProperty({ enum: STATEMENT_BASES, enumName: 'StatementBasis' })
+  financialStatementBasis: StatementBasis;
 
   /** When the biometric device token was last rotated; null while the school has none. Never the token. */
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
@@ -355,4 +361,9 @@ export class UpdateSchoolSettingsDto {
   @IsString()
   @Matches(LOCAL_TIME_PATTERN, { message: 'staffLateAfter must be HH:MM' })
   staffLateAfter?: string | null;
+
+  @ApiPropertyOptional({ enum: STATEMENT_BASES, enumName: 'StatementBasis' })
+  @IfPresent()
+  @IsIn(STATEMENT_BASES)
+  financialStatementBasis?: StatementBasis;
 }

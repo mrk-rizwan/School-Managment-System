@@ -1,3 +1,4 @@
+import { MeSupportSessionDto } from '../platform/support/support.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
@@ -200,6 +201,13 @@ export class MeDto {
    */
   @ApiProperty({ type: () => MyChildDto, isArray: true })
   children: MyChildDto[];
+
+  /**
+   * Phase 5 rule 40 (contracts/slice-45.md §1): the platform support session open on the school
+   * now, for the banner every staff page shows; null without staff capacity or when none is open.
+   */
+  @ApiProperty({ type: () => MeSupportSessionDto, nullable: true })
+  supportSession: MeSupportSessionDto | null;
 }
 
 /**

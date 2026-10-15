@@ -38,6 +38,7 @@ const OFFICE_ME: MeDto = {
   assignments: [],
   staffId: null,
   children: [],
+  supportSession: null,
 };
 const PRINCIPAL_ME: MeDto = { ...OFFICE_ME, id: 'u-principal', roles: ['principal'], capabilities: Object.values(Capability).sort() };
 const TEACHER_ME: MeDto = {

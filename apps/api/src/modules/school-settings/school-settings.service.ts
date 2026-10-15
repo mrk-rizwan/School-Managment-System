@@ -65,6 +65,7 @@ const toDto = (
   requiredDocumentTypes: inDocumentOrder(row.requiredDocumentTypes),
   contractWarningDays: row.contractWarningDays,
   staffLateAfter: row.staffLateAfter === null ? null : toLocalTime(row.staffLateAfter),
+  financialStatementBasis: row.financialStatementBasis,
   deviceTokenRotatedAt,
   updatedAt: row.updatedAt,
 });
@@ -109,6 +110,8 @@ const WRITABLE = [
   'contractWarningDays',
   // Phase 5 rule 40 (contracts/slice-44.md).
   'staffLateAfter',
+  // Phase 5 R332 (contracts/slice-42.md).
+  'financialStatementBasis',
 ] as const satisfies readonly (keyof UpdateSchoolSettingsDto & keyof SchoolSettingsDto)[];
 
 const lateFeeAmountRequired = () =>

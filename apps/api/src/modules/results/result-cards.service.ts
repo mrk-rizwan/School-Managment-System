@@ -34,6 +34,7 @@ export function toResultDto(card: ResultCardRecord, schoolName: string): ResultD
     id: card.id.toString(),
     sheetId: card.sheetId.toString(),
     sheetVersion: card.sheetVersion,
+    imported: card.imported,
     schoolName,
     academicYearId: card.academicYearId.toString(),
     academicYearName: card.academicYearName,

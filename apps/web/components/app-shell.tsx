@@ -38,7 +38,7 @@ export function AppShell({
   const items = visibleNav(NAV[nav], new Set(capabilities), new Set(capacities));
 
   return (
-    <div className="min-h-svh lg:grid lg:grid-cols-[15rem_1fr]">
+    <div className="min-h-svh lg:grid lg:grid-cols-[15rem_1fr] print:block">
       {drawerOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/20 lg:hidden"
@@ -48,7 +48,7 @@ export function AppShell({
       )}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r bg-sidebar text-sidebar-foreground transition-transform lg:sticky lg:top-0 lg:h-svh lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r bg-sidebar text-sidebar-foreground transition-transform lg:sticky lg:top-0 lg:h-svh lg:translate-x-0 print:hidden',
           drawerOpen ? 'translate-x-0' : '-translate-x-full',
         )}
         aria-label="Main navigation"
@@ -69,7 +69,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background px-4 sm:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background px-4 sm:px-6 print:hidden">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -82,7 +82,7 @@ export function AppShell({
           <div className="flex-1" />
           {topBarEnd}
         </header>
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 print:p-0">{children}</main>
       </div>
     </div>
   );

@@ -68,3 +68,7 @@ type AdmissionGuardianBody =
 export type AdmissionBody = Omit<Schemas['CreateAdmissionDto'], 'guardians'> & {
   guardians: AdmissionGuardianBody[];
 };
+
+// ---- Phase 5 slice 42: the one-page student profile (contracts/slice-42.md §2.3) ----
+
+export type StudentProfileDto = Schemas['StudentProfileDto'];

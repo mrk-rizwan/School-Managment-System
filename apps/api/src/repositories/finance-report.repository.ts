@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
-import type { ContactCapability, MessageChannel, MessagePriority } from '@asms/shared';
+import type { ContactCapability, MessageChannel, MessagePriority, StatementLineKind } from '@asms/shared';
 import type { SchoolId } from '../tenancy/school-id';
 import { sqlDate } from './attendance-sql';
 import { Prisma } from './generated/prisma/client';
@@ -127,6 +127,17 @@ export interface DailyCashFacts {
   cashExpenses: number;
   shortfallWrittenOff: number;
   salariesPaidCash: number;
+}
+
+// ---------------------------------------------------------------------- financial statement
+
+/** One summed statement line (Phase 5 R332): a kind, the day it happened and the day it was verified. */
+export interface StatementLineRow {
+  kind: StatementLineKind;
+  /** `YYYY-MM-DD`. */
+  occurredOn: string;
+  verifiedOn: string;
+  amount: number;
 }
 
 // ------------------------------------------------------------------------------- reminders
@@ -713,6 +724,77 @@ export class FinanceReportRepository {
       shortfallWrittenOff: outflow?.shortfalls ?? 0,
       salariesPaidCash: outflow?.salaries ?? 0,
     };
+  }
+
+  // -------------------------------------------------------------------- financial statement
+
+  /**
+   * Phase 5 R332 (contracts/slice-42.md §2.1): the statement's money rows of a window, summed per
+   * kind and day pair (the day it happened, the day it was verified or decided), for the shared
+   * financialStatement() to add up. Only rows that count: receipts of non-voided, non-carried-
+   * forward payments (as the collections report); refunds and their reversals, dated when made
+   * (as collections); recorded and approved expenses, a written-off cash shortfall its own kind,
+   * an advance's own expense row left out (the advance is counted from salary_advances); paid
+   * payslips' net and their advance recoveries by paid_on; advances by the day granted (verified:
+   * the day recorded, when the principal granted it). The window filters on the basis's day.
+   */
+  async statementLines(schoolId: SchoolId, w: CollectionWindow): Promise<StatementLineRow[]> {
+    const tz = w.timezone;
+    const from = sqlDate(w.from);
+    const to = sqlDate(w.to);
+    const received = w.basis === 'received';
+    const decided = Prisma.sql`COALESCE(x.decided_at, x.recorded_at)`;
+    const expenseWindow = received
+      ? Prisma.sql`x.spent_on BETWEEN ${from} AND ${to}`
+      : Prisma.sql`${decided} >= ${w.startsAt} AND ${decided} < ${w.endsBefore}`;
+    const advanceWindow = received
+      ? Prisma.sql`a.granted_on BETWEEN ${from} AND ${to}`
+      : Prisma.sql`a.created_at >= ${w.startsAt} AND a.created_at < ${w.endsBefore}`;
+    const rows = await this.txHost.tx.$queryRaw<{ kind: StatementLineKind; occurred_on: string; verified_on: string; amount: number }[]>`
+      SELECT kind, to_char(occurred_on, 'YYYY-MM-DD') AS occurred_on, to_char(verified_on, 'YYYY-MM-DD') AS verified_on,
+             SUM(amount)::int AS amount
+        FROM (
+          SELECT 'receipt' AS kind, p.received_on AS occurred_on, (p.verified_at AT TIME ZONE ${tz})::date AS verified_on,
+                 p.amount AS amount
+            FROM payments p
+            JOIN receipts r ON r.school_id = p.school_id AND r.payment_id = p.id
+           WHERE p.school_id = ${schoolId} AND p.status = 'verified' AND p.method <> 'carried_forward'
+             AND ${this.basisRange(w)}
+          UNION ALL
+          SELECT pr.kind::text, (pr.created_at AT TIME ZONE ${tz})::date, (pr.created_at AT TIME ZONE ${tz})::date, pr.amount
+            FROM payment_reversals pr
+           WHERE pr.school_id = ${schoolId} AND pr.kind IN ('refund', 'refund_reversal')
+             AND pr.created_at >= ${w.startsAt} AND pr.created_at < ${w.endsBefore}
+          UNION ALL
+          SELECT CASE WHEN x.category = 'cash_shortfall' THEN 'shortfall_write_off' ELSE 'expense' END,
+                 x.spent_on, (${decided} AT TIME ZONE ${tz})::date, x.amount
+            FROM expenses x
+           WHERE x.school_id = ${schoolId} AND x.status IN ('recorded', 'approved') AND ${expenseWindow}
+             AND NOT EXISTS (SELECT 1 FROM salary_advances sa WHERE sa.school_id = ${schoolId} AND sa.expense_id = x.id)
+          UNION ALL
+          SELECT 'salary', ps.paid_on, ps.paid_on, ps.net
+            FROM payslips ps
+           WHERE ps.school_id = ${schoolId} AND ps.status = 'paid' AND ps.paid_on BETWEEN ${from} AND ${to}
+          UNION ALL
+          SELECT 'advance_recovery', ps.paid_on, ps.paid_on, ps.advance_recovery
+            FROM payslips ps
+           WHERE ps.school_id = ${schoolId} AND ps.status = 'paid' AND ps.advance_recovery > 0
+             AND ps.paid_on BETWEEN ${from} AND ${to}
+          UNION ALL
+          SELECT 'advance_paid', a.granted_on, (a.created_at AT TIME ZONE ${tz})::date, a.amount
+            FROM salary_advances a
+           WHERE a.school_id = ${schoolId} AND ${advanceWindow}
+        ) lines
+       GROUP BY kind, occurred_on, verified_on`;
+    return rows.map((r) => ({ kind: r.kind, occurredOn: r.occurred_on, verifiedOn: r.verified_on, amount: r.amount }));
+  }
+
+  /** A term's dates (the statement's `termId` window); null when the school has no such term. */
+  termRange(schoolId: SchoolId, termId: bigint): Promise<{ startsOn: Date; endsOn: Date } | null> {
+    return this.txHost.tx.academicTerm.findFirst({
+      where: { schoolId, id: termId },
+      select: { startsOn: true, endsOn: true },
+    });
   }
 
   // ------------------------------------------------------------------------- dues clearance

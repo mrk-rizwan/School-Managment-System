@@ -5,6 +5,8 @@ import { AttendanceAlertRepository } from '../../repositories/attendance-alert.r
 import { AttendanceMarkRepository } from '../../repositories/attendance-mark.repository';
 import { AttendanceRegisterRepository } from '../../repositories/attendance-register.repository';
 import { AttendanceReportRepository } from '../../repositories/attendance-report.repository';
+import { AuditLogRepository } from '../../repositories/audit-log.repository';
+import { AttendanceDiscrepanciesController, AttendanceReportsThrottleGuard } from './discrepancies.controller';
 import { AttendanceSummaryRepository } from '../../repositories/attendance-summary.repository';
 import { ChangeContextRepository } from '../../repositories/change-context.repository';
 import { StudentRepository } from '../../repositories/student.repository';
@@ -39,9 +41,13 @@ import { TimetablePeriods } from './timetable-periods';
  */
 @Module({
   imports: [CalendarModule, MessagingModule],
-  controllers: [AttendanceController, MyAttendanceController],
+  // Phase 5 slice 42 (R335): the discrepancy report.
+  controllers: [AttendanceController, MyAttendanceController, AttendanceDiscrepanciesController],
   providers: [
     SchoolContext,
+    AttendanceReportsThrottleGuard,
+    // The CSV export's audit row (common/report-export.ts).
+    AuditLogRepository,
     AttendanceAccess,
     SchoolSettingsReader,
     RegistersService,
@@ -68,6 +74,7 @@ import { TimetablePeriods } from './timetable-periods';
     TimetableReadsRepository,
     TimetablePeriods,
   ],
-  exports: [MarkHistoryProbe, AttendanceAlertProcessor, AttendanceRollup, AttendanceSweeps, RegisterDeadlineSweep],
+  // AttendanceReadsService: the student profile's attendance (Phase 5 slice 42).
+  exports: [MarkHistoryProbe, AttendanceAlertProcessor, AttendanceRollup, AttendanceSweeps, RegisterDeadlineSweep, AttendanceReadsService],
 })
 export class AttendanceModule {}

@@ -24,6 +24,7 @@ import { nameSchema } from '@/lib/validation';
 import { SchoolStatusBadge, useTimezoneOptions } from '../school-ui';
 import { IssuePrincipalLogin } from './issue-principal-login';
 import { MessagingKnobsForm } from './messaging-knobs';
+import { OpenSupportSession } from '../../support/open-support-session';
 import { SchoolBilling } from './school-billing';
 import { StatusChange } from './status-change';
 
@@ -56,6 +57,8 @@ export function SchoolDetail({ id }: { id: string }) {
                 actions={
                   !terminated && (
                     <>
+                      {/* Phase 5 slice 45: read-only support access, with a fresh code. */}
+                      <OpenSupportSession school={data} />
                       <IssuePrincipalLogin school={data} />
                       <StatusChange school={data} />
                     </>

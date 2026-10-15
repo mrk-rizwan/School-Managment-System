@@ -45,6 +45,8 @@ export function meFixture(overrides: Partial<MeDto> = {}): MeDto {
     assignments: [],
     children: [],
     staffId: '5',
+    // Phase 5 slice 45: no platform support session open (the banner is web-only).
+    supportSession: null,
     ...overrides,
   };
 }

@@ -27,16 +27,19 @@ import { NO_PLACEMENT, PlacementSelects, type Placement } from '../../students/_
 import { AttendanceTabs } from '../_lib/attendance-nav';
 import { AlertCell, STATUS_LABELS, attendanceKeys } from '../_lib/attendance-ui';
 import { DateRangeFields, rangeProblem } from '../_lib/date-range';
+import { DiscrepanciesReport } from './discrepancies-report';
 
 // contracts/slice-11.md §10.3, §10.5, §13 "Reports": absentees and late arrivals of a day, with
 // what the family was told, and attendance percentages over a range. All need
 // attendance.student.view_all (§1.1); a teacher who opens the page sees the no-access state.
 
-type Report = 'absentees' | 'late' | 'percentage';
+type Report = 'absentees' | 'late' | 'percentage' | 'discrepancies';
 const REPORTS: { id: Report; label: string }[] = [
   { id: 'absentees', label: 'Absent' },
   { id: 'late', label: 'Late' },
   { id: 'percentage', label: 'Percentage' },
+  // Phase 5 slice 42 (contracts/slice-42.md §2.5): marks that disagree, and registers amended twice.
+  { id: 'discrepancies', label: 'Discrepancies' },
 ];
 const LIMIT = 25;
 
@@ -64,7 +67,9 @@ export function ReportsScreen() {
           </button>
         ))}
       </div>
-      {report === 'percentage' ? (
+      {report === 'discrepancies' ? (
+        <DiscrepanciesReport />
+      ) : report === 'percentage' ? (
         <PercentageReport placement={placement} onPlacement={setPlacement} />
       ) : (
         <DayReport key={report} kind={report} placement={placement} onPlacement={setPlacement} />

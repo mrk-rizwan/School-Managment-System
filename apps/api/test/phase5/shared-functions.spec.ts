@@ -14,6 +14,7 @@ import {
   DEFAULT_PASSWORD_INERT_CAPABILITIES,
   financialStatement,
   markFromPunch,
+  MAX_RUPEES,
   NEVER_GRANTABLE,
   parseOpeningBalances,
   parsePastResults,
@@ -393,6 +394,22 @@ describe('imports/opening-balances.ts (R339, R342)', () => {
     expect(result.ok && result.rows).toEqual([]);
   });
 
+  it('bounds the amount by MAX_RUPEES (R229): the bound itself passes, one rupee over is invalid_amount', () => {
+    const at = parseOpeningBalances(bytes(`admission_no,amount
+101,${MAX_RUPEES}
+`), ctx);
+    expect(at).toMatchObject({ ok: true, errors: [], rows: [{ amount: MAX_RUPEES }] });
+    const over = parseOpeningBalances(bytes(`admission_no,amount
+101,${MAX_RUPEES + 1}
+102,999999999
+`), ctx);
+    expect(over.ok && over.errors.map((e) => [e.row, e.field, e.code])).toEqual([
+      [2, 'amount', 'invalid_amount'],
+      [3, 'amount', 'invalid_amount'],
+    ]);
+    expect(over.ok && over.rows).toEqual([]);
+  });
+
   it('two rows with a blank admission number are each "required", never "duplicate" (wave R review)', () => {
     const result = parseOpeningBalances(bytes('admission_no,amount,note\n,5,First\n,6,Second\n'), ctx);
     expect(result.ok && result.errors.map((e) => [e.row, e.field, e.code])).toEqual([
@@ -439,8 +456,8 @@ describe('capabilities.ts and rule24.ts (§0.36, R325, R354, R355)', () => {
     const document = JSON.parse(readFileSync(join(__dirname, '../../openapi/school.json'), 'utf8')) as {
       paths: Record<string, Record<string, unknown>>;
     };
-    // Built by wave T (slices 44, 46 and the fix round's device_token.revoke); slice 43 builds the import.
-    const LATER = new Set(['import.opening_balances']);
+    // Built by wave T (slices 44, 46 and the fix round's device_token.revoke) and slice 43 (the import).
+    const LATER = new Set<string>();
     for (const [action, route] of Object.entries(DEFAULT_PASSWORD_INERT_ACTIONS)) {
       const path = `/api/v1${route.path.replace(/:([a-zA-Z]+)/g, '{$1}')}`;
       const exists = document.paths[path]?.[route.method.toLowerCase()] !== undefined;

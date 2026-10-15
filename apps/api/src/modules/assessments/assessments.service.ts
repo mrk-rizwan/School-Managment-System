@@ -516,4 +516,88 @@ export class AssessmentsService {
     }
     return result;
   }
+
+  // ------------------------------------------------------------- commencement import (slice 43)
+
+  /**
+   * Phase 5 rule 39, R340: a past-results import's exams and marks, inside the import's commit
+   * transaction (ImportsService). The section-term's exam of each subject is created when missing
+   * (held on `heldOn`, the term's last day; max from the preview), then one live mark per row and
+   * subject: `null` is an absence (counts 0, prints "Ab"). The caller has refused the import when
+   * any live mark exists for the section-term, so nothing is superseded. Returns the counts.
+   */
+  async importExamMarks(
+    schoolId: SchoolId,
+    scope: MarksScope<'write'>,
+    input: {
+      academicYearId: bigint;
+      termId: bigint;
+      termName: string;
+      classId: bigint;
+      sectionId: bigint;
+      heldOn: Date;
+      enteredBy: bigint;
+      subjects: readonly { classSubjectId: bigint; subjectId: bigint; maxMarks: number }[];
+      rows: readonly {
+        enrolmentId: bigint;
+        studentId: bigint;
+        marks: readonly { classSubjectId: bigint; obtained: number | null }[];
+      }[];
+    },
+  ): Promise<{ examsCreated: number; marks: number }> {
+    const liveExams = () =>
+      this.assessments.list(
+        schoolId,
+        scope,
+        { termId: input.termId, sectionId: input.sectionId, kind: 'exam', includeVoided: false },
+        { skip: 0, take: ALL_CLASSES, ascending: true },
+      );
+    const present = new Set((await liveExams()).rows.map((e) => e.classSubjectId));
+    const examsCreated = await this.assessments.createExams(
+      schoolId,
+      scope,
+      input.subjects
+        .filter((s) => !present.has(s.classSubjectId))
+        .map((s) => ({
+          academicYearId: input.academicYearId,
+          termId: input.termId,
+          classId: input.classId,
+          sectionId: input.sectionId,
+          classSubjectId: s.classSubjectId,
+          subjectId: s.subjectId,
+          name: `${input.termName} exam`.slice(0, 80),
+          maxMarks: s.maxMarks,
+          heldOn: input.heldOn,
+          createdBy: input.enteredBy,
+        })),
+    );
+    const exams = new Map((await liveExams()).rows.map((e) => [e.classSubjectId, e]));
+    let marks = 0;
+    for (const subject of input.subjects) {
+      const exam = exams.get(subject.classSubjectId);
+      if (!exam) throw notFound();
+      const written = await this.marks.insertLiveMany(
+        schoolId,
+        scope,
+        exam,
+        input.rows.map((row) => {
+          const obtained =
+            row.marks.find((m) => m.classSubjectId === subject.classSubjectId)?.obtained ?? null;
+          return {
+            enrolmentId: row.enrolmentId,
+            studentId: row.studentId,
+            obtained,
+            absent: obtained === null,
+            excused: false,
+            supersedesId: null,
+            correctionReason: null,
+            enteredBy: input.enteredBy,
+            clientEntryKey: null,
+          };
+        }),
+      );
+      marks += written.length;
+    }
+    return { examsCreated, marks };
+  }
 }

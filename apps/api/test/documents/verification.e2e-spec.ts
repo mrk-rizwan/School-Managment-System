@@ -388,6 +388,25 @@ describe('slice 40: document verification (e2e)', () => {
 
       expect((await get(`/documents/incomplete-admissions?admittedFrom=${isoDay(1)}&admittedTo=${isoDay()}`, w.office)).status).toBe(422);
       expect((await get('/documents/incomplete-admissions?admittedFrom=2026-02-30', w.office)).status).toBe(422);
+
+      // Phase 5 slice 42 (R336): the CSV holds the rows the default view shows, every row (no
+      // page), audited as a document_report export; page/limit refused with it.
+      const csv = await http()
+        .get('/api/v1/documents/incomplete-admissions?format=csv')
+        .set('Cookie', w.office.cookie)
+        .set('Sec-Fetch-Site', 'same-origin');
+      expect(csv.status).toBe(200);
+      expect(csv.headers['content-disposition']).toMatch(/^attachment; filename="incomplete-admissions-\d{4}-\d{2}-\d{2}\.csv"$/);
+      const [header, ...lines] = csv.text.split('\r\n');
+      expect(header).toBe('Student,Admission no,Admitted on,Class,Section,Missing,Awaiting verification,Rejected');
+      expect(lines.at(-1)).toBe('');
+      const cells = lines.slice(0, -1).map((line) => line.split(','));
+      expect(cells.map((c) => [c[0], c[2], c[5], c[6], c[7]])).toEqual(
+        byDefault.data.map((r) => [r.fullName, r.admittedOn, r.missing.join(' '), r.awaiting.join(' '), r.rejected.join(' ')]),
+      );
+      const exported = await db.auditLog.findFirstOrThrow({ where: { schoolId: w.school.id, action: 'document_report.exported' } });
+      expect(exported.metadata).toMatchObject({ report: 'incomplete-admissions', rowCount: 3, filters: {} });
+      expect((await get('/documents/incomplete-admissions?format=csv&limit=2', w.office)).status).toBe(422);
     });
   });
 

@@ -53,6 +53,8 @@ export const SCHEDULES: readonly { job: string; every?: number; pattern?: string
   { job: JOB.claimImageSweep, pattern: '0 15 2 * * *' },
   // Phase 5 slice 39 (§3.5, R319): contracts ending within the warning lead, at 06:00 school time.
   { job: JOB.contractExpiryWarn, pattern: '0 0 6 * * *' },
+  // Phase 5 slice 45 (§3.5): support sessions past their time close within 5 minutes.
+  { job: JOB.supportSessionExpire, every: 5 * MINUTE },
 ];
 
 /** Concurrency per queue, explicit (plan §3). */

@@ -6816,6 +6816,93 @@
         ],
         "type": "object"
       },
+      "DiscrepancyDto": {
+        "properties": {
+          "absentPeriods": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "amendments": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscrepancyKind"
+              }
+            ]
+          },
+          "period": {
+            "description": "amended_register: the register period",
+            "nullable": true,
+            "type": "integer"
+          },
+          "presentPeriods": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "studentId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "date",
+          "studentId",
+          "studentName",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "period",
+          "presentPeriods",
+          "absentPeriods",
+          "amendments"
+        ],
+        "type": "object"
+      },
+      "DiscrepancyKind": {
+        "enum": [
+          "mixed_day",
+          "amended_register"
+        ],
+        "type": "string"
+      },
+      "DiscrepancySort": {
+        "enum": [
+          "-date"
+        ],
+        "type": "string"
+      },
       "DisputeStatus": {
         "description": "The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)",
         "enum": [
@@ -8533,6 +8620,42 @@
         },
         "type": "object"
       },
+      "FinancialStatementDto": {
+        "properties": {
+          "basis": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementBasis"
+              }
+            ]
+          },
+          "from": {
+            "format": "date",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/StatementFiguresDto"
+            },
+            "type": "array"
+          },
+          "to": {
+            "format": "date",
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/StatementFiguresDto"
+          }
+        },
+        "required": [
+          "basis",
+          "from",
+          "to",
+          "months",
+          "total"
+        ],
+        "type": "object"
+      },
       "ForgotPasswordDto": {
         "properties": {
           "schoolCode": {
@@ -9601,6 +9724,473 @@
         ],
         "type": "string"
       },
+      "ImportDetailDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "classId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "committedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "committedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "dueOn": {
+            "example": "2026-11-10",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "error": {
+            "description": "Why it failed (\"expired\")",
+            "nullable": true,
+            "type": "string"
+          },
+          "errorCount": {
+            "description": "Every row error; the first 100 are listed",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowErrorDto"
+            },
+            "type": "array"
+          },
+          "expiresAt": {
+            "description": "A preview not committed by then fails as \"expired\"",
+            "format": "date-time",
+            "type": "string"
+          },
+          "failedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "fileName": {
+            "description": "As uploaded; render as text",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportKind"
+              }
+            ]
+          },
+          "resultSheetId": {
+            "description": "Past results, once committed: the imported sheet",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "rowCount": {
+            "description": "Data rows in the file",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rows": {
+            "description": "Empty while the file has row errors",
+            "items": {
+              "$ref": "#/components/schemas/ImportRowDto"
+            },
+            "type": "array"
+          },
+          "sectionId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportStatus"
+              }
+            ]
+          },
+          "subjects": {
+            "description": "Past results only: the columns, in print order",
+            "items": {
+              "$ref": "#/components/schemas/ImportSubjectDto"
+            },
+            "type": "array"
+          },
+          "termId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "totalAdvance": {
+            "description": "Opening balances: the advances that apply",
+            "nullable": true,
+            "type": "integer"
+          },
+          "totalAmount": {
+            "description": "Opening balances: the sum charged",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "fileName",
+          "rowCount",
+          "academicYearId",
+          "academicYearName",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "termId",
+          "termName",
+          "dueOn",
+          "createdByName",
+          "createdAt",
+          "expiresAt",
+          "committedByName",
+          "committedAt",
+          "failedAt",
+          "error",
+          "errorCount",
+          "errors",
+          "subjects",
+          "rows",
+          "totalAmount",
+          "totalAdvance",
+          "resultSheetId"
+        ],
+        "type": "object"
+      },
+      "ImportDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "classId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "nullable": true,
+            "type": "string"
+          },
+          "committedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "committedByName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "dueOn": {
+            "example": "2026-11-10",
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "error": {
+            "description": "Why it failed (\"expired\")",
+            "nullable": true,
+            "type": "string"
+          },
+          "errorCount": {
+            "description": "Every row error; the first 100 are listed",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowErrorDto"
+            },
+            "type": "array"
+          },
+          "expiresAt": {
+            "description": "A preview not committed by then fails as \"expired\"",
+            "format": "date-time",
+            "type": "string"
+          },
+          "failedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "fileName": {
+            "description": "As uploaded; render as text",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportKind"
+              }
+            ]
+          },
+          "rowCount": {
+            "description": "Data rows in the file",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sectionId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportStatus"
+              }
+            ]
+          },
+          "termId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "fileName",
+          "rowCount",
+          "academicYearId",
+          "academicYearName",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "termId",
+          "termName",
+          "dueOn",
+          "createdByName",
+          "createdAt",
+          "expiresAt",
+          "committedByName",
+          "committedAt",
+          "failedAt",
+          "error",
+          "errorCount",
+          "errors"
+        ],
+        "type": "object"
+      },
+      "ImportKind": {
+        "enum": [
+          "past_results",
+          "opening_balances"
+        ],
+        "type": "string"
+      },
+      "ImportMarkDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "obtained": {
+            "description": "Null is \"Ab\" (absent)",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "obtained"
+        ],
+        "type": "object"
+      },
+      "ImportRowDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "advance": {
+            "description": "Opening balances only: the child's advance in the year at preview, which pays the charge on commit",
+            "nullable": true,
+            "type": "integer"
+          },
+          "amount": {
+            "description": "Opening balances only",
+            "nullable": true,
+            "type": "integer"
+          },
+          "marks": {
+            "description": "Past results only, in subject order",
+            "items": {
+              "$ref": "#/components/schemas/ImportMarkDto"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          },
+          "row": {
+            "description": "The file line",
+            "minimum": 2,
+            "type": "integer"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "row",
+          "studentId",
+          "admissionNo",
+          "studentName",
+          "marks",
+          "amount",
+          "note",
+          "advance"
+        ],
+        "type": "object"
+      },
+      "ImportRowErrorCode": {
+        "enum": [
+          "first_column",
+          "unknown_column",
+          "missing_column",
+          "duplicate_column",
+          "required",
+          "unknown_admission_no",
+          "not_on_roster",
+          "duplicate",
+          "missing_from_file",
+          "invalid_mark",
+          "over_max",
+          "invalid_amount",
+          "identity_number"
+        ],
+        "type": "string"
+      },
+      "ImportRowErrorDto": {
+        "properties": {
+          "admissionNo": {
+            "description": "On missing_from_file: the roster student's admission number",
+            "type": "string"
+          },
+          "code": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportRowErrorCode"
+              }
+            ]
+          },
+          "field": {
+            "description": "The column: admission_no, a subject name, amount, note",
+            "type": "string"
+          },
+          "row": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row",
+          "field",
+          "code"
+        ],
+        "type": "object"
+      },
+      "ImportStatus": {
+        "enum": [
+          "previewed",
+          "committed",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "ImportSubjectDto": {
+        "properties": {
+          "classSubjectId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "maxMarks": {
+            "description": "The exam's max marks",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classSubjectId",
+          "name",
+          "maxMarks"
+        ],
+        "type": "object"
+      },
       "InboxItemDto": {
         "properties": {
           "announcementId": {
@@ -10295,6 +10885,15 @@
           "staffId": {
             "nullable": true,
             "type": "string"
+          },
+          "supportSession": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MeSupportSessionDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": [
@@ -10314,6 +10913,7 @@
           "assignments",
           "staffId",
           "children",
+          "supportSession",
           "bearerToken"
         ],
         "type": "object"
@@ -10874,6 +11474,15 @@
           "staffId": {
             "nullable": true,
             "type": "string"
+          },
+          "supportSession": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MeSupportSessionDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": [
@@ -10892,7 +11501,8 @@
           "capacities",
           "assignments",
           "staffId",
-          "children"
+          "children",
+          "supportSession"
         ],
         "type": "object"
       },
@@ -10922,6 +11532,191 @@
           "status"
         ],
         "type": "object"
+      },
+      "MeSupportSessionDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "MeritListDto": {
+        "properties": {
+          "classId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "computedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MeritListRowDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pendingSections": {
+            "description": "While pending: the sections not yet published",
+            "items": {
+              "$ref": "#/components/schemas/SectionRefDto"
+            },
+            "type": "array"
+          },
+          "rankingId": {
+            "description": "The live version read",
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MeritListStatus"
+              }
+            ]
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termName": {
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "trigger": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RankingTrigger"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "classId",
+          "className",
+          "termId",
+          "termName",
+          "rankingId",
+          "computedAt",
+          "trigger",
+          "pendingSections",
+          "data",
+          "page",
+          "limit",
+          "total"
+        ],
+        "type": "object"
+      },
+      "MeritListRowDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "classPosition": {
+            "description": "Null: nothing assessed (listed last)",
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "passed": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "positionOf": {
+            "minimum": 1,
+            "nullable": true,
+            "type": "integer"
+          },
+          "resultId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "studentName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "classPosition",
+          "positionOf",
+          "resultId",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "sectionId",
+          "sectionName",
+          "percentBp",
+          "grade",
+          "passed"
+        ],
+        "type": "object"
+      },
+      "MeritListSort": {
+        "enum": [
+          "position"
+        ],
+        "type": "string"
+      },
+      "MeritListStatus": {
+        "enum": [
+          "ranked",
+          "pending",
+          "not_held"
+        ],
+        "type": "string"
       },
       "MessageChannel": {
         "enum": [
@@ -12755,6 +13550,31 @@
         ],
         "type": "object"
       },
+      "OpeningBalancesUploadDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "dueOn": {
+            "description": "Today or later, school time",
+            "example": "2026-11-10",
+            "format": "date",
+            "type": "string"
+          },
+          "file": {
+            "description": "The CSV, UTF-8, at most 2 MB",
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "dueOn",
+          "file"
+        ],
+        "type": "object"
+      },
       "OutstandingGroup": {
         "enum": [
           "class",
@@ -12861,6 +13681,29 @@
           "overall"
         ],
         "type": "string"
+      },
+      "PastResultsUploadDto": {
+        "properties": {
+          "file": {
+            "description": "The CSV, UTF-8, at most 2 MB",
+            "format": "binary",
+            "type": "string"
+          },
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "termId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sectionId",
+          "termId",
+          "file"
+        ],
+        "type": "object"
       },
       "PaymentAccountDto": {
         "properties": {
@@ -13900,6 +14743,252 @@
         ],
         "type": "object"
       },
+      "ProfileAttendanceDto": {
+        "properties": {
+          "absent": {
+            "type": "number"
+          },
+          "countedDays": {
+            "type": "number"
+          },
+          "dateFrom": {
+            "format": "date",
+            "type": "string"
+          },
+          "dateTo": {
+            "format": "date",
+            "type": "string"
+          },
+          "late": {
+            "type": "number"
+          },
+          "onLeave": {
+            "type": "number"
+          },
+          "percentage": {
+            "description": "One decimal; null when no recorded days",
+            "nullable": true,
+            "type": "number"
+          },
+          "present": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "dateFrom",
+          "dateTo",
+          "percentage",
+          "countedDays",
+          "present",
+          "absent",
+          "late",
+          "onLeave"
+        ],
+        "type": "object"
+      },
+      "ProfileDocumentItemDto": {
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentChecklistStatus"
+              }
+            ]
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentType"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ProfileDocumentsDto": {
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileDocumentItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "complete",
+          "items"
+        ],
+        "type": "object"
+      },
+      "ProfileDuesDto": {
+        "properties": {
+          "advance": {
+            "description": "Whole rupees",
+            "minimum": 0,
+            "type": "number"
+          },
+          "cleared": {
+            "type": "boolean"
+          },
+          "outstanding": {
+            "description": "Whole rupees",
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "outstanding",
+          "advance",
+          "cleared"
+        ],
+        "type": "object"
+      },
+      "ProfileEnrolmentDto": {
+        "properties": {
+          "academicYearId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "academicYearName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "sectionName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearId",
+          "academicYearName",
+          "className",
+          "sectionName",
+          "rollNo"
+        ],
+        "type": "object"
+      },
+      "ProfileResultDto": {
+        "properties": {
+          "academicYearName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "classPosition": {
+            "description": "In the class, from the term's live class ranking",
+            "nullable": true,
+            "type": "number"
+          },
+          "classPositionOf": {
+            "nullable": true,
+            "type": "number"
+          },
+          "grade": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFinal": {
+            "type": "boolean"
+          },
+          "passed": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "percentBp": {
+            "maximum": 10000,
+            "minimum": 0,
+            "nullable": true,
+            "type": "integer"
+          },
+          "position": {
+            "description": "In the section (as the card prints it)",
+            "nullable": true,
+            "type": "number"
+          },
+          "positionOf": {
+            "nullable": true,
+            "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "resultId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "revised": {
+            "type": "boolean"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "termName": {
+            "description": "Null on the final result",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "resultId",
+          "academicYearName",
+          "termName",
+          "isFinal",
+          "className",
+          "sectionName",
+          "percentBp",
+          "grade",
+          "passed",
+          "position",
+          "positionOf",
+          "classPosition",
+          "classPositionOf",
+          "revised",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
+      "ProfileTransportDto": {
+        "properties": {
+          "pickupTime": {
+            "description": "HH:MM",
+            "nullable": true,
+            "type": "string"
+          },
+          "routeName": {
+            "type": "string"
+          },
+          "startsOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "stopName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "routeName",
+          "stopName",
+          "pickupTime",
+          "startsOn"
+        ],
+        "type": "object"
+      },
       "PromotionDecisionDto": {
         "properties": {
           "admissionNo": {
@@ -14463,6 +15552,14 @@
           "reason"
         ],
         "type": "object"
+      },
+      "RankingTrigger": {
+        "enum": [
+          "publish",
+          "correction",
+          "import"
+        ],
+        "type": "string"
       },
       "ReadmissionResultDto": {
         "properties": {
@@ -15423,6 +16520,12 @@
         ],
         "type": "object"
       },
+      "ReportFormat": {
+        "enum": [
+          "csv"
+        ],
+        "type": "string"
+      },
       "ReportRowDto": {
         "properties": {
           "amount": {
@@ -15626,6 +16729,10 @@
             "pattern": "^[1-9][0-9]{0,18}$",
             "type": "string"
           },
+          "imported": {
+            "description": "From a commencement import (Phase 5 R343): the card prints \"Imported\"",
+            "type": "boolean"
+          },
           "isFinal": {
             "type": "boolean"
           },
@@ -15736,6 +16843,7 @@
           "id",
           "sheetId",
           "sheetVersion",
+          "imported",
           "schoolName",
           "academicYearId",
           "academicYearName",
@@ -16922,6 +18030,13 @@
             "minimum": 0,
             "type": "number"
           },
+          "financialStatementBasis": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementBasis"
+              }
+            ]
+          },
           "lateAdviceEnabled": {
             "type": "boolean"
           },
@@ -17067,6 +18182,7 @@
           "requiredDocumentTypes",
           "contractWarningDays",
           "staffLateAfter",
+          "financialStatementBasis",
           "deviceTokenRotatedAt",
           "updatedAt"
         ],
@@ -17080,6 +18196,68 @@
           "terminated"
         ],
         "type": "string"
+      },
+      "SchoolSupportSessionDto": {
+        "properties": {
+          "closedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "endKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportSessionEnd"
+              }
+            ],
+            "nullable": true
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revokeReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportSessionStatus"
+              }
+            ]
+          },
+          "supportName": {
+            "type": "string"
+          },
+          "ticketRef": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "supportName",
+          "reason",
+          "ticketRef",
+          "openedAt",
+          "expiresAt",
+          "status",
+          "closedAt",
+          "endKind",
+          "revokeReason"
+        ],
+        "type": "object"
       },
       "SectionChangeResultDto": {
         "properties": {
@@ -17313,6 +18491,22 @@
           "sectionId",
           "classId",
           "name"
+        ],
+        "type": "object"
+      },
+      "SectionRefDto": {
+        "properties": {
+          "sectionId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName"
         ],
         "type": "object"
       },
@@ -18093,6 +19287,15 @@
         ],
         "type": "string"
       },
+      "StaffContractStanding": {
+        "enum": [
+          "none",
+          "live",
+          "expired_not_ended",
+          "ended"
+        ],
+        "type": "string"
+      },
       "StaffContractStatus": {
         "enum": [
           "live",
@@ -18587,6 +19790,138 @@
         ],
         "type": "object"
       },
+      "StaffReportDto": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/StaffReportRowDto"
+            },
+            "type": "array"
+          },
+          "from": {
+            "format": "date",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "to": {
+            "format": "date",
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "data",
+          "page",
+          "limit",
+          "total"
+        ],
+        "type": "object"
+      },
+      "StaffReportRowDto": {
+        "properties": {
+          "absent": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "attendancePercent": {
+            "nullable": true,
+            "type": "number"
+          },
+          "contractEndingSoon": {
+            "type": "boolean"
+          },
+          "contractEndsOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "contractStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffContractStanding"
+              }
+            ]
+          },
+          "contractType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContractType"
+              }
+            ],
+            "nullable": true
+          },
+          "designation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "late": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "leaveTakenDays": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "onLeave": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "present": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "staffId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "staffId",
+          "fullName",
+          "designation",
+          "status",
+          "present",
+          "late",
+          "absent",
+          "onLeave",
+          "attendancePercent",
+          "leaveTakenDays",
+          "contractStatus",
+          "contractType",
+          "contractEndsOn",
+          "contractEndingSoon"
+        ],
+        "type": "object"
+      },
+      "StaffReportSort": {
+        "enum": [
+          "staffName"
+        ],
+        "type": "string"
+      },
       "StaffSort": {
         "enum": [
           "fullName",
@@ -18806,6 +20141,13 @@
         ],
         "type": "object"
       },
+      "StatementBasis": {
+        "enum": [
+          "received",
+          "verified"
+        ],
+        "type": "string"
+      },
       "StatementChargesPageDto": {
         "properties": {
           "data": {
@@ -18876,6 +20218,107 @@
           "adjustments",
           "concessions",
           "totals"
+        ],
+        "type": "object"
+      },
+      "StatementFiguresDto": {
+        "properties": {
+          "advanceRecoveries": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "advancesPaid": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "expenditure": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "expenses": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "from": {
+            "format": "date",
+            "type": "string"
+          },
+          "net": {
+            "description": "Whole rupees; may be negative",
+            "type": "number"
+          },
+          "netReceipts": {
+            "description": "Whole rupees; may be negative",
+            "type": "number"
+          },
+          "period": {
+            "type": "string"
+          },
+          "receipts": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "refundReversals": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "refunds": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "salaries": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "shortfallWriteOffs": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "staff": {
+            "description": "Whole rupees",
+            "maximum": 10000000,
+            "minimum": 0,
+            "type": "number"
+          },
+          "to": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "from",
+          "to",
+          "receipts",
+          "refundReversals",
+          "refunds",
+          "netReceipts",
+          "expenses",
+          "shortfallWriteOffs",
+          "salaries",
+          "advancesPaid",
+          "advanceRecoveries",
+          "staff",
+          "expenditure",
+          "net"
         ],
         "type": "object"
       },
@@ -19558,6 +21001,109 @@
         ],
         "type": "object"
       },
+      "StudentProfileDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "admittedOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "asOf": {
+            "format": "date",
+            "type": "string"
+          },
+          "attendance": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileAttendanceDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileEnrolmentDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "dateOfBirth": {
+            "format": "date",
+            "type": "string"
+          },
+          "documents": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileDocumentsDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "dues": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileDuesDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "latestResult": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileResultDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentStatus"
+              }
+            ]
+          },
+          "studentId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "transport": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfileTransportDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "studentId",
+          "fullName",
+          "admissionNo",
+          "status",
+          "admittedOn",
+          "dateOfBirth",
+          "current",
+          "attendance",
+          "latestResult",
+          "dues",
+          "documents",
+          "transport",
+          "asOf"
+        ],
+        "type": "object"
+      },
       "StudentSort": {
         "enum": [
           "fullName",
@@ -19951,6 +21497,21 @@
           "outcome"
         ],
         "type": "object"
+      },
+      "SupportSessionEnd": {
+        "enum": [
+          "closed",
+          "revoked",
+          "expired"
+        ],
+        "type": "string"
+      },
+      "SupportSessionStatus": {
+        "enum": [
+          "open",
+          "ended"
+        ],
+        "type": "string"
       },
       "SuppressionCountDto": {
         "properties": {
@@ -21891,6 +23452,13 @@
             "maximum": 10,
             "minimum": 0,
             "type": "number"
+          },
+          "financialStatementBasis": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StatementBasis"
+              }
+            ]
           },
           "lateAdviceEnabled": {
             "type": "boolean"
@@ -26838,6 +28406,230 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/attendance-reports/discrepancies": {
+      "get": {
+        "operationId": "AttendanceDiscrepanciesController_discrepancies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Inclusive; at most 92 days before to",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: both kinds",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiscrepancyKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DiscrepancySort"
+            }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DiscrepancyDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DiscrepancyDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -34287,12 +36079,53 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/IncompleteAdmissionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "properties": {
                     "data": {
@@ -34333,6 +36166,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -34340,6 +36178,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -34353,6 +36196,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -34363,6 +36211,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -34370,6 +36223,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -36534,12 +38392,26 @@
               "pattern": "^[1-9][0-9]{0,18}$",
               "type": "string"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/EventReportDto"
                 }
@@ -36553,6 +38425,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -36560,6 +38437,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -36573,6 +38455,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -36580,6 +38467,11 @@
           "409": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -36593,6 +38485,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -36600,6 +38497,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -38853,12 +40755,26 @@
             "schema": {
               "$ref": "#/components/schemas/CollectionBasis"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionsReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/CollectionsReportDto"
                 }
@@ -38872,6 +40788,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38879,6 +40800,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -38892,6 +40818,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38902,6 +40833,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38909,6 +40845,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -38942,12 +40883,26 @@
             "schema": {
               "$ref": "#/components/schemas/ConcessionGroup"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConcessionsReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ConcessionsReportDto"
                 }
@@ -38961,6 +40916,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38968,6 +40928,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -38981,6 +40946,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38991,6 +40961,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -38998,6 +40973,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39023,12 +41003,26 @@
               "format": "date",
               "type": "string"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyCashReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/DailyCashReportDto"
                 }
@@ -39042,6 +41036,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39049,6 +41048,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39062,6 +41066,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39072,6 +41081,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39079,6 +41093,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39165,12 +41184,53 @@
             "schema": {
               "$ref": "#/components/schemas/DefaulterSort"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DefaulterDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "properties": {
                     "data": {
@@ -39211,6 +41271,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39218,6 +41283,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39231,6 +41301,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39241,6 +41316,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39248,6 +41328,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39291,12 +41376,26 @@
             "schema": {
               "$ref": "#/components/schemas/ExpenseGroup"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpensesReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ExpensesReportDto"
                 }
@@ -39310,6 +41409,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39317,6 +41421,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39330,6 +41439,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39340,6 +41454,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39347,6 +41466,171 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "finance-reports"
+        ]
+      }
+    },
+    "/api/v1/finance-reports/financial-statement": {
+      "get": {
+        "operationId": "FinanceReportsController_financialStatement",
+        "parameters": [
+          {
+            "description": "With `to`; inclusive",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With `from`; inclusive; at most 366 days after it",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The term's dates",
+            "in": "query",
+            "name": "termId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The academic year's dates",
+            "in": "query",
+            "name": "academicYearId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Rule 25: the day money moved, or the day it was verified or decided. Default: the school's setting",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StatementBasis"
+            }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialStatementDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialStatementDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39380,12 +41664,26 @@
             "schema": {
               "$ref": "#/components/schemas/OutstandingGroup"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutstandingReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/OutstandingReportDto"
                 }
@@ -39399,6 +41697,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39406,6 +41709,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39419,6 +41727,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39429,6 +41742,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39436,6 +41754,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39473,12 +41796,26 @@
               "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
               "type": "string"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/PayrollReportDto"
                 }
@@ -39492,6 +41829,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39499,6 +41841,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -39512,6 +41859,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39522,6 +41874,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -39529,6 +41886,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -41473,6 +43835,616 @@
         },
         "tags": [
           "calendar"
+        ]
+      }
+    },
+    "/api/v1/imports": {
+      "get": {
+        "operationId": "ImportsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ImportKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ImportStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ImportDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/imports/opening-balances": {
+      "post": {
+        "operationId": "ImportsController_previewOpeningBalances",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/OpeningBalancesUploadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": "Replay of a committed preview"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/imports/past-results": {
+      "post": {
+        "operationId": "ImportsController_previewPastResults",
+        "parameters": [
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PastResultsUploadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": "Replay of a committed preview"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/imports/{id}": {
+      "get": {
+        "operationId": "ImportsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/api/v1/imports/{id}/commit": {
+      "post": {
+        "operationId": "ImportsController_commit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDetailDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "imports"
         ]
       }
     },
@@ -54900,18 +57872,65 @@
         ]
       }
     },
-    "/api/v1/result-reports/section-summary": {
+    "/api/v1/result-reports/merit-list": {
       "get": {
-        "operationId": "ResultReportsController_sectionSummary",
+        "operationId": "ResultReportsController_meritList",
         "parameters": [
           {
-            "description": "An approved or published sheet (any version)",
             "in": "query",
-            "name": "sheetId",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classId",
             "required": true,
             "schema": {
               "pattern": "^[1-9][0-9]{0,18}$",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "termId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MeritListSort"
+            }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
             }
           }
         ],
@@ -54920,7 +57939,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SectionSummaryReportDto"
+                  "$ref": "#/components/schemas/MeritListDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeritListDto"
                 }
               }
             },
@@ -54929,6 +57953,11 @@
           "401": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -54942,6 +57971,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -54952,13 +57986,8 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
-              }
-            },
-            "description": ""
-          },
-          "409": {
-            "content": {
-              "application/json": {
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -54972,6 +58001,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -54982,6 +58016,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -54989,6 +58028,162 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "results"
+        ]
+      }
+    },
+    "/api/v1/result-reports/section-summary": {
+      "get": {
+        "operationId": "ResultReportsController_sectionSummary",
+        "parameters": [
+          {
+            "description": "An approved or published sheet (any version)",
+            "in": "query",
+            "name": "sheetId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionSummaryReportDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionSummaryReportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -55023,12 +58218,26 @@
               "pattern": "^[1-9][0-9]{0,18}$",
               "type": "string"
             }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectReportDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/SubjectReportDto"
                 }
@@ -55042,6 +58251,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -55049,6 +58263,11 @@
           "403": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -55062,6 +58281,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -55069,6 +58293,11 @@
           "422": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -55082,6 +58311,11 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
               }
             },
             "description": ""
@@ -55089,6 +58323,11 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -56845,6 +60084,208 @@
         },
         "tags": [
           "school settings"
+        ]
+      }
+    },
+    "/api/v1/school/support-sessions": {
+      "get": {
+        "operationId": "SchoolSupportController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SchoolSupportSessionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "support sessions"
+        ]
+      }
+    },
+    "/api/v1/school/support-sessions/{id}/revoke": {
+      "post": {
+        "operationId": "SchoolSupportController_revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolSupportSessionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "support sessions"
         ]
       }
     },
@@ -59761,6 +63202,178 @@
           "default": {
             "content": {
               "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/api/v1/staff-reports/summary": {
+      "get": {
+        "operationId": "StaffReportsController_summary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "Default: 1 January of the school year to date (calendar year)",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default: today; at most 366 days after from",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Part of the name",
+            "in": "query",
+            "name": "staffName",
+            "required": false,
+            "schema": {
+              "maxLength": 50,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StaffReportSort"
+            }
+          },
+          {
+            "description": "csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited)",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffReportDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffReportDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              },
+              "text/csv": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorDto"
                 }
@@ -63764,6 +67377,97 @@
         },
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/profile": {
+      "get": {
+        "operationId": "StudentProfileController_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentProfileDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "students"
         ]
       }
     },

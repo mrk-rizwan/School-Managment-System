@@ -56,6 +56,7 @@ export const PRINCIPAL_ME: MeDto = {
   capacities: ['staff'],
   assignments: [],
   children: [],
+  supportSession: null,
 };
 export const OFFICE_ME: MeDto = {
   ...PRINCIPAL_ME,

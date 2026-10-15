@@ -340,6 +340,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/schools/{id}/support-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SupportSessionsController_open"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/schools/{id}/unpin-plan": {
         parameters: {
             query?: never;
@@ -388,6 +404,150 @@ export interface paths {
         patch: operations["PlatformSettingsController_update"];
         trace?: never;
     };
+    "/api/v1/platform/support-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportSessionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportSessionsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_auditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SupportSessionsController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_settings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_students"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_student"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}/charges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_charges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupportViewsController_payments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -409,6 +569,28 @@ export interface components {
             /** Format: date */
             startedOn: string;
         };
+        AuditActorDto: {
+            kind: components["schemas"]["AuditActorKind"];
+            name: string;
+            userId: string | null;
+        };
+        /** @enum {string} */
+        AuditActorKind: "user" | "platform" | "system";
+        AuditDetailDto: {
+            key: string;
+            value: string;
+        };
+        AuditEntryDto: {
+            action: string;
+            actor: components["schemas"]["AuditActorDto"];
+            /** Format: date-time */
+            createdAt: string;
+            details: components["schemas"]["AuditDetailDto"][];
+            id: string;
+            reason: string | null;
+            subjectId: string | null;
+            subjectType: string;
+        };
         BillingSkipDto: {
             reason: components["schemas"]["BillingSkipReason"];
             schoolId: string;
@@ -424,6 +606,9 @@ export interface components {
         ChangeSchoolStatusDto: {
             reason: string;
             status: components["schemas"]["SchoolStatusTarget"];
+        };
+        CloseSupportSessionDto: {
+            reason?: string;
         };
         ConfirmTotpDto: {
             code: string;
@@ -524,6 +709,11 @@ export interface components {
             activeStudents: number;
             /** Format: date */
             day: string;
+        };
+        OpenSupportSessionDto: {
+            reason: string;
+            ticketRef: string;
+            totp: string;
         };
         PlanDto: {
             /** Format: date-time */
@@ -651,6 +841,105 @@ export interface components {
             schoolId: string;
             /** Format: date */
             startedOn: string;
+        };
+        SupportChargeDto: {
+            amount: number;
+            credited: number;
+            description: string;
+            /** Format: date */
+            dueOn: string;
+            feeHeadName: string;
+            id: string;
+            outstanding: number;
+            paid: number;
+            period: string | null;
+            status: string;
+        };
+        SupportEnrolmentDto: {
+            academicYearName: string;
+            className: string;
+            rollNo: number | null;
+            sectionName: string;
+        };
+        SupportGuardianDto: {
+            fullName: string;
+            id: string;
+            isFeePayer: boolean;
+            isPrimaryContact: boolean;
+            phone: string | null;
+            relationship: string;
+        };
+        SupportPaymentDto: {
+            amount: number;
+            forStudent: number;
+            id: string;
+            method: string;
+            receiptNo: number | null;
+            /** Format: date */
+            receivedOn: string;
+            status: string;
+            /** Format: date-time */
+            verifiedAt: string;
+        };
+        SupportSchoolSettingsDto: {
+            expenseApprovalThreshold: number;
+            feeCutoffDay: number;
+            feeDueDay: number;
+            financialStatementBasis: string;
+            lateCountsAs: string;
+            lateFeeAmount: number | null;
+            lateFeeEnabled: boolean;
+            lateFeeGraceDays: number;
+            name: string;
+            payDay: number;
+            periodsPerDay: number;
+            schoolId: string;
+            shortCode: string;
+            status: string;
+            studentLoginEnabled: boolean;
+            timezone: string;
+            weeklyOffDays: number[];
+        };
+        SupportSessionDto: {
+            closeReason: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            endKind: components["schemas"]["SupportSessionEnd"] | null;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            mine: boolean;
+            /** Format: date-time */
+            openedAt: string;
+            platformUserEmail: string;
+            platformUserId: string;
+            reason: string;
+            revokeReason: string | null;
+            schoolId: string;
+            schoolName: string;
+            status: components["schemas"]["SupportSessionStatus"];
+            ticketRef: string;
+        };
+        /** @enum {string} */
+        SupportSessionEnd: "closed" | "revoked" | "expired";
+        /** @enum {string} */
+        SupportSessionStatus: "open" | "ended";
+        SupportStudentDto: {
+            admissionNo: string;
+            /** Format: date */
+            admittedOn: string;
+            current: components["schemas"]["SupportEnrolmentDto"] | null;
+            fullName: string;
+            guardians: components["schemas"]["SupportGuardianDto"][];
+            id: string;
+            status: string;
+        };
+        SupportStudentSummaryDto: {
+            admissionNo: string;
+            current: components["schemas"]["SupportEnrolmentDto"] | null;
+            fullName: string;
+            id: string;
+            status: string;
         };
         TotpEnrolmentDto: {
             otpauthUri: string;
@@ -2443,6 +2732,87 @@ export interface operations {
             };
         };
     };
+    SupportSessionsController_open: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenSupportSessionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportSessionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     SchoolBillingController_unpin: {
         parameters: {
             query?: never;
@@ -2690,6 +3060,631 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportSessionsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                schoolId?: string;
+                status?: components["schemas"]["SupportSessionStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SupportSessionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportSessionsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportSessionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_auditLog: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description The acting school user */
+                actorUserId?: string;
+                /** @description With subjectId */
+                subjectType?: string;
+                /** @description With subjectType */
+                subjectId?: string;
+                /** @description With createdTo; inclusive */
+                createdFrom?: string;
+                /** @description With createdFrom; inclusive; at most 92 days on */
+                createdTo?: string;
+                /** @description A family (`payment`, meaning `payment.*`) or the start of an action (`payment.ref`) */
+                actionPrefix?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AuditEntryDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportSessionsController_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseSupportSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportSessionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportSchoolSettingsDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_students: {
+        parameters: {
+            query: {
+                page?: number;
+                limit?: number;
+                admissionNo: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SupportStudentSummaryDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_student: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportStudentDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_charges: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SupportChargeDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SupportViewsController_payments: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SupportPaymentDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

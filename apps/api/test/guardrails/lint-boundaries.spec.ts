@@ -414,6 +414,74 @@ describe('lint boundaries (R61)', () => {
     expect(await lintAs('audit-reads-repository-import.ts', 'src/modules/audit/audit.service.ts')).toEqual([]);
   });
 
+  // Slice 45 (phase-5-extended.md §3.1 "Exception 7", §5.1; R350, R351, R353): the support module
+  // imports its two repositories and schoolIdFromSupportSession, and nothing else that reaches a
+  // table or mints a SchoolId: a planted tenant repository and a planted write repository are
+  // refused there. The two repositories and the constructor are refused everywhere else, the rest
+  // of the platform module and the platform repositories included.
+  const SUPPORT_SITE = 'src/modules/platform/support/support-views.service.ts';
+  it.each([
+    ['support-session-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['support-session-repository-import.ts', 'src/modules/auth/me.service.ts'],
+    ['support-session-repository-import.ts', 'src/jobs/job-runner.ts'],
+    ['support-session-repository-import.ts', 'src/modules/audit/audit.service.ts'],
+    ['support-reads-repository-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['support-reads-repository-import.ts', 'src/modules/audit/audit.service.ts'],
+    ['support-reads-repository-import.ts', 'src/jobs/job-runner.ts'],
+    ['support-mint-import.ts', 'src/modules/platform/schools/schools.service.ts'],
+    ['support-mint-import.ts', 'src/modules/platform/auth/platform-auth.service.ts'],
+    ['support-mint-import.ts', 'src/modules/staff-attendance/device-punch.service.ts'],
+    ['support-mint-import.ts', 'src/repositories/platform/school.repository.ts'],
+    ['support-mint-import.ts', 'src/repositories/platform/support-session.repository.ts'],
+    ['support-mint-import.ts', 'src/repositories/platform/support-reads.repository.ts'],
+    ['support-mint-import.ts', 'src/jobs/job-runner.ts'],
+    ['tenant-repository-import.ts', SUPPORT_SITE],
+    ['write-repository-import.ts', SUPPORT_SITE],
+    ['audit-reads-repository-import.ts', SUPPORT_SITE],
+    ['money-repository-import.ts', SUPPORT_SITE],
+    ['platform-repository-import.ts', SUPPORT_SITE],
+    ['fan-out-import.ts', SUPPORT_SITE],
+    ['school-id-mint-import.ts', SUPPORT_SITE],
+    ['from-platform-school-import.ts', SUPPORT_SITE],
+    ['device-token-mint-import.ts', SUPPORT_SITE],
+  ])('refuses %s at %s (slice 45)', async (fixture, virtualPath) => {
+    expect([...new Set(rules(await lintAs(fixture, virtualPath)))]).toEqual(['no-restricted-imports']);
+  });
+
+  it.each([
+    ['support-session-repository-import.ts', SUPPORT_SITE],
+    ['support-reads-repository-import.ts', SUPPORT_SITE],
+    ['support-mint-import.ts', SUPPORT_SITE],
+    ['support-session-repository-import.ts', 'src/modules/platform/support/support-sessions.service.ts'],
+    ['audit-reads-repository-import.ts', 'src/repositories/platform/support-reads.repository.ts'],
+    ['support-mint-import.ts', 'src/modules/platform/support/support-sessions.service.ts'],
+  ])('allows %s at %s (slice 45)', async (fixture, virtualPath) => {
+    expect(await lintAs(fixture, virtualPath)).toEqual([]);
+  });
+
+  // Slice 45 fix round: a row expireDue has just closed as expired carries its own brand, minted
+  // into a SchoolId only by the sessions service for that expiry's audit rows and notice. A support
+  // view cannot take the expired form, nor can anything else.
+  it.each([
+    [SUPPORT_SITE],
+    ['src/modules/platform/support/support.controller.ts'],
+    ['src/modules/platform/support/support-guards.ts'],
+    ['src/modules/platform/schools/schools.service.ts'],
+    ['src/repositories/platform/support-session.repository.ts'],
+    ['src/repositories/platform/support-reads.repository.ts'],
+    ['src/jobs/job-runner.ts'],
+  ])('refuses the expired-session constructor at %s', async (virtualPath) => {
+    expect([...new Set(rules(await lintAs('expired-support-mint-import.ts', virtualPath)))]).toEqual([
+      'no-restricted-imports',
+    ]);
+  });
+
+  it('allows the expired-session constructor in the sessions service alone', async () => {
+    expect(
+      await lintAs('expired-support-mint-import.ts', 'src/modules/platform/support/support-sessions.service.ts'),
+    ).toEqual([]);
+  });
+
   it('refuses a mint import written with a file extension', async () => {
     const messages = await lintAs(
       'mint-extension-imports.ts',

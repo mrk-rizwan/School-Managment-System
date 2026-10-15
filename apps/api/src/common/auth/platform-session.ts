@@ -91,6 +91,15 @@ export function bindPlatformSession(req: Request, session: PlatformSessionContex
 }
 
 /**
+ * The platform session resolved for this request, for guards that run after the access guard
+ * (the support routes' per-user throttle and session check, contracts/slice-45.md); undefined on
+ * any other route.
+ */
+export function platformSessionOf(req: Request): PlatformSessionContext | undefined {
+  return resolved.get(req);
+}
+
+/**
  * The caller's platform session, for handlers declared with @PlatformSession. A handler without
  * that decorator has none, and asking for it is a programming error (500), never a silent null.
  */

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { FilterSelect } from '@/components/list-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -236,6 +237,9 @@ export function DefaultersReport() {
           />
           Overdue only
         </label>
+        <div className="sm:ml-auto">
+          <DownloadCsvButton path="/api/v1/finance-reports/defaulters" filters={query} disabled={defaulters.isFetching || !rows?.length} />
+        </div>
       </div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground" aria-live="polite">

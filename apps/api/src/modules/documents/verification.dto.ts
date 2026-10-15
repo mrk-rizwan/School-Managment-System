@@ -9,6 +9,7 @@ import {
 import { IsCalendarDate } from '../../common/fields';
 import { IsIdString, ID_PATTERN } from '../../common/ids';
 import { PageQueryDto } from '../../common/pagination';
+import { CsvFormatField, type CsvFormat } from '../../common/report-export';
 import { StudentDocumentDto } from './documents.dto';
 
 // Phase 5 slice 40, document verification (contracts/slice-40.md §1-§2, rule 36, R322-R325).
@@ -120,6 +121,9 @@ export class IncompleteAdmissionsQueryDto extends PageQueryDto {
   @IsOptional()
   @IsIn(INCOMPLETE_ADMISSION_SORTS)
   sort?: (typeof INCOMPLETE_ADMISSION_SORTS)[number];
+
+  /** Phase 5 slice 42 (R336). */
+  @CsvFormatField() format?: CsvFormat;
 }
 
 /** GET /documents/incomplete-admissions: a student with a required type not yet verified. */

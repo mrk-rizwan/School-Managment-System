@@ -3,6 +3,7 @@
 import { formatRupees } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { FilterSelect } from '@/components/list-filters';
 import { unwrap } from '@/lib/api/client';
 import { reportsApi, type OutstandingGroup, type OutstandingQuery } from '@/lib/api/school-reports-contract';
@@ -35,6 +36,9 @@ export function OutstandingReport() {
             </option>
           ))}
         </FilterSelect>
+        <div className="sm:ml-auto">
+          <DownloadCsvButton path="/api/v1/finance-reports/outstanding" filters={query} disabled={report.isFetching || !report.data?.rows.length} />
+        </div>
       </div>
       <ReportStates query={report}>
         {(data) => (

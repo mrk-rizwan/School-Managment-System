@@ -3,6 +3,7 @@
 import { formatRupees, yearMonthOf } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { unwrap } from '@/lib/api/client';
 import { reportsApi, type PayrollMonthDto, type PayrollReportQuery } from '@/lib/api/school-reports-contract';
@@ -50,6 +51,9 @@ export function PayrollReport() {
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <DateFilter type="month" label="From" value={range.from} onChange={(from) => setRange((r) => ({ ...r, from }))} />
         <DateFilter type="month" label="To" value={range.to} onChange={(to) => setRange((r) => ({ ...r, to }))} />
+        <div className="sm:ml-auto">
+          <DownloadCsvButton path="/api/v1/finance-reports/payroll" filters={query} disabled={report.isFetching || !report.data?.rows.length} />
+        </div>
       </div>
       <ReportStates query={report}>
         {(data) => (

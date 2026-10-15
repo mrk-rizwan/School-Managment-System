@@ -319,6 +319,73 @@ export class ResultSheetRepository {
   }
 
   /**
+   * Phase 5 rule 39, R340: a past-results import's sheet, born `published` with provenance
+   * `imported` (result_sheets_born_draft widened; result_sheets_imported_check): version 1, no
+   * submitter, decided and published by the importer, the settings snapshot written at birth.
+   * Only while the import is previewed (trigger result_sheets_import_guard).
+   */
+  async createImported(
+    schoolId: SchoolId,
+    data: {
+      academicYearId: bigint;
+      termId: bigint;
+      classId: bigint;
+      sectionId: bigint;
+      importId: bigint;
+      importedBy: bigint;
+      at: Date;
+      snapshot: Omit<SheetSnapshot, 'termWeights'>;
+    },
+  ): Promise<ResultSheetRecord> {
+    const { snapshot } = data;
+    const row = await this.txHost.tx.resultSheet.create({
+      data: {
+        schoolId,
+        academicYearId: data.academicYearId,
+        termId: data.termId,
+        classId: data.classId,
+        sectionId: data.sectionId,
+        createdBy: data.importedBy,
+        version: 1,
+        status: 'published',
+        decidedBy: data.importedBy,
+        decidedAt: data.at,
+        publishedBy: data.importedBy,
+        publishedAt: data.at,
+        testWeight: snapshot.testWeight,
+        examWeight: snapshot.examWeight,
+        passPercent: snapshot.passPercent,
+        passRule: snapshot.passRule,
+        ...(snapshot.bands === null
+          ? {}
+          : { bands: snapshot.bands.map((b) => ({ grade: b.grade, minPercent: b.minPercent })) }),
+        provenance: 'imported',
+        importId: data.importId,
+      },
+      select: SELECT,
+    });
+    return toRecord(row);
+  }
+
+  /** The sheet an import made, if any (one per import, result_sheets_import_key). */
+  async idOfImport(schoolId: SchoolId, importId: bigint): Promise<bigint | null> {
+    const row = await this.txHost.tx.resultSheet.findFirst({
+      where: { schoolId, importId },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
+  /** Whether any sheet (any status or version) exists for the section's term (R340). */
+  async existsForSectionTerm(schoolId: SchoolId, sectionId: bigint, termId: bigint): Promise<boolean> {
+    const row = await this.txHost.tx.resultSheet.findFirst({
+      where: { schoolId, sectionId, termId },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  /**
    * A correction's lock on a published version (contracts/slice-32.md §4): a compare-and-set that
    * moves updated_at, so a second correction that read the same version fails its own and
    * re-reads (CONCURRENT_UPDATE when the version has meanwhile been replaced). 1 when held.

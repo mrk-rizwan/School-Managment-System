@@ -28,6 +28,7 @@ const PRINCIPAL_ME: MeDto = {
   assignments: [],
   staffId: null,
   children: [],
+  supportSession: null,
 };
 
 const staffRow = (id: string, fullName: string, extra: Partial<StaffDto> = {}): StaffDto => ({

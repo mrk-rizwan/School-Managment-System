@@ -429,6 +429,15 @@ export class PermissionsService {
   }
 
   /**
+   * Phase 5 slice 43 (R340): a past-results import's marks scope on `on` — result.publish, write
+   * mode. The import creates the section's exams and writes every subject's marks, so its caller
+   * needs the key school-wide; ImportsService refuses anything narrower.
+   */
+  marksImportScopeOf(session: SchoolSessionContext, on: Date): Promise<MarksScope<'write'> | null> {
+    return this.marksScope(session, 'write', [Capability.RESULT_PUBLISH], on);
+  }
+
+  /**
    * Phase 4 slice 31 (§3.1): the result-sheet read scope on `on`: marks.enter, marks.view_all or
    * result.approve, any-of, read mode. A school-wide key (the principal's result.approve, an office
    * grant of marks.view_all) reads every section; a teacher reads the sections they class-teach or

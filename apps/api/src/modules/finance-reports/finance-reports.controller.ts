@@ -7,6 +7,7 @@ import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, type Page } from '../../common/pagination';
 import { perUserThrottle } from '../../common/rate-limit';
+import { CsvExport, csvCost } from '../../common/report-export';
 import { NoQueryDto } from '../../common/validation';
 import { ReasonDto } from '../../common/reason.dto';
 import {
@@ -21,6 +22,8 @@ import {
   DuesClearanceDto,
   ExpensesQueryDto,
   ExpensesReportDto,
+  FinancialStatementDto,
+  FinancialStatementQueryDto,
   OutstandingQueryDto,
   OutstandingReportDto,
   PayrollQueryDto,
@@ -28,14 +31,25 @@ import {
   RemindersSentDto,
   SendRemindersDto,
 } from './finance-reports.dto';
+import {
+  CONCESSION_COLUMNS,
+  dailyCashRows,
+  DEFAULTER_COLUMNS,
+  GROUP_COLUMNS,
+  LINE_COLUMNS,
+  PAYROLL_COLUMNS,
+  payrollRows,
+  STATEMENT_COLUMNS,
+  statementRows,
+} from './finance-reports.csv';
 import { FinanceReportsService } from './finance-reports.service';
 
 // phase-3-financial.md slice 22 (contracts/slice-22.md §1). Common to every route: 401
 // AUTH_REQUIRED, 403 PERMISSION_DENIED / ORIGIN_REJECTED, 429. Teachers reach none of it (R234).
 const COMMON = [401, 403, 429];
 
-/** §5 named throttle: every finance report, 30/min and 300/h per user. */
-export const FinanceReportsThrottleGuard = perUserThrottle('finance-reports', 30, 300);
+/** §5 named throttle: every finance report, 30/min and 300/h per user; a CSV export costs 5 (R336). */
+export const FinanceReportsThrottleGuard = perUserThrottle('finance-reports', 30, 300, csvCost);
 
 /** A manual reminder send writes a message per family: 5/min and 30/h per user. */
 export const FeeRemindersSendThrottleGuard = perUserThrottle('fee-reminders-send', 5, 30);
@@ -49,6 +63,7 @@ export class FinanceReportsController {
 
   @Get('defaulters')
   @ApiPaginated(DefaulterDto)
+  @CsvExport({ family: 'finance_report', report: 'defaulters', columns: DEFAULTER_COLUMNS })
   @ApiErrors(...COMMON, 422)
   defaulters(@Query() query: DefaultersQueryDto): Promise<Page<DefaulterDto>> {
     return this.reports.defaulters(query);
@@ -56,6 +71,7 @@ export class FinanceReportsController {
 
   @Get('collections')
   @ApiOkResponse({ type: CollectionsReportDto })
+  @CsvExport({ family: 'finance_report', report: 'collections', columns: GROUP_COLUMNS })
   @ApiErrors(...COMMON, 422)
   collections(@Query() query: CollectionsQueryDto): Promise<CollectionsReportDto> {
     return this.reports.collections(query);
@@ -63,6 +79,7 @@ export class FinanceReportsController {
 
   @Get('outstanding')
   @ApiOkResponse({ type: OutstandingReportDto })
+  @CsvExport({ family: 'finance_report', report: 'outstanding', columns: GROUP_COLUMNS })
   @ApiErrors(...COMMON, 422)
   outstanding(@Query() query: OutstandingQueryDto): Promise<OutstandingReportDto> {
     return this.reports.outstanding(query);
@@ -70,6 +87,7 @@ export class FinanceReportsController {
 
   @Get('daily-cash')
   @ApiOkResponse({ type: DailyCashReportDto })
+  @CsvExport({ family: 'finance_report', report: 'daily-cash', rows: dailyCashRows, columns: LINE_COLUMNS })
   @ApiErrors(...COMMON, 422)
   dailyCash(@Query() query: DailyCashQueryDto): Promise<DailyCashReportDto> {
     return this.reports.dailyCash(query);
@@ -77,6 +95,7 @@ export class FinanceReportsController {
 
   @Get('concessions')
   @ApiOkResponse({ type: ConcessionsReportDto })
+  @CsvExport({ family: 'finance_report', report: 'concessions', columns: CONCESSION_COLUMNS })
   @ApiErrors(...COMMON, 422)
   concessions(@Query() query: ConcessionsQueryDto): Promise<ConcessionsReportDto> {
     return this.reports.concessions(query);
@@ -84,6 +103,7 @@ export class FinanceReportsController {
 
   @Get('expenses')
   @ApiOkResponse({ type: ExpensesReportDto })
+  @CsvExport({ family: 'finance_report', report: 'expenses', columns: GROUP_COLUMNS })
   @ApiErrors(...COMMON, 422)
   expenses(@Query() query: ExpensesQueryDto): Promise<ExpensesReportDto> {
     return this.reports.expenses(query);
@@ -91,9 +111,19 @@ export class FinanceReportsController {
 
   @Get('payroll')
   @ApiOkResponse({ type: PayrollReportDto })
+  @CsvExport({ family: 'finance_report', report: 'payroll', rows: payrollRows, columns: PAYROLL_COLUMNS })
   @ApiErrors(...COMMON, 422)
   payroll(@Query() query: PayrollQueryDto): Promise<PayrollReportDto> {
     return this.reports.payroll(query);
+  }
+
+  /** Phase 5 R332: income against expenditure per month and in total, on the rule-25 basis. */
+  @Get('financial-statement')
+  @ApiOkResponse({ type: FinancialStatementDto })
+  @CsvExport({ family: 'finance_report', report: 'financial-statement', rows: statementRows, columns: STATEMENT_COLUMNS })
+  @ApiErrors(...COMMON, 422)
+  financialStatement(@Query() query: FinancialStatementQueryDto): Promise<FinancialStatementDto> {
+    return this.reports.financialStatement(query);
   }
 }
 

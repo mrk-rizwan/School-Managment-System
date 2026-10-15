@@ -164,6 +164,44 @@ export class MarkReadsRepository {
   }
 
   /**
+   * Phase 5 slice 43 (R340, IMPORT_MARKS_EXIST): whether any live mark exists on a non-voided
+   * assessment of the class-term that is the section's, or that belongs to one of `studentIds`
+   * (the section's roster, whose marks in another section of the class would join their sheet).
+   */
+  async liveMarkExists(
+    schoolId: SchoolId,
+    scope: MarksScope,
+    query: { classId: bigint; sectionId: bigint; termId: bigint; studentIds: readonly bigint[] },
+  ): Promise<boolean> {
+    if (!sheetScopeReaches(scope, query.sectionId)) return false;
+    const row = await this.txHost.tx.mark.findFirst({
+      where: {
+        schoolId,
+        status: 'live',
+        assessment: {
+          is: {
+            schoolId,
+            classId: query.classId,
+            termId: query.termId,
+            voidedAt: null,
+            ...(query.studentIds.length === 0 ? { sectionId: query.sectionId } : {}),
+          },
+        },
+        ...(query.studentIds.length === 0
+          ? {}
+          : {
+              OR: [
+                { assessment: { is: { schoolId, sectionId: query.sectionId } } },
+                { studentId: { in: [...query.studentIds] } },
+              ],
+            }),
+      },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  /**
    * The class's non-voided assessments of the term (every section's, so a student who moved
    * section brings their marks, §0.25), each with the live marks of `studentIds`. Two statements:
    * a nested relation read would put the assessment ids in an `IN` Prisma pairs with school_id

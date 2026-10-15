@@ -17,6 +17,7 @@ import {
   PlatformUserRepository,
   type PlatformUserRow,
 } from '../../../repositories/platform/platform-user.repository';
+import { SupportSessionsService } from '../support/support-sessions.service';
 import type { ChangePlatformPasswordDto, PlatformLoginDto, PlatformMeDto, TotpEnrolmentDto } from './dto';
 import { emailKey, LoginLockout } from './login-limits';
 import { newTotpSecret, otpauthUri, totpSecretAad, verifyTotp } from './totp';
@@ -66,6 +67,7 @@ export class PlatformAuthService {
     private readonly hasher: PasswordHasher,
     private readonly cipher: FieldEncryption,
     private readonly lockout: LoginLockout,
+    private readonly support: SupportSessionsService,
   ) {}
 
   async login(dto: PlatformLoginDto, meta: RequestMeta): Promise<IssuedSession> {
@@ -149,7 +151,13 @@ export class PlatformAuthService {
     };
   }
 
+  /**
+   * Closes every support session the user holds open (R349), then ends this sign-in. The close
+   * comes first: if it fails, the platform session stays alive so the user can log out again,
+   * rather than being signed out with support sessions still open on schools.
+   */
   async logout(session: PlatformSessionContext): Promise<void> {
+    await this.support.closeAllForUser(session.userId);
     await this.sessions.revokeByTokenHash(session.tokenHash, new Date());
   }
 

@@ -6,6 +6,7 @@
  * error, never an absence (§0.34).
  */
 import { readCsv, type CsvReadProblem } from '../csv';
+import { containsIdentityNumber } from '../identity';
 import { ADMISSION_NO_COLUMN, headerKey, type ImportRowError, type ImportStudent } from './kinds';
 
 export interface PastResultsSubject {
@@ -86,6 +87,8 @@ export function parsePastResults(bytes: Uint8Array, ctx: PastResultsContext): Pa
     const admissionNo = cells[0] ?? '';
     const student = roster.get(admissionNo);
     if (admissionNo === '') refuse(ADMISSION_NO_COLUMN, 'required');
+    // An identity number typed where the admission number belongs: refused, never echoed or kept.
+    else if (containsIdentityNumber(admissionNo)) refuse(ADMISSION_NO_COLUMN, 'identity_number');
     else if (seen.has(admissionNo)) refuse(ADMISSION_NO_COLUMN, 'duplicate');
     else if (student === undefined) {
       refuse(ADMISSION_NO_COLUMN, ctx.knownAdmissionNos.has(admissionNo) ? 'not_on_roster' : 'unknown_admission_no');

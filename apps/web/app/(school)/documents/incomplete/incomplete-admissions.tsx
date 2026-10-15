@@ -6,6 +6,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { DataTable, type DataTableFeatures } from '@/components/data-table';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +89,13 @@ export function IncompleteAdmissions() {
         <div className="grid w-full gap-1.5 sm:w-44">
           <Label htmlFor={ids.to}>Admitted to</Label>
           <Input id={ids.to} type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+        </div>
+        <div className="sm:ml-auto">
+          <DownloadCsvButton
+            path="/api/v1/documents/incomplete-admissions"
+            filters={query}
+            disabled={report.isFetching || !report.data?.data.length}
+          />
         </div>
       </div>
       <DataTable

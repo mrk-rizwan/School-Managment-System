@@ -322,6 +322,8 @@ export class ResultDto {
   @ApiProperty(ID) sheetId: string;
   @ApiProperty({ type: 'integer', minimum: 1, description: "The sheet version (a correction's is 2 or more)" })
   sheetVersion: number;
+  @ApiProperty({ description: 'From a commencement import (Phase 5 R343): the card prints "Imported"' })
+  imported: boolean;
   @ApiProperty() schoolName: string;
   @ApiProperty(ID) academicYearId: string;
   @ApiProperty() academicYearName: string;

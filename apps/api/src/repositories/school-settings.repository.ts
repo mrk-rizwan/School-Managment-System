@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { readLocked } from '../common/locking';
 import type { SchoolId } from '../tenancy/school-id';
-import type { DocumentType, LateCountsAs, LeaveCountsAs, MessageType, RemarkVisibility } from '@asms/shared';
+import type { DocumentType, LateCountsAs, LeaveCountsAs, MessageType, RemarkVisibility, StatementBasis } from '@asms/shared';
 import type { PrismaTxAdapter } from './prisma';
 
 export interface SchoolSettingsRecord {
@@ -41,6 +41,8 @@ export interface SchoolSettingsRecord {
   contractWarningDays: number;
   // Phase 5 rule 40 (contracts/slice-44.md): a device's first punch after it is late; null never.
   staffLateAfter: Date | null;
+  // Phase 5 R332 (contracts/slice-42.md): the financial statement's default basis.
+  financialStatementBasis: StatementBasis;
   updatedAt: Date;
 }
 
@@ -79,6 +81,7 @@ const SELECT = {
   requiredDocumentTypes: true,
   contractWarningDays: true,
   staffLateAfter: true,
+  financialStatementBasis: true,
   updatedAt: true,
 } as const;
 

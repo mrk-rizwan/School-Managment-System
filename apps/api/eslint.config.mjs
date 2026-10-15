@@ -94,6 +94,13 @@ const IMPORTS = {
     regex: `(^|/)repositories/platform/device-token\\.repository${EXT}$`,
     message: 'DeviceTokenRepository is imported only by src/modules/staff-attendance/device-punch.service.ts.',
   },
+  // Phase 5 slice 45 (phase-5-extended.md §3.1 "Exception 7", §5.1; R351, R353): the support
+  // sessions and the closed set of support read views. Importable only from
+  // src/modules/platform/support/**, the platform module included.
+  supportRepositories: {
+    regex: `(^|/)repositories/platform/support-(session|reads)\.repository${EXT}$`,
+    message: 'The support repositories are imported only from src/modules/platform/support/** (exception 7).',
+  },
   // Job-payload resolution's one read of schools (named exception 3, widened).
   schoolByIdRepository: {
     regex: `(^|/)repositories/platform/school-by-id\\.repository${EXT}$`,
@@ -141,9 +148,11 @@ const IMPORTS = {
   // Phase 4 slice 31 (§5.1): the result-sheet, result and read-only mark-reads repositories are
   // the results module's (it reads marks only through MarkReadsRepository).
   resultRepositories: {
-    // Slice 33 adds result-reads (the family, student-page and report reads, read-only).
-    regex: `(^|/)repositories/(result-sheet|result|mark-reads|result-reads)\.repository${EXT}$`,
-    message: 'The result-sheet, result, mark-reads and result-reads repositories are imported only from src/modules/results/**.',
+    // Slice 33 adds result-reads (the family, student-page and report reads, read-only); Phase 5
+    // slice 42 adds class-ranking (the class ranking and the merit list).
+    regex: `(^|/)repositories/(result-sheet|result|mark-reads|result-reads|class-ranking)\.repository${EXT}$`,
+    message:
+      'The result-sheet, result, mark-reads, result-reads and class-ranking repositories are imported only from src/modules/results/**.',
   },
   // Phase 4 slice 35 (§5.1): the promotion repository is the promotion module's.
   promotionRepository: {
@@ -200,6 +209,12 @@ const IMPORTS = {
   auditReadsRepository: {
     regex: `(^|/)repositories/audit-reads\\.repository${EXT}$`,
     message: 'AuditReadsRepository is imported only from src/modules/audit/**.',
+  },
+  // Phase 5 slice 43 (contracts/slice-43.md §5): the imports module owns its repository; the
+  // staged-upload sweep imports it only to expire previews (§3.5).
+  importRepository: {
+    regex: `(^|/)repositories/import\\.repository${EXT}$`,
+    message: 'ImportRepository is imported only from src/modules/imports/** and src/modules/documents/staged-upload.sweep.ts.',
   },
   // Wave R security review (MEDIUM-1): rowScopeWith widens a register's row scope by the section a
   // SubstituteAdmission proves; only the attendance access check may call it.
@@ -317,6 +332,15 @@ const BILLING_REPOSITORY_FILES = [
   'school-metrics.repository',
 ];
 
+// Phase 5 slice 45 (§3.1 "Exception 7", R351, R353): the support module reads tenant data only
+// through SupportReadsRepository and touches nothing else but SupportSessionRepository; it mints
+// only through schoolIdFromSupportSession.
+const SUPPORT_SITE = 'src/modules/platform/support/**/*.ts';
+const SUPPORT_SITE_TENANT_REPOSITORY_IMPORT = {
+  regex: `(^|/)repositories/(?!platform/).+\.repository${EXT}$`,
+  message: 'src/modules/platform/support/** imports no tenant repository: it reads through SupportReadsRepository only (exception 7).',
+};
+
 // Files that legitimately call the pre-auth school lookup, session resolution or the scheduler
 // fan-out (CLAUDE.md named exceptions 2-4), each with the one platform repository it may import;
 // every other platform repository stays refused there. Each is added here by the slice that
@@ -328,7 +352,8 @@ const NAMED_EXCEPTION_SITES = {
   'src/modules/auth/login-spike.recorder.ts': { repository: 'platform-audit.repository' },
   // Exception 3, the scheduler fan-out: the daily staged-upload sweep lists every school's id
   // (any status) and then works per school with ordinary scoped repositories.
-  'src/modules/documents/staged-upload.sweep.ts': { repository: 'school-fan-out.repository' },
+  // Slice 43 (§3.5): the same sweep expires the commencement imports' previews.
+  'src/modules/documents/staged-upload.sweep.ts': { repository: 'school-fan-out.repository', exempt: ['importRepository'] },
   // Exception 3 widened to job-payload resolution (Phase 2 plan §4.1): the fifth SchoolId
   // constructor reads the school a queue payload names. The only importer of
   // school-by-id.repository; it lives in src/tenancy and keeps that folder's exemptions.
@@ -446,6 +471,11 @@ const RAW_SQL_FILES = [
   // and the amount in force by LATERAL); read-only, school_id filtered on every table read
   // (test/transport/isolation.e2e-spec.ts).
   'src/repositories/transport-reads.repository.ts',
+  // Phase 5 slice 42 (contracts/slice-42.md §2.2): ClassRankingRepository.lockClassTerm, the one
+  // pg_advisory_xact_lock of a class-term's recompute; it reads no table (the key names the
+  // school, class and term). Every model query there filters school_id
+  // (test/reports/rankings.e2e-spec.ts).
+  'src/repositories/class-ranking.repository.ts',
 ];
 
 // ------------------------------------------------------------------------------ syntax bans
@@ -463,7 +493,7 @@ const RAW_UNSAFE = '/^\\$(queryRawUnsafe|executeRawUnsafe)$/';
 const RAW = '/^\\$(queryRaw|executeRaw)$/';
 
 // CreatedSchoolRow and PrincipalIssueSchoolRow are the brands fromPlatformSchool accepts (src/tenancy/school-id.ts).
-const BRAND = '/^(SchoolId|Scope|MarksScope|CreatedSchoolRow|PrincipalIssueSchoolRow)$/';
+const BRAND = '/^(SchoolId|Scope|MarksScope|CreatedSchoolRow|PrincipalIssueSchoolRow|SupportSessionRecord|ExpiredSupportSessionRecord)$/';
 /** A reference to a brand by plain or qualified name (`SchoolId`, `ns.SchoolId`). */
 const brandRef = (name) =>
   `TSTypeReference:matches([typeName.name=${name}], [typeName.right.name=${name}])`;
@@ -766,8 +796,19 @@ export default tseslint.config(
     ],
     rules: restrictImports({
       exempt: REPOSITORY_IMPORTS,
-      // Phase 5: schoolIdFromDeviceToken belongs to the device-punch service alone (R353).
-      narrowed: [{ key: 'schoolIdMint', importNames: ['fromPlatformSchool', 'schoolIdFromDeviceToken'] }],
+      // Phase 5: schoolIdFromDeviceToken belongs to the device-punch service alone and
+      // schoolIdFromSupportSession to the support module (R353).
+      narrowed: [
+        {
+          key: 'schoolIdMint',
+          importNames: [
+            'fromPlatformSchool',
+            'schoolIdFromDeviceToken',
+            'schoolIdFromSupportSession',
+            'schoolIdFromExpiredSupportSession',
+          ],
+        },
+      ],
     }),
   },
   {
@@ -775,6 +816,86 @@ export default tseslint.config(
     rules: restrictImports({
       exempt: ['platformRepositories'],
       narrowed: [{ key: 'schoolIdMint', allowImportNames: ['fromPlatformSchool'] }],
+    }),
+  },
+  {
+    // Phase 5 slice 45 (§3.1 "Exception 7", R351, R353): the support module's only repositories are
+    // its two, its only constructor schoolIdFromSupportSession. Its suites probe the same.
+    files: [SUPPORT_SITE],
+    rules: restrictImports({
+      exempt: ['supportRepositories'],
+      narrowed: [
+        {
+          key: 'platformRepositories',
+          ...platformRepositoriesExceptAll(['support-session.repository', 'support-reads.repository']),
+        },
+        { key: 'schoolIdMint', allowImportNames: ['schoolIdFromSupportSession'] },
+      ],
+      extra: [SUPPORT_SITE_TENANT_REPOSITORY_IMPORT],
+    }),
+  },
+  {
+    // Slice 45 fix round: the sessions service alone also mints from a row expireDue has just
+    // closed as expired (schoolIdFromExpiredSupportSession), for that expiry's audit rows and
+    // notice. The views never can (fixture expired-support-mint-import.ts).
+    files: ['src/modules/platform/support/support-sessions.service.ts'],
+    rules: restrictImports({
+      exempt: ['supportRepositories'],
+      narrowed: [
+        {
+          key: 'platformRepositories',
+          ...platformRepositoriesExceptAll(['support-session.repository', 'support-reads.repository']),
+        },
+        {
+          key: 'schoolIdMint',
+          allowImportNames: ['schoolIdFromSupportSession', 'schoolIdFromExpiredSupportSession'],
+        },
+      ],
+      extra: [SUPPORT_SITE_TENANT_REPOSITORY_IMPORT],
+    }),
+  },
+  {
+    // Slice 45: the views' audit-log read reuses slice 46's read-only repository, built inside
+    // SupportReadsRepository so the support module never holds it (a recorded widening).
+    files: ['src/repositories/platform/support-reads.repository.ts'],
+    rules: restrictImports({
+      exempt: [...REPOSITORY_IMPORTS, 'supportRepositories', 'auditReadsRepository'],
+      narrowed: [
+        {
+          key: 'schoolIdMint',
+          importNames: [
+            'fromPlatformSchool',
+            'schoolIdFromDeviceToken',
+            'schoolIdFromSupportSession',
+            'schoolIdFromExpiredSupportSession',
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    // Slice 45: the session repository brands its own rows (supportSessionRecord).
+    files: ['src/repositories/platform/support-session.repository.ts'],
+    rules: restrictImports({
+      exempt: [...REPOSITORY_IMPORTS, 'supportRepositories'],
+      narrowed: [
+        {
+          key: 'schoolIdMint',
+          importNames: [
+            'fromPlatformSchool',
+            'schoolIdFromDeviceToken',
+            'schoolIdFromSupportSession',
+            'schoolIdFromExpiredSupportSession',
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    // The slice-45 suites seed and probe the support tables through both repositories.
+    files: ['test/platform-support/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['supportRepositories', 'platformRepositories', 'repositoryInternals', 'cls', 'transactionHost'],
     }),
   },
   {
@@ -919,6 +1040,19 @@ export default tseslint.config(
     // probe it.
     files: ['src/modules/audit/**/*.ts', 'test/audit/**/*.ts'],
     rules: restrictImports({ exempt: ['auditReadsRepository'] }),
+  },
+  {
+    // Slice 43 (contracts/slice-43.md §5): the imports module owns ImportRepository and writes
+    // charges only through ChargesService, so it imports no money repository. Its suites probe it.
+    files: ['src/modules/imports/**/*.ts'],
+    rules: restrictImports({
+      exempt: ['importRepository'],
+      extra: [{ ...MONEY_REPOSITORY_IMPORT, message: 'src/modules/imports/** writes charges only through ChargesService (§2).' }],
+    }),
+  },
+  {
+    files: ['test/imports/**/*.ts'],
+    rules: restrictImports({ exempt: ['importRepository'] }),
   },
   {
     // Wave R security review (MEDIUM-1): the one caller of rowScopeWith.

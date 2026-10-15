@@ -57,6 +57,8 @@ export function ReportCard({ result }: { result: ResultDto }) {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {result.supersededAt && <Badge variant="destructive">Superseded</Badge>}
+            {/* Phase 5 R343: brought in by a commencement import, from the school's earlier records. */}
+            {result.imported && <Badge variant="outline">Imported</Badge>}
             {result.revised && result.publishedAt && (
               <Badge variant="secondary">Revised {formatDate(result.publishedAt)}</Badge>
             )}

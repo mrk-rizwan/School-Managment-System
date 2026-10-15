@@ -1,6 +1,7 @@
 'use client';
 
 import { addDaysTo, formatRupees } from '@asms/shared';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useId } from 'react';
@@ -10,7 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { unwrap } from '@/lib/api/client';
 import { ApiError, describeApiError } from '@/lib/api/errors';
+import { academics } from '@/lib/api/school-academics-contract';
 import type { ReportRowDto } from '@/lib/api/school-reports-contract';
 import { todayInSchool } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -32,6 +35,8 @@ const TABS = [
   { href: '/reports/concessions', label: 'Concessions' },
   { href: '/reports/expenses', label: 'Expenses' },
   { href: '/reports/payroll', label: 'Payroll' },
+  // Phase 5 slice 42: income against expenditure per month (contracts/slice-42.md §2.1).
+  { href: '/reports/financial-statement', label: 'Financial statement' },
 ] as const;
 
 export function ReportsTabs() {
@@ -110,6 +115,20 @@ export function useDefaultYearId(chosen: string): string {
   const list = useYears().data?.data ?? [];
   if (chosen) return chosen;
   return (list.find((y) => y.status === 'active') ?? list[0])?.id ?? '';
+}
+
+/** The terms of an academic year (a year has a handful), for the term pickers of the reports. */
+export function useTerms(yearId: string) {
+  return useQuery({
+    queryKey: ['school', 'terms', yearId] as const,
+    queryFn: async () =>
+      (
+        await unwrap(
+          academics.GET('/api/v1/academic-years/{id}/terms', { params: { path: { id: yearId }, query: { limit: 10 } } }),
+        )
+      ).data,
+    enabled: yearId !== '',
+  });
 }
 
 type ReportQuery<T> = { data: T | undefined; isPending: boolean; error: unknown; refetch: () => unknown };

@@ -3,9 +3,13 @@ import { ErrorCode } from '@asms/shared';
 import { ApiException, notFound } from '../../common/errors/api-exception';
 import { SchoolContext } from '../../common/school-context';
 import type { Scope } from '../../tenancy/scope';
+import { pageWindow } from '../../common/report-export';
+import { ClassRankingRepository } from '../../repositories/class-ranking.repository';
 import { ResultReadsRepository } from '../../repositories/result-reads.repository';
 import type {
   GradeCountDto,
+  MeritListDto,
+  MeritListQueryDto,
   SectionSummaryQueryDto,
   SectionSummaryReportDto,
   SubjectReportDto,
@@ -51,7 +55,65 @@ export class ResultReportsService {
   constructor(
     private readonly context: SchoolContext,
     private readonly reads: ResultReadsRepository,
+    private readonly rankings: ClassRankingRepository,
   ) {}
+
+  /**
+   * GET /result-reports/merit-list (Phase 5 R333): the class-term's live ranking, best first, a
+   * page at a time (every row for a CSV export). Pending — no rows, the unpublished sections named
+   * — until the class-term is complete; never recomputed here (a GET never writes).
+   */
+  async meritList(scope: Scope, query: MeritListQueryDto): Promise<MeritListDto> {
+    requireSchoolWide(scope);
+    const schoolId = this.context.schoolId;
+    const classId = BigInt(query.classId);
+    const termId = BigInt(query.termId);
+    const names = await this.rankings.names(schoolId, classId, termId);
+    if (names === null) throw notFound();
+    const head = { classId: query.classId, className: names.className, termId: query.termId, termName: names.termName };
+    const live = await this.rankings.live(schoolId, classId, termId);
+    if (live === null) {
+      const term = await this.rankings.completeness(schoolId, classId, termId);
+      const missing = term === null || term.notHeld ? [] : await this.rankings.sectionNames(schoolId, term.missingSectionIds);
+      return {
+        status: term?.notHeld === true ? 'not_held' : 'pending',
+        ...head,
+        rankingId: null,
+        computedAt: null,
+        trigger: null,
+        pendingSections: missing.map((s) => ({ sectionId: s.id.toString(), sectionName: s.name })),
+        data: [],
+        page: query.page,
+        limit: query.limit,
+        total: 0,
+      };
+    }
+    const { rows, total } = await this.rankings.meritPage(schoolId, live.id, pageWindow(query));
+    return {
+      status: 'ranked',
+      ...head,
+      rankingId: live.id.toString(),
+      computedAt: live.computedAt,
+      trigger: live.trigger,
+      pendingSections: [],
+      data: rows.map((r) => ({
+        classPosition: r.classPosition,
+        positionOf: r.positionOf,
+        resultId: r.resultId.toString(),
+        studentId: r.studentId.toString(),
+        studentName: r.studentName,
+        admissionNo: r.admissionNo,
+        sectionId: r.sectionId.toString(),
+        sectionName: r.sectionName,
+        percentBp: r.percentBp,
+        grade: r.grade,
+        passed: r.passed,
+      })),
+      page: query.page,
+      limit: query.limit,
+      total,
+    };
+  }
 
   /** GET /result-reports/section-summary: one approved or published sheet version. */
   async sectionSummary(scope: Scope, query: SectionSummaryQueryDto): Promise<SectionSummaryReportDto> {

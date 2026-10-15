@@ -18,6 +18,7 @@ import type { SchoolId } from '../../tenancy/school-id';
 import { toDateString } from '../academics/academics.shared';
 import { capabilityOrder } from '../access/effective-permissions';
 import { PermissionsService, type UserAccess } from '../access/permissions.service';
+import { SupportSessionsService } from '../platform/support/support-sessions.service';
 import type { LoginResultDto, MeAssignmentDto, MeDto, MyChildDto } from './dto';
 
 /** Who is asking, for the session row. */
@@ -67,6 +68,7 @@ export class MeService {
     private readonly classes: ClassRepository,
     private readonly enrolments: EnrolmentRepository,
     private readonly clock: SchoolClock,
+    private readonly support: SupportSessionsService,
   ) {}
 
   async build(
@@ -106,6 +108,8 @@ export class MeService {
       assignments: await this.assignmentsOf(schoolId, access),
       staffId: access.staffId?.toString() ?? null,
       children: await this.childrenOf(schoolId, access),
+      // Rule 40 (slice 45): every staff user sees that platform support can read the school.
+      supportSession: access.capacities.staff ? await this.support.currentForSchool(schoolId) : null,
     };
   }
 

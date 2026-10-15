@@ -23,12 +23,14 @@ import {
   IdCardIcon,
   KeyRoundIcon,
   LayersIcon,
+  LifeBuoyIcon,
   ReceiptTextIcon,
   ReceiptIcon,
   ScrollTextIcon,
   WalletIcon,
   FileTextIcon,
   FileCheckIcon,
+  FileUpIcon,
   GraduationCapIcon,
   ChartColumnIcon,
   MegaphoneIcon,
@@ -181,6 +183,10 @@ export const schoolNav: NavItem[] = [
     icon: KeyRoundIcon,
     capability: 'user.account.manage',
   },
+  // Phase 5 slice 43: commencement imports (past results: result.publish + assessment.define;
+  // opening balances: charge.create + the principal role). Shown to result.publish holders: the
+  // principal by default; the page explains itself to anyone else.
+  { href: '/imports', label: 'Imports', icon: FileUpIcon, capability: 'result.publish' },
   // Phase 5 slice 46: the audit log (audit.view, principal by default; inert on a default password).
   { href: '/audit', label: 'Audit log', icon: ScrollTextIcon, capability: 'audit.view' },
   {
@@ -209,6 +215,8 @@ export const platformNav: NavItem[] = [
   // Slice 26: platform billing.
   { href: '/platform/plans', label: 'Plans', icon: LayersIcon, capability: null },
   { href: '/platform/invoices', label: 'Invoices', icon: ReceiptTextIcon, capability: null },
+  // Phase 5 slice 45: support sessions and their read-only views.
+  { href: '/platform/support', label: 'Support access', icon: LifeBuoyIcon, capability: null },
   { href: '/platform/settings', label: 'Platform settings', icon: SlidersHorizontalIcon, capability: null },
 ];
 

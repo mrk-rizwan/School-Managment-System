@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { KeyRoundIcon, LockIcon, LogOutIcon, PauseCircleIcon } from 'lucide-react';
+import { EyeIcon, KeyRoundIcon, LockIcon, LogOutIcon, PauseCircleIcon } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { ErrorState, LoadingState } from '@/components/page-states';
 import { SessionRedirects } from '@/components/session-redirects';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { MeDto } from '@/lib/api/school-contract';
+import { formatDateTime } from '@/lib/format';
 import { SCHOOL_PATHS, sessionRedirectFor, useSchoolMe, useSignOut } from '@/lib/school-session';
 
 /**
@@ -71,18 +72,37 @@ export function SchoolConsole({ children }: { children: React.ReactNode }) {
 
 /**
  * Persistent notices above every screen: the default-password prompt (CLAUDE.md rule 12:
- * prompt, never force) and the suspended-school banner. A suspended school keeps working exactly
- * as an active one (contracts/slice-9.md §10, R80 lifted): the banner is the only effect.
+ * prompt, never force), the suspended-school banner, and (Phase 5 rule 40, slice 45) the platform
+ * support banner every staff user sees while a support session can read the school. A suspended
+ * school keeps working exactly as an active one (contracts/slice-9.md §10, R80 lifted): the banner
+ * is the only effect.
  */
 function SessionNotices({ me }: { me: MeDto }) {
   const pathname = usePathname();
   const onAccount = pathname === SCHOOL_PATHS.account;
   // Rule 24: role.manage and user.account.manage stay inert until the password is changed.
   const blocked = me.blockedCapabilities.length > 0;
-  if (!me.passwordIsDefault && !blocked && me.school.status !== 'suspended') return null;
+  const support = me.capacities.includes('staff') ? me.supportSession : null;
+  if (!me.passwordIsDefault && !blocked && me.school.status !== 'suspended' && !support) return null;
 
   return (
     <div className="mb-6 grid gap-3">
+      {support && (
+        <Alert role="status" data-testid="support-session-banner">
+          <EyeIcon />
+          <AlertTitle>ASMS support can read this school</AlertTitle>
+          <AlertDescription>
+            Read-only access until {formatDateTime(support.expiresAt)}. Reason: {support.reason}.{' '}
+            {me.capabilities.includes('audit.view') && (
+              <Link href={`/audit?subjectType=support_session&subjectId=${support.id}`}>See what support read</Link>
+            )}
+            {me.capabilities.includes('audit.view') && me.capabilities.includes('school.settings.manage') && ' · '}
+            {me.capabilities.includes('school.settings.manage') && (
+              <Link href="/settings#support-sessions">End the access</Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       {me.school.status === 'suspended' && (
         <Alert role="status" data-testid="suspended-banner">
           <PauseCircleIcon />

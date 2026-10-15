@@ -44,3 +44,9 @@ export type ReminderKind = Schemas['ReminderKind'];
 export type RemindersSentDto = Schemas['RemindersSentDto'];
 
 export type DuesClearanceDto = Schemas['DuesClearanceDto'];
+
+// Phase 5 slice 42 (contracts/slice-42.md §2.1): the financial statement.
+export type StatementBasis = Schemas['StatementBasis'];
+export type StatementFiguresDto = Schemas['StatementFiguresDto'];
+export type FinancialStatementDto = Schemas['FinancialStatementDto'];
+export type FinancialStatementQuery = Query<'FinanceReportsController_financialStatement'>;

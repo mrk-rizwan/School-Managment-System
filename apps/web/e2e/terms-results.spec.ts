@@ -34,6 +34,7 @@ const PRINCIPAL_ME: MeDto = {
   assignments: [],
   staffId: null,
   children: [],
+  supportSession: null,
 };
 const TEACHER_ME: MeDto = {
   ...PRINCIPAL_ME,

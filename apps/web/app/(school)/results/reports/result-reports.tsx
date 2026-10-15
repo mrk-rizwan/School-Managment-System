@@ -4,6 +4,7 @@ import { formatPercentLabel } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { EmptyState, StateCard } from '@/components/page-states';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -19,16 +20,17 @@ import {
 import { resultsApi } from '@/lib/api/school-results-contract';
 import { cn } from '@/lib/utils';
 import { useClasses } from '../../academics/_lib/options';
-import { ReportStates, useDefaultYearId, YearFilter } from '../../reports/_lib/reports-ui';
+import { ReportStates, useDefaultYearId, useTerms, YearFilter } from '../../reports/_lib/reports-ui';
+import { MeritListTab } from './merit-list';
 
 // contracts/slice-33.md §3, §5: Results → Reports, read with marks.view_all from the stored rows
 // (R287): a published section sheet's summary, and one subject of a class in a term across its
-// sections.
+// sections. Phase 5 slice 42 (contracts/slice-42.md §2.2, §3): the class merit list, and a CSV
+// of each report.
 
-type Tab = 'section' | 'subject';
+type Tab = 'section' | 'subject' | 'merit';
 
 const reportKeys = {
-  terms: (yearId: string) => ['result-reports', 'terms', yearId] as const,
   sheets: (termId: string) => ['result-reports', 'sheets', termId] as const,
   subjects: (classId: string) => ['result-reports', 'class-subjects', classId] as const,
   summary: (sheetId: string) => ['result-reports', 'summary', sheetId] as const,
@@ -47,6 +49,7 @@ export function ResultReports() {
           [
             ['section', 'Section summary'],
             ['subject', 'Subject'],
+            ['merit', 'Merit list'],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -69,22 +72,15 @@ export function ResultReports() {
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <YearFilter value={yearId} onChange={setChosenYear} />
       </div>
-      {tab === 'section' ? <SectionTab key={yearId} yearId={yearId} /> : <SubjectTab key={yearId} yearId={yearId} />}
+      {tab === 'section' ? (
+        <SectionTab key={yearId} yearId={yearId} />
+      ) : tab === 'subject' ? (
+        <SubjectTab key={yearId} yearId={yearId} />
+      ) : (
+        <MeritListTab key={yearId} yearId={yearId} />
+      )}
     </>
   );
-}
-
-function useTerms(yearId: string) {
-  return useQuery({
-    queryKey: reportKeys.terms(yearId),
-    queryFn: async () =>
-      (
-        await unwrap(
-          academics.GET('/api/v1/academic-years/{id}/terms', { params: { path: { id: yearId }, query: { limit: 10 } } }),
-        )
-      ).data,
-    enabled: yearId !== '',
-  });
 }
 
 function Select({
@@ -176,6 +172,13 @@ function SectionTab({ yearId }: { yearId: string }) {
             )
             .map((s) => ({ value: s.id, label: `${s.className} – ${s.sectionName} · version ${s.version}` }))}
         />
+        <div className="sm:ml-auto">
+          <DownloadCsvButton
+            path="/api/v1/result-reports/section-summary"
+            filters={{ sheetId }}
+            disabled={sheetId === '' || summary.isFetching || !summary.data}
+          />
+        </div>
       </div>
       {sheetId === '' ? (
         <StateCard>
@@ -306,6 +309,13 @@ function SubjectTab({ yearId }: { yearId: string }) {
           onChange={setClassSubjectId}
           options={(subjects.data?.data ?? []).map((s) => ({ value: s.id, label: s.subjectName }))}
         />
+        <div className="sm:ml-auto">
+          <DownloadCsvButton
+            path="/api/v1/result-reports/subject"
+            filters={{ termId, classSubjectId }}
+            disabled={!ready || report.isFetching || !report.data?.sections.length}
+          />
+        </div>
       </div>
       {!ready ? (
         <StateCard>

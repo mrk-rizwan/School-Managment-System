@@ -187,6 +187,17 @@ describe('R16: identity numbers never reach logs, responses, audit or idempotenc
     for (const path of ['/users', '/staff', '/guardians', '/students']) {
       expect((await get(path, principal)).status).toBe(200);
     }
+    // Phase 5 slice 42 (§7.1 CSV, R336): the report exports and the student profile, after the
+    // flows above wrote identity numbers (their bodies join the scan; the export audit rows join
+    // the whole-table scan).
+    for (const path of [
+      '/staff-reports/summary?format=csv',
+      '/documents/incomplete-admissions?format=csv',
+      '/finance-reports/defaulters?format=csv',
+      `/students/${result.student.id}/profile`,
+    ]) {
+      expect((await get(path, principal)).status).toBe(200);
+    }
     expect(used).toHaveLength(5);
     expect(logs.length).toBeGreaterThan(0);
   });

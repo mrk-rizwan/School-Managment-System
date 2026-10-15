@@ -46,3 +46,10 @@ export type ClassTeacherConflict = {
   startsOn: string;
   endsOn: string | null;
 };
+
+// ---- Phase 5 slice 42: the staff report (contracts/slice-42.md §2.4) ----
+
+export type StaffContractStanding = Schemas['StaffContractStanding'];
+export type StaffReportDto = Schemas['StaffReportDto'];
+export type StaffReportRowDto = Schemas['StaffReportRowDto'];
+export type StaffReportQuery = NonNullable<operations['StaffReportsController_summary']['parameters']['query']>;

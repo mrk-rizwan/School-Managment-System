@@ -8,6 +8,11 @@ export interface RequestContext extends ClsStore {
   schoolId?: SchoolId;
   userId?: bigint;
   sessionId?: bigint;
+  /**
+   * Exception 7 (contracts/slice-45.md §3): set only by SupportReadContext.run, inside a READ ONLY
+   * transaction, for a platform support read. The query guard refuses every write while it is set.
+   */
+  support?: boolean;
 }
 
 /**

@@ -94,6 +94,18 @@ export class FeeHeadRepository {
     });
   }
 
+  /**
+   * Phase 5 slice 43 (§1.1, R342): the seeded "Opening balance" head — the one seed of category
+   * `other` (created_by NULL, asms_seed_school_finance), live or archived, whatever it is renamed to.
+   */
+  findSeededOpeningBalance(schoolId: SchoolId): Promise<FeeHeadRecord | null> {
+    return this.txHost.tx.feeHead.findFirst({
+      where: { schoolId, category: 'other', createdBy: null },
+      select: SELECT,
+      orderBy: { id: 'asc' },
+    });
+  }
+
   /** The live head of a one-per-school category (tuition, fine). */
   findLiveByCategory(schoolId: SchoolId, category: FeeHeadCategory): Promise<FeeHeadRecord | null> {
     return this.txHost.tx.feeHead.findFirst({

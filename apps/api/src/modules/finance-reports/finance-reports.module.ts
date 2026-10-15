@@ -5,6 +5,7 @@ import { AcademicYearRepository } from '../../repositories/academic-year.reposit
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChargeRepository } from '../../repositories/charge.repository';
 import { FinanceReportRepository } from '../../repositories/finance-report.repository';
+import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import { FeeReminders } from './fee-reminders';
 import {
   DuesClearanceController,
@@ -35,6 +36,7 @@ import { FinanceReportsService } from './finance-reports.service';
     AcademicYearRepository,
     ChargeRepository,
     AuditLogRepository,
+    SchoolSettingsRepository,
   ],
   // Phase 4 slice 34: certificates read dues only through FinanceReportsService.clearance (§5.1).
   exports: [FeeReminders, FinanceReportsService],

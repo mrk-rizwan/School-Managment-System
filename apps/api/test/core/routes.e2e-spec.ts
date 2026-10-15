@@ -442,13 +442,19 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/messaging/whatsapp/pair': ['whatsapp.pairing_started'],
   'POST /api/v1/platform/auth/change-password': ['platform_user.password_changed'],
   'POST /api/v1/platform/auth/login': ['platform_user.login'],
-  'POST /api/v1/platform/auth/logout': 'none: ends the caller own session only',
+  // Slice 45 (R349): logout also closes the caller's open support sessions, each in both logs.
+  'POST /api/v1/platform/auth/logout': ['support_session.closed'],
   'POST /api/v1/platform/auth/totp/confirm': ['platform_user.totp_enrolled'],
   'POST /api/v1/platform/auth/totp/enrol': 'none: a pending secret, inert until confirm (audited there)',
   'POST /api/v1/platform/schools': ['school.created'],
   'PATCH /api/v1/platform/schools/:id': ['school.updated'],
   'POST /api/v1/platform/schools/:id/change-status': ['school.status_changed'],
   'PATCH /api/v1/platform/settings': ['platform_settings.updated'],
+  // Phase 5 slice 45 (contracts/slice-45.md §2): both logs. Opening first expires the caller's and
+  // the school's stale sessions; the support views are GETs, each writing support.read.
+  'POST /api/v1/platform/schools/:id/support-sessions': ['support_session.opened', 'support_session.expired'],
+  'POST /api/v1/platform/support-sessions/:id/close': ['support_session.closed'],
+  'POST /api/v1/school/support-sessions/:id/revoke': ['support_session.revoked'],
   // Phase 3 slice 26 (contracts/slice-26.md §4).
   'POST /api/v1/platform/plans': ['platform_plan.created'],
   'PATCH /api/v1/platform/plans/:id': ['platform_plan.updated'],
@@ -575,6 +581,11 @@ const MUTATION_AUDIT: Record<string, AuditClass> = {
   'POST /api/v1/transport-routes/:id/archive': ['transport_route.archived'],
   'POST /api/v1/transport-routes/:id/amounts': ['transport_amount.set'],
   'POST /api/v1/transport-route-amounts/:id/void': ['transport_amount.voided'],
+  // Phase 5 slice 43 (contracts/slice-43.md §2). A replayed preview or commit writes no row; a
+  // commit refused for an expired preview fails it (import.failed).
+  'POST /api/v1/imports/past-results': ['import.previewed'],
+  'POST /api/v1/imports/opening-balances': ['import.previewed'],
+  'POST /api/v1/imports/:id/commit': ['import.committed', 'import.failed'],
   'POST /api/v1/transport-routes/:id/assignments': ['transport_assignment.started', 'transport.capacity_exceeded'],
   'POST /api/v1/transport-assignments/:id/end': ['transport_assignment.ended'],
   'POST /api/v1/salary-advances': ['salary_advance.granted', 'expense.recorded'],
@@ -689,6 +700,7 @@ const auditActions = (): string[] => [
 const ACTORLESS_ACTIONS: Record<string, string> = {
   login_failure_spike: 'anonymous failed logins in a burst, recorded by the alarm, not by a person',
   'device_punch.rejected': 'punches a biometric device sent outside the accepted window, counted per batch; a device is not a person (slice 44)',
+  'import.failed': 'a commencement-import preview expired by the daily staged-upload sweep (A19, metadata.job); a commit that finds it expired names its caller (slice 43)',
 };
 
 const OPERATIONS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;
@@ -862,10 +874,9 @@ describe('Routes and OpenAPI over the real AppModule', () => {
 
   // Phase 5 R355 (contracts/slice-46.md §5): the list is data. Every marked route is the one its
   // action names in DEFAULT_PASSWORD_INERT_ACTIONS, and every action whose route exists is marked
-  // on it. An action whose route a later slice has not built yet is listed here and nowhere else.
-  const INERT_ROUTES_NOT_YET_BUILT: readonly DefaultPasswordInertAction[] = [
-    'import.opening_balances', // slice 43
-  ];
+  // on it. An action whose route a later slice has not built yet is listed here and nowhere else
+  // (none since slice 43 built the opening-balance import).
+  const INERT_ROUTES_NOT_YET_BUILT: readonly DefaultPasswordInertAction[] = [];
 
   it('R355: the @DefaultPasswordInert routes are exactly DEFAULT_PASSWORD_INERT_ACTIONS', () => {
     const key = (method: string, path: string) => `${method} /${API_PREFIX}${path}`;

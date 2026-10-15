@@ -62,6 +62,8 @@ describe('the worker (e2e)', () => {
       { job: 'claim-image-sweep', pattern: '0 15 2 * * *' },
       // Phase 5 slice 39 (§3.5, R319): the contract expiry warnings.
       { job: 'contract-expiry-warn', pattern: '0 0 6 * * *' },
+      // Phase 5 slice 45 (§3.5): support sessions past their time.
+      { job: 'support-session-expire', every: 300_000 },
     ]);
   });
 

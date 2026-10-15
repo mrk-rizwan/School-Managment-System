@@ -7,9 +7,13 @@
  */
 import { readCsv, type CsvReadProblem } from '../csv';
 import { containsIdentityNumber } from '../identity';
+import { MAX_RUPEES } from '../money/rupees';
 import { ADMISSION_NO_COLUMN, headerKey, type ImportRowError, type ImportStudent } from './kinds';
 
-/** Whole rupees, 1 to 999,999,999 (a charge's amount is a 32-bit integer). */
+/**
+ * Whole rupees, 1 to MAX_RUPEES (R229: the bound every amount a request may carry; a charge's
+ * amount is a 32-bit integer and a family's total must stay inside one).
+ */
 const AMOUNT = /^[1-9][0-9]{0,8}$/;
 const COLUMNS: readonly string[] = [ADMISSION_NO_COLUMN, 'amount', 'note'];
 
@@ -61,6 +65,8 @@ export function parseOpeningBalances(bytes: Uint8Array, ctx: OpeningBalancesCont
     const admissionNo = at(cells, ADMISSION_NO_COLUMN);
     const student = roster.get(admissionNo);
     if (admissionNo === '') refuse(ADMISSION_NO_COLUMN, 'required');
+    // An identity number typed where the admission number belongs: refused, never echoed or kept.
+    else if (containsIdentityNumber(admissionNo)) refuse(ADMISSION_NO_COLUMN, 'identity_number');
     else if (seen.has(admissionNo)) refuse(ADMISSION_NO_COLUMN, 'duplicate');
     else if (student === undefined) {
       refuse(ADMISSION_NO_COLUMN, ctx.knownAdmissionNos.has(admissionNo) ? 'not_on_roster' : 'unknown_admission_no');
@@ -68,7 +74,7 @@ export function parseOpeningBalances(bytes: Uint8Array, ctx: OpeningBalancesCont
     if (admissionNo !== '') seen.add(admissionNo);
     const amount = at(cells, 'amount');
     if (amount === '') refuse('amount', 'required');
-    else if (!AMOUNT.test(amount)) refuse('amount', 'invalid_amount');
+    else if (!AMOUNT.test(amount) || Number(amount) > MAX_RUPEES) refuse('amount', 'invalid_amount');
     const note = header.includes('note') ? at(cells, 'note') : '';
     if (containsIdentityNumber(note)) refuse('note', 'identity_number');
     if (rowOk && student !== undefined) {

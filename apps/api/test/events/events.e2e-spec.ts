@@ -610,6 +610,28 @@ describe('slice 38: events and PTM (e2e)', () => {
     await post(`/expenses/${late}/tag-event`, { eventId: event.id }, w.office).expect(200);
     const after = (await get(`/events/${event.id}/report`, w.principal).expect(200)).body as Report;
     expect([after.expenses, after.net]).toEqual([{ count: 2, total: 1400 }, -750]);
+    // Phase 5 slice 42 (R336): the report's CSV is its lines, a finance report export, audited.
+    const csv = await get(`/events/${event.id}/report?format=csv`, w.principal).set('Sec-Fetch-Site', 'same-origin');
+    expect(csv.status).toBe(200);
+    expect(csv.headers['content-disposition']).toMatch(/^attachment; filename="event-report-\d{4}-\d{2}-\d{2}\.csv"$/);
+    expect(csv.text.split('\r\n')).toEqual([
+      'Line,Value',
+      'Students invited,2',
+      'Attended,1',
+      'Absent,0',
+      'Excused,0',
+      'Not recorded,1',
+      'Charges,2',
+      'Charged,1000',
+      'Collected,650',
+      'Outstanding,350',
+      'Expenses,1400',
+      'Net (collected - expenses),-750',
+      '',
+    ]);
+    expect((await audit(w.school, 'finance_report.exported')).map((a) => a.metadata)).toEqual([
+      { report: 'event-report', filters: {}, rowCount: 11 },
+    ]);
     // A draft has no report.
     const none = await get(`/events/${draft.id}/report`, w.principal);
     expect([none.status, err(none).code]).toEqual([409, ErrorCode.EVENT_NOT_PUBLISHED]);

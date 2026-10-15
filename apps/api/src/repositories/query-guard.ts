@@ -79,6 +79,38 @@ export class QueryGuardError extends Error {
   override readonly name = 'QueryGuardError';
 }
 
+/**
+ * A write attempted during a platform support read (exception 7, contracts/slice-45.md §3, R350).
+ * SupportReadContext.run turns it into 403 SUPPORT_WRITE_REFUSED.
+ */
+export class SupportWriteRefusedError extends Error {
+  override readonly name = 'SupportWriteRefusedError';
+}
+
+/** The model operations that only read; under a support read every other one is refused. */
+export const READ_OPERATIONS: ReadonlySet<string> = new Set([
+  'findFirst',
+  'findFirstOrThrow',
+  'findUnique',
+  'findUniqueOrThrow',
+  'findMany',
+  'count',
+  'aggregate',
+  'groupBy',
+]);
+
+/**
+ * Exception 7's guard layer: with `support` true (the CLS flag SupportReadContext sets) only a model
+ * read operation passes. Every model-free operation is refused, the tagged `$queryRaw` included:
+ * a raw statement is opaque to this guard (a `SELECT` can call a writing function or `set_config`),
+ * and the support views read only through model operations.
+ */
+export function assertSupportRead(model: string | undefined, operation: string, support: boolean): void {
+  if (!support) return;
+  if (model !== undefined && READ_OPERATIONS.has(operation)) return;
+  throw new SupportWriteRefusedError(`${model ?? 'raw'}.${operation}: support access is read-only`);
+}
+
 type Args = Record<string, unknown>;
 
 /**

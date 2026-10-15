@@ -48,6 +48,9 @@ export const JOB = {
   // Phase 5 slice 39 (phase-5-extended.md §3.5, R319): daily at 06:00 school time, the contract
   // expiry warnings to the principals.
   contractExpiryWarn: 'contract-expiry-warn',
+  // Phase 5 slice 45 (§3.5, contracts/slice-45.md §2.4): every 5 minutes, support sessions past
+  // their time are closed and the principals told.
+  supportSessionExpire: 'support-session-expire',
 } as const;
 
 /*

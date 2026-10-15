@@ -36,6 +36,8 @@ import { TimetableModule } from './modules/timetable/timetable.module';
 import { EventsModule } from './modules/events/events.module';
 import { TransportModule } from './modules/transport/transport.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { ImportsModule } from './modules/imports/imports.module';
+import { StudentProfileModule } from './modules/people/students/student-profile.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { JobsModule } from './jobs/jobs.module';
@@ -43,6 +45,7 @@ import { MessagingModule } from './messaging/messaging.module';
 import { MessagingRoutesModule } from './modules/messaging/messaging-routes.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { SchoolSupportModule } from './modules/platform/support/support.module';
 import { DatabaseModule } from './repositories/database.module';
 import { TenancyModule } from './tenancy/tenancy.module';
 
@@ -98,6 +101,12 @@ import { TenancyModule } from './tenancy/tenancy.module';
     TransportModule,
     // Phase 5 slice 46: the audit screen.
     AuditModule,
+    // Phase 5 slice 45: the school's side of support access (school document, not PlatformModule).
+    SchoolSupportModule,
+    // Phase 5 slice 43: commencement imports.
+    ImportsModule,
+    // Phase 5 slice 42: the student profile (its own module; the reports live in their families).
+    StudentProfileModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

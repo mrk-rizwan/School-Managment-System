@@ -5,6 +5,7 @@ import { PrincipalLoginModule } from './principal/principal.module';
 import { PlatformMessagingModule } from './messaging/platform-messaging.module';
 import { PlatformSchoolsModule } from './schools/platform-schools.module';
 import { PlatformSettingsModule } from './settings/platform-settings.module';
+import { PlatformSupportModule } from './support/support.module';
 
 /**
  * Everything under /api/v1/platform (contracts/slice-1.md). The platform OpenAPI document is built
@@ -18,6 +19,8 @@ import { PlatformSettingsModule } from './settings/platform-settings.module';
     PlatformSettingsModule,
     PlatformMessagingModule,
     PlatformBillingModule,
+    // Phase 5 slice 45: support sessions and their read views (named exception 7).
+    PlatformSupportModule,
   ],
 })
 export class PlatformModule {}

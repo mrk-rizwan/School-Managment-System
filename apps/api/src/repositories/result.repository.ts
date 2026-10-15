@@ -83,6 +83,8 @@ export type NewResult = Omit<
 /** A stored result with what its report card prints around the figures (§3.4). */
 export interface ResultCardRecord extends ResultRecord {
   sheetVersion: number;
+  /** Phase 5 R343: the sheet came from a commencement import (the card says so). */
+  imported: boolean;
   classId: bigint;
   className: string;
   sectionId: bigint;
@@ -183,6 +185,7 @@ const CARD_SELECT = {
   sheet: {
     select: {
       version: true,
+      provenance: true,
       classId: true,
       sectionId: true,
       class: { select: { name: true } },
@@ -209,6 +212,7 @@ const toCard = (
   return {
     ...toRecord(row, subjects),
     sheetVersion: sheet.version,
+    imported: sheet.provenance === 'imported',
     classId: sheet.classId,
     className: sheet.class.name,
     sectionId: sheet.sectionId,

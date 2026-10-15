@@ -33,6 +33,7 @@ const OFFICE_ME: MeDto = {
   assignments: [],
   staffId: null,
   children: [],
+  supportSession: null,
 };
 const TEACHER_ME: MeDto = {
   ...OFFICE_ME,

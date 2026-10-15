@@ -28,6 +28,7 @@ import {
 } from './result-composer';
 import { snapshotSettings, ResultSheetsService } from './result-sheets.service';
 import { selfDecision } from './results.shared';
+import { ClassRankingService } from './class-ranking.service';
 
 // contracts/slice-32.md §4 (phase-4-academic.md §0.25, §1.1 "Correction cascade", R280): what an
 // approved correction (or an excusal after publication) does to the stored results. Under the
@@ -82,6 +83,7 @@ export class ResultRevisionService {
     private readonly outbox: OutboxDispatcher,
     private readonly permissions: PermissionsService,
     private readonly clock: SchoolClock,
+    private readonly rankings: ClassRankingService,
   ) {}
 
   /**
@@ -156,6 +158,9 @@ export class ResultRevisionService {
     });
     const own = termIds.get(target.studentId);
     if (!own) throw concurrentUpdate();
+    // Slice 42 (R333): the class re-ranked as a new version from the new live rows (the old rows
+    // were superseded by writeVersion first); a class-term not yet complete has no ranking.
+    await this.rankings.recompute(schoolId, target.classId, target.termId, 'correction', approver);
 
     // The final sheet: the student's published final, re-composed from the new term rows.
     let finalSheetId: bigint | null = null;

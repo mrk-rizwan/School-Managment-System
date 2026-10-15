@@ -4,6 +4,7 @@ import { formatRupees } from '@asms/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { CheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { unwrap } from '@/lib/api/client';
@@ -32,6 +33,9 @@ export function DailyCashReport() {
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <DateFilter label="Day" value={date} onChange={setDate} />
+        <div className="sm:ml-auto">
+          <DownloadCsvButton path="/api/v1/finance-reports/daily-cash" filters={{ date }} disabled={report.isFetching || !report.data} />
+        </div>
       </div>
       <ReportStates query={report}>{(data) => <DailyCash data={data} />}</ReportStates>
     </>

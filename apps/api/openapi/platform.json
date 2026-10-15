@@ -64,6 +64,101 @@
         ],
         "type": "object"
       },
+      "AuditActorDto": {
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditActorKind"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "userId",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AuditActorKind": {
+        "enum": [
+          "user",
+          "platform",
+          "system"
+        ],
+        "type": "string"
+      },
+      "AuditDetailDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object"
+      },
+      "AuditEntryDto": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/AuditActorDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/components/schemas/AuditDetailDto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "subjectId": {
+            "nullable": true,
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "action",
+          "subjectType",
+          "subjectId",
+          "actor",
+          "reason",
+          "details"
+        ],
+        "type": "object"
+      },
       "BillingSkipDto": {
         "properties": {
           "reason": {
@@ -133,6 +228,16 @@
           "status",
           "reason"
         ],
+        "type": "object"
+      },
+      "CloseSupportSessionDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "ConfirmTotpDto": {
@@ -758,6 +863,30 @@
         ],
         "type": "object"
       },
+      "OpenSupportSessionDto": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "ticketRef": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "totp": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "ticketRef",
+          "totp"
+        ],
+        "type": "object"
+      },
       "PlanDto": {
         "properties": {
           "archivedAt": {
@@ -1279,6 +1408,416 @@
           "assignedByPlatform",
           "reason",
           "createdAt"
+        ],
+        "type": "object"
+      },
+      "SupportChargeDto": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "credited": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dueOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "feeHeadName": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "outstanding": {
+            "type": "number"
+          },
+          "paid": {
+            "type": "number"
+          },
+          "period": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "feeHeadName",
+          "period",
+          "dueOn",
+          "amount",
+          "paid",
+          "credited",
+          "outstanding",
+          "status"
+        ],
+        "type": "object"
+      },
+      "SupportEnrolmentDto": {
+        "properties": {
+          "academicYearName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "rollNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "sectionName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "academicYearName",
+          "className",
+          "sectionName",
+          "rollNo"
+        ],
+        "type": "object"
+      },
+      "SupportGuardianDto": {
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "isFeePayer": {
+            "type": "boolean"
+          },
+          "isPrimaryContact": {
+            "type": "boolean"
+          },
+          "phone": {
+            "nullable": true,
+            "type": "string"
+          },
+          "relationship": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "phone",
+          "relationship",
+          "isPrimaryContact",
+          "isFeePayer"
+        ],
+        "type": "object"
+      },
+      "SupportPaymentDto": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "forStudent": {
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "receiptNo": {
+            "nullable": true,
+            "type": "number"
+          },
+          "receivedOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "receivedOn",
+          "method",
+          "amount",
+          "forStudent",
+          "status",
+          "verifiedAt",
+          "receiptNo"
+        ],
+        "type": "object"
+      },
+      "SupportSchoolSettingsDto": {
+        "properties": {
+          "expenseApprovalThreshold": {
+            "type": "number"
+          },
+          "feeCutoffDay": {
+            "type": "number"
+          },
+          "feeDueDay": {
+            "type": "number"
+          },
+          "financialStatementBasis": {
+            "type": "string"
+          },
+          "lateCountsAs": {
+            "type": "string"
+          },
+          "lateFeeAmount": {
+            "nullable": true,
+            "type": "number"
+          },
+          "lateFeeEnabled": {
+            "type": "boolean"
+          },
+          "lateFeeGraceDays": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "payDay": {
+            "type": "number"
+          },
+          "periodsPerDay": {
+            "type": "number"
+          },
+          "schoolId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "studentLoginEnabled": {
+            "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "weeklyOffDays": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schoolId",
+          "name",
+          "shortCode",
+          "status",
+          "timezone",
+          "feeDueDay",
+          "feeCutoffDay",
+          "lateFeeEnabled",
+          "lateFeeAmount",
+          "lateFeeGraceDays",
+          "payDay",
+          "expenseApprovalThreshold",
+          "periodsPerDay",
+          "weeklyOffDays",
+          "studentLoginEnabled",
+          "lateCountsAs",
+          "financialStatementBasis"
+        ],
+        "type": "object"
+      },
+      "SupportSessionDto": {
+        "properties": {
+          "closeReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "closedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "endKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportSessionEnd"
+              }
+            ],
+            "nullable": true
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "platformUserEmail": {
+            "type": "string"
+          },
+          "platformUserId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revokeReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "schoolId": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportSessionStatus"
+              }
+            ]
+          },
+          "ticketRef": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "schoolId",
+          "schoolName",
+          "platformUserId",
+          "platformUserEmail",
+          "mine",
+          "reason",
+          "ticketRef",
+          "openedAt",
+          "expiresAt",
+          "status",
+          "closedAt",
+          "endKind",
+          "closeReason",
+          "revokeReason"
+        ],
+        "type": "object"
+      },
+      "SupportSessionEnd": {
+        "enum": [
+          "closed",
+          "revoked",
+          "expired"
+        ],
+        "type": "string"
+      },
+      "SupportSessionStatus": {
+        "enum": [
+          "open",
+          "ended"
+        ],
+        "type": "string"
+      },
+      "SupportStudentDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "admittedOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportEnrolmentDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "guardians": {
+            "items": {
+              "$ref": "#/components/schemas/SupportGuardianDto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "admissionNo",
+          "fullName",
+          "status",
+          "current",
+          "admittedOn",
+          "guardians"
+        ],
+        "type": "object"
+      },
+      "SupportStudentSummaryDto": {
+        "properties": {
+          "admissionNo": {
+            "type": "string"
+          },
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SupportEnrolmentDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[1-9][0-9]{0,18}$",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "admissionNo",
+          "fullName",
+          "status",
+          "current"
         ],
         "type": "object"
       },
@@ -3958,6 +4497,117 @@
         ]
       }
     },
+    "/api/v1/platform/schools/{id}/support-sessions": {
+      "post": {
+        "operationId": "SupportSessionsController_open",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenSupportSessionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportSessionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
     "/api/v1/platform/schools/{id}/unpin-plan": {
       "post": {
         "operationId": "SchoolBillingController_unpin",
@@ -4317,6 +4967,1117 @@
         },
         "tags": [
           "platform: settings"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions": {
+      "get": {
+        "operationId": "SupportSessionsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "schoolId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SupportSessionStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SupportSessionDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}": {
+      "get": {
+        "operationId": "SupportSessionsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportSessionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/audit-log": {
+      "get": {
+        "operationId": "SupportViewsController_auditLog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "description": "The acting school user",
+            "in": "query",
+            "name": "actorUserId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With subjectId",
+            "in": "query",
+            "name": "subjectType",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With subjectType",
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With createdTo; inclusive",
+            "in": "query",
+            "name": "createdFrom",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "With createdFrom; inclusive; at most 92 days on",
+            "in": "query",
+            "name": "createdTo",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A family (`payment`, meaning `payment.*`) or the start of an action (`payment.ref`)",
+            "in": "query",
+            "name": "actionPrefix",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,40}(\\.[a-z0-9_]{0,40})?$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/AuditEntryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/close": {
+      "post": {
+        "operationId": "SupportSessionsController_close",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseSupportSessionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportSessionDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/settings": {
+      "get": {
+        "operationId": "SupportViewsController_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportSchoolSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/students": {
+      "get": {
+        "operationId": "SupportViewsController_students",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "admissionNo",
+            "required": true,
+            "schema": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SupportStudentSummaryDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}": {
+      "get": {
+        "operationId": "SupportViewsController_student",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportStudentDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}/charges": {
+      "get": {
+        "operationId": "SupportViewsController_charges",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SupportChargeDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
+        ]
+      }
+    },
+    "/api/v1/platform/support-sessions/{id}/students/{studentId}/payments": {
+      "get": {
+        "operationId": "SupportViewsController_payments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "schema": {
+              "pattern": "^[1-9][0-9]{0,18}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 999999,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/SupportPaymentDto"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "maximum": 50,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "limit",
+                    "total"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "platform support"
         ]
       }
     }

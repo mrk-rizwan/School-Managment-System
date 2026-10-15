@@ -50,6 +50,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/attendance-marks/:id/changes': 'capability: attendance.student.mark | attendance.student.view_all',
   'GET /api/v1/attendance-registers': 'capability: attendance.student.view_all | attendance.student.mark',
   'GET /api/v1/attendance-reports/absentees': 'capability: attendance.student.view_all',
+  // Phase 5 slice 42 (contracts/slice-42.md §1.5): the discrepancy report.
+  'GET /api/v1/attendance-reports/discrepancies': 'capability: attendance.student.view_all',
   'GET /api/v1/attendance-reports/daily-summary': 'capability: attendance.student.view_all | attendance.student.mark',
   'GET /api/v1/attendance-reports/late': 'capability: attendance.student.view_all',
   'GET /api/v1/attendance-reports/percentage': 'capability: attendance.student.view_all',
@@ -188,6 +190,18 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/platform/schools/:id/issue-principal-login': 'platform-session: full',
   'GET /api/v1/platform/settings': 'platform-session: full',
   'PATCH /api/v1/platform/settings': 'platform-session: full',
+  // Phase 5 slice 45 (contracts/slice-45.md §1): support sessions and the six read views; the
+  // views also pass SupportSessionGuard (open, the caller's own) and the support-reads throttle.
+  'POST /api/v1/platform/schools/:id/support-sessions': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id': 'platform-session: full',
+  'POST /api/v1/platform/support-sessions/:id/close': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/settings': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/students': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/students/:studentId': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/students/:studentId/charges': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/students/:studentId/payments': 'platform-session: full',
+  'GET /api/v1/platform/support-sessions/:id/audit-log': 'platform-session: full',
   'POST /api/v1/remarks/:id/correct': 'capability: remark.write',
   // Phase 3 slice 18: finance readers (phase-3-financial.md §3.1, R234) and the setup writers.
   'GET /api/v1/fee-heads': 'capability: fee_head.manage | charge.create | fee.statement.view | payment.record',
@@ -280,6 +294,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/finance-reports/concessions': 'capability: finance.report.view',
   'GET /api/v1/finance-reports/expenses': 'capability: finance.report.view',
   'GET /api/v1/finance-reports/payroll': 'capability: finance.report.view',
+  // Phase 5 slice 42 (contracts/slice-42.md §1.1): the financial statement.
+  'GET /api/v1/finance-reports/financial-statement': 'capability: finance.report.view',
   'POST /api/v1/fee-reminders/send': 'capability: charge.campaign.send',
   'GET /api/v1/students/:id/dues-clearance': 'capability: fee.statement.view',
   'POST /api/v1/students/:id/dues-clearance/override': 'capability: certificate.issue + inert: dues_clearance.override',
@@ -325,6 +341,9 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/me/student/events': 'capacity: student',
   // Phase 3 slice 26 (A18): the school's own platform bill.
   'GET /api/v1/school/billing-status': 'capability: school.settings.manage',
+  // Phase 5 slice 45: the school's list of support sessions and its revoke.
+  'GET /api/v1/school/support-sessions': 'capability: school.settings.manage',
+  'POST /api/v1/school/support-sessions/:id/revoke': 'capability: school.settings.manage',
   'GET /api/v1/school/settings': 'capability: school.settings.manage',
   'PATCH /api/v1/school/settings': 'capability: school.settings.manage',
   'GET /api/v1/sections/:id': 'staff',
@@ -335,6 +354,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/sections/:id/register': 'capability: attendance.student.mark | attendance.student.view_all',
   'POST /api/v1/sections/:id/submit-register': 'capability: attendance.student.mark',
   'GET /api/v1/staff': 'capability: staff.view',
+  // Phase 5 slice 42 (contracts/slice-42.md §1.4): the staff report.
+  'GET /api/v1/staff-reports/summary': 'capability: staff.view',
   'POST /api/v1/staff': 'capability: staff.create',
   'GET /api/v1/staff-attendance': 'capability: attendance.staff.manage',
   // Phase 5 slice 44 (contracts/slice-44.md §1): the device route takes the school's device token
@@ -386,6 +407,8 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'GET /api/v1/students/:id/results': 'capability: marks.view_all | student.view',
   'GET /api/v1/result-reports/section-summary': 'capability: marks.view_all',
   'GET /api/v1/result-reports/subject': 'capability: marks.view_all',
+  // Phase 5 slice 42 (contracts/slice-42.md §1.2): the merit list (school-wide scope, else 404).
+  'GET /api/v1/result-reports/merit-list': 'capability: marks.view_all',
   'GET /api/v1/salary-advances': 'capability: payroll.view',
   'POST /api/v1/salary-advances': 'capability: payroll.run + inert: salary_advance.grant',
   'GET /api/v1/salary-advances/:id': 'capability: payroll.view',
@@ -497,9 +520,19 @@ export const ROUTE_GUARDS: Record<string, string> = {
   'POST /api/v1/transport-route-amounts/:id/void': 'capability: transport.manage',
   'POST /api/v1/transport-assignments/:id/end': 'capability: transport.manage',
   'GET /api/v1/students/:id/transport': 'capability: transport.manage | student.view',
+  // Phase 5 slice 42 (contracts/slice-42.md §1.3): the one-page profile (scoped; 404 outside).
+  'GET /api/v1/students/:id/profile': 'capability: student.view',
   'GET /api/v1/me/children/:id/transport': 'capacity: guardian',
   'GET /api/v1/me/student/transport': 'capacity: student',
   'GET /api/v1/me/staff/transport-routes': 'staff',
+  // Phase 5 slice 43 (contracts/slice-43.md §1): past results need result.publish (and
+  // assessment.define, in the service); opening balances charge.create (and the principal role);
+  // the commit and the reads either key (the service narrows to the kinds the caller may import).
+  'POST /api/v1/imports/past-results': 'capability: result.publish',
+  'POST /api/v1/imports/opening-balances': 'capability: charge.create + inert: import.opening_balances',
+  'POST /api/v1/imports/:id/commit': 'capability: result.publish | charge.create',
+  'GET /api/v1/imports': 'capability: result.publish | charge.create',
+  'GET /api/v1/imports/:id': 'capability: result.publish | charge.create',
   'GET /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/meta': 'webhook: meta',
   'POST /api/v1/webhooks/waha': 'webhook: waha',

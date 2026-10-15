@@ -87,6 +87,7 @@ const PRINCIPAL_ME: MeDto = {
   assignments: [],
   staffId: null,
   children: [],
+  supportSession: null,
 };
 
 const YEARS: AcademicYearDto[] = [
@@ -957,6 +958,7 @@ const MY_CARD: ResultDto = {
   ...MY_RESULT_SUMMARY,
   sheetId: 'rs1',
   sheetVersion: 1,
+  imported: false,
   schoolName: 'Green Valley Higher Secondary School',
   classId: 'c5',
   sectionId: 'sec-a',
@@ -1032,6 +1034,8 @@ async function mockApi(page: Page, session: Session) {
       // Slice 26: platform billing.
       if (method === 'GET' && p === '/plans') return json(200, page1(PLANS));
       if (method === 'GET' && p === '/invoices') return json(200, page1(INVOICES));
+      // Phase 5 slice 45: support sessions.
+      if (method === 'GET' && p === '/support-sessions') return json(200, page1([]));
       if (method === 'GET' && /^\/schools\/[^/]+\/billing$/.test(p)) return json(200, SCHOOL_BILLING);
       const detail = p.match(/^\/schools\/([^/]+)$/);
       const found = detail && SCHOOLS.find((s) => s.id === detail[1]);
@@ -1096,6 +1100,8 @@ async function mockApi(page: Page, session: Session) {
       // Phase 5 slice 38: events.
       '/events': [EV_PUBLISHED, EV_DRAFT],
       '/events/ev2/payments': [EV_PAYMENT],
+      // Phase 5 slice 45: the settings page's support-access card.
+      '/school/support-sessions': [],
     };
     if (path === '/me') return json(200, session.school);
     if (path === '/school/settings') return json(200, SETTINGS);
@@ -1229,6 +1235,7 @@ const SCREENS: Screen[] = [
   // Slice 26: platform billing.
   { path: '/platform/plans', heading: 'Plans', session: 'platform' },
   { path: '/platform/invoices', heading: 'Invoices', session: 'platform' },
+  { path: '/platform/support', heading: 'Support access', session: 'platform' },
 ];
 
 function sessionFor(kind: Screen['session']): Session {

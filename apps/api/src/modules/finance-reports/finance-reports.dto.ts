@@ -2,10 +2,11 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { CONTACT_CAPABILITIES, MAX_RUPEES, type ContactCapability } from '@asms/shared';
+import { CONTACT_CAPABILITIES, MAX_RUPEES, STATEMENT_BASES, type ContactCapability, type StatementBasis } from '@asms/shared';
 import { IfPresent, IsCalendarDate, IsYearMonth, QueryBoolean } from '../../common/fields';
 import { IsIdString } from '../../common/ids';
 import { PageQueryDto } from '../../common/pagination';
+import { CsvFormatField, type CsvFormat } from '../../common/report-export';
 import { ChargeDto, EachIdString } from '../fees/charges.dto';
 
 // phase-3-financial.md slice 22 (R201-R205, R228, R250; contracts/slice-22.md §1). Every report
@@ -69,6 +70,8 @@ export class DefaultersQueryDto extends PageQueryDto {
   @IsOptional()
   @IsIn(DEFAULTER_SORTS)
   sort?: DefaulterSortDto;
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class FeePayerDto {
@@ -122,6 +125,8 @@ export class CollectionsQueryDto {
   @IsOptional()
   @IsIn(COLLECTION_BASES)
   basis?: (typeof COLLECTION_BASES)[number];
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class CollectionsReportDto {
@@ -155,6 +160,8 @@ export class OutstandingQueryDto {
   @IsOptional()
   @IsIn(OUTSTANDING_GROUPS)
   groupBy?: (typeof OUTSTANDING_GROUPS)[number];
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class OutstandingReportDto {
@@ -171,6 +178,8 @@ export class OutstandingReportDto {
 
 export class DailyCashQueryDto {
   @ApiProperty(DATE) @IsCalendarDate() date: string;
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class CollectorCashDto {
@@ -226,6 +235,8 @@ export class ConcessionsQueryDto {
   @IsOptional()
   @IsIn(CONCESSION_GROUPS)
   groupBy?: (typeof CONCESSION_GROUPS)[number];
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class ConcessionRowDto {
@@ -256,6 +267,8 @@ export class ExpensesQueryDto {
   @IsOptional()
   @IsIn(EXPENSE_GROUPS)
   groupBy?: (typeof EXPENSE_GROUPS)[number];
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class RecorderTotalDto {
@@ -279,6 +292,8 @@ export class ExpensesReportDto {
 export class PayrollQueryDto {
   @ApiProperty(MONTH) @IsYearMonth() from: string;
   @ApiProperty({ ...MONTH, description: 'At most 24 months from `from`, inclusive' }) @IsYearMonth() to: string;
+
+  @CsvFormatField() format?: CsvFormat;
 }
 
 export class PayrollMonthDto {
@@ -300,6 +315,72 @@ export class PayrollReportDto {
   /** Finalised runs only. */
   @ApiProperty({ type: () => PayrollMonthDto, isArray: true }) rows: PayrollMonthDto[];
   @ApiProperty({ type: () => PayrollMonthDto }) total: PayrollMonthDto;
+}
+
+// ---------------------------------------------------------------------- financial statement
+
+
+/**
+ * Phase 5 R332 (contracts/slice-42.md §1.1): exactly one window — `from` and `to` (at most 366
+ * days), a term, or an academic year.
+ */
+export class FinancialStatementQueryDto {
+  @ApiPropertyOptional({ ...DATE, description: 'With `to`; inclusive' }) @IfPresent() @IsCalendarDate() from?: string;
+  @ApiPropertyOptional({ ...DATE, description: 'With `from`; inclusive; at most 366 days after it' })
+  @IfPresent()
+  @IsCalendarDate()
+  to?: string;
+
+  @ApiPropertyOptional({ ...ID, description: "The term's dates" }) @IfPresent() @IsIdString() termId?: string;
+  @ApiPropertyOptional({ ...ID, description: "The academic year's dates" }) @IfPresent() @IsIdString() academicYearId?: string;
+
+  @ApiPropertyOptional({
+    enum: STATEMENT_BASES,
+    enumName: 'StatementBasis',
+    description: "Rule 25: the day money moved, or the day it was verified or decided. Default: the school's setting",
+  })
+  @IsOptional()
+  @IsIn(STATEMENT_BASES)
+  basis?: StatementBasis;
+
+  @CsvFormatField() format?: CsvFormat;
+}
+
+/** One period's figures (R332): every line, whole rupees. */
+export class StatementFiguresDto {
+  /** `YYYY-MM` for a month row; `total` for the whole window. */
+  @ApiProperty() period: string;
+  @ApiProperty(DATE) from: string;
+  @ApiProperty(DATE) to: string;
+  /** Non-voided receipts, carried-forward payments excluded (as the collections report). */
+  @ApiProperty(RUPEES) receipts: number;
+  @ApiProperty(RUPEES) refundReversals: number;
+  @ApiProperty(RUPEES) refunds: number;
+  /** receipts + refundReversals − refunds. */
+  @ApiProperty(SIGNED_RUPEES) netReceipts: number;
+  /** Recorded and approved expenses, the shortfall write-offs and an advance's own expense row excluded. */
+  @ApiProperty(RUPEES) expenses: number;
+  @ApiProperty(RUPEES) shortfallWriteOffs: number;
+  /** Paid payslips' net. */
+  @ApiProperty(RUPEES) salaries: number;
+  @ApiProperty(RUPEES) advancesPaid: number;
+  /** Shown, never subtracted: already inside the salaries' net. */
+  @ApiProperty(RUPEES) advanceRecoveries: number;
+  /** salaries + advancesPaid. */
+  @ApiProperty(RUPEES) staff: number;
+  /** expenses + shortfallWriteOffs + staff. */
+  @ApiProperty(RUPEES) expenditure: number;
+  /** netReceipts − expenditure. */
+  @ApiProperty(SIGNED_RUPEES) net: number;
+}
+
+export class FinancialStatementDto {
+  @ApiProperty({ enum: STATEMENT_BASES, enumName: 'StatementBasis' }) basis: StatementBasis;
+  @ApiProperty(DATE) from: string;
+  @ApiProperty(DATE) to: string;
+  /** One row per calendar month the window touches, clipped to the window, oldest first. */
+  @ApiProperty({ type: () => StatementFiguresDto, isArray: true }) months: StatementFiguresDto[];
+  @ApiProperty({ type: () => StatementFiguresDto }) total: StatementFiguresDto;
 }
 
 // ------------------------------------------------------------------------------- reminders

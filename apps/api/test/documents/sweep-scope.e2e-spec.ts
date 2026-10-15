@@ -143,6 +143,8 @@ describe('staged uploads, scope and isolation (e2e)', () => {
         'claim-image-sweep',
         // Phase 5 slice 39: reads and stamps staff_contracts only (reviewed 2026-10-14).
         'contract-expiry-warn',
+        // Phase 5 slice 45: reads and closes platform_support_sessions only (reviewed 2026-10-15).
+        'support-session-expire',
       ]);
       const school = await createSchool();
       const user = await createSchoolUser(db, school, { systemRole: 'office_staff' });

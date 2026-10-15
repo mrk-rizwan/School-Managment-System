@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { ErrorCode } from '@asms/shared';
+import { ErrorCode, financialStatement } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
 import { fieldRefused, notFound, ownChild } from '../../common/errors/api-exception';
 import { toPage, type Page } from '../../common/pagination';
+import { pageWindow } from '../../common/report-export';
 import { addDays, assertRange, dayStart, SchoolClock } from '../../common/school-clock';
 import { SchoolContext } from '../../common/school-context';
 import { AcademicYearRepository } from '../../repositories/academic-year.repository';
 import { AuditLogRepository } from '../../repositories/audit-log.repository';
 import { ChargeRepository } from '../../repositories/charge.repository';
 import { FinanceReportRepository, type CollectionWindow } from '../../repositories/finance-report.repository';
+import { SchoolSettingsRepository } from '../../repositories/school-settings.repository';
 import type { SchoolId } from '../../tenancy/school-id';
 import { fromDateString, toDateString } from '../academics/academics.shared';
 import { requirePrincipal } from '../access/money-gates';
@@ -29,6 +31,9 @@ import type {
   DuesClearanceDto,
   ExpensesQueryDto,
   ExpensesReportDto,
+  FinancialStatementDto,
+  FinancialStatementQueryDto,
+  StatementFiguresDto,
   OutstandingQueryDto,
   OutstandingReportDto,
   PayrollMonthDto,
@@ -44,7 +49,23 @@ export const PAYROLL_MAX_MONTHS = 24;
 /** The clearance panel lists at most this many open charges (the total covers all of them). */
 const CLEARANCE_CHARGES = 100;
 
+/** Phase 5 R332: a statement's from-to window is at most a year (a longer one is a year's or a term's). */
+export const STATEMENT_MAX_DAYS = 366;
+
 const monthIndex = (yearMonth: string): number => Number(yearMonth.slice(0, 4)) * 12 + Number(yearMonth.slice(5, 7)) - 1;
+
+/** The calendar months `from`..`to` touches (`YYYY-MM-DD`, inclusive), each clipped to the window. */
+export function monthsOf(from: string, to: string): { from: string; to: string }[] {
+  const months: { from: string; to: string }[] = [];
+  for (let index = monthIndex(from.slice(0, 7)); index <= monthIndex(to.slice(0, 7)); index += 1) {
+    const year = Math.floor(index / 12);
+    const month = (index % 12) + 1;
+    const first = `${year}-${String(month).padStart(2, '0')}-01`;
+    const last = toDateString(new Date(Date.UTC(year, month, 0)));
+    months.push({ from: first < from ? from : first, to: last > to ? to : last });
+  }
+  return months;
+}
 
 /**
  * The finance reports, the manual fee reminder and the dues clearance (phase-3-financial.md slice
@@ -62,6 +83,7 @@ export class FinanceReportsService {
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
     private readonly permissions: PermissionsService,
+    private readonly settings: SchoolSettingsRepository,
   ) {}
 
   // ---------------------------------------------------------------------------- defaulters
@@ -76,8 +98,8 @@ export class FinanceReportsService {
       ...(query.minOutstanding === undefined ? {} : { minOutstanding: query.minOutstanding }),
       overdueOnly: query.overdueOnly ?? false,
       sort: query.sort ?? '-outstanding',
-      skip: (query.page - 1) * query.limit,
-      take: query.limit,
+      // A CSV export reads every row up to one past the cap (R336).
+      ...pageWindow(query),
     });
     const extras = new Map(
       (await this.reports.defaulterExtras(schoolId, rows.map((r) => r.studentId))).map((e) => [e.studentId, e]),
@@ -256,6 +278,62 @@ export class FinanceReportsService {
       total.unpaid += r.unpaid;
     }
     return { rows, total };
+  }
+
+  // -------------------------------------------------------------------- financial statement
+
+  /**
+   * Phase 5 R332 (contracts/slice-42.md §2.1): income against expenditure over one window — from
+   * and to (≤ 366 days), a term or an academic year — on the basis asked for or the school's
+   * setting, a row per calendar month and the total. Read from the stored money rows; summed by
+   * the shared financialStatement(), so every row's lines and net follow one definition.
+   */
+  async financialStatement(query: FinancialStatementQueryDto): Promise<FinancialStatementDto> {
+    const schoolId = this.context.schoolId;
+    const forms = [query.from !== undefined || query.to !== undefined, query.termId !== undefined, query.academicYearId !== undefined];
+    if (forms.filter(Boolean).length !== 1) {
+      throw fieldRefused('from', ErrorCode.INVALID_VALUE, 'Give exactly one of from and to, termId, or academicYearId');
+    }
+    let from: string;
+    let to: string;
+    if (query.termId !== undefined) {
+      const term = await this.reports.termRange(schoolId, BigInt(query.termId));
+      if (!term) throw fieldRefused('termId', ErrorCode.REFERENCE_NOT_FOUND, 'No such term');
+      [from, to] = [toDateString(term.startsOn), toDateString(term.endsOn)];
+    } else if (query.academicYearId !== undefined) {
+      const year = await this.years.findById(schoolId, BigInt(query.academicYearId));
+      if (!year) throw fieldRefused('academicYearId', ErrorCode.REFERENCE_NOT_FOUND, 'No such academic year');
+      [from, to] = [toDateString(year.startsOn), toDateString(year.endsOn)];
+    } else {
+      if (query.from === undefined) throw fieldRefused('from', ErrorCode.INVALID_VALUE, 'from is required with to');
+      if (query.to === undefined) throw fieldRefused('to', ErrorCode.INVALID_VALUE, 'to is required with from');
+      assertRange(fromDateString(query.from), fromDateString(query.to), STATEMENT_MAX_DAYS, { field: 'to', from: 'from' });
+      [from, to] = [query.from, query.to];
+    }
+    const basis = query.basis ?? (await this.settings.find(schoolId))?.financialStatementBasis ?? 'received';
+    const timezone = await this.clock.timezone(schoolId);
+    const fromDay = fromDateString(from);
+    const toDay = fromDateString(to);
+    const lines = await this.reports.statementLines(schoolId, {
+      basis,
+      from: fromDay,
+      to: toDay,
+      startsAt: dayStart(timezone, fromDay),
+      endsBefore: dayStart(timezone, addDays(toDay, 1)),
+      timezone,
+    });
+    const figures = (period: string, window: { from: string; to: string }): StatementFiguresDto => ({
+      period,
+      ...window,
+      ...financialStatement(lines, basis, window),
+    });
+    return {
+      basis,
+      from,
+      to,
+      months: monthsOf(from, to).map((m) => figures(m.from.slice(0, 7), m)),
+      total: figures('total', { from, to }),
+    };
   }
 
   // ----------------------------------------------------------------------------- reminders

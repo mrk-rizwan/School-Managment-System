@@ -50,5 +50,7 @@ import { MarksService } from './marks.service';
     IdempotencyKeyRepository,
     AuditLogRepository,
   ],
+  // Slice 43: the past-results import writes its exams and marks through importExamMarks.
+  exports: [AssessmentsService],
 })
 export class AssessmentsModule {}

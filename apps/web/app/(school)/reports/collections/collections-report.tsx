@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { DownloadCsvButton } from '@/components/download-csv-button';
 import { FilterSelect } from '@/components/list-filters';
 import { unwrap } from '@/lib/api/client';
 import {
@@ -52,6 +53,9 @@ export function CollectionsReport() {
           <option value="received">Day received</option>
           <option value="verified">Day verified</option>
         </FilterSelect>
+        <div className="sm:ml-auto">
+          <DownloadCsvButton path="/api/v1/finance-reports/collections" filters={query} disabled={report.isFetching || !report.data?.rows.length} />
+        </div>
       </div>
       <ReportStates query={report}>
         {(data) => (

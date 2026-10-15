@@ -13,7 +13,11 @@ import { DocumentsService } from './documents.service';
 import { STAGED_UPLOAD_SWEEP_PROVIDERS, StagedUploadSweep } from './staged-upload.sweep';
 import { SingleFileInterceptor, UploadThrottleGuard } from './upload-request';
 import { reencodeLimitProvider, UploadsService } from './uploads.service';
-import { DocumentVerificationController, MyDocumentsController } from './verification.controller';
+import {
+  DocumentReportsThrottleGuard,
+  DocumentVerificationController,
+  MyDocumentsController,
+} from './verification.controller';
 import { DocumentVerificationService } from './verification.service';
 
 /**
@@ -26,6 +30,8 @@ import { DocumentVerificationService } from './verification.service';
   controllers: [DocumentsController, DocumentVerificationController, MyDocumentsController],
   providers: [
     SchoolContext,
+    // Phase 5 slice 42: the incomplete-admissions report's throttle (its CSV costs 5).
+    DocumentReportsThrottleGuard,
     AttachmentFiles,
     DocumentsService,
     DocumentVerificationService,

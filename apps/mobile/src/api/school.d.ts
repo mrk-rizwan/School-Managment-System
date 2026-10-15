@@ -420,6 +420,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attendance-reports/discrepancies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceDiscrepanciesController_discrepancies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attendance-reports/late": {
         parameters: {
             query?: never;
@@ -1848,6 +1864,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance-reports/financial-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FinanceReportsController_financialStatement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance-reports/outstanding": {
         parameters: {
             query?: never;
@@ -2098,6 +2130,86 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["HolidaysController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/opening-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ImportsController_previewOpeningBalances"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/past-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ImportsController_previewPastResults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ImportsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/imports/{id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ImportsController_commit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3944,6 +4056,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/result-reports/merit-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ResultReportsController_meritList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/result-reports/section-summary": {
         parameters: {
             query?: never;
@@ -4230,6 +4358,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["SchoolSettingsController_update"];
+        trace?: never;
+    };
+    "/api/v1/school/support-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SchoolSupportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/school/support-sessions/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SchoolSupportController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/sections/{id}": {
@@ -4562,6 +4722,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["StaffContractsController_renew"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff-reports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffReportsController_summary"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4960,6 +5136,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["DocumentsController_photo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StudentProfileController_profile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7451,6 +7643,26 @@ export interface components {
         DisableWhatsAppDto: {
             reason: string;
         };
+        DiscrepancyDto: {
+            absentPeriods: number[];
+            amendments: number | null;
+            classId: string;
+            className: string;
+            /** Format: date */
+            date: string;
+            kind: components["schemas"]["DiscrepancyKind"];
+            /** @description amended_register: the register period */
+            period: number | null;
+            presentPeriods: number[];
+            sectionId: string;
+            sectionName: string;
+            studentId: string | null;
+            studentName: string | null;
+        };
+        /** @enum {string} */
+        DiscrepancyKind: "mixed_day" | "amended_register";
+        /** @enum {string} */
+        DiscrepancySort: "-date";
         /**
          * @description The mark’s pending dispute, else its latest; null when never disputed (Phase 5 slice 44)
          * @enum {string}
@@ -7826,6 +8038,15 @@ export interface components {
         FinaliseRunDto: {
             reason?: string;
         };
+        FinancialStatementDto: {
+            basis: components["schemas"]["StatementBasis"];
+            /** Format: date */
+            from: string;
+            months: components["schemas"]["StatementFiguresDto"][];
+            /** Format: date */
+            to: string;
+            total: components["schemas"]["StatementFiguresDto"];
+        };
         ForgotPasswordDto: {
             schoolCode: string;
             /** @description 13 digits; dashes allowed (5-7-1). */
@@ -8103,6 +8324,135 @@ export interface components {
         HolidaySort: "startsOn" | "-startsOn";
         /** @enum {string} */
         HolidayStatus: "draft" | "published" | "cancelled";
+        ImportDetailDto: {
+            academicYearId: string;
+            academicYearName: string;
+            classId: string | null;
+            className: string | null;
+            /** Format: date-time */
+            committedAt: string | null;
+            committedByName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            /**
+             * Format: date
+             * @example 2026-11-10
+             */
+            dueOn: string | null;
+            /** @description Why it failed ("expired") */
+            error: string | null;
+            /** @description Every row error; the first 100 are listed */
+            errorCount: number;
+            errors: components["schemas"]["ImportRowErrorDto"][];
+            /**
+             * Format: date-time
+             * @description A preview not committed by then fails as "expired"
+             */
+            expiresAt: string;
+            /** Format: date-time */
+            failedAt: string | null;
+            /** @description As uploaded; render as text */
+            fileName: string;
+            id: string;
+            kind: components["schemas"]["ImportKind"];
+            /** @description Past results, once committed: the imported sheet */
+            resultSheetId: string | null;
+            /** @description Data rows in the file */
+            rowCount: number;
+            /** @description Empty while the file has row errors */
+            rows: components["schemas"]["ImportRowDto"][];
+            sectionId: string | null;
+            sectionName: string | null;
+            status: components["schemas"]["ImportStatus"];
+            /** @description Past results only: the columns, in print order */
+            subjects: components["schemas"]["ImportSubjectDto"][];
+            termId: string | null;
+            termName: string | null;
+            /** @description Opening balances: the advances that apply */
+            totalAdvance: number | null;
+            /** @description Opening balances: the sum charged */
+            totalAmount: number | null;
+        };
+        ImportDto: {
+            academicYearId: string;
+            academicYearName: string;
+            classId: string | null;
+            className: string | null;
+            /** Format: date-time */
+            committedAt: string | null;
+            committedByName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdByName: string;
+            /**
+             * Format: date
+             * @example 2026-11-10
+             */
+            dueOn: string | null;
+            /** @description Why it failed ("expired") */
+            error: string | null;
+            /** @description Every row error; the first 100 are listed */
+            errorCount: number;
+            errors: components["schemas"]["ImportRowErrorDto"][];
+            /**
+             * Format: date-time
+             * @description A preview not committed by then fails as "expired"
+             */
+            expiresAt: string;
+            /** Format: date-time */
+            failedAt: string | null;
+            /** @description As uploaded; render as text */
+            fileName: string;
+            id: string;
+            kind: components["schemas"]["ImportKind"];
+            /** @description Data rows in the file */
+            rowCount: number;
+            sectionId: string | null;
+            sectionName: string | null;
+            status: components["schemas"]["ImportStatus"];
+            termId: string | null;
+            termName: string | null;
+        };
+        /** @enum {string} */
+        ImportKind: "past_results" | "opening_balances";
+        ImportMarkDto: {
+            classSubjectId: string;
+            /** @description Null is "Ab" (absent) */
+            obtained: number | null;
+        };
+        ImportRowDto: {
+            admissionNo: string;
+            /** @description Opening balances only: the child's advance in the year at preview, which pays the charge on commit */
+            advance: number | null;
+            /** @description Opening balances only */
+            amount: number | null;
+            /** @description Past results only, in subject order */
+            marks: components["schemas"]["ImportMarkDto"][] | null;
+            note: string | null;
+            /** @description The file line */
+            row: number;
+            studentId: string;
+            studentName: string;
+        };
+        /** @enum {string} */
+        ImportRowErrorCode: "first_column" | "unknown_column" | "missing_column" | "duplicate_column" | "required" | "unknown_admission_no" | "not_on_roster" | "duplicate" | "missing_from_file" | "invalid_mark" | "over_max" | "invalid_amount" | "identity_number";
+        ImportRowErrorDto: {
+            /** @description On missing_from_file: the roster student's admission number */
+            admissionNo?: string;
+            code: components["schemas"]["ImportRowErrorCode"];
+            /** @description The column: admission_no, a subject name, amount, note */
+            field: string;
+            row: number;
+        };
+        /** @enum {string} */
+        ImportStatus: "previewed" | "committed" | "failed";
+        ImportSubjectDto: {
+            classSubjectId: string;
+            /** @description The exam's max marks */
+            maxMarks: number;
+            name: string;
+        };
         InboxItemDto: {
             announcementId: string | null;
             /** @enum {string|null} */
@@ -8279,6 +8629,7 @@ export interface components {
             /** Format: date-time */
             sessionExpiresAt: string;
             staffId: string | null;
+            supportSession: components["schemas"]["MeSupportSessionDto"] | null;
         };
         MarkChangeDto: {
             /** Format: date-time */
@@ -8422,6 +8773,7 @@ export interface components {
             /** Format: date-time */
             sessionExpiresAt: string;
             staffId: string | null;
+            supportSession: components["schemas"]["MeSupportSessionDto"] | null;
         };
         MeSchoolDto: {
             id: string;
@@ -8429,6 +8781,48 @@ export interface components {
             shortCode: string;
             status: components["schemas"]["SchoolStatus"];
         };
+        MeSupportSessionDto: {
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            reason: string;
+        };
+        MeritListDto: {
+            classId: string;
+            className: string;
+            /** Format: date-time */
+            computedAt: string | null;
+            data: components["schemas"]["MeritListRowDto"][];
+            limit: number;
+            page: number;
+            /** @description While pending: the sections not yet published */
+            pendingSections: components["schemas"]["SectionRefDto"][];
+            /** @description The live version read */
+            rankingId: string | null;
+            status: components["schemas"]["MeritListStatus"];
+            termId: string;
+            termName: string;
+            total: number;
+            trigger: components["schemas"]["RankingTrigger"] | null;
+        };
+        MeritListRowDto: {
+            admissionNo: string;
+            /** @description Null: nothing assessed (listed last) */
+            classPosition: number | null;
+            grade: string | null;
+            passed: boolean | null;
+            percentBp: number | null;
+            positionOf: number | null;
+            resultId: string;
+            sectionId: string;
+            sectionName: string;
+            studentId: string;
+            studentName: string;
+        };
+        /** @enum {string} */
+        MeritListSort: "position";
+        /** @enum {string} */
+        MeritListStatus: "ranked" | "pending" | "not_held";
         /** @enum {string} */
         MessageChannel: "push" | "whatsapp" | "sms" | "email" | "in_app";
         /** @enum {string} */
@@ -8902,6 +9296,20 @@ export interface components {
         OpenPromotionSheetDto: {
             targetYearId: string;
         };
+        OpeningBalancesUploadDto: {
+            academicYearId: string;
+            /**
+             * Format: date
+             * @description Today or later, school time
+             * @example 2026-11-10
+             */
+            dueOn: string;
+            /**
+             * Format: binary
+             * @description The CSV, UTF-8, at most 2 MB
+             */
+            file: string;
+        };
         /** @enum {string} */
         OutstandingGroup: "class" | "feeHead" | "period";
         OutstandingReportDto: {
@@ -8928,6 +9336,15 @@ export interface components {
         ParticipationStatus: "attended" | "absent" | "excused";
         /** @enum {string} */
         PassRule: "all_subjects" | "overall";
+        PastResultsUploadDto: {
+            /**
+             * Format: binary
+             * @description The CSV, UTF-8, at most 2 MB
+             */
+            file: string;
+            sectionId: string;
+            termId: string;
+        };
         PaymentAccountDto: {
             accountNo: string;
             bankName: string | null;
@@ -9177,6 +9594,70 @@ export interface components {
             audiences: components["schemas"]["CampaignAudienceDto"][];
             feeHeadId: string;
         };
+        ProfileAttendanceDto: {
+            absent: number;
+            countedDays: number;
+            /** Format: date */
+            dateFrom: string;
+            /** Format: date */
+            dateTo: string;
+            late: number;
+            onLeave: number;
+            /** @description One decimal; null when no recorded days */
+            percentage: number | null;
+            present: number;
+        };
+        ProfileDocumentItemDto: {
+            status: components["schemas"]["DocumentChecklistStatus"];
+            type: components["schemas"]["DocumentType"];
+        };
+        ProfileDocumentsDto: {
+            complete: boolean;
+            items: components["schemas"]["ProfileDocumentItemDto"][];
+        };
+        ProfileDuesDto: {
+            /** @description Whole rupees */
+            advance: number;
+            cleared: boolean;
+            /** @description Whole rupees */
+            outstanding: number;
+        };
+        ProfileEnrolmentDto: {
+            academicYearId: string;
+            academicYearName: string;
+            className: string;
+            rollNo: number | null;
+            sectionName: string;
+        };
+        ProfileResultDto: {
+            academicYearName: string;
+            className: string;
+            /** @description In the class, from the term's live class ranking */
+            classPosition: number | null;
+            classPositionOf: number | null;
+            grade: string | null;
+            isFinal: boolean;
+            passed: boolean | null;
+            percentBp: number | null;
+            /** @description In the section (as the card prints it) */
+            position: number | null;
+            positionOf: number | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            resultId: string;
+            revised: boolean;
+            sectionName: string;
+            /** @description Null on the final result */
+            termName: string | null;
+        };
+        ProfileTransportDto: {
+            /** @description HH:MM */
+            pickupTime: string | null;
+            routeName: string;
+            /** Format: date */
+            startsOn: string;
+            stopName: string | null;
+        };
         PromotionDecisionDto: {
             admissionNo: string;
             /** Format: date-time */
@@ -9310,6 +9791,8 @@ export interface components {
             /** @description What the mark should say; not what it says now */
             requestedStatus: components["schemas"]["StaffAttendanceStatus"];
         };
+        /** @enum {string} */
+        RankingTrigger: "publish" | "correction" | "import";
         ReadmissionResultDto: {
             /** @description Digits */
             admissionNo: string;
@@ -9552,6 +10035,8 @@ export interface components {
         RemoveRoleDto: {
             reason: string;
         };
+        /** @enum {string} */
+        ReportFormat: "csv";
         ReportRowDto: {
             /** @description Whole rupees */
             amount: number;
@@ -9601,6 +10086,8 @@ export interface components {
             failedSubjects: number;
             grade: string | null;
             id: string;
+            /** @description From a commencement import (Phase 5 R343): the card prints "Imported" */
+            imported: boolean;
             isFinal: boolean;
             /** @description Null when nothing is assessed */
             passed: boolean | null;
@@ -9932,6 +10419,7 @@ export interface components {
             feeCutoffDay: number;
             feeDueDay: number;
             feeReminderDaysBefore: number;
+            financialStatementBasis: components["schemas"]["StatementBasis"];
             lateAdviceEnabled: boolean;
             lateCountsAs: components["schemas"]["LateCountsAs"];
             /** @example 09:30 */
@@ -9963,6 +10451,21 @@ export interface components {
         };
         /** @enum {string} */
         SchoolStatus: "trial" | "active" | "suspended" | "terminated";
+        SchoolSupportSessionDto: {
+            /** Format: date-time */
+            closedAt: string | null;
+            endKind: components["schemas"]["SupportSessionEnd"] | null;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            /** Format: date-time */
+            openedAt: string;
+            reason: string;
+            revokeReason: string | null;
+            status: components["schemas"]["SupportSessionStatus"];
+            supportName: string;
+            ticketRef: string;
+        };
         SectionChangeResultDto: {
             closed: components["schemas"]["EnrolmentDto"];
             opened: components["schemas"]["EnrolmentDto"];
@@ -10026,6 +10529,10 @@ export interface components {
             classId: string;
             name: string;
             sectionId: string;
+        };
+        SectionRefDto: {
+            sectionId: string;
+            sectionName: string;
         };
         /** @enum {string} */
         SectionSort: "name" | "-name";
@@ -10252,6 +10759,8 @@ export interface components {
         /** @enum {string} */
         StaffContractSort: "-startsOn";
         /** @enum {string} */
+        StaffContractStanding: "none" | "live" | "expired_not_ended" | "ended";
+        /** @enum {string} */
         StaffContractStatus: "live" | "upcoming" | "expired" | "ended";
         StaffDayDto: {
             approvedLeave: components["schemas"]["StaffDayLeaveDto"] | null;
@@ -10386,6 +10895,35 @@ export interface components {
             staffId: string;
             status: components["schemas"]["StaffAttendanceStatus"];
         };
+        StaffReportDto: {
+            data: components["schemas"]["StaffReportRowDto"][];
+            /** Format: date */
+            from: string;
+            limit: number;
+            page: number;
+            /** Format: date */
+            to: string;
+            total: number;
+        };
+        StaffReportRowDto: {
+            absent: number;
+            attendancePercent: number | null;
+            contractEndingSoon: boolean;
+            /** Format: date */
+            contractEndsOn: string | null;
+            contractStatus: components["schemas"]["StaffContractStanding"];
+            contractType: components["schemas"]["ContractType"] | null;
+            designation: string | null;
+            fullName: string;
+            late: number;
+            leaveTakenDays: number;
+            onLeave: number;
+            present: number;
+            staffId: string;
+            status: components["schemas"]["StaffStatus"];
+        };
+        /** @enum {string} */
+        StaffReportSort: "staffName";
         /** @enum {string} */
         StaffSort: "fullName" | "-fullName" | "joinedOn" | "-joinedOn" | "createdAt" | "-createdAt";
         /** @enum {string} */
@@ -10444,6 +10982,8 @@ export interface components {
             mime: components["schemas"]["DocumentMime"];
             sizeBytes: number;
         };
+        /** @enum {string} */
+        StatementBasis: "received" | "verified";
         StatementChargesPageDto: {
             data: components["schemas"]["ChargeDto"][];
             limit: number;
@@ -10458,6 +10998,37 @@ export interface components {
             payments: components["schemas"]["StatementPaymentDto"][];
             studentId: string;
             totals: components["schemas"]["StatementTotalsDto"];
+        };
+        StatementFiguresDto: {
+            /** @description Whole rupees */
+            advanceRecoveries: number;
+            /** @description Whole rupees */
+            advancesPaid: number;
+            /** @description Whole rupees */
+            expenditure: number;
+            /** @description Whole rupees */
+            expenses: number;
+            /** Format: date */
+            from: string;
+            /** @description Whole rupees; may be negative */
+            net: number;
+            /** @description Whole rupees; may be negative */
+            netReceipts: number;
+            period: string;
+            /** @description Whole rupees */
+            receipts: number;
+            /** @description Whole rupees */
+            refundReversals: number;
+            /** @description Whole rupees */
+            refunds: number;
+            /** @description Whole rupees */
+            salaries: number;
+            /** @description Whole rupees */
+            shortfallWriteOffs: number;
+            /** @description Whole rupees */
+            staff: number;
+            /** Format: date */
+            to: string;
         };
         StatementPaymentDto: {
             /** @description Whole rupees */
@@ -10635,6 +11206,24 @@ export interface components {
             /** @description Always false: a B-Form matches at most one student */
             truncated: boolean;
         };
+        StudentProfileDto: {
+            admissionNo: string;
+            /** Format: date */
+            admittedOn: string;
+            /** Format: date */
+            asOf: string;
+            attendance: components["schemas"]["ProfileAttendanceDto"] | null;
+            current: components["schemas"]["ProfileEnrolmentDto"] | null;
+            /** Format: date */
+            dateOfBirth: string;
+            documents: components["schemas"]["ProfileDocumentsDto"] | null;
+            dues: components["schemas"]["ProfileDuesDto"] | null;
+            fullName: string;
+            latestResult: components["schemas"]["ProfileResultDto"] | null;
+            status: components["schemas"]["StudentStatus"];
+            studentId: string;
+            transport: components["schemas"]["ProfileTransportDto"] | null;
+        };
         /** @enum {string} */
         StudentSort: "fullName" | "-fullName" | "admissionNo" | "-admissionNo" | "admittedOn" | "-admittedOn" | "rollNo";
         /** @enum {string} */
@@ -10729,6 +11318,10 @@ export interface components {
             status: components["schemas"]["AttendanceStatus"];
             studentId: string;
         };
+        /** @enum {string} */
+        SupportSessionEnd: "closed" | "revoked" | "expired";
+        /** @enum {string} */
+        SupportSessionStatus: "open" | "ended";
         SuppressionCountDto: {
             count: number;
             reason: components["schemas"]["SuppressionReason"];
@@ -11284,6 +11877,7 @@ export interface components {
             feeCutoffDay?: number;
             feeDueDay?: number;
             feeReminderDaysBefore?: number;
+            financialStatementBasis?: components["schemas"]["StatementBasis"];
             lateAdviceEnabled?: boolean;
             lateCountsAs?: components["schemas"]["LateCountsAs"];
             /** @example 09:30 */
@@ -14145,6 +14739,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    AttendanceDiscrepanciesController_discrepancies: {
+        parameters: {
+            query: {
+                page?: number;
+                limit?: number;
+                /** @description Inclusive; at most 92 days before to */
+                from: string;
+                /** @description Inclusive */
+                to: string;
+                /** @description Default: both kinds */
+                kind?: components["schemas"]["DiscrepancyKind"];
+                sort?: components["schemas"]["DiscrepancySort"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DiscrepancyDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                    "text/csv": {
+                        data: components["schemas"]["DiscrepancyDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -18941,6 +19622,8 @@ export interface operations {
                 /** @description Default: the school's today */
                 admittedTo?: string;
                 sort?: "admittedOn" | "-admittedOn";
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -18959,6 +19642,12 @@ export interface operations {
                         page: number;
                         total: number;
                     };
+                    "text/csv": {
+                        data: components["schemas"]["IncompleteAdmissionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
                 };
             };
             401: {
@@ -18967,6 +19656,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -18975,6 +19665,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -18983,6 +19674,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -18991,6 +19683,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -18999,6 +19692,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -20491,7 +21185,10 @@ export interface operations {
     };
     EventsController_report: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
+            };
             header?: never;
             path: {
                 id: string;
@@ -20506,6 +21203,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventReportDto"];
+                    "text/csv": components["schemas"]["EventReportDto"];
                 };
             };
             401: {
@@ -20514,6 +21212,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -20522,6 +21221,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             404: {
@@ -20530,6 +21230,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             409: {
@@ -20538,6 +21239,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -20546,6 +21248,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -20554,6 +21257,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22060,6 +22764,8 @@ export interface operations {
                 groupBy: components["schemas"]["CollectionGroup"];
                 /** @description Rule 25: the day a payment was received, or the day it was verified (credited) */
                 basis?: components["schemas"]["CollectionBasis"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22073,6 +22779,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CollectionsReportDto"];
+                    "text/csv": components["schemas"]["CollectionsReportDto"];
                 };
             };
             401: {
@@ -22081,6 +22788,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22089,6 +22797,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22097,6 +22806,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22105,6 +22815,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22113,6 +22824,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22122,6 +22834,8 @@ export interface operations {
             query: {
                 academicYearId: string;
                 groupBy?: components["schemas"]["ConcessionGroup"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22135,6 +22849,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConcessionsReportDto"];
+                    "text/csv": components["schemas"]["ConcessionsReportDto"];
                 };
             };
             401: {
@@ -22143,6 +22858,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22151,6 +22867,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22159,6 +22876,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22167,6 +22885,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22175,6 +22894,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22183,6 +22903,8 @@ export interface operations {
         parameters: {
             query: {
                 date: string;
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22196,6 +22918,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyCashReportDto"];
+                    "text/csv": components["schemas"]["DailyCashReportDto"];
                 };
             };
             401: {
@@ -22204,6 +22927,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22212,6 +22936,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22220,6 +22945,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22228,6 +22954,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22236,6 +22963,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22253,6 +22981,8 @@ export interface operations {
                 overdueOnly?: boolean;
                 /** @description `oldestDueOn`: the longest-owed first */
                 sort?: components["schemas"]["DefaulterSort"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22271,6 +23001,12 @@ export interface operations {
                         page: number;
                         total: number;
                     };
+                    "text/csv": {
+                        data: components["schemas"]["DefaulterDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
                 };
             };
             401: {
@@ -22279,6 +23015,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22287,6 +23024,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22295,6 +23033,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22303,6 +23042,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22311,6 +23051,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22322,6 +23063,8 @@ export interface operations {
                 spentFrom: string;
                 spentTo: string;
                 groupBy?: components["schemas"]["ExpenseGroup"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22335,6 +23078,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpensesReportDto"];
+                    "text/csv": components["schemas"]["ExpensesReportDto"];
                 };
             };
             401: {
@@ -22343,6 +23087,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22351,6 +23096,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22359,6 +23105,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22367,6 +23114,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22375,6 +23123,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_financialStatement: {
+        parameters: {
+            query?: {
+                /** @description With `to`; inclusive */
+                from?: string;
+                /** @description With `from`; inclusive; at most 366 days after it */
+                to?: string;
+                /** @description The term's dates */
+                termId?: string;
+                /** @description The academic year's dates */
+                academicYearId?: string;
+                /** @description Rule 25: the day money moved, or the day it was verified or decided. Default: the school's setting */
+                basis?: components["schemas"]["StatementBasis"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialStatementDto"];
+                    "text/csv": components["schemas"]["FinancialStatementDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22384,6 +23211,8 @@ export interface operations {
             query: {
                 academicYearId: string;
                 groupBy?: components["schemas"]["OutstandingGroup"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22397,6 +23226,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OutstandingReportDto"];
+                    "text/csv": components["schemas"]["OutstandingReportDto"];
                 };
             };
             401: {
@@ -22405,6 +23235,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22413,6 +23244,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22421,6 +23253,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22429,6 +23262,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22437,6 +23271,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -22447,6 +23282,8 @@ export interface operations {
                 from: string;
                 /** @description At most 24 months from `from`, inclusive */
                 to: string;
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -22460,6 +23297,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PayrollReportDto"];
+                    "text/csv": components["schemas"]["PayrollReportDto"];
                 };
             };
             401: {
@@ -22468,6 +23306,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -22476,6 +23315,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -22484,6 +23324,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -22492,6 +23333,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -22500,6 +23342,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -23748,6 +24591,430 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HolidayDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ImportsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                kind?: components["schemas"]["ImportKind"];
+                status?: components["schemas"]["ImportStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ImportDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ImportsController_previewOpeningBalances: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["OpeningBalancesUploadDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ImportsController_previewPastResults: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PastResultsUploadDto"];
+            };
+        };
+        responses: {
+            /** @description Replay of a committed preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ImportsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    ImportsController_commit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16-64 of A-Z a-z 0-9 _ -, generated once when the form opens (newIdempotencyKey()); a replay answers 200 with Idempotency-Replayed: true */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDetailDto"];
                 };
             };
             401: {
@@ -32892,11 +34159,95 @@ export interface operations {
             };
         };
     };
+    ResultReportsController_meritList: {
+        parameters: {
+            query: {
+                page?: number;
+                limit?: number;
+                classId: string;
+                termId: string;
+                sort?: components["schemas"]["MeritListSort"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeritListDto"];
+                    "text/csv": components["schemas"]["MeritListDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
     ResultReportsController_sectionSummary: {
         parameters: {
             query: {
                 /** @description An approved or published sheet (any version) */
                 sheetId: string;
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -32910,6 +34261,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SectionSummaryReportDto"];
+                    "text/csv": components["schemas"]["SectionSummaryReportDto"];
                 };
             };
             401: {
@@ -32918,6 +34270,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -32926,6 +34279,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             404: {
@@ -32934,6 +34288,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             409: {
@@ -32942,6 +34297,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -32950,6 +34306,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -32958,6 +34315,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -32966,6 +34324,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -32975,6 +34334,8 @@ export interface operations {
             query: {
                 termId: string;
                 classSubjectId: string;
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
             };
             header?: never;
             path?: never;
@@ -32988,6 +34349,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubjectReportDto"];
+                    "text/csv": components["schemas"]["SubjectReportDto"];
                 };
             };
             401: {
@@ -32996,6 +34358,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             403: {
@@ -33004,6 +34367,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             404: {
@@ -33012,6 +34376,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             422: {
@@ -33020,6 +34385,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             429: {
@@ -33028,6 +34394,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
             default: {
@@ -33036,6 +34403,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -34257,6 +35625,130 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SchoolSupportController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SchoolSupportSessionDto"][];
+                        limit: number;
+                        page: number;
+                        total: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    SchoolSupportController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchoolSupportSessionDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -36204,6 +37696,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StaffReportsController_summary: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                /** @description Default: 1 January of the school year to date (calendar year) */
+                from?: string;
+                /** @description Default: today; at most 366 days after from */
+                to?: string;
+                /** @description Part of the name */
+                staffName?: string;
+                sort?: components["schemas"]["StaffReportSort"];
+                /** @description csv: the rows shown as a CSV download (no page or limit; at most 10,000 rows; audited) */
+                format?: components["schemas"]["ReportFormat"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffReportDto"];
+                    "text/csv": components["schemas"]["StaffReportDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                    "text/csv": components["schemas"]["ApiErrorDto"];
                 };
             };
         };
@@ -38755,6 +40324,75 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+        };
+    };
+    StudentProfileController_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentProfileDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorDto"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

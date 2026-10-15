@@ -1,11 +1,16 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PrismaClient } from './generated/prisma/client';
-import { assertQueryAllowed } from './query-guard';
+import { inSupportContext } from '../tenancy/support-flag';
+import { assertQueryAllowed, assertSupportRead } from './query-guard';
 
 export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
 
-/** The only Prisma client the application builds: every model operation passes the query guard. */
+/**
+ * The only Prisma client the application builds: every model operation passes the query guard,
+ * and during a platform support read (exception 7) every operation, raw ones included, must be a
+ * read (contracts/slice-45.md §3).
+ */
 export function createGuardedClient(connectionString: string) {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) }).$extends({
     name: 'queryGuard',
@@ -13,8 +18,13 @@ export function createGuardedClient(connectionString: string) {
       $allModels: {
         $allOperations({ model, operation, args, query }) {
           assertQueryAllowed(model, operation, args);
+          assertSupportRead(model, operation, inSupportContext());
           return query(args);
         },
+      },
+      $allOperations({ model, operation, args, query }) {
+        if (model === undefined) assertSupportRead(undefined, operation, inSupportContext());
+        return query(args);
       },
     },
   });

@@ -10,6 +10,7 @@ import { PaymentsModule } from '../modules/payments/payments.module';
 import { ResultsModule } from '../modules/results/results.module';
 import { StaffModule } from '../modules/people/staff/staff.module';
 import { PlatformBillingModule } from '../modules/platform/billing/platform-billing.module';
+import { SupportCoreModule } from '../modules/platform/support/support.module';
 import { QueueTenancyModule } from '../tenancy/queue.mint';
 import { BILLING_NOTICES_PROVIDERS } from './billing-notices';
 import { DELIVERY_HEALTH_ROLLUP_PROVIDERS } from './delivery-health-rollup';
@@ -26,7 +27,7 @@ import { WorkerHost } from './worker-host';
  * no job.
  */
 @Module({
-  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule, AnnouncementsModule, PlatformBillingModule, FeesModule, PayrollModule, FinanceReportsModule, PaymentsModule, ResultsModule, StaffModule],
+  imports: [MessagingModule, QueueTenancyModule, DocumentsModule, AttendanceModule, AnnouncementsModule, PlatformBillingModule, FeesModule, PayrollModule, FinanceReportsModule, PaymentsModule, ResultsModule, StaffModule, SupportCoreModule],
   providers: [
     ...JOB_RUNNER_PROVIDERS,
     ...DELIVERY_HEALTH_ROLLUP_PROVIDERS,

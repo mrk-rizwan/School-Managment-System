@@ -7,6 +7,7 @@ import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, PageQueryDto, type Page } from '../../common/pagination';
 import { perUserThrottle } from '../../common/rate-limit';
+import { CsvExport, csvCost } from '../../common/report-export';
 import { NoQueryDto } from '../../common/validation';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
 import {
@@ -18,11 +19,14 @@ import {
 } from './my-results.dto';
 import { MyResultsService } from './my-results.service';
 import {
+  MeritListDto,
+  MeritListQueryDto,
   SectionSummaryQueryDto,
   SectionSummaryReportDto,
   SubjectReportDto,
   SubjectReportQueryDto,
 } from './result-reports.dto';
+import { MERIT_LIST_COLUMNS, SECTION_SUBJECT_COLUMNS, SUBJECT_SECTION_COLUMNS } from './result-reports.csv';
 import { ResultReportsService } from './result-reports.service';
 import { ResultDto } from './results.dto';
 
@@ -32,8 +36,8 @@ import { ResultDto } from './results.dto';
 // per-user me-reads bucket (R166).
 const COMMON = [401, 403, 429];
 
-/** The result reports: 30 a minute, 300 an hour per user (plan §5). */
-export const ResultReportsThrottleGuard = perUserThrottle('result-reports', 30, 300);
+/** The result reports: 30 a minute, 300 an hour per user (plan §5); a CSV export costs 5 (R336). */
+export const ResultReportsThrottleGuard = perUserThrottle('result-reports', 30, 300, csvCost);
 
 @ApiTags('me')
 @Controller('me/children/:id')
@@ -153,6 +157,12 @@ export class ResultReportsController {
   /** Pass and fail counts, averages per subject, grade distribution (R287). */
   @Get('section-summary')
   @ApiOkResponse({ type: SectionSummaryReportDto })
+  @CsvExport({
+    family: 'result_report',
+    report: 'section-summary',
+    rows: (body: SectionSummaryReportDto) => body.subjects,
+    columns: SECTION_SUBJECT_COLUMNS,
+  })
   @ApiErrors(...COMMON, 404, 409, 422)
   sectionSummary(
     @Query() query: SectionSummaryQueryDto,
@@ -164,12 +174,22 @@ export class ResultReportsController {
   /** Per-section averages, top and bottom, of one class-subject in a term (R287). */
   @Get('subject')
   @ApiOkResponse({ type: SubjectReportDto })
+  @CsvExport({ family: 'result_report', report: 'subject-report', rows: (body: SubjectReportDto) => body.sections, columns: SUBJECT_SECTION_COLUMNS })
   @ApiErrors(...COMMON, 404, 422)
   subject(
     @Query() query: SubjectReportQueryDto,
     @CurrentSchoolSession() session: SchoolSessionContext,
   ): Promise<SubjectReportDto> {
     return this.reports.subject(scopeOf(session), query);
+  }
+
+  /** Phase 5 R333: the class-wide merit list of a term, read from the live class ranking. */
+  @Get('merit-list')
+  @ApiOkResponse({ type: MeritListDto })
+  @CsvExport({ family: 'result_report', report: 'merit-list', columns: MERIT_LIST_COLUMNS })
+  @ApiErrors(...COMMON, 404, 422)
+  meritList(@Query() query: MeritListQueryDto, @CurrentSchoolSession() session: SchoolSessionContext): Promise<MeritListDto> {
+    return this.reports.meritList(scopeOf(session), query);
   }
 }
 

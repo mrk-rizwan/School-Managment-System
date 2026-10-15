@@ -456,12 +456,18 @@ describe('wave U schema: rankings, imports and support sessions (raw SQL)', () =
       expect(await refusedBy(...charge({ importId: null }))).toBeNull();
     });
 
-    it('R342: an opening balance is never late-fee charged', async () => {
+    it('R342: an opening balance carries no period, so the late-fee sweep never selects it (fix round 20261016130000)', async () => {
       const imp = await anImport('opening_balances');
-      const id = await one(`${charge({ importId: imp })[0]} RETURNING id`, charge({ importId: imp })[1]);
-      expect(await refusedBy(...charge({ kind: 'late_fee', lateFeeFor: id }))).toBe('charges_late_fee_not_imported');
+      // An imported charge with a period is refused: the sweep's candidates all have one.
+      const [sql, params] = charge({ importId: imp });
+      const withPeriod: unknown[] = [...params];
+      withPeriod[6] = '2026-10';
+      expect(await refusedBy(sql, withPeriod)).toBe('charges_import_period_check');
+      const id = await one(`${sql} RETURNING id`, params);
+      expect(await one(`SELECT id FROM charges WHERE id = $1 AND period IS NULL`, [id])).toBe(id);
+      // The guard no longer runs on a late fee at all (it fired on every one: the sweep's cost).
       const plain = await one(`${charge()[0]} RETURNING id`, charge()[1]);
-      expect(await refusedBy(...charge({ kind: 'late_fee', lateFeeFor: plain }))).not.toBe('charges_late_fee_not_imported');
+      expect(await refusedBy(...charge({ kind: 'late_fee', lateFeeFor: plain }))).toBeNull();
     });
   });
 

@@ -1,11 +1,13 @@
 import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Capability } from '@asms/shared';
+import { Capability, type CsvColumn } from '@asms/shared';
 import { RequireCapability, RequireCapacity } from '../../common/auth/route-access';
 import { CurrentSchoolSession, type SchoolSessionContext } from '../../common/auth/school-session';
 import { ApiIdParam, IdParam } from '../../common/ids';
 import { ApiErrors } from '../../common/openapi';
 import { ApiPaginated, type Page } from '../../common/pagination';
+import { perUserThrottle } from '../../common/rate-limit';
+import { CsvExport, csvCost } from '../../common/report-export';
 import { ReasonDto } from '../../common/reason.dto';
 import { NoQueryDto } from '../../common/validation';
 import { MeReadsThrottleGuard } from '../me/me-throttles';
@@ -23,6 +25,24 @@ import { DocumentVerificationService } from './verification.service';
 // Phase 5 slice 40 (contracts/slice-40.md §1). Common to every route: 401, 403 PERMISSION_DENIED /
 // ORIGIN_REJECTED, 429.
 const COMMON = [401, 403, 429];
+
+/**
+ * Phase 5 slice 42 (R336): the incomplete-admissions report's own family budget, 30/min and 300/h
+ * per user; a CSV export costs 5.
+ */
+export const DocumentReportsThrottleGuard = perUserThrottle('document-reports', 30, 300, csvCost);
+
+/** R336: the incomplete-admissions CSV, the tab's columns (types joined with spaces). */
+export const INCOMPLETE_ADMISSION_COLUMNS: readonly CsvColumn<IncompleteAdmissionDto>[] = [
+  { header: 'Student', value: (r) => r.fullName },
+  { header: 'Admission no', value: (r) => r.admissionNo },
+  { header: 'Admitted on', value: (r) => r.admittedOn },
+  { header: 'Class', value: (r) => r.className },
+  { header: 'Section', value: (r) => r.sectionName },
+  { header: 'Missing', value: (r) => r.missing.join(' ') },
+  { header: 'Awaiting verification', value: (r) => r.awaiting.join(' ') },
+  { header: 'Rejected', value: (r) => r.rejected.join(' ') },
+];
 
 /** The verification queue, the decisions and the incomplete-admissions report (document.verify). */
 @ApiTags('documents')
@@ -43,7 +63,9 @@ export class DocumentVerificationController {
 
   @Get('documents/incomplete-admissions')
   @RequireCapability(Capability.DOCUMENT_VERIFY)
+  @UseGuards(DocumentReportsThrottleGuard)
   @ApiPaginated(IncompleteAdmissionDto)
+  @CsvExport({ family: 'document_report', report: 'incomplete-admissions', columns: INCOMPLETE_ADMISSION_COLUMNS })
   @ApiErrors(...COMMON, 422)
   incompleteAdmissions(
     @Query() query: IncompleteAdmissionsQueryDto,

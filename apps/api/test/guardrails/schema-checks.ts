@@ -3617,7 +3617,11 @@ function WAVE_U_OBJECTS(): ExpectedObject[] {
     { kind: 'constraint', table: 'charges', name: 'charges_import_check', definition: "CHECK (((import_id IS NULL) OR (kind = 'manual'::charge_kind)))" },
     { kind: 'index', table: 'charges', name: 'charges_import_enrolment_key', definition: 'UNIQUE INDEX charges_import_enrolment_key ON public.charges USING btree (school_id, import_id, academic_year_id, enrolment_id) WHERE (import_id IS NOT NULL)' },
     { kind: 'trigger', table: 'charges', name: 'charges_columns_immutable', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'academic_year_id', 'fee_head_id', 'head_frequency', 'kind', 'period', 'campaign_id', 'late_fee_for_charge_id', 'adjusts_charge_id', 'concession_id', 'gross_amount', 'concession_amount', 'amount', 'description', 'due_on', 'created_by', 'created_at', 'import_id')" },
-    { kind: 'trigger', table: 'charges', name: 'charges_import_guard', definition: 'BEFORE INSERT ON public.charges FOR EACH ROW WHEN (((new.import_id IS NOT NULL) OR (new.late_fee_for_charge_id IS NOT NULL))) EXECUTE FUNCTION asms_charge_import_guard()' },
+    // Narrowed by the fix round (20261016130000): an imported charge only; the late-fee arm is
+    // unreachable because an imported charge carries no period (charges_import_period_check) and
+    // the late-fee sweep selects only charges with one.
+    { kind: 'trigger', table: 'charges', name: 'charges_import_guard', definition: 'BEFORE INSERT ON public.charges FOR EACH ROW WHEN ((new.import_id IS NOT NULL)) EXECUTE FUNCTION asms_charge_import_guard()' },
+    { kind: 'constraint', table: 'charges', name: 'charges_import_period_check', definition: 'CHECK (((import_id IS NULL) OR (period IS NULL)))' },
     // ---- platform_support_sessions (R349, R352; non-tenant)
     { kind: 'constraint', table: S, name: `${S}_reason_check`, definition: trimmed('reason') },
     { kind: 'constraint', table: S, name: `${S}_reason_no_id_check`, definition: noIdCheck('reason') },

@@ -12,6 +12,7 @@ import { EventActivityService } from './event-activity.service';
 import { EventDutiesController, EventsController, MyEventsController } from './events.controller';
 import { EventsService } from './events.service';
 import { EventWritesThrottleGuard } from './events.throttle';
+import { FinanceReportsThrottleGuard } from '../finance-reports/finance-reports.controller';
 
 /**
  * Events and PTM (phase-5-extended.md slice 38, contracts/slice-38.md): events, duties,
@@ -25,6 +26,8 @@ import { EventWritesThrottleGuard } from './events.throttle';
   controllers: [EventsController, EventDutiesController, MyEventsController],
   providers: [
     SchoolContext,
+    // Phase 5 slice 42: the event report shares the finance-reports bucket (its CSV costs 5).
+    FinanceReportsThrottleGuard,
     IdempotencyKeyGuard,
     IdempotentRequests,
     EventWritesThrottleGuard,

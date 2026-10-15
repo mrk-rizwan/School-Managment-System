@@ -31,6 +31,9 @@ export const platformKeys = {
   plans: ['platform', 'plans'] as const,
   invoices: ['platform', 'invoices'] as const,
   billing: (id: string) => ['platform', 'schools', 'billing', id] as const,
+  // Slice 45: support sessions.
+  support: ['platform', 'support'] as const,
+  supportSession: (id: string) => ['platform', 'support', 'detail', id] as const,
 };
 
 /** Where a session in this state belongs: enrolment first, then the password, then the console. */

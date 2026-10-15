@@ -55,6 +55,10 @@ export function resultCard(card: ResultDto, timezone: string): SafeHtml {
       : card.revised && card.publishedAt !== null
         ? html`<p class="stamp">Revised on ${dayIn(timezone, card.publishedAt)}</p>`
         : html``;
+  // Phase 5 R343: a result brought in by a commencement import says so.
+  const imported = card.imported
+    ? html`<p class="stamp">Imported from the school's earlier records</p>`
+    : html``;
   const position =
     card.showPosition && card.position !== null && card.positionOf !== null
       ? html`<tr><th>Position</th><td>${card.position} / ${card.positionOf}</td></tr>`
@@ -70,7 +74,7 @@ export function resultCard(card: ResultDto, timezone: string): SafeHtml {
   return html`<section class="card">
 <h1>${card.schoolName}</h1>
 <h2>Report card · ${term} · ${card.academicYearName}</h2>
-${stamp}
+${stamp}${imported}
 <table class="who">
   <tr><th>Student</th><td>${card.studentName}</td><th>Admission no.</th><td>${card.admissionNo}</td></tr>
   <tr><th>Class</th><td>${card.className} ${card.sectionName}</td><th>Roll no.</th><td>${card.rollNo === null ? '—' : card.rollNo}</td></tr>

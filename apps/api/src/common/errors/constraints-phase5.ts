@@ -286,12 +286,12 @@ export const WAVE_U_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = 
   result_sheets_import_key: () =>
     new ApiException(409, ErrorCode.IMPORT_SHEET_EXISTS, 'A result sheet already exists for this import.'),
   charges_import_enrolment_key: concurrentUpdate,
-  imports_file_name_check: fieldInvalid('stagedUploadId', 'the file name must not be blank'),
-  imports_file_name_no_id_check: noIdentity('stagedUploadId'),
-  imports_rows_check: fieldInvalid('stagedUploadId', 'the file holds at most 5,000 rows and 1 MB of data'),
-  imports_row_count_check: fieldInvalid('stagedUploadId', 'the file holds at most 5,000 rows'),
-  imports_rows_no_id_check: noIdentity('stagedUploadId'),
-  imports_errors_no_id_check: noIdentity('stagedUploadId'),
+  imports_file_name_check: fieldInvalid('file', 'the file name must not be blank'),
+  imports_file_name_no_id_check: noIdentity('file'),
+  imports_rows_check: fieldInvalid('file', 'the file holds at most 5,000 rows and 1 MB of data'),
+  imports_row_count_check: fieldInvalid('file', 'the file holds at most 5,000 rows'),
+  imports_rows_no_id_check: noIdentity('file'),
+  imports_errors_no_id_check: noIdentity('file'),
   // R349: one open session per school, three per platform user.
   platform_support_sessions_open_key: () =>
     new ApiException(409, ErrorCode.SUPPORT_SESSION_OPEN, 'The school already has an open support session.'),

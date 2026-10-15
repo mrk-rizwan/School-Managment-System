@@ -7,13 +7,17 @@ import { LoginLockout, LoginThrottleGuard, SessionThrottleGuard } from './login-
 import { PlatformAdminSeeder } from './platform-admin.seeder';
 import { PlatformAuthController } from './platform-auth.controller';
 import { PlatformAuthService } from './platform-auth.service';
+import { PlatformStepUp } from './platform-step-up';
+import { SupportCoreModule } from '../support/support.module';
 import { PlatformSessionAccess } from './platform-session-access';
 
-// Global for one export: RouteAccessGuard (an APP_GUARD in AppModule) needs PlatformSessionAccess
-// to resolve @PlatformSession routes. The platform repositories behind it stay inside this module.
+// Global for its exports: RouteAccessGuard (an APP_GUARD in AppModule) needs PlatformSessionAccess
+// to resolve @PlatformSession routes, and the support module (slice 45) needs PlatformStepUp for a
+// fresh second factor. The platform repositories behind them stay inside this module. Logout
+// closes the caller's support sessions (SupportCoreModule).
 @Global()
 @Module({
-  imports: [CryptoModule],
+  imports: [CryptoModule, SupportCoreModule],
   controllers: [PlatformAuthController],
   providers: [
     PlatformAuthService,
@@ -25,7 +29,8 @@ import { PlatformSessionAccess } from './platform-session-access';
     LoginThrottleGuard,
     SessionThrottleGuard,
     PlatformSessionAccess,
+    PlatformStepUp,
   ],
-  exports: [PlatformSessionAccess],
+  exports: [PlatformSessionAccess, PlatformStepUp],
 })
 export class PlatformAuthModule {}

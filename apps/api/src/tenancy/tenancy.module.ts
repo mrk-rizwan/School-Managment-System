@@ -3,6 +3,7 @@ import { ClsModule } from 'nestjs-cls';
 import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { AccessModule } from '../modules/access/access.module';
 import { DatabaseModule } from '../repositories/database.module';
+import { ChangeContextRepository } from '../repositories/change-context.repository';
 import { PRISMA_CLIENT } from '../repositories/prisma';
 import { OwnSchoolRepository } from '../repositories/own-school.repository';
 import { SessionRepository } from '../repositories/session.repository';
@@ -10,6 +11,7 @@ import { AfterCommit, AfterCommitPrismaAdapter } from './after-commit';
 import { RequestContextService } from './request-context';
 import { SchoolSessionResolver } from './school-session-resolver';
 import { SessionEstablisher } from './session-establisher';
+import { SupportReadContext } from './support-read-context';
 
 /** Interactive-transaction timeout for every @Transactional() unit of work (see the adapter). */
 export const TRANSACTION_TIMEOUT_MS = 15_000;
@@ -56,7 +58,18 @@ export const TRANSACTION_TIMEOUT_MS = 15_000;
     SessionRepository,
     OwnSchoolRepository,
     AfterCommit,
+    // Exception 7 (contracts/slice-45.md §3): the READ ONLY, `support: true` context of a platform
+    // support read.
+    ChangeContextRepository,
+    SupportReadContext,
   ],
-  exports: [AfterCommit, RequestContextService, SchoolSessionResolver, SessionRepository, OwnSchoolRepository],
+  exports: [
+    AfterCommit,
+    RequestContextService,
+    SchoolSessionResolver,
+    SessionRepository,
+    OwnSchoolRepository,
+    SupportReadContext,
+  ],
 })
 export class TenancyModule {}

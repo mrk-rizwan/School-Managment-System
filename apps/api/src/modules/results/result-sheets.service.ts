@@ -35,6 +35,7 @@ import type { SchoolId } from '../../tenancy/school-id';
 import type { MarksScope } from '../../tenancy/scope';
 import { classArchived, requireOpenYear, yearClosed } from '../academics/academics.shared';
 import { PermissionsService } from '../access/permissions.service';
+import { ClassRankingService } from './class-ranking.service';
 import {
   ResultComposer,
   storedRow,
@@ -113,6 +114,7 @@ export class ResultSheetsService {
     private readonly outbox: OutboxDispatcher,
     private readonly audit: AuditLogRepository,
     private readonly clock: SchoolClock,
+    private readonly rankings: ClassRankingService,
   ) {}
 
   // ------------------------------------------------------------------------------- scope, lock
@@ -664,7 +666,7 @@ export class ResultSheetsService {
   async publishLocked(
     schoolId: SchoolId,
     userId: bigint,
-    sheet: Pick<ResultSheetRecord, 'id'>,
+    sheet: Pick<ResultSheetRecord, 'id' | 'classId' | 'termId'>,
   ): Promise<number> {
     const now = this.clock.now();
     if (
@@ -676,6 +678,8 @@ export class ResultSheetsService {
       throw concurrentUpdate();
     }
     const published = await this.results.publishSheetRows(schoolId, sheet.id, now);
+    // Slice 42 (R333): the class ranking, when this was the class-term's last section to publish.
+    if (sheet.termId !== null) await this.rankings.recompute(schoolId, sheet.classId, sheet.termId, 'publish', userId);
     this.outbox.resultNotifyAfterCommit(schoolId, sheet.id);
     await this.audit.record(schoolId, {
       actorUserId: userId,

@@ -22,8 +22,8 @@ import { createClassWithSection } from '../support/students';
 
 const db = () => testDb();
 
-/** Built by slice 43, which marks its own route (the R68 suite holds the same list). */
-const NOT_YET_BUILT: readonly DefaultPasswordInertAction[] = ['import.opening_balances'];
+/** Routes a later slice has not built yet (none since slice 43; the R68 suite holds the same list). */
+const NOT_YET_BUILT: readonly DefaultPasswordInertAction[] = [];
 
 interface ErrorBody {
   error: { code: string; details: { reason?: string } | null };

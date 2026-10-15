@@ -35,6 +35,7 @@ import { DOCUMENT_TYPE_LABELS } from '../students/_lib/students-ui';
 import { BillingStatusCard } from './billing-status';
 import { DeviceTokenCard } from './device-token-card';
 import { PaymentAccountsCard } from './payment-accounts';
+import { SupportSessionsCard } from './support-sessions-card';
 
 // contracts/slice-2.md §6 (fee due day 1–28, student sign-in) and contracts/slice-9.md §4 (the
 // plan §4.5 attendance and remark fields). One resource, one Save: only what changed is sent.
@@ -142,6 +143,8 @@ export function SchoolSettings() {
         {settings.data && <DeviceTokenCard rotatedAt={settings.data.deviceTokenRotatedAt} />}
         {/* Slice 26 (A18): the school's own ASMS subscription and invoice. */}
         <BillingStatusCard />
+        {/* Phase 5 slice 45: platform support access, listed and revocable. */}
+        <SupportSessionsCard />
       </div>
     </>
   );

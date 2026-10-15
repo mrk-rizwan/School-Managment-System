@@ -64,6 +64,43 @@ export function toAuditEntryDto(row: AuditReadRow): AuditEntryDto {
   };
 }
 
+/**
+ * §2.1: the required filter, the pairs, the 92-day range in the school's calendar. Shared with the
+ * platform support audit view (contracts/slice-45.md §1), which applies the same rules.
+ */
+export function auditFilterOf(query: ListAuditLogQueryDto, timezone: string): AuditReadFilter {
+  if ((query.subjectType === undefined) !== (query.subjectId === undefined)) {
+    throw query.subjectType === undefined
+      ? pairRequired('subjectType', 'subjectId')
+      : pairRequired('subjectId', 'subjectType');
+  }
+  if ((query.createdFrom === undefined) !== (query.createdTo === undefined)) {
+    throw query.createdFrom === undefined
+      ? pairRequired('createdFrom', 'createdTo')
+      : pairRequired('createdTo', 'createdFrom');
+  }
+  const filter: AuditReadFilter = {};
+  if (query.actorUserId !== undefined) filter.actorUserId = BigInt(query.actorUserId);
+  if (query.subjectType !== undefined && query.subjectId !== undefined) {
+    filter.subject = { type: query.subjectType, id: BigInt(query.subjectId) };
+  }
+  if (query.createdFrom !== undefined && query.createdTo !== undefined) {
+    const from = fromDateString(query.createdFrom);
+    const to = fromDateString(query.createdTo);
+    // Inclusive: 92 calendar days is 91 days apart.
+    assertRange(from, to, AUDIT_MAX_RANGE_DAYS - 1, { field: 'createdTo', from: 'createdFrom' });
+    filter.createdRange = { from: dayStart(timezone, from), to: dayStart(timezone, addDays(to, 1)) };
+  }
+  if (filter.actorUserId === undefined && filter.subject === undefined && filter.createdRange === undefined) {
+    throw filterRequired();
+  }
+  if (query.actionPrefix !== undefined) {
+    // A bare family means the family's actions: `payment` is `payment.*`, never `payment_account.*`.
+    filter.actionPrefix = query.actionPrefix.includes('.') ? query.actionPrefix : `${query.actionPrefix}.`;
+  }
+  return filter;
+}
+
 @Injectable()
 export class AuditService {
   constructor(
@@ -92,39 +129,9 @@ export class AuditService {
     return toAuditEntryDto(row);
   }
 
-  /** §2.1: the required filter, the pairs, the 92-day range in the school's calendar. */
+  /** §2.1, in the school's timezone. */
   private async filterOf(query: ListAuditLogQueryDto): Promise<AuditReadFilter> {
-    if ((query.subjectType === undefined) !== (query.subjectId === undefined)) {
-      throw query.subjectType === undefined
-        ? pairRequired('subjectType', 'subjectId')
-        : pairRequired('subjectId', 'subjectType');
-    }
-    if ((query.createdFrom === undefined) !== (query.createdTo === undefined)) {
-      throw query.createdFrom === undefined
-        ? pairRequired('createdFrom', 'createdTo')
-        : pairRequired('createdTo', 'createdFrom');
-    }
-    const filter: AuditReadFilter = {};
-    if (query.actorUserId !== undefined) filter.actorUserId = BigInt(query.actorUserId);
-    if (query.subjectType !== undefined && query.subjectId !== undefined) {
-      filter.subject = { type: query.subjectType, id: BigInt(query.subjectId) };
-    }
-    if (query.createdFrom !== undefined && query.createdTo !== undefined) {
-      const from = fromDateString(query.createdFrom);
-      const to = fromDateString(query.createdTo);
-      // Inclusive: 92 calendar days is 91 days apart.
-      assertRange(from, to, AUDIT_MAX_RANGE_DAYS - 1, { field: 'createdTo', from: 'createdFrom' });
-      const timezone = await this.clock.timezone(this.context.schoolId);
-      filter.createdRange = { from: dayStart(timezone, from), to: dayStart(timezone, addDays(to, 1)) };
-    }
-    if (filter.actorUserId === undefined && filter.subject === undefined && filter.createdRange === undefined) {
-      throw filterRequired();
-    }
-    if (query.actionPrefix !== undefined) {
-      // A bare family means the family's actions: `payment` is `payment.*`, never `payment_account.*`.
-      filter.actionPrefix = query.actionPrefix.includes('.') ? query.actionPrefix : `${query.actionPrefix}.`;
-    }
-    return filter;
+    return auditFilterOf(query, await this.clock.timezone(this.context.schoolId));
   }
 
   /** `audit.viewed`, at most once per actor per school day (R57). */

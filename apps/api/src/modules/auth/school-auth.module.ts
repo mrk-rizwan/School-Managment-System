@@ -11,6 +11,7 @@ import { UserTokenRepository } from '../../repositories/user-token.repository';
 import { AccessModule } from '../access/access.module';
 import { SchoolSettingsModule } from '../school-settings/school-settings.module';
 import { UsersModule } from '../users/users.module';
+import { SupportCoreModule } from '../platform/support/support.module';
 import { AuthController } from './auth.controller';
 import { CredentialsService } from './credentials.service';
 import {
@@ -31,7 +32,8 @@ import { MeService } from './me.service';
 // AppModule by the main thread so parallel agents never edit app.module.ts; it imports the
 // slice-2 submodules. AccessModule is global: the access guard and session resolution use it.
 @Module({
-  imports: [AccessModule, CryptoModule, MailModule, UsersModule, SchoolSettingsModule],
+  // SupportCoreModule (slice 45): MeDto.supportSession.
+  imports: [AccessModule, CryptoModule, MailModule, UsersModule, SchoolSettingsModule, SupportCoreModule],
   controllers: [AuthController, MeController],
   providers: [
     LoginService,

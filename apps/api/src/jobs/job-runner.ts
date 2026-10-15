@@ -19,6 +19,7 @@ import { FeeReminders } from '../modules/finance-reports/fee-reminders';
 import { ClaimsService } from '../modules/payments/claims.service';
 import { ResultNotifyJob } from '../modules/results/result-notify.job';
 import { ContractExpiryWarn } from '../modules/people/staff/contract-expiry.job';
+import { SupportSessionsService } from '../modules/platform/support/support-sessions.service';
 // Named exception 3, the scheduler fan-out (NAMED_EXCEPTION_SITES in eslint.config.mjs).
 import { SchoolFanOutRepository } from '../repositories/platform/school-fan-out.repository';
 import { QueueTenancy } from '../tenancy/queue.mint';
@@ -73,6 +74,8 @@ export class JobRunner {
     private readonly resultNotify: ResultNotifyJob,
     // Phase 5 slice 39 (phase-5-extended.md §3.5, R319).
     private readonly contractExpiry: ContractExpiryWarn,
+    // Phase 5 slice 45 (phase-5-extended.md §3.5, contracts/slice-45.md §2.4).
+    private readonly supportSessions: SupportSessionsService,
   ) {}
 
   /**
@@ -230,6 +233,11 @@ export class JobRunner {
       // Phase 5 slice 39 (§3.5, R319): the contract expiry warnings, once each at 30 and 7 days.
       case JOB.contractExpiryWarn:
         await this.eachSchool(name, (schoolId) => this.contractExpiry.run(schoolId, plannedAt));
+        return 'done';
+      // Phase 5 slice 45 (§3.5): support sessions past their time, each school with its own
+      // SchoolId (exception 3); closing one writes both logs and tells the principals.
+      case JOB.supportSessionExpire:
+        await this.eachSchool(name, (schoolId) => this.supportSessions.expireForSchool(schoolId, plannedAt));
         return 'done';
       default:
         return this.dropped(name);

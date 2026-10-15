@@ -24,4 +24,6 @@ export const FINANCE_SETTINGS = {
   // Phase 5 slice 44: no late-after time and no device token yet.
   staffLateAfter: null,
   deviceTokenRotatedAt: null,
+  // Phase 5 slice 42 (contracts/slice-42.md §1): the financial statement's basis at its default.
+  financialStatementBasis: 'received',
 } as const satisfies Partial<SchoolSettingsDto>;

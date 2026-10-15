@@ -30,6 +30,15 @@ export class Advances {
     private readonly heads: FeeHeadRepository,
   ) {}
 
+  /** Each child's unallocated advance in the year, unlocked (an opening-balance preview, slice 43). */
+  async available(schoolId: SchoolId, academicYearId: bigint, studentIds: readonly bigint[]): Promise<Map<bigint, number>> {
+    const sums = new Map<bigint, number>();
+    for (const a of await this.payments.advances(schoolId, studentIds, academicYearId)) {
+      sums.set(a.studentId, (sums.get(a.studentId) ?? 0) + a.unallocated);
+    }
+    return sums;
+  }
+
   /**
    * R189, A5: the children's advances in `academicYearId` pay their open charges of that year,
    * oldest due first (allocate() with no new money), fines and late fees included. Called after a

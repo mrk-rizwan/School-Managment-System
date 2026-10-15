@@ -246,6 +246,51 @@ export class ChargeRepository {
     return created;
   }
 
+  /**
+   * Phase 5 slice 43 (R342): an opening-balances import's charges in one statement — manual,
+   * open, no concession, each naming the import (trigger charges_import_guard: only while the
+   * import is previewed, due on its date; one per enrolment, charges_import_enrolment_key).
+   * Returns how many were written.
+   */
+  async createImported(
+    schoolId: SchoolId,
+    importId: bigint,
+    head: { id: bigint; frequency: FeeFrequency },
+    rows: readonly {
+      enrolmentId: bigint;
+      studentId: bigint;
+      academicYearId: bigint;
+      amount: number;
+      description: string;
+      dueOn: Date;
+      createdBy: bigint;
+    }[],
+  ): Promise<number> {
+    if (rows.length === 0) return 0;
+    const { count } = await this.txHost.tx.charge.createMany({
+      data: rows.map((row) => ({
+        schoolId,
+        enrolmentId: row.enrolmentId,
+        studentId: row.studentId,
+        academicYearId: row.academicYearId,
+        feeHeadId: head.id,
+        headFrequency: head.frequency,
+        kind: 'manual' as const,
+        period: null,
+        concessionId: null,
+        grossAmount: row.amount,
+        concessionAmount: 0,
+        amount: row.amount,
+        description: row.description,
+        dueOn: row.dueOn,
+        status: 'open' as const,
+        createdBy: row.createdBy,
+        importId,
+      })),
+    });
+    return count;
+  }
+
   /** open → voided with no allocation and no credit; 0 when the row moved (the caller holds its lock). */
   async void(schoolId: SchoolId, id: bigint, by: bigint, reason: string, now: Date): Promise<number> {
     const { count } = await this.txHost.tx.charge.updateMany({

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Capability, concessionAmount, ErrorCode, outstanding } from '@asms/shared';
+import { Capability, concessionAmount, ErrorCode, outstanding, type FeeFrequency } from '@asms/shared';
 import type { SchoolSessionContext } from '../../common/auth/school-session';
-import { fieldRefused, notFound } from '../../common/errors/api-exception';
+import { ApiException, fieldRefused, notFound } from '../../common/errors/api-exception';
 import { recoverConstraint } from '../../common/errors/prisma-errors';
 import { IdempotentRequests, type IdempotencyClaim } from '../../common/idempotency';
 import { toPage, type Page } from '../../common/pagination';
@@ -236,6 +236,66 @@ export class ChargesService {
     });
     await recordSubject(created.id);
     return applied.amount > 0 ? ((await this.charges.findById(schoolId, created.id)) ?? created) : created;
+  }
+
+  // ------------------------------------------------------- opening balances (slice 43)
+
+  /**
+   * Phase 5 rule 39, R342: the seeded "Opening balance" head an opening-balances import charges.
+   * An archived one is FEE_HEAD_ARCHIVED; a school without it (never seeded) is refused too.
+   */
+  async openingBalanceHead(schoolId: SchoolId): Promise<{ id: bigint; name: string; frequency: FeeFrequency }> {
+    const head = await this.heads.findSeededOpeningBalance(schoolId);
+    if (!head) throw new ApiException(409, ErrorCode.REFERENCE_NOT_FOUND, 'The school has no Opening balance fee head.');
+    if (head.status === 'archived') throw feeHeadArchived(head.id);
+    return head;
+  }
+
+  /** Each child's advance in the year, unlocked: what an opening-balance preview shows applying. */
+  openingBalanceAdvances(schoolId: SchoolId, academicYearId: bigint, studentIds: readonly bigint[]): Promise<Map<bigint, number>> {
+    return this.advances.available(schoolId, academicYearId, studentIds);
+  }
+
+  /**
+   * R342, inside the import's commit transaction (ImportsService): one manual charge per row under
+   * the seeded head, due on the file's date, never late-fee'd (once-a-time head, no period; and
+   * trigger charges_import_guard), then each child's advance in the year pays it at once (R189).
+   */
+  async createOpeningBalances(
+    schoolId: SchoolId,
+    input: {
+      importId: bigint;
+      academicYearId: bigint;
+      dueOn: Date;
+      createdBy: bigint;
+      rows: readonly { enrolmentId: bigint; studentId: bigint; amount: number; note: string | null }[];
+    },
+  ): Promise<{ charges: number; amount: number; advanceApplied: number }> {
+    const head = await this.openingBalanceHead(schoolId);
+    const charges = await this.charges.createImported(
+      schoolId,
+      input.importId,
+      head,
+      input.rows.map((row) => ({
+        enrolmentId: row.enrolmentId,
+        studentId: row.studentId,
+        academicYearId: input.academicYearId,
+        amount: row.amount,
+        description: row.note === null ? head.name : `${head.name}: ${row.note}`.slice(0, 200),
+        dueOn: input.dueOn,
+        createdBy: input.createdBy,
+      })),
+    );
+    const applied = await this.advances.applyTo(
+      schoolId,
+      input.academicYearId,
+      input.rows.map((row) => row.studentId),
+    );
+    return {
+      charges,
+      amount: input.rows.reduce((sum, row) => sum + row.amount, 0),
+      advanceApplied: applied.amount,
+    };
   }
 
   // ------------------------------------------------------------------------- void, waive

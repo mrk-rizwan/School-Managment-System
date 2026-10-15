@@ -36,6 +36,9 @@ import { StaffController, TeacherAssignmentsController, UserRolesController } fr
 import { StaffService } from './staff.service';
 import { TeacherAssignmentsService } from './teacher-assignments.service';
 import { UserRolesService } from './user-roles.service';
+import { StaffReportsController, StaffReportsThrottleGuard } from './staff-report.controller';
+import { StaffReportService } from './staff-report.service';
+import { StaffReportRepository } from '../../../repositories/staff-report.repository';
 
 /**
  * /api/v1/staff, /teacher-assignments, /users/:id/roles and /user-roles (contracts/slice-4.md).
@@ -51,11 +54,16 @@ import { UserRolesService } from './user-roles.service';
     UserRolesController,
     StaffContractsController,
     MyStaffContractController,
+    // Phase 5 slice 42 (R337): the staff report.
+    StaffReportsController,
   ],
   providers: [
     // Phase 5 slice 39 (contracts/slice-39.md): staff contracts and the contract-expiry-warn body.
     StaffContractsService,
     ContractExpiryWarn,
+    StaffReportService,
+    StaffReportRepository,
+    StaffReportsThrottleGuard,
     StaffContractRepository,
     SalaryStructureRepository,
     StagedUploadRepository,

@@ -369,5 +369,106 @@ describe('R228: the §0.20 identities over a scripted year (e2e)', () => {
         slips.filter((x) => x.status === 'paid').reduce((s, x) => s + x.net, 0),
       ]);
     }
+
+    // 8. Phase 5 R332 (contracts/slice-42.md §2.1): the financial statement over the same window
+    //    reconciles, on both bases, with the collections report (receipts, refunds and reversals,
+    //    net), the expenses report and the daily cash (the shortfall write-off its own line), and
+    //    the paid payslips; every month row sums to the total; net = net receipts − expenditure.
+    const from = isoDay(-91);
+    const to = isoDay(0);
+    const expensesReport = (await get(`/finance-reports/expenses?spentFrom=${from}&spentTo=${to}`, P).expect(200)).body as { total: number };
+    const paidSalaries = (await db().payslip.findMany({ where: { schoolId, status: 'paid' } }))
+      .filter((s) => s.paidOn !== null && s.paidOn.toISOString().slice(0, 10) >= from && s.paidOn.toISOString().slice(0, 10) <= to)
+      .reduce((s, x) => s + x.net, 0);
+    for (const basis of ['received', 'verified'] as const) {
+      const statement = (await get(`/finance-reports/financial-statement?from=${from}&to=${to}&basis=${basis}`, P).expect(200)).body as Statement;
+      const c = await collections(basis, from, to);
+      const t = statement.total;
+      expect(statement.basis).toBe(basis);
+      expect([t.receipts, t.refunds, t.refundReversals, t.netReceipts]).toEqual([c.total, c.refunds.amount, c.refundReversals.amount, c.net]);
+      expect(t.expenses + t.shortfallWriteOffs).toBe(expensesReport.total);
+      expect(t.shortfallWriteOffs).toBe(cash.shortfallWrittenOff);
+      expect([t.salaries, t.advancesPaid, t.staff]).toEqual([paidSalaries, 0, paidSalaries]);
+      expect(t.expenditure).toBe(t.expenses + t.shortfallWriteOffs + t.staff);
+      expect(t.net).toBe(t.netReceipts - t.expenditure);
+      for (const key of LINE_KEYS) {
+        expect(statement.months.reduce((s, m) => s + m[key], 0)).toBe(t[key]);
+      }
+    }
+    // The deposit claim paid 35 days ago and verified today: received that day, verified today.
+    const day35 = (basis: string) =>
+      get(`/finance-reports/financial-statement?from=${isoDay(-35)}&to=${isoDay(-35)}&basis=${basis}`, P).expect(200);
+    expect(((await day35('received')).body as Statement).total.receipts).toBe(3000);
+    expect(((await day35('verified')).body as Statement).total.receipts).toBe(0);
+
+    // An expense spent 3 days ago and approved today (above the approval threshold): the received
+    // basis counts it on the day it was spent, the verified basis on the day it was decided.
+    const expensesOn = async (day: string, basis: string) =>
+      ((await get(`/finance-reports/financial-statement?from=${day}&to=${day}&basis=${basis}`, P).expect(200)).body as Statement).total
+        .expenses;
+    const before = {
+      spentReceived: await expensesOn(isoDay(-3), 'received'),
+      spentVerified: await expensesOn(isoDay(-3), 'verified'),
+      todayReceived: await expensesOn(isoDay(0), 'received'),
+      todayVerified: await expensesOn(isoDay(0), 'verified'),
+    };
+    const roofRepair = (
+      await post(
+        '/expenses',
+        { category: 'repairs', amount: 7000, spentOn: isoDay(-3), description: 'Roof repair', method: 'cash' },
+        O,
+        key(),
+      ).expect(201)
+    ).body as { id: string; status: string; updatedAt: string };
+    expect(roofRepair.status).toBe('pending_approval');
+    await post(`/expenses/${roofRepair.id}/approve`, { expectedUpdatedAt: roofRepair.updatedAt }, P).expect(200);
+    expect({
+      spentReceived: await expensesOn(isoDay(-3), 'received'),
+      spentVerified: await expensesOn(isoDay(-3), 'verified'),
+      todayReceived: await expensesOn(isoDay(0), 'received'),
+      todayVerified: await expensesOn(isoDay(0), 'verified'),
+    }).toEqual({
+      spentReceived: before.spentReceived + 7000,
+      spentVerified: before.spentVerified,
+      todayReceived: before.todayReceived,
+      todayVerified: before.todayVerified + 7000,
+    });
   });
 });
+
+interface StatementFigures {
+  period: string;
+  receipts: number;
+  refundReversals: number;
+  refunds: number;
+  netReceipts: number;
+  expenses: number;
+  shortfallWriteOffs: number;
+  salaries: number;
+  advancesPaid: number;
+  advanceRecoveries: number;
+  staff: number;
+  expenditure: number;
+  net: number;
+}
+
+interface Statement {
+  basis: string;
+  months: StatementFigures[];
+  total: StatementFigures;
+}
+
+const LINE_KEYS = [
+  'receipts',
+  'refundReversals',
+  'refunds',
+  'netReceipts',
+  'expenses',
+  'shortfallWriteOffs',
+  'salaries',
+  'advancesPaid',
+  'advanceRecoveries',
+  'staff',
+  'expenditure',
+  'net',
+] as const;

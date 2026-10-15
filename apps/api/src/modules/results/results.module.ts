@@ -33,6 +33,9 @@ import { ResultReportsService } from './result-reports.service';
 import { ResultCardsService } from './result-cards.service';
 import { ResultRevisionService } from './result-revision.service';
 import { ResultComposer } from './result-composer';
+import { ResultImportService } from './result-import.service';
+import { ClassRankingService } from './class-ranking.service';
+import { ClassRankingRepository } from '../../repositories/class-ranking.repository';
 import { ResultNotifyJob } from './result-notify.job';
 import { ResultSheetsService } from './result-sheets.service';
 import {
@@ -73,6 +76,10 @@ import {
     ResultReadsRepository,
     ResultApprovalService,
     ResultCardsService,
+    ResultImportService,
+    // Slice 42: the class ranking (publish, correction, import) and the merit list.
+    ClassRankingService,
+    ClassRankingRepository,
     ResultRevisionService,
     ResultComposer,
     ResultNotifyJob,
@@ -93,6 +100,17 @@ import {
   ],
   // ResultCardsService: the report card and withholding (slice 33's family routes, certificates);
   // ResultRevisionService: the correction cascade (the assessments module's mark corrections).
-  exports: [ResultSheetsService, ResultNotifyJob, ResultCardsService, ResultRevisionService],
+  // ResultImportService: the past-results import's preview reads and imported sheet (slice 43).
+  // ClassRankingService: the class position of the student profile (slice 42).
+  exports: [
+    ResultSheetsService,
+    ResultNotifyJob,
+    ResultCardsService,
+    ResultRevisionService,
+    ResultImportService,
+    ClassRankingService,
+    // The student profile's latest result (slice 42).
+    MyResultsService,
+  ],
 })
 export class ResultsModule {}
