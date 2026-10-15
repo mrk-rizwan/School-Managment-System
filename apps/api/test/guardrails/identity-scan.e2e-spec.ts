@@ -832,6 +832,10 @@ const PHASE_5_FREE_TEXT: Record<string, string[]> = {
   transport_assignments: ['end_reason'],
   device_punches: ['device_user_id'],
   staff_attendance_disputes: ['reason', 'decision_reason'],
+  // Wave U (slices 43, 45): an import's file name, stored rows and row errors, its failure text;
+  // a support session's reason, ticket and close and revoke reasons.
+  imports: ['file_name', 'rows::text', 'errors::text', 'error'],
+  platform_support_sessions: ['reason', 'ticket_ref', 'close_reason', 'revoke_reason'],
 };
 
 describe('R16 (Phase 5): document rejections, device user ids, timetable, event, contract, transport and dispute text, whole tables', () => {

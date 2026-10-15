@@ -256,3 +256,57 @@ export const WAVE_T_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = 
   staff_attendance_disputes_decision_reason_check: fieldInvalid('reason', 'reason must not be blank'),
   staff_attendance_disputes_decision_reason_no_id_check: noIdentity('reason'),
 };
+
+// ---- wave U: class rankings (slice 42), commencement imports (slice 43) and platform support
+// sessions (slice 45), migration 20261016120000_wave_u_rankings_imports_support. The services
+// check first; these answer a race loser and any write that reaches the database's line. As in
+// wave T, the guards only a bug can break (a ranking or row born in the wrong state, a child of an
+// import of the other kind, the positions against the percentage, a session born closed, the
+// end and revoke groups travelling together) are deliberately unmapped: a 500 says "bug".
+
+const importNotPreviewed = (): ApiException =>
+  new ApiException(409, ErrorCode.IMPORT_NOT_PREVIEWED, 'The import is no longer awaiting commit.');
+
+export const WAVE_U_CONSTRAINTS: Readonly<Record<string, () => ApiException>> = {
+  // R333: two recomputes of one class-term raced; the loser's version is redundant.
+  class_rankings_live_key: concurrentUpdate,
+  class_rankings_first_key: concurrentUpdate,
+  class_rankings_supersedes_key: concurrentUpdate,
+  class_rankings_superseded_at_frozen: concurrentUpdate,
+  // R341: the file was committed by a racing request (the preview reports it first).
+  imports_committed_hash_key: () =>
+    new ApiException(409, ErrorCode.IMPORT_DUPLICATE_FILE, 'This file has already been imported.'),
+  imports_status_transition: importNotPreviewed,
+  imports_committed_at_frozen: importNotPreviewed,
+  imports_failed_at_frozen: importNotPreviewed,
+  result_sheets_import_previewed: importNotPreviewed,
+  charges_import_previewed: importNotPreviewed,
+  // R340: one sheet per import. A racing commit of another file for the same section-term lands
+  // on result_sheets_version_key (version 1 of the section-term; wave O's mapping, CONCURRENT_UPDATE).
+  result_sheets_import_key: () =>
+    new ApiException(409, ErrorCode.IMPORT_SHEET_EXISTS, 'A result sheet already exists for this import.'),
+  charges_import_enrolment_key: concurrentUpdate,
+  imports_file_name_check: fieldInvalid('stagedUploadId', 'the file name must not be blank'),
+  imports_file_name_no_id_check: noIdentity('stagedUploadId'),
+  imports_rows_check: fieldInvalid('stagedUploadId', 'the file holds at most 5,000 rows and 1 MB of data'),
+  imports_row_count_check: fieldInvalid('stagedUploadId', 'the file holds at most 5,000 rows'),
+  imports_rows_no_id_check: noIdentity('stagedUploadId'),
+  imports_errors_no_id_check: noIdentity('stagedUploadId'),
+  // R349: one open session per school, three per platform user.
+  platform_support_sessions_open_key: () =>
+    new ApiException(409, ErrorCode.SUPPORT_SESSION_OPEN, 'The school already has an open support session.'),
+  platform_support_sessions_user_limit: () =>
+    new ApiException(409, ErrorCode.SUPPORT_SESSION_LIMIT, 'You already have three open support sessions.'),
+  // R352: the session ended while the request was in flight (the guard reports the reason first).
+  platform_support_sessions_closed_at_frozen: () =>
+    new ApiException(403, ErrorCode.SUPPORT_SESSION_ENDED, 'The support session has ended.'),
+  platform_support_sessions_expires_check: fieldInvalid('supportSessionHours', 'a support session lasts 1-24 hours'),
+  platform_support_sessions_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  platform_support_sessions_reason_no_id_check: noIdentity('reason'),
+  platform_support_sessions_ticket_ref_check: fieldInvalid('ticketRef', 'ticketRef must not be blank'),
+  platform_support_sessions_ticket_ref_no_id_check: noIdentity('ticketRef'),
+  platform_support_sessions_close_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  platform_support_sessions_close_reason_no_id_check: noIdentity('reason'),
+  platform_support_sessions_revoke_reason_check: fieldInvalid('reason', 'reason must not be blank'),
+  platform_support_sessions_revoke_reason_no_id_check: noIdentity('reason'),
+};

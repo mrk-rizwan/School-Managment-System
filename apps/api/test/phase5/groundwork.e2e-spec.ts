@@ -271,6 +271,22 @@ describe('Phase 5 groundwork: database rules (wave R)', () => {
           weight: 100,
         },
       });
+      // Since wave U an imported sheet names its import (result_sheets_import_id_check).
+      const imported = await db().import.create({
+        data: {
+          schoolId: school.id,
+          kind: 'past_results',
+          fileHash: 'a'.repeat(64),
+          fileName: 'mid-term.csv',
+          rowCount: 0,
+          rows: [],
+          academicYearId: year.id,
+          sectionId: section.id,
+          classId: klass.id,
+          termId: term.id,
+          createdBy: principal.userId,
+        },
+      });
       const now = new Date();
       const published = {
         schoolId: school.id,
@@ -291,9 +307,9 @@ describe('Phase 5 groundwork: database rules (wave R)', () => {
         bands: [{ grade: 'A', minPercent: 80 }],
       };
       expect(await refusal(db().resultSheet.create({ data: published }))).toMatch(/result_sheets_born_draft/);
-      expect(await refusal(db().resultSheet.create({ data: { ...published, provenance: 'imported', submittedBy: office.userId, submittedAt: now } }),)).toMatch(/result_sheets_imported_check/);
-      expect(await refusal(db().resultSheet.create({ data: { ...published, provenance: 'imported', publishedBy: office.userId } }),)).toMatch(/result_sheets_imported_check/);
-      const sheet = await db().resultSheet.create({ data: { ...published, provenance: 'imported' } });
+      expect(await refusal(db().resultSheet.create({ data: { ...published, provenance: 'imported', importId: imported.id, submittedBy: office.userId, submittedAt: now } }),)).toMatch(/result_sheets_imported_check/);
+      expect(await refusal(db().resultSheet.create({ data: { ...published, provenance: 'imported', importId: imported.id, publishedBy: office.userId } }),)).toMatch(/result_sheets_imported_check/);
+      const sheet = await db().resultSheet.create({ data: { ...published, provenance: 'imported', importId: imported.id } });
       expect([sheet.provenance, sheet.status, sheet.submittedBy, sheet.version]).toEqual(['imported', 'published', null, 1]);
       expect(await refusal(db().resultSheet.updateMany({ where: { schoolId: school.id, id: sheet.id }, data: { provenance: 'manual' } }),)).toMatch(/result_sheets_provenance_immutable/);
     });

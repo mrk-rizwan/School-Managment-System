@@ -69,6 +69,14 @@ export type PromotionSheetStatus = (typeof PROMOTION_SHEET_STATUSES)[number];
 export const SHEET_PROVENANCES = ['manual', 'imported'] as const;
 export type SheetProvenance = (typeof SHEET_PROVENANCES)[number];
 
+/**
+ * Phase 5 rule 38 (R333): `class_rankings.trigger`, what computed a class ranking version — the
+ * last section of the class-term publishing, a correction cascade, or a past-results import
+ * (migration 20261016120000_wave_u_rankings_imports_support).
+ */
+export const RANKING_TRIGGERS = ['publish', 'correction', 'import'] as const;
+export type RankingTrigger = (typeof RANKING_TRIGGERS)[number];
+
 // ------------------------------------------------------------------------------ certificates
 
 /** Printed prefixes (§1.1): `LC-0001`, at least four digits, one sequence per type, never reset. */

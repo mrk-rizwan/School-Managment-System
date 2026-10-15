@@ -88,6 +88,8 @@ import {
   IMPORT_KINDS,
   IMPORT_STATUSES,
   SHEET_PROVENANCES,
+  RANKING_TRIGGERS,
+  SUPPORT_SESSION_ENDS,
   STAFF_ATTENDANCE_SOURCES,
   DISPUTE_STATUSES,
   PUNCH_DIRECTIONS,
@@ -196,6 +198,9 @@ const PAIRS: [string, readonly string[]][] = [
   ['punch_direction', PUNCH_DIRECTIONS],
   ['punch_outcome', PUNCH_OUTCOMES],
   ['statement_basis', STATEMENT_BASES],
+  // Phase 5 wave U (migration 20261016120000_wave_u_rankings_imports_support).
+  ['ranking_trigger', RANKING_TRIGGERS],
+  ['support_session_end', SUPPORT_SESSION_ENDS],
   // The document types `school_settings.required_document_types` holds (slice 6's enum).
   ['student_document_type', DOCUMENT_TYPES],
 ];

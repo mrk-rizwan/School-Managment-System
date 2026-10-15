@@ -209,6 +209,11 @@ model School {
   transportAssignments          TransportAssignment[]          @ignore
   devicePunches                 DevicePunch[]                  @ignore
   staffAttendanceDisputes       StaffAttendanceDispute[]       @ignore
+  classRankings                 ClassRanking[]                 @ignore
+  classRankingRows              ClassRankingRow[]              @ignore
+  imports                       Import[]                       @ignore
+  // Phase 5 slice 45: platform support sessions on the school (non-tenant, like platformAuditLogs).
+  supportSessions               PlatformSupportSession[]
   // Phase 3 platform billing: non-tenant rows naming the school (like deliveryHealth).
   platformSubscriptions         PlatformSubscription[]
   platformSchoolMetrics         PlatformSchoolMetric[]
@@ -244,6 +249,7 @@ model PlatformUser {
   subscriptionsAssigned PlatformSubscription[]
   invoicesVoided        PlatformInvoice[]
   paymentsRecorded      PlatformPayment[]
+  supportSessions       PlatformSupportSession[]
 
   @@unique([email], map: "platform_users_email_key")
   @@map("platform_users")
@@ -445,6 +451,7 @@ model AcademicYear {
   promotionSheets PromotionSheet[] @relation("PromotionSheetYear")
   promotionsInto  PromotionSheet[] @relation("PromotionSheetTargetYear")
   events          Event[]
+  imports         Import[]
 
   @@unique([schoolId, id], map: "academic_years_school_id_id_key")
   @@unique([schoolId, name], map: "academic_years_school_id_name_key")
@@ -494,6 +501,8 @@ model Class {
   feeStructures           FeeStructure[]
   chargeCampaignAudiences ChargeCampaignAudience[]
   eventSections           EventSection[]
+  classRankings           ClassRanking[]
+  imports                 Import[]
 
   @@unique([schoolId, id], map: "classes_school_id_id_key")
   /// Target of (school_id, class_id, academic_year_id) FKs: a row naming a class names its year too.
@@ -533,6 +542,7 @@ model Section {
   timetableVersions       TimetableVersion[]
   timetableSubstitutions  TimetableSubstitution[]
   eventSections           EventSection[]
+  imports                 Import[]
 
   @@unique([schoolId, id], map: "sections_school_id_id_key")
   /// Target of (school_id, section_id, class_id) FKs: an enrolment's section is of its class.
@@ -938,6 +948,8 @@ model User {
   disputesRaised            StaffAttendanceDispute[] @relation("StaffAttendanceDisputeRaisedBy")
   disputesDecided           StaffAttendanceDispute[] @relation("StaffAttendanceDisputeDecidedBy")
   disputesWithdrawn         StaffAttendanceDispute[] @relation("StaffAttendanceDisputeWithdrawnBy")
+  importsCreated            Import[]                 @relation("ImportCreatedBy")
+  importsCommitted          Import[]                 @relation("ImportCommittedBy")
 
   @@unique([schoolId, id], map: "users_school_id_id_key")
   @@unique([schoolId, usernameHash], map: "users_school_id_username_hash_key")
@@ -1280,6 +1292,7 @@ model Enrolment {
   promotedInto          PromotionDecision[]   @relation("PromotionDecisionNewEnrolment")
   eventParticipation    EventParticipation[]
   transportAssignments  TransportAssignment[]
+  classRankingRows      ClassRankingRow[]
 
   @@unique([schoolId, id], map: "enrolments_school_id_id_key")
   /// Target of (school_id, enrolment_id, student_id) FKs (marks, alerts, remarks): a row can never
@@ -2366,6 +2379,8 @@ model StaffAttendance {
   /// One mark per punch; also the index of the device punch FK.
   @@unique([schoolId, devicePunchId, staffId], map: "staff_attendance_device_punch_id_key")
   @@index([schoolId, markedBy], map: "staff_attendance_school_id_marked_by_idx")
+  /// The staff report (slice 42, R337): every staff member's marks over a date range.
+  @@index([schoolId, date], map: "staff_attendance_school_id_date_idx")
   @@map("staff_attendance")
 }
 
@@ -3268,6 +3283,11 @@ model Charge {
   waivedAt           DateTime?    @map("waived_at") @db.Timestamptz(3)
   waivedBy           BigInt?      @map("waived_by")
   waiveReason        String?      @map("waive_reason") @db.VarChar(500)
+  /// The opening-balances import that raised this manual charge (wave U, slice 43; CHECK
+  /// charges_import_check, trigger charges_import_guard). Frozen; one charge per import and
+  /// enrolment (hand-written partial unique charges_import_enrolment_key, which also indexes the
+  /// FK). A late fee never targets one.
+  importId           BigInt?      @map("import_id")
   /// Null when written by a job (generation and late fees run as the system actor).
   createdBy          BigInt?      @map("created_by")
   createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -3292,6 +3312,7 @@ model Charge {
   waivedByUser  User?               @relation("ChargeWaivedBy", fields: [schoolId, waivedBy], references: [schoolId, id], map: "charges_waived_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   allocations   PaymentAllocation[]
   receiptLines  ReceiptLine[]
+  import        Import?             @relation(fields: [schoolId, importId, academicYearId], references: [schoolId, id, academicYearId], map: "charges_import_id_fkey", onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([schoolId, id], map: "charges_school_id_id_key")
   /// The target of charge-linked rows (late fees, adjustments, slice 20's allocations and lines).
@@ -3935,6 +3956,8 @@ model SalaryAdvance {
   /// The target of salary_advance_recoveries: the same staff member.
   @@unique([schoolId, id, staffId], map: "salary_advances_school_id_id_staff_id_key")
   @@index([schoolId, staffId, status], map: "salary_advances_school_id_staff_id_status_idx")
+  /// The financial statement's advances-paid line (rule 38, R332), by granted_on.
+  @@index([schoolId, grantedOn], map: "salary_advances_school_id_granted_on_idx")
   @@index([schoolId, approvedBy], map: "salary_advances_school_id_approved_by_idx")
   @@index([schoolId, writtenOffBy], map: "salary_advances_school_id_written_off_by_idx")
   @@index([schoolId, expenseId], map: "salary_advances_school_id_expense_id_idx")
@@ -4336,13 +4359,15 @@ model AcademicTerm {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  school        School        @relation(fields: [schoolId], references: [id], map: "academic_terms_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
-  academicYear  AcademicYear  @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
-  createdByUser User?         @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school        School         @relation(fields: [schoolId], references: [id], map: "academic_terms_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear  AcademicYear   @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "academic_terms_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser User?          @relation(fields: [schoolId, createdBy], references: [schoolId, id], map: "academic_terms_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
   skips         TermSkip[]
   assessments   Assessment[]
   resultSheets  ResultSheet[]
   results       Result[]
+  classRankings ClassRanking[]
+  imports       Import[]
 
   @@unique([schoolId, id], map: "academic_terms_school_id_id_key")
   /// Target of (school_id, term_id, academic_year_id) FKs: a row naming a term names its year.
@@ -4746,9 +4771,12 @@ model ResultSheet {
   /// The final sheet's term weights: [{ termId, weight, held }].
   termWeights                Json?             @map("term_weights")
   /// Phase 5 rule 39: imported for a sheet a commencement import made, born published with no
-  /// submitter (result_sheets_born_draft widened; CHECK result_sheets_imported_check). Frozen. The
-  /// import's id (import_id) arrives with the imports table (slice 43).
+  /// submitter (result_sheets_born_draft widened; CHECK result_sheets_imported_check). Frozen.
   provenance                 SheetProvenance   @default(manual)
+  /// The commencement import that made the sheet (wave U, slice 43): set exactly when provenance
+  /// is imported (CHECK result_sheets_import_id_check), frozen, of a previewed past-results import
+  /// of the same section and term (trigger result_sheets_import_guard). One sheet per import.
+  importId                   BigInt?           @map("import_id")
   createdAt                  DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -4768,12 +4796,15 @@ model ResultSheet {
   locks           ResultSheetLock[]
   resultsOfTerm   Result[]            @relation("ResultSheetTerm")
   results         Result[]            @relation("ResultSheetRow")
+  import          Import?             @relation(fields: [schoolId, importId, academicYearId], references: [schoolId, id, academicYearId], map: "result_sheets_import_id_fkey", onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([schoolId, id], map: "result_sheets_school_id_id_key")
   /// Target of results (school_id, sheet_id, term_id): a result names its sheet's term.
   @@unique([schoolId, id, termId], map: "result_sheets_school_id_id_term_id_key")
   /// Target of supersedes_id: a version supersedes one of the same section.
   @@unique([schoolId, id, sectionId], map: "result_sheets_school_id_id_section_id_key")
+  /// The import FK, and one sheet per import (NULLs are distinct).
+  @@unique([schoolId, importId, academicYearId], map: "result_sheets_import_key")
   /// The approvals queue: submitted sheets, oldest first.
   @@index([schoolId, status, submittedAt], map: "result_sheets_school_id_status_submitted_at_idx")
   @@index([schoolId, academicYearId, sectionId], map: "result_sheets_school_id_academic_year_id_section_id_idx")
@@ -4897,6 +4928,7 @@ model Result {
   supersededByOf     Result[]            @relation("ResultSupersededBy")
   subjects           ResultSubject[]
   promotionDecisions PromotionDecision[]
+  classRankingRows   ClassRankingRow[]
 
   @@unique([schoolId, id], map: "results_school_id_id_key")
   /// Target of (school_id, result_id, enrolment_id) FKs (promotion decisions, the supersedes chain).
@@ -5208,6 +5240,27 @@ enum StatementBasis {
   verified
 
   @@map("statement_basis")
+}
+
+/// Wave U (slice 42, R333): what computed a class ranking version — the last section of the
+/// class-term publishing, a correction cascade, or a past-results import.
+enum RankingTrigger {
+  publish
+  correction
+  import
+
+  @@map("ranking_trigger")
+}
+
+/// Wave U (slice 45, R349, R352): how a support session ended. closed = the platform user closed
+/// it (or logged out); revoked = a school principal revoked it; expired = the expiry job closed it
+/// at or after expires_at. The SUPPORT_SESSION_ENDED reason.
+enum SupportSessionEnd {
+  closed
+  revoked
+  expired
+
+  @@map("support_session_end")
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -5824,4 +5877,187 @@ model StaffAttendanceDispute {
   @@index([schoolId, decidedBy], map: "staff_attendance_disputes_school_id_decided_by_idx")
   @@index([schoolId, withdrawnBy], map: "staff_attendance_disputes_school_id_withdrawn_by_idx")
   @@map("staff_attendance_disputes")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Phase 5 wave U (phase-5-extended.md rules 38-40, §3.2 "Rankings", "Imports", "Support",
+// R332-R343, R349-R353; migration 20261016120000_wave_u_rankings_imports_support). Hand-written
+// CHECKs, triggers and partial indexes are in the migration SQL (test/guardrails/schema-checks.ts
+// WAVE_U_OBJECTS).
+// ---------------------------------------------------------------------------------------------
+
+/// Tenant: one version of a class's ranking for a term across its sections (rule 38, A9, R333),
+/// computed when the last section of the class-term publishes, after a correction cascade and
+/// after a past-results import. One live version per class-term (partial unique
+/// class_rankings_live_key WHERE superseded_at IS NULL); the first version has no predecessor
+/// (partial unique class_rankings_first_key), each later one supersedes exactly one (unique
+/// class_rankings_supersedes_key) that is already superseded. Order of a recompute, in one
+/// transaction: stamp the live version's superseded_at, insert the new version naming it, insert
+/// its rows. Frozen except superseded_at, set once. `results` is never touched.
+model ClassRanking {
+  id             BigInt         @id(map: "class_rankings_pkey") @default(autoincrement())
+  schoolId       BigInt         @map("school_id")
+  classId        BigInt         @map("class_id")
+  academicYearId BigInt         @map("academic_year_id")
+  termId         BigInt         @map("term_id")
+  trigger        RankingTrigger
+  computedAt     DateTime       @default(now()) @map("computed_at") @db.Timestamptz(3)
+  /// The version this one replaced (same class and term, by the FK); null on the first.
+  supersedesId   BigInt?        @map("supersedes_id")
+  /// Set once, when a newer version replaces this one.
+  supersededAt   DateTime?      @map("superseded_at") @db.Timestamptz(3)
+
+  school       School            @relation(fields: [schoolId], references: [id], map: "class_rankings_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  class        Class             @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "class_rankings_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  term         AcademicTerm      @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "class_rankings_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersedes   ClassRanking?     @relation("ClassRankingSupersedes", fields: [schoolId, supersedesId, classId, termId], references: [schoolId, id, classId, termId], map: "class_rankings_supersedes_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  supersededBy ClassRanking?     @relation("ClassRankingSupersedes")
+  rows         ClassRankingRow[]
+
+  @@unique([schoolId, id], map: "class_rankings_school_id_id_key")
+  /// Target of supersedes_id: a version supersedes one of the same class and term.
+  @@unique([schoolId, id, classId, termId], map: "class_rankings_school_id_id_class_id_term_id_key")
+  /// A version is superseded at most once (NULLs are distinct); also the supersedes FK's index.
+  @@unique([schoolId, supersedesId, classId, termId], map: "class_rankings_supersedes_key")
+  @@index([schoolId, classId, academicYearId], map: "class_rankings_school_id_class_id_idx")
+  @@index([schoolId, termId, academicYearId], map: "class_rankings_school_id_term_id_idx")
+  @@map("class_rankings")
+}
+
+/// Tenant, append-only: one student's place in a class ranking version (R333). At insert the
+/// version is live, the result is a live published result of the version's term, and the
+/// enrolment is of the version's class (trigger class_ranking_rows_guard). class_position and
+/// position_of are null together exactly when the result has no percent_bp (nothing assessed:
+/// listed, never positioned); otherwise 1 <= class_position <= position_of. Standard competition
+/// ranking (packages/shared classRanking), ties share.
+model ClassRankingRow {
+  id            BigInt @id(map: "class_ranking_rows_pkey") @default(autoincrement())
+  schoolId      BigInt @map("school_id")
+  rankingId     BigInt @map("ranking_id")
+  resultId      BigInt @map("result_id")
+  studentId     BigInt @map("student_id")
+  enrolmentId   BigInt @map("enrolment_id")
+  classPosition Int?   @map("class_position") @db.SmallInt
+  positionOf    Int?   @map("position_of") @db.SmallInt
+
+  school    School       @relation(fields: [schoolId], references: [id], map: "class_ranking_rows_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  ranking   ClassRanking @relation(fields: [schoolId, rankingId], references: [schoolId, id], map: "class_ranking_rows_ranking_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  /// The result and its enrolment together: a row can never name another child's result.
+  result    Result       @relation(fields: [schoolId, resultId, enrolmentId], references: [schoolId, id, enrolmentId], map: "class_ranking_rows_result_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  enrolment Enrolment    @relation(fields: [schoolId, enrolmentId, studentId], references: [schoolId, id, studentId], map: "class_ranking_rows_enrolment_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([schoolId, id], map: "class_ranking_rows_school_id_id_key")
+  /// One row per enrolment per version; the ranking FK's index.
+  @@unique([schoolId, rankingId, enrolmentId], map: "class_ranking_rows_ranking_enrolment_key")
+  /// GET /result-reports/merit-list (sort `position`).
+  @@index([schoolId, rankingId, classPosition], map: "class_ranking_rows_school_id_ranking_id_position_idx")
+  @@index([schoolId, resultId, enrolmentId], map: "class_ranking_rows_school_id_result_id_idx")
+  /// The student profile's class position (the enrolment's live version).
+  @@index([schoolId, enrolmentId, studentId], map: "class_ranking_rows_school_id_enrolment_id_idx")
+  @@map("class_ranking_rows")
+}
+
+/// Tenant: one commencement CSV (rule 39, §3.2 "Imports", R339-R343). Born previewed with the
+/// parsed rows and row errors stored here (a preview writes nothing else); then committed (once,
+/// in one transaction, only with no row errors) or failed (error text; "expired" after 24 h). A
+/// past-results import names the section, its class and the term; an opening-balances import
+/// names due_on (CHECK imports_kind_check). A file is committed once per school and kind (partial
+/// unique imports_committed_hash_key). Frozen except status and the committed and failed groups.
+/// Its children (the imported result sheet, the opening-balance charges) are inserted while the
+/// import is still previewed, then the import is stamped committed in the same transaction.
+model Import {
+  id             BigInt       @id(map: "imports_pkey") @default(autoincrement())
+  schoolId       BigInt       @map("school_id")
+  kind           ImportKind
+  /// Lower-case sha-256 hex of the uploaded bytes (CHECK imports_file_hash_check).
+  fileHash       String       @map("file_hash") @db.Char(64)
+  /// 1-255, trimmed, never an identity number; shown back as text.
+  fileName       String       @map("file_name") @db.VarChar(255)
+  /// Data rows in the file (header excluded), 0-5000.
+  rowCount       Int          @map("row_count")
+  /// The parsed rows: a JSON array of at most 5000 entries, at most 1 MB as text, never an
+  /// identity number (CHECKs imports_rows_check, imports_rows_no_id_check).
+  rows           Json
+  /// At most 100 row errors (IMPORT_ERRORS_SHOWN) as a JSON array, never an identity number;
+  /// error_count is the full count, 0 on a committed import.
+  errors         Json         @default("[]")
+  errorCount     Int          @default(0) @map("error_count")
+  status         ImportStatus @default(previewed)
+  academicYearId BigInt       @map("academic_year_id")
+  /// Past results only: the section, its class and the term (all three, or none).
+  sectionId      BigInt?      @map("section_id")
+  classId        BigInt?      @map("class_id")
+  termId         BigInt?      @map("term_id")
+  /// Opening balances only: the due date of every charge the file raises.
+  dueOn          DateTime?    @map("due_on") @db.Date
+  createdBy      BigInt       @map("created_by")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  committedBy    BigInt?      @map("committed_by")
+  committedAt    DateTime?    @map("committed_at") @db.Timestamptz(3)
+  failedAt       DateTime?    @map("failed_at") @db.Timestamptz(3)
+  /// Why it failed: 1-2000, trimmed, never an identity number ("expired" for a lapsed preview).
+  error          String?      @db.VarChar(2000)
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  school          School        @relation(fields: [schoolId], references: [id], map: "imports_school_id_fkey", onDelete: Restrict, onUpdate: Restrict) @ignore
+  academicYear    AcademicYear  @relation(fields: [schoolId, academicYearId], references: [schoolId, id], map: "imports_academic_year_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  class           Class?        @relation(fields: [schoolId, classId, academicYearId], references: [schoolId, id, academicYearId], map: "imports_class_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  section         Section?      @relation(fields: [schoolId, sectionId, classId], references: [schoolId, id, classId], map: "imports_section_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  term            AcademicTerm? @relation(fields: [schoolId, termId, academicYearId], references: [schoolId, id, academicYearId], map: "imports_term_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  createdByUser   User          @relation("ImportCreatedBy", fields: [schoolId, createdBy], references: [schoolId, id], map: "imports_created_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  committedByUser User?         @relation("ImportCommittedBy", fields: [schoolId, committedBy], references: [schoolId, id], map: "imports_committed_by_fkey", onDelete: Restrict, onUpdate: Restrict)
+  resultSheet     ResultSheet?
+  charges         Charge[]
+
+  @@unique([schoolId, id], map: "imports_school_id_id_key")
+  /// Target of (school_id, import_id, academic_year_id) FKs: a child is of the import's year.
+  @@unique([schoolId, id, academicYearId], map: "imports_school_id_id_academic_year_id_key")
+  /// GET /imports?kind&status, newest first.
+  @@index([schoolId, kind, createdAt], map: "imports_school_id_kind_created_at_idx")
+  @@index([schoolId, createdAt], map: "imports_school_id_created_at_idx")
+  @@index([schoolId, academicYearId], map: "imports_school_id_academic_year_id_idx")
+  @@index([schoolId, classId, academicYearId], map: "imports_school_id_class_id_idx")
+  @@index([schoolId, sectionId, classId], map: "imports_school_id_section_id_idx")
+  @@index([schoolId, termId, academicYearId], map: "imports_school_id_term_id_idx")
+  @@index([schoolId, createdBy], map: "imports_school_id_created_by_idx")
+  @@index([schoolId, committedBy], map: "imports_school_id_committed_by_idx")
+  @@map("imports")
+}
+
+/// Non-tenant despite its school_id, like platform_audit_log (rule 40, §3.1 "Exception 7", R349,
+/// R352): a platform admin's time-boxed read-only session on one school. One open per school
+/// (partial unique platform_support_sessions_open_key WHERE closed_at IS NULL), at most three
+/// open per platform user (trigger platform_support_sessions_guard, which locks the platform user
+/// row). opened_at < expires_at <= opened_at + 24 h. Closing, revoking and expiry all set
+/// closed_at with end_kind; a revoke also sets the revoke group, with revoked_at = closed_at and
+/// revoked_by a user of the same school (checked by the trigger: a non-tenant model cannot
+/// relate to User). Frozen except the two once-set groups. Never deleted.
+model PlatformSupportSession {
+  id             BigInt             @id(map: "platform_support_sessions_pkey") @default(autoincrement())
+  platformUserId BigInt             @map("platform_user_id")
+  schoolId       BigInt             @map("school_id")
+  /// 1-500, trimmed, never an identity number.
+  reason         String             @db.VarChar(500)
+  /// The support ticket reference: 1-40, trimmed, never an identity number.
+  ticketRef      String             @map("ticket_ref") @db.VarChar(40)
+  openedAt       DateTime           @default(now()) @map("opened_at") @db.Timestamptz(3)
+  expiresAt      DateTime           @map("expires_at") @db.Timestamptz(3)
+  /// Set with end_kind (CHECK platform_support_sessions_closed_check); once set, frozen.
+  closedAt       DateTime?          @map("closed_at") @db.Timestamptz(3)
+  endKind        SupportSessionEnd? @map("end_kind")
+  /// The platform user's optional reason, only when end_kind is closed.
+  closeReason    String?            @map("close_reason") @db.VarChar(500)
+  /// Set together exactly when end_kind is revoked.
+  revokedAt      DateTime?          @map("revoked_at") @db.Timestamptz(3)
+  revokedBy      BigInt?            @map("revoked_by")
+  revokeReason   String?            @map("revoke_reason") @db.VarChar(500)
+
+  platformUser PlatformUser @relation(fields: [platformUserId], references: [id], map: "platform_support_sessions_platform_user_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+  school       School       @relation(fields: [schoolId], references: [id], map: "platform_support_sessions_school_id_fkey", onDelete: Restrict, onUpdate: Restrict)
+
+  /// GET /platform/support-sessions (newest first) and the three-open cap.
+  @@index([platformUserId, openedAt], map: "platform_support_sessions_platform_user_id_opened_at_idx")
+  /// GET /school/support-sessions and ?schoolId=, newest first.
+  @@index([schoolId, openedAt], map: "platform_support_sessions_school_id_opened_at_idx")
+  @@map("platform_support_sessions")
 }

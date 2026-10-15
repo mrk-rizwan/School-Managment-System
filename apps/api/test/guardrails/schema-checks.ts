@@ -1055,6 +1055,7 @@ export const EXPECTED_OBJECTS: ExpectedObject[] = [
   ...SLICE_37_OBJECTS(),
   ...WAVE_S_OBJECTS(),
   ...WAVE_T_OBJECTS(),
+  ...WAVE_U_OBJECTS(),
 ];
 
 /** Every table's DELETE and TRUNCATE refusal (asms_forbid_delete, rule 4). */
@@ -2502,7 +2503,8 @@ function WAVE_I_OBJECTS(): ExpectedObject[] {
     { kind: 'index', table: 'charges', name: 'charges_open_by_student_idx', definition: "ON public.charges USING btree (school_id, student_id) INCLUDE (amount, allocated_amount, credited_amount, due_on) WHERE (status = 'open'::charge_status)" },
     { kind: 'index', table: 'charges', name: 'charges_yearly_key', definition: "ON public.charges USING btree (school_id, student_id, fee_head_id, academic_year_id) WHERE ((kind = 'generated'::charge_kind) AND (head_frequency = 'yearly'::fee_frequency) AND (status <> 'voided'::charge_status))" },
     { kind: 'trigger', table: 'charges', name: 'charges_adjustment_credit', definition: "AFTER INSERT ON public.charges FOR EACH ROW WHEN ((new.kind = 'adjustment'::charge_kind)) EXECUTE FUNCTION asms_charge_adjustment_credit()" },
-    { kind: 'trigger', table: 'charges', name: 'charges_columns_immutable', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'academic_year_id', 'fee_head_id', 'head_frequency', 'kind', 'period', 'campaign_id', 'late_fee_for_charge_id', 'adjusts_charge_id', 'concession_id', 'gross_amount', 'concession_amount', 'amount', 'description', 'due_on', 'created_by', 'created_at')" },
+    // Widened with import_id by wave U (WAVE_U_OBJECTS checks the current definition).
+    { kind: 'trigger', table: 'charges', name: 'charges_columns_immutable' },
     { kind: 'trigger', table: 'charges', name: 'charges_no_delete', definition: "BEFORE DELETE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_delete()" },
     { kind: 'trigger', table: 'charges', name: 'charges_no_truncate', definition: "BEFORE TRUNCATE ON public.charges FOR EACH STATEMENT EXECUTE FUNCTION asms_forbid_delete()" },
     { kind: 'trigger', table: 'charges', name: 'charges_own_child', definition: "BEFORE INSERT OR UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_charge_own_child()" },
@@ -3120,7 +3122,8 @@ function WAVE_O_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_open', definition: "BEFORE INSERT OR UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_remark_open()" },
     { kind: 'trigger', table: 'result_sheet_remarks', name: 'result_sheet_remarks_school_id_immutable', definition: "BEFORE UPDATE ON public.result_sheet_remarks FOR EACH ROW EXECUTE FUNCTION asms_forbid_school_id_change()" },
     // Phase 5 (20261009120100_phase5_groundwork) added provenance.
-    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'version', 'supersedes_id', 'created_by', 'created_at', 'provenance')" },
+    // Widened with import_id by wave U (WAVE_U_OBJECTS checks the current definition).
+    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable' },
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_insert_guard', definition: "BEFORE INSERT ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_insert_guard()" },
     // Since the wave P review fixes it covers INSERT too (a correction's version is born decided).
     { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_not_self', definition: "BEFORE INSERT OR UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_result_sheet_not_self()" },
@@ -3535,5 +3538,104 @@ function WAVE_T_OBJECTS(): ExpectedObject[] {
     { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_withdrawn_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('withdrawn_at', 'withdrawn_by')" },
     { kind: 'trigger', table: 'staff_attendance_disputes', name: 'staff_attendance_disputes_guard', definition: 'BEFORE INSERT OR UPDATE ON public.staff_attendance_disputes FOR EACH ROW EXECUTE FUNCTION asms_staff_attendance_dispute_guard()' },
     ...noDeleteTriggers('staff_attendance_disputes'),
+  ];
+}
+
+/**
+ * Phase 5 wave U (migration 20261016120000_wave_u_rankings_imports_support; phase-5-extended.md
+ * §3.2 "Rankings", "Imports", "Support"): class rankings (slice 42), commencement imports with
+ * result_sheets.import_id and charges.import_id (slice 43), platform support sessions (slice 45).
+ */
+function WAVE_U_OBJECTS(): ExpectedObject[] {
+  const trimmed = (column: string) =>
+    `CHECK ((((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text)))`;
+  const trimmedOrNull = (column: string) =>
+    `CHECK (((${column} IS NULL) OR (((${column})::text = btrim((${column})::text)) AND ((${column})::text <> ''::text))))`;
+  const refusal = (fn: string, ...names: string[]): ExpectedObject[] =>
+    names.map((name) => ({ kind: 'function', name: fn, definition: `v_refusal := '${name}'` }));
+  const S = 'platform_support_sessions';
+  return [
+    // ---- functions
+    ...refusal('asms_class_ranking_guard', 'class_rankings_born_live', 'class_rankings_supersede_order'),
+    ...refusal(
+      'asms_class_ranking_row_guard',
+      'class_ranking_rows_ranking_live',
+      'class_ranking_rows_result_live',
+      'class_ranking_rows_class',
+      'class_ranking_rows_unranked',
+    ),
+    { kind: 'function', name: 'asms_import_guard', definition: "DETAIL = 'constraint: imports_born_previewed'" },
+    ...refusal('asms_result_sheet_import_guard', 'result_sheets_import_match', 'result_sheets_import_previewed'),
+    { kind: 'function', name: 'asms_result_sheet_import_guard', definition: 'FOR SHARE' },
+    ...refusal('asms_charge_import_guard', 'charges_import_match', 'charges_import_previewed', 'charges_late_fee_not_imported'),
+    { kind: 'function', name: 'asms_charge_import_guard', definition: 'FOR SHARE' },
+    ...refusal(
+      'asms_platform_support_session_guard',
+      'platform_support_sessions_born_open',
+      'platform_support_sessions_user_limit',
+      'platform_support_sessions_revoked_by_school_user',
+    ),
+    { kind: 'function', name: 'asms_platform_support_session_guard', definition: 'FOR UPDATE' },
+    // ---- class_rankings (R333)
+    { kind: 'index', table: 'class_rankings', name: 'class_rankings_live_key', definition: 'UNIQUE INDEX class_rankings_live_key ON public.class_rankings USING btree (school_id, class_id, term_id) WHERE (superseded_at IS NULL)' },
+    { kind: 'index', table: 'class_rankings', name: 'class_rankings_first_key', definition: 'UNIQUE INDEX class_rankings_first_key ON public.class_rankings USING btree (school_id, class_id, term_id) WHERE (supersedes_id IS NULL)' },
+    { kind: 'trigger', table: 'class_rankings', name: 'class_rankings_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('class_id', 'academic_year_id', 'term_id', 'trigger', 'computed_at', 'supersedes_id')" },
+    { kind: 'trigger', table: 'class_rankings', name: 'class_rankings_superseded_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('superseded_at')" },
+    { kind: 'trigger', table: 'class_rankings', name: 'class_rankings_guard', definition: 'BEFORE INSERT ON public.class_rankings FOR EACH ROW EXECUTE FUNCTION asms_class_ranking_guard()' },
+    ...noDeleteTriggers('class_rankings'),
+    // ---- class_ranking_rows (R333; append-only)
+    { kind: 'constraint', table: 'class_ranking_rows', name: 'class_ranking_rows_position_check', definition: 'CHECK ((((class_position IS NULL) = (position_of IS NULL)) AND ((class_position IS NULL) OR ((class_position >= 1) AND (class_position <= position_of)))))' },
+    { kind: 'trigger', table: 'class_ranking_rows', name: 'class_ranking_rows_guard', definition: 'BEFORE INSERT ON public.class_ranking_rows FOR EACH ROW EXECUTE FUNCTION asms_class_ranking_row_guard()' },
+    ...appendOnlyTriggers('class_ranking_rows'),
+    // ---- imports (R339-R343)
+    { kind: 'constraint', table: 'imports', name: 'imports_file_hash_check', definition: "CHECK ((file_hash ~ '^[0-9a-f]{64}$'::text))" },
+    { kind: 'constraint', table: 'imports', name: 'imports_file_name_check', definition: trimmed('file_name') },
+    { kind: 'constraint', table: 'imports', name: 'imports_file_name_no_id_check', definition: noIdCheck('file_name') },
+    { kind: 'constraint', table: 'imports', name: 'imports_row_count_check', definition: 'CHECK (((row_count >= 0) AND (row_count <= 5000)))' },
+    { kind: 'constraint', table: 'imports', name: 'imports_rows_check', definition: '((jsonb_array_length(rows) <= 5000) AND (octet_length((rows)::text) <= 1048576))' },
+    { kind: 'constraint', table: 'imports', name: 'imports_rows_no_id_check', definition: noIdCheck('rows') },
+    { kind: 'constraint', table: 'imports', name: 'imports_errors_check', definition: '((jsonb_array_length(errors) <= 100) AND (error_count >= jsonb_array_length(errors)) AND (octet_length((errors)::text) <= 65536))' },
+    { kind: 'constraint', table: 'imports', name: 'imports_errors_no_id_check', definition: noIdCheck('errors') },
+    { kind: 'constraint', table: 'imports', name: 'imports_kind_check', definition: "CHECK ((((kind = 'past_results'::import_kind) AND (section_id IS NOT NULL) AND (class_id IS NOT NULL) AND (term_id IS NOT NULL) AND (due_on IS NULL)) OR ((kind = 'opening_balances'::import_kind) AND (section_id IS NULL) AND (class_id IS NULL) AND (term_id IS NULL) AND (due_on IS NOT NULL))))" },
+    { kind: 'constraint', table: 'imports', name: 'imports_committed_check', definition: "CHECK ((((status = 'committed'::import_status) = (committed_at IS NOT NULL)) AND ((committed_at IS NULL) = (committed_by IS NULL)) AND ((status <> 'committed'::import_status) OR (error_count = 0))))" },
+    { kind: 'constraint', table: 'imports', name: 'imports_failed_check', definition: "CHECK ((((status = 'failed'::import_status) = (failed_at IS NOT NULL)) AND ((failed_at IS NULL) = (error IS NULL))))" },
+    { kind: 'constraint', table: 'imports', name: 'imports_error_check', definition: trimmedOrNull('error') },
+    { kind: 'constraint', table: 'imports', name: 'imports_error_no_id_check', definition: noIdCheck('error') },
+    { kind: 'index', table: 'imports', name: 'imports_committed_hash_key', definition: "UNIQUE INDEX imports_committed_hash_key ON public.imports USING btree (school_id, kind, file_hash) WHERE (status = 'committed'::import_status)" },
+    { kind: 'index', table: 'imports', name: 'imports_previewed_idx', definition: "ON public.imports USING btree (school_id, created_at) WHERE (status = 'previewed'::import_status)" },
+    { kind: 'trigger', table: 'imports', name: 'imports_status_transition', definition: "EXECUTE FUNCTION asms_status_transition('previewed:committed', 'previewed:failed')" },
+    { kind: 'trigger', table: 'imports', name: 'imports_columns_immutable', definition: "EXECUTE FUNCTION asms_forbid_columns_change('kind', 'file_hash', 'file_name', 'row_count', 'rows', 'errors', 'error_count', 'academic_year_id', 'section_id', 'class_id', 'term_id', 'due_on', 'created_by', 'created_at')" },
+    { kind: 'trigger', table: 'imports', name: 'imports_committed_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('committed_at', 'committed_by')" },
+    { kind: 'trigger', table: 'imports', name: 'imports_failed_frozen', definition: "EXECUTE FUNCTION asms_forbid_change_once_set('failed_at', 'error')" },
+    { kind: 'trigger', table: 'imports', name: 'imports_guard', definition: 'BEFORE INSERT ON public.imports FOR EACH ROW EXECUTE FUNCTION asms_import_guard()' },
+    ...noDeleteTriggers('imports'),
+    // ---- result_sheets.import_id (R340); NOT VALID, the migration says why
+    { kind: 'constraint', table: 'result_sheets', name: 'result_sheets_import_id_check', definition: "CHECK (((provenance = 'imported'::sheet_provenance) = (import_id IS NOT NULL))) NOT VALID" },
+    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_columns_immutable', definition: "BEFORE UPDATE ON public.result_sheets FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('academic_year_id', 'term_id', 'class_id', 'section_id', 'version', 'supersedes_id', 'created_by', 'created_at', 'provenance', 'import_id')" },
+    { kind: 'trigger', table: 'result_sheets', name: 'result_sheets_import_guard', definition: 'BEFORE INSERT ON public.result_sheets FOR EACH ROW WHEN ((new.import_id IS NOT NULL)) EXECUTE FUNCTION asms_result_sheet_import_guard()' },
+    // ---- charges.import_id (R342)
+    { kind: 'constraint', table: 'charges', name: 'charges_import_check', definition: "CHECK (((import_id IS NULL) OR (kind = 'manual'::charge_kind)))" },
+    { kind: 'index', table: 'charges', name: 'charges_import_enrolment_key', definition: 'UNIQUE INDEX charges_import_enrolment_key ON public.charges USING btree (school_id, import_id, academic_year_id, enrolment_id) WHERE (import_id IS NOT NULL)' },
+    { kind: 'trigger', table: 'charges', name: 'charges_columns_immutable', definition: "BEFORE UPDATE ON public.charges FOR EACH ROW EXECUTE FUNCTION asms_forbid_columns_change('enrolment_id', 'student_id', 'academic_year_id', 'fee_head_id', 'head_frequency', 'kind', 'period', 'campaign_id', 'late_fee_for_charge_id', 'adjusts_charge_id', 'concession_id', 'gross_amount', 'concession_amount', 'amount', 'description', 'due_on', 'created_by', 'created_at', 'import_id')" },
+    { kind: 'trigger', table: 'charges', name: 'charges_import_guard', definition: 'BEFORE INSERT ON public.charges FOR EACH ROW WHEN (((new.import_id IS NOT NULL) OR (new.late_fee_for_charge_id IS NOT NULL))) EXECUTE FUNCTION asms_charge_import_guard()' },
+    // ---- platform_support_sessions (R349, R352; non-tenant)
+    { kind: 'constraint', table: S, name: `${S}_reason_check`, definition: trimmed('reason') },
+    { kind: 'constraint', table: S, name: `${S}_reason_no_id_check`, definition: noIdCheck('reason') },
+    { kind: 'constraint', table: S, name: `${S}_ticket_ref_check`, definition: trimmed('ticket_ref') },
+    { kind: 'constraint', table: S, name: `${S}_ticket_ref_no_id_check`, definition: noIdCheck('ticket_ref') },
+    { kind: 'constraint', table: S, name: `${S}_close_reason_check`, definition: trimmedOrNull('close_reason') },
+    { kind: 'constraint', table: S, name: `${S}_close_reason_no_id_check`, definition: noIdCheck('close_reason') },
+    { kind: 'constraint', table: S, name: `${S}_revoke_reason_check`, definition: trimmedOrNull('revoke_reason') },
+    { kind: 'constraint', table: S, name: `${S}_revoke_reason_no_id_check`, definition: noIdCheck('revoke_reason') },
+    { kind: 'constraint', table: S, name: `${S}_expires_check`, definition: "CHECK (((opened_at < expires_at) AND (expires_at <= (opened_at + '24:00:00'::interval))))" },
+    { kind: 'constraint', table: S, name: `${S}_closed_check`, definition: "CHECK ((((closed_at IS NULL) = (end_kind IS NULL)) AND ((closed_at IS NULL) OR (closed_at >= opened_at)) AND ((close_reason IS NULL) OR (end_kind = 'closed'::support_session_end)) AND ((end_kind IS DISTINCT FROM 'expired'::support_session_end) OR (closed_at >= expires_at))))" },
+    { kind: 'constraint', table: S, name: `${S}_revoked_check`, definition: "CHECK ((((NOT (end_kind IS DISTINCT FROM 'revoked'::support_session_end)) = (revoked_at IS NOT NULL)) AND ((revoked_at IS NULL) = (revoked_by IS NULL)) AND ((revoked_at IS NULL) = (revoke_reason IS NULL)) AND ((revoked_at IS NULL) OR (revoked_at = closed_at))))" },
+    { kind: 'index', table: S, name: `${S}_open_key`, definition: `UNIQUE INDEX ${S}_open_key ON public.${S} USING btree (school_id) WHERE (closed_at IS NULL)` },
+    { kind: 'index', table: S, name: `${S}_expiry_idx`, definition: `ON public.${S} USING btree (expires_at) WHERE (closed_at IS NULL)` },
+    { kind: 'trigger', table: S, name: `${S}_columns_immutable`, definition: "EXECUTE FUNCTION asms_forbid_columns_change('platform_user_id', 'school_id', 'reason', 'ticket_ref', 'opened_at', 'expires_at')" },
+    { kind: 'trigger', table: S, name: `${S}_closed_frozen`, definition: "EXECUTE FUNCTION asms_forbid_change_once_set('closed_at', 'end_kind', 'close_reason')" },
+    { kind: 'trigger', table: S, name: `${S}_revoked_frozen`, definition: "EXECUTE FUNCTION asms_forbid_change_once_set('revoked_at', 'revoked_by', 'revoke_reason')" },
+    { kind: 'trigger', table: S, name: `${S}_guard`, definition: `BEFORE INSERT OR UPDATE ON public.${S} FOR EACH ROW EXECUTE FUNCTION asms_platform_support_session_guard()` },
+    ...noDeleteTriggers(S),
   ];
 }

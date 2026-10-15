@@ -26,6 +26,10 @@ export const NON_TENANT_MODELS: Readonly<Record<string, string>> = {
   PlatformSchoolMetric: 'platform_school_metrics',
   PlatformInvoice: 'platform_invoices',
   PlatformPayment: 'platform_payments',
+  // Phase 5 wave U (phase-5-extended.md §3.1 "Exception 7", slice 45): support sessions carry the
+  // school_id they are open on, like platform_audit_log; opened, closed and revoked by platform
+  // code (revoke through the school's own route), never read as a tenant table.
+  PlatformSupportSession: 'platform_support_sessions',
 };
 
 const SCALAR_FIELD_ENUM = 'ScalarFieldEnum';

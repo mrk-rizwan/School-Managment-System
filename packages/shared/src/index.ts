@@ -32,3 +32,4 @@ export * from './timetable/clashes';
 export * from './reports/statement';
 export * from './imports';
 export * from './attendance/punches';
+export * from './support';
