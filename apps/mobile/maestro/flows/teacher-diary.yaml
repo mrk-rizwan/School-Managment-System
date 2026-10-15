@@ -7,9 +7,16 @@ appId: pk.asms.app.dev
 - launchApp
 - tapOn:
     id: 'tabs.classes'
+# Since Phase 5 the Timetable and Events card sits above the sections, so 5 B's rows start below
+# the fold on the emulator's screen: scroll to the row rather than wait for it.
 - extendedWaitUntil:
     visible:
+      id: 'classes.timetable'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
       id: 'classes.section.${SECTION_B}.diary'
+    direction: DOWN
     timeout: 20000
 - tapOn:
     id: 'classes.section.${SECTION_B}.diary'
