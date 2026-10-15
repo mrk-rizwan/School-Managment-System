@@ -45,7 +45,7 @@ appId: pk.asms.app.dev
       text: 'Participation saved.'
     direction: UP
     timeout: 20000
-# Collection: Rs 100 of the Rs 300 owed, in cash, today.
+# Collection: Rs 100 of what is owed (ci-run.sh makes sure at least that much is), in cash, today.
 - scrollUntilVisible:
     element:
       id: 'event.row.${STUDENT_ID}.collect'
