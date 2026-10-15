@@ -38,10 +38,14 @@ appId: pk.asms.app.dev
     direction: DOWN
 - tapOn:
     id: 'event.row.${STUDENT_ID}.status.attended'
+# The roster lists the whole of 5 A and each row is tall (three statuses and Collect), so Save and
+# the payments sit far below the fold on CI's seeded section: long, fast scrolls with room to run.
 - scrollUntilVisible:
     element:
       id: 'event.save'
     direction: DOWN
+    speed: 80
+    timeout: 120000
 - tapOn:
     id: 'event.save'
 - scrollUntilVisible:
@@ -49,7 +53,8 @@ appId: pk.asms.app.dev
       id: 'event.message'
       text: 'Participation saved.'
     direction: UP
-    timeout: 20000
+    speed: 80
+    timeout: 120000
 # Collection: Rs 100 of what is owed (ci-run.sh makes sure at least that much is), in cash, today.
 - scrollUntilVisible:
     element:
@@ -78,5 +83,7 @@ appId: pk.asms.app.dev
     element:
       id: 'event.payments'
     direction: DOWN
+    speed: 80
+    timeout: 120000
 - back
 - back
