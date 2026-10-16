@@ -28,9 +28,16 @@ writes the production code.** Do not start application code in a planning sessio
   attendance and disputes, 46 audit screen and rule 24's reach (security PASS, correctness findings
   fixed, committed). **Wave U is done** (2026-10-16): schema `a659e76`, then slices 42 reporting,
   class rankings and CSV, 43 commencement imports, 45 platform support access (security PASS,
-  correctness findings fixed, committed with this entry). Project = 180 / 181.5 days = 99 %.
-  **Next: slice 47, the Phase 5 close** — whole-phase reviews, CLAUDE.md records (exceptions 4 and 7,
-  the 53-key count), the phase gate.
+  correctness findings fixed, committed). **Slice 47, the close, is done** (2026-10-16/17): the
+  R357 scripted term, five whole-phase reviews and their fix round, the late-fee performance fix,
+  CLAUDE.md and the docs (close commit `99a8731`); the first `phase-gate` run FAILED on two items —
+  CI's mobile job red since `0470339` (Expo patch drift stopped it before Maestro) and no WORKLOG
+  close entry — both closed in `37fec77` and this entry; CI run 38814495601: green on both jobs (commit efdde2d), all fifteen Maestro flows passed including teacher-timetable and teacher-event-duty; getting there took three test-only fixes (teacher-diary scrolls to 5 B below the Phase 5 card; the event-duty setup reads the outstanding after the child's advance; the event-duty flow signs in as the teacher and scrolls the full roster) and two re-runs for emulator infrastructure failures.
+  **Project = 181.5 / 181.5 days = 100 % of the planned build.** What remains is go-live work and
+  the owner's decisions ("Left to do" and the 2026-10-17 entry below).
+- **Reading CI without the GitHub CLI:** the repository is public, so
+  `https://api.github.com/repos/mrk-rizwan/School-Managment-System/actions/runs?head_sha=<sha>` and
+  `.../actions/runs/<id>/jobs` answer without a token (job logs need one).
 - **New machine since 2026-10-12** (owner moved to a new SSD): repo at `E:\Node Apps\School Managment System`,
   user profile `C:\Users\mrkri`. **pnpm now works**: pnpm 12 is a native Rust binary that needs the
   Microsoft Visual C++ runtime; its absence (`STATUS_DLL_NOT_FOUND`) was also why pnpm never ran on the
@@ -46,7 +53,8 @@ writes the production code.** Do not start application code in a planning sessio
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
-- **pnpm does not start on this machine** since 2026-10-06 (corepack's `pnpm-native.exe` fails to
+- **(Old laptop, superseded 2026-10-12: pnpm works on the new machine — see above.)** pnpm did not
+  start on the old laptop since 2026-10-06 (corepack's `pnpm-native.exe` fails to
   spawn). Run tools directly: API Jest `node --experimental-vm-modules node_modules/jest/bin/jest.js`,
   mobile Jest with `NODE_PATH=<repo>/node_modules/.pnpm/node_modules`, `npx nest build` +
   `npx tsx scripts/generate-openapi.ts`, `npx openapi-typescript …` for the clients, and start
@@ -83,7 +91,7 @@ them when each phase is planned, and say so in the report.
 | 2 Daily operations | slices 9-17 (plan §6; slice 9 grew by 2 days for the second WhatsApp driver) | 42 |
 | 3 Financial | slices 18-28 (plan `phase-3-financial.md`, revised twice, approved 2026-10-06) | 38.5 |
 | 4 Academic | slices 29-36 (plan `phase-4-academic.md`, reviewed and approved 2026-10-07) | 33 |
-| 5 Extended | slices 37-47 (plan `phase-5-extended.md`, reviewed 2026-10-09; was a 20-day guess) | 38 |
+| 5 Extended | slices 37-47 (plan `phase-5-extended.md`, reviewed 2026-10-09; built 2026-10-09 → 10-17) | 38 |
 | **Total** | | **181.5** |
 
 Phase 1 slice sizes (plan §5): 0 = 3.5 · 1 = 2.5 · 2 = 5 · 3 = 2.5 · 4 = 3 · 5 = 1.5 · 6 = 6.5 ·
@@ -153,6 +161,76 @@ done before slice 0 are not counted.
 7. Product owner, optional: sample seed data (presentation slide 23).
 
 ---
+
+## 2026-10-16/17 — Phase 5 close (slice 47) and the phase gate (Opus 5.5 builds, Fable 5.1 reviews)
+
+**R357** — `apps/api/test/phase5/scripted-term.e2e-spec.ts` drives one term through the HTTP API
+(timetable change and substitution; a bus rider changing section and a route amount change; an
+event paid and one cancelled after part-payment; both imports; a contract renewal and the 30/7-day
+warnings; every punch outcome and a dispute; payroll; a support session) and asserts the Phase 3
+money identities, the financial statement on both bases and every message count. No product defect.
+
+**Whole-phase reviews and what became of them:**
+- **Security — PASS.** Four Low: three lint regexes single-escaped (fixed), plan text vs code (fixed),
+  stale lint messages naming six constructors (fixed), the support view shows guardian phones in full
+  (owner decision; designed so). Facts recorded in CLAUDE.md: nine constructors, exception 4 widened
+  (device token), exception 7 (support access), the support repositories as the one platform-side
+  exception to "non-tenant tables only".
+- **Business rules.** Fixed: family events after a section change; leaving clears the vehicle driver
+  and ends live event duties; the event-cancel notice now says the money was credited against fees
+  owed. Owner decisions (below). R357 written.
+- **Code quality.** Fixed: one `PermissionsService.staffHolding` for five recipient loops, one
+  active-principal predicate, a shared `addMonths`, `AreaTabs`, clock stamps through `SchoolClock`,
+  dead exports, support-module cleanups. Later: section-label lookups, a few hand-rolled tables, test
+  helper duplication, `punch-intake` method size.
+- **Docs.** README (Visual C++ runtime for pnpm 12, Docker start), `docs/deployment.md` (the two new
+  schedules, the device-punch endpoint and its proxy dependency), the Phase 5 plan's as-built line and
+  corrections, CLAUDE.md (seeded heads, rule 24's reach, imports as built, contract warnings, Android
+  only, the unspecified list).
+- **Performance — every §7.2 budget met** (timetable read ≈ 20 ms, support view ≈ 30 ms, statement
+  58-94 ms, ranking ≈ 100 ms, import commit 1.5 s, punches ≈ 0.3 s). The Phase 3 late-fee sweep had
+  drifted to 4.9-5.4 s of 5 s; fixed by `charges_own_child_split` (the insert trigger fires only for
+  adjustments) and an `unnest` insert — now 4.2 s on the long-lived test DB, 2.7 s on a fresh one. The
+  remaining per-row cost is the four-column FK to `enrolments` under a generic plan on this
+  many-small-schools test database; the FK is kept (correctness before speed).
+
+**Checks at `99a8731`:** API Jest 3,125 passed / 2 skipped; web mocked Playwright 494/494; mobile
+Jest 700/700; tsc and ESLint clean everywhere.
+
+**Phase gate.** First run FAIL: (1) CI's mobile job had failed at "Bundle check and expo-doctor" for
+six pushes — Expo published SDK 57 patches around 2026-10-14 and the doctor reads the live manifest —
+so no Maestro flow had run on CI since wave R; (2) no WORKLOG close entry. Fixed in `37fec77` (ten
+Expo packages to their expected patches, exact pins kept; doctor 21/21 locally) and this entry. CI
+run 38814495601: green on both jobs (commit efdde2d), all fifteen Maestro flows passed including teacher-timetable and teacher-event-duty; getting there took three test-only fixes (teacher-diary scrolls to 5 B below the Phase 5 card; the event-duty setup reads the outstanding after the child's advance; the event-duty flow signs in as the teacher and scrolls the full roster) and two re-runs for emulator infrastructure failures.
+
+**Owner decisions — built with a default, each a yes/no, none needs rework to change:**
+1. Is an event charge optional? Today a declined trip is an ordinary due (defaulters, reminders, the
+   withhold-card setting, the leaving certificate) until the office voids it.
+2. Cancelled-trip money: credited and applied at once to the family's oldest charge (rule 18) — so it
+   cannot be refunded as cash. Pakistani schools often refund; that needs a held-credit flag.
+3. Bus riders are not carried forward at year end; every rider must be re-assigned before the new
+   year's first cut-off or that month's fee is lost. Recommended: a "carry riders forward" action.
+4. Opening balances: due no earlier than today (so they sort behind this month's tuition) and no
+   notice at commit. Allow a past due date? Send a one-off notice?
+5. No "void this import"; a wrong past-results file costs per-student revisions.
+6. Event charges ignore concessions (`apply_concessions` false) though the Event head is eligible.
+7. Biometric never marks absence; an unpunched day stays unmarked.
+8. A dispute approved after payroll is finalised does not change the payslip; a punch on an approved
+   leave day marks present while the leave still counts.
+9. Rule 24 does not block: salary-advance write-off, expense void, payslip adjust, charge adjust,
+   event cancel with money, concession approve (one marker line each if wanted).
+10. CSV on the Phase 2 attendance reports (adds a throttle to teachers' screens).
+11. Support view: mask guardian phones?
+12. No settings screen for `financialStatementBasis` (API accepts it; default received).
+13. Plan §1.2 stances built as stated: teacher event collection route, no school-group reports, the
+    device vendor agent not ours, `transport.manage` as the 53rd key, no support reads of message
+    delivery. Office staff do not run events by default (plan corrected 2026-10-14).
+
+**Go-live needs (in order):** the real-driver proof ("Left to do" item 1); an edge reverse proxy that
+overwrites `X-Forwarded-For` (per-IP lockouts, including the device-token one, depend on it); hosting;
+price tiers entered on the platform; `seed:platform-admin` run by the owner; Firebase and the Play
+account; the durable fix for the monthly run's lost `fee_charged` messages on a partial failure
+(notify from committed rows); a device vendor agent only if a school buys biometrics.
 
 ## 2026-10-15/16 — Phase 5 wave U: reporting, imports, support access (Opus 5.5 builds, Fable 5.1 reviews)
 
