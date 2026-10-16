@@ -11,7 +11,7 @@ writes the production code.** Do not start application code in a planning sessio
 
 ## Current state (keep this section accurate)
 
-- **Phase:** **Phases 1-4 complete and closed.** Phase 4 (Academic) closed on 2026-10-08:
+- **Phase:** **Phases 1-5 complete and closed — the planned build is done.** Phase 5 `phase-gate` **PASS** on `8cc75bd` (2026-10-17, second run). Earlier phases: **Phases 1-4 complete and closed.** Phase 4 (Academic) closed on 2026-10-08:
   every slice 29-36 built, reviewed and committed, close commit `55255eb`, CI run 37822174131
   green on both jobs (all Maestro flows incl. teacher-marks-offline, principal-approve-result,
   parent-report-card), **`phase-gate` PASS** with two recorded limitations (below, "What Phase 5
@@ -33,8 +33,9 @@ writes the production code.** Do not start application code in a planning sessio
   CLAUDE.md and the docs (close commit `99a8731`); the first `phase-gate` run FAILED on two items —
   CI's mobile job red since `0470339` (Expo patch drift stopped it before Maestro) and no WORKLOG
   close entry — both closed in `37fec77` and this entry; CI run 38814495601: green on both jobs (commit efdde2d), all fifteen Maestro flows passed including teacher-timetable and teacher-event-duty; getting there took three test-only fixes (teacher-diary scrolls to 5 B below the Phase 5 card; the event-duty setup reads the outstanding after the child's advance; the event-duty flow signs in as the teacher and scrolls the full roster) and two re-runs for emulator infrastructure failures.
-  **Project = 181.5 / 181.5 days = 100 % of the planned build.** What remains is go-live work and
-  the owner's decisions ("Left to do" and the 2026-10-17 entry below).
+  **The re-run `phase-gate` PASSED on `8cc75bd`** (all fifteen Definition-of-Done lines; limitations
+  recorded in the close entry). **Project = 181.5 / 181.5 days = 100 % of the planned build.** What
+  remains is go-live work and the owner's decisions ("Left to do" and the close entry below).
 - **Reading CI without the GitHub CLI:** the repository is public, so
   `https://api.github.com/repos/mrk-rizwan/School-Managment-System/actions/runs?head_sha=<sha>` and
   `.../actions/runs/<id>/jobs` answer without a token (job logs need one).
@@ -49,7 +50,8 @@ writes the production code.** Do not start application code in a planning sessio
   start by itself after a restart; then `docker compose up -d postgres redis mailpit minio`, and
   `node apps/api/scripts/migrate-test-db.js` if the test DB is behind. The dev DB has no seeded platform
   admin or school yet (`seed:platform-admin`, `seed:dev-school` — the owner runs them; the first
-  prints a login). The GitHub CLI is not installed on this machine (CI cannot be read from here).
+  prints a login). The GitHub CLI is installed (`C:\Program Files\GitHub CLI\gh.exe`, signed in as
+  `mrk-rizwan`, 2026-10-16): `gh run view <id> --log-failed`, `gh run download <id> -n mobile-e2e`.
 - **The repository is public** since 2026-10-07 (the owner's choice, so that GitHub Actions runs
   without billing; the full history was scanned for secrets first and was clean). Treat every
   commit as published: the pre-commit hook stays the guard.
@@ -162,7 +164,7 @@ done before slice 0 are not counted.
 
 ---
 
-## 2026-10-16/17 — Phase 5 close (slice 47) and the phase gate (Opus 5.5 builds, Fable 5.1 reviews)
+## 2026-10-16/17 — Phase 5 close (slice 47) and the phase gate (Opus 5.5 builds, Fable 5.1 reviews) — DONE, phase gate PASS on `8cc75bd`
 
 **R357** — `apps/api/test/phase5/scripted-term.e2e-spec.ts` drives one term through the HTTP API
 (timetable change and substitution; a bus rider changing section and a route amount change; an
